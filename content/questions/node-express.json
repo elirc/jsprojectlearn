@@ -1,0 +1,322 @@
+{
+  "id": "node-express",
+  "topic": "Node & Express",
+  "title": "Node, npm and Express",
+  "blurb": "The runtime, the module system, middleware, streams and the npm ecosystem — what a fullstack interview expects you to know about the server side of JavaScript.",
+  "questions": [
+    {
+      "id": "ne-001",
+      "q": "What does Node have that the browser does not?",
+      "choices": [
+        "Filesystem, process, network server sockets, and child processes",
+        "Promises and async/await",
+        "The event loop",
+        "JSON parsing"
+      ],
+      "answer": 0,
+      "why": "Both run V8 and both have an event loop and promises. Node adds the OS-facing APIs and drops the DOM, window and localStorage — which is why 'window is not defined' shows up during server-side rendering.",
+      "tags": ["runtime"],
+      "level": 1
+    },
+    {
+      "id": "ne-002",
+      "q": "What is the difference between `dependencies` and `devDependencies`?",
+      "choices": [
+        "dependencies are needed at runtime in production; devDependencies only to build and test",
+        "devDependencies are installed globally",
+        "dependencies are locked, devDependencies are not",
+        "There is no functional difference"
+      ],
+      "answer": 0,
+      "why": "`npm ci --omit=dev` in a production image skips devDependencies, giving a smaller, faster, less exposed container. Putting TypeScript or a test runner in dependencies is a common slip.",
+      "tags": ["npm"],
+      "level": 1
+    },
+    {
+      "id": "ne-003",
+      "q": "What does `package-lock.json` guarantee?",
+      "choices": [
+        "The exact resolved version of every package in the tree, so installs are reproducible",
+        "That no package can be malicious",
+        "That versions stay within the semver range",
+        "Faster installs only"
+      ],
+      "answer": 0,
+      "why": "Without a lockfile, `^1.2.0` can resolve to a different 1.x on the CI machine than on yours. Commit it, and use `npm ci` in CI — it installs strictly from the lockfile and fails if package.json disagrees.",
+      "tags": ["npm"],
+      "level": 1,
+      "asked": "Follow-up: 'what's the difference between npm install and npm ci?'"
+    },
+    {
+      "id": "ne-004",
+      "q": "What does `^1.2.3` allow?",
+      "choices": [
+        "Any 1.x.y at or above 1.2.3 — minor and patch updates, not 2.0.0",
+        "Only patch updates",
+        "Any version above 1.2.3 including 2.x",
+        "Exactly 1.2.3"
+      ],
+      "answer": 0,
+      "why": "`~1.2.3` is patch-only. Semver's promise is that minor versions are backwards compatible — which holds often enough to be useful and not always enough to skip the lockfile.",
+      "tags": ["npm", "semver"],
+      "level": 2
+    },
+    {
+      "id": "ne-005",
+      "q": "What is Express middleware?",
+      "choices": [
+        "A function `(req, res, next)` in an ordered chain, each able to handle the request or pass it on",
+        "A plugin system for routes",
+        "A wrapper around the database",
+        "Code that runs after the response is sent"
+      ],
+      "answer": 0,
+      "why": "Order is everything: a body parser registered after a route means `req.body` is undefined there, and an auth middleware registered after a route does not protect it.",
+      "tags": ["express", "middleware"],
+      "level": 1
+    },
+    {
+      "id": "ne-006",
+      "q": "Why does this error handler never run?",
+      "code": "app.use((err, req, res, next) => {\n  res.status(500).json({ error: 'oops' });\n});\napp.get('/users', handler);",
+      "lang": "js",
+      "choices": [
+        "It is registered before the routes, so nothing downstream can reach it",
+        "Error handlers need three parameters, not four",
+        "It must be wrapped in try/catch",
+        "res.status cannot be used in an error handler"
+      ],
+      "answer": 0,
+      "why": "Express matches middleware in registration order, and an error handler must come last. It is also identified by having four parameters — dropping `next` turns it into ordinary middleware.",
+      "tags": ["express", "errors"],
+      "level": 2
+    },
+    {
+      "id": "ne-007",
+      "q": "In Express 4, why does a rejected promise in an async route handler not reach the error handler?",
+      "choices": [
+        "Express 4 does not catch rejections — you must call next(err) or use a wrapper",
+        "Async handlers are not supported at all",
+        "The error handler must be async too",
+        "It does; the handler is misconfigured"
+      ],
+      "answer": 0,
+      "why": "The request hangs until it times out, which is worse than a 500. Wrap handlers in an asyncHandler that attaches `.catch(next)`, or move to Express 5, which forwards rejections automatically.",
+      "tags": ["express", "errors", "async"],
+      "level": 3,
+      "asked": "A very practical Express question — this bug produces mysterious hanging requests."
+    },
+    {
+      "id": "ne-008",
+      "q": "What is the difference between CommonJS and ESM in Node?",
+      "choices": [
+        "require is synchronous and dynamic; import is static, asynchronous and needs \"type\": \"module\" or .mjs",
+        "ESM only works in the browser",
+        "CommonJS is deprecated and removed",
+        "They can be mixed freely with no caveats"
+      ],
+      "answer": 0,
+      "why": "Static imports enable tree shaking and top-level await. The friction: `__dirname` does not exist in ESM (use import.meta.url), and importing CJS from ESM works while the reverse needs dynamic import().",
+      "tags": ["modules"],
+      "level": 2
+    },
+    {
+      "id": "ne-009",
+      "q": "Why should you stream a large file rather than read it into memory?",
+      "choices": [
+        "A buffer holds the whole file in RAM; a stream processes it in chunks with constant memory",
+        "Streams are always faster",
+        "fs.readFile cannot handle files over 100MB",
+        "Streams compress the data"
+      ],
+      "answer": 0,
+      "why": "Ten concurrent requests each reading a 500MB file is 5GB of RAM and an OOM kill. Streams also start delivering bytes immediately, so time-to-first-byte improves.",
+      "tags": ["streams", "performance"],
+      "level": 2
+    },
+    {
+      "id": "ne-010",
+      "q": "What is backpressure in a stream?",
+      "choices": [
+        "The consumer signalling it cannot keep up, so the producer should pause",
+        "Errors propagating upstream",
+        "The buffer flushing to disk",
+        "A retry mechanism"
+      ],
+      "answer": 0,
+      "why": "Ignore it and you buffer an entire fast source in memory while a slow destination crawls. `pipeline()` handles backpressure and error propagation for you — hand-rolled `.on('data')` loops usually do not.",
+      "tags": ["streams"],
+      "level": 3
+    },
+    {
+      "id": "ne-011",
+      "q": "How should configuration reach a Node service?",
+      "choices": [
+        "Environment variables, validated at startup, with secrets from a secret store",
+        "A config.json committed to the repo",
+        "Hard-coded constants per environment",
+        "Command-line flags only"
+      ],
+      "answer": 0,
+      "why": "Environment config is the twelve-factor default and is what containers and CI expect. Validate at boot and crash loudly — discovering a missing DATABASE_URL at 3am on first request is much worse than at deploy.",
+      "tags": ["config"],
+      "level": 2
+    },
+    {
+      "id": "ne-012",
+      "q": "What happens on an uncaught exception in Node?",
+      "choices": [
+        "The process crashes by default — and letting it crash under a supervisor is usually correct",
+        "Node logs it and continues safely",
+        "It is caught by the nearest middleware",
+        "The event loop restarts"
+      ],
+      "answer": 0,
+      "why": "After an uncaught exception, application state is unknown. Log it, flush, and exit; let the orchestrator restart a clean process. Using `process.on('uncaughtException')` to keep running is how you get a zombie server.",
+      "tags": ["errors", "operations"],
+      "level": 2
+    },
+    {
+      "id": "ne-013",
+      "q": "How do you use more than one CPU core in Node?",
+      "choices": [
+        "Run multiple processes (cluster, PM2, or several containers); use worker_threads for CPU-bound work in-process",
+        "Node uses all cores automatically",
+        "Use more async/await",
+        "Increase the thread pool size"
+      ],
+      "answer": 0,
+      "why": "JavaScript executes on one thread per process. In practice most services scale by running N containers behind a load balancer, which also gives you restarts and rolling deploys for free.",
+      "tags": ["scaling", "concurrency"],
+      "level": 2
+    },
+    {
+      "id": "ne-014",
+      "q": "What blocks the Node event loop?",
+      "choices": [
+        "Synchronous CPU work or sync I/O like fs.readFileSync — every other request waits",
+        "Any await",
+        "Database queries",
+        "Reading environment variables"
+      ],
+      "answer": 0,
+      "why": "A single 2-second JSON.parse of a huge payload stalls every concurrent request on that process. Async I/O is fine — it is synchronous computation that hurts.",
+      "tags": ["event-loop", "performance"],
+      "level": 2,
+      "asked": "Then: 'so how would you handle a CPU-heavy endpoint?' — worker thread, queue, or a different runtime."
+    },
+    {
+      "id": "ne-015",
+      "q": "What does a health check endpoint need to do?",
+      "choices": [
+        "Report whether this instance can serve traffic — ideally separating liveness from readiness",
+        "Return the app version",
+        "Run the full test suite",
+        "Always return 200"
+      ],
+      "answer": 0,
+      "why": "Liveness: is the process wedged and in need of a restart? Readiness: can it serve right now (dependencies reachable, warm-up done)? Conflating them means a brief database blip restarts every pod.",
+      "tags": ["operations"],
+      "level": 2
+    },
+    {
+      "id": "ne-016",
+      "q": "Where should request validation happen in an Express app?",
+      "choices": [
+        "At the edge, in middleware or the handler's first lines, before anything touches the database",
+        "In the database via constraints only",
+        "In the frontend only",
+        "Wherever the value is first used"
+      ],
+      "answer": 0,
+      "why": "Validate once at the boundary and the rest of the code can trust its inputs. Client-side validation is a UX feature, not a security control — anyone can post directly to your API.",
+      "tags": ["validation", "security"],
+      "level": 1
+    },
+    {
+      "id": "ne-017",
+      "q": "What is the risk of `npm install` pulling a transitive dependency you never chose?",
+      "choices": [
+        "A compromised or abandoned deep dependency runs with full process privileges — supply chain risk",
+        "It only affects install time",
+        "npm blocks transitive dependencies by default",
+        "There is no risk if the direct dependency is trusted"
+      ],
+      "answer": 0,
+      "why": "Install scripts and runtime code both execute as your process. Mitigations: audit regularly, pin with a lockfile, prefer fewer and better-maintained dependencies, and consider `--ignore-scripts` in CI.",
+      "tags": ["npm", "security"],
+      "level": 2
+    },
+    {
+      "id": "ne-018",
+      "q": "What does `res.json(data)` do that `res.send(JSON.stringify(data))` does not?",
+      "choices": [
+        "Sets Content-Type: application/json and applies configured replacers and escaping",
+        "It is faster",
+        "It streams the response",
+        "Nothing — they are identical"
+      ],
+      "answer": 0,
+      "why": "Without the header, clients guess — and some will parse a JSON body as text. Small thing, but it is the cause of 'the response is a string' bugs on the client.",
+      "tags": ["express"],
+      "level": 1
+    },
+    {
+      "id": "ne-019",
+      "q": "What is graceful shutdown and why does it matter?",
+      "choices": [
+        "On SIGTERM, stop accepting connections, finish in-flight requests, close resources, then exit",
+        "Restarting the process automatically",
+        "Flushing logs before a crash",
+        "Draining the database connection pool only"
+      ],
+      "answer": 0,
+      "why": "During a rolling deploy the orchestrator sends SIGTERM and waits. Exiting immediately drops requests mid-flight and can leave transactions open — users see 502s on every deploy.",
+      "tags": ["operations"],
+      "level": 3,
+      "asked": "A strong signal for anyone claiming deployment experience."
+    },
+    {
+      "id": "ne-020",
+      "q": "How should you log in a production Node service?",
+      "choices": [
+        "Structured JSON to stdout, with levels and a request correlation id",
+        "console.log to a file the app rotates itself",
+        "Only errors, to keep volume down",
+        "Full request and response bodies for every call"
+      ],
+      "answer": 0,
+      "why": "Containers collect stdout; the app should not manage files. Structured logs are queryable. And never log passwords, tokens, card numbers or full request bodies containing them.",
+      "tags": ["logging", "operations"],
+      "level": 2
+    },
+    {
+      "id": "ne-021",
+      "q": "What does `app.use(express.json())` actually do?",
+      "choices": [
+        "Parses a JSON request body into req.body when Content-Type matches",
+        "Serialises all responses as JSON",
+        "Validates the body against a schema",
+        "Enables JSON support in routes"
+      ],
+      "answer": 0,
+      "why": "It only acts when the Content-Type is application/json — which is why a request without that header arrives with an empty `req.body` and no error. Set a size limit too; the default allows a large payload.",
+      "tags": ["express"],
+      "level": 1
+    },
+    {
+      "id": "ne-022",
+      "q": "Why is `path.join(__dirname, userInput)` dangerous?",
+      "choices": [
+        "`../../` in the input escapes the intended directory — path traversal",
+        "__dirname is undefined in ESM only",
+        "It is slow",
+        "It does not work on Windows"
+      ],
+      "answer": 0,
+      "why": "Resolve the path and then verify it still starts with the intended base directory, or map user input to an allowlist of filenames. Never concatenate user input into a filesystem path unchecked.",
+      "tags": ["security", "filesystem"],
+      "level": 2
+    }
+  ]
+}

@@ -1,0 +1,349 @@
+{
+  "id": "git-tooling-devops",
+  "topic": "Git & shipping",
+  "title": "Git, tooling, CI/CD and deployment",
+  "blurb": "Branching, undoing mistakes, what the pipeline does, containers and environments. Everyone claims to know Git — this is where that gets tested.",
+  "questions": [
+    {
+      "id": "gt-001",
+      "q": "What is the difference between merge and rebase?",
+      "choices": [
+        "Merge creates a commit joining two histories; rebase replays your commits on top of another branch, rewriting them",
+        "Rebase is a safer merge",
+        "Merge deletes the branch",
+        "They produce identical history"
+      ],
+      "answer": 0,
+      "why": "Rebase gives linear, readable history. Because it rewrites commits, never rebase a branch other people have pulled — their history and yours diverge and the next merge is a mess.",
+      "tags": ["git"],
+      "level": 2,
+      "asked": "Guaranteed. The 'never rebase shared branches' caveat is the part that matters."
+    },
+    {
+      "id": "gt-002",
+      "q": "You committed to `main` instead of a feature branch, and have not pushed. What now?",
+      "choices": [
+        "Create the branch at the current commit, then reset main back to origin/main",
+        "Delete the repository and re-clone",
+        "git commit --amend",
+        "git push --force"
+      ],
+      "answer": 0,
+      "why": "`git branch feature`, then `git reset --hard origin/main` while on main. The commit is safe on the new branch. Nothing was pushed, so nobody else is affected.",
+      "tags": ["git", "recovery"],
+      "level": 2,
+      "asked": "A practical scenario question — the answer shows whether you actually understand branches as pointers."
+    },
+    {
+      "id": "gt-003",
+      "q": "What is the difference between `git revert` and `git reset`?",
+      "choices": [
+        "revert adds a new commit undoing a change (safe on shared branches); reset moves the branch pointer, rewriting history",
+        "revert deletes the commit, reset keeps it",
+        "They are the same for pushed commits",
+        "reset is for files, revert for commits"
+      ],
+      "answer": 0,
+      "why": "If it is already pushed, revert. Reset on a shared branch means everyone else's history disagrees with the remote and someone will force-push over someone's work.",
+      "tags": ["git", "recovery"],
+      "level": 2
+    },
+    {
+      "id": "gt-004",
+      "q": "What does `git reset --soft`, `--mixed` and `--hard` each keep?",
+      "choices": [
+        "soft keeps staged changes, mixed keeps them unstaged, hard discards them entirely",
+        "They differ only in speed",
+        "soft is for files, hard for branches",
+        "hard is the only one that moves HEAD"
+      ],
+      "answer": 0,
+      "why": "`--hard` is the only Git command that routinely destroys uncommitted work — and it is the one people run when panicking. Commit or stash first.",
+      "tags": ["git"],
+      "level": 3
+    },
+    {
+      "id": "gt-005",
+      "q": "What is `git stash` for?",
+      "choices": [
+        "Temporarily shelving uncommitted changes so you can switch context, then reapply them",
+        "Backing up a branch",
+        "Squashing commits",
+        "Ignoring files"
+      ],
+      "answer": 0,
+      "why": "Useful, but stashes are easy to forget and do not survive a fresh clone. A throwaway WIP commit on a branch is often the safer habit.",
+      "tags": ["git"],
+      "level": 1
+    },
+    {
+      "id": "gt-006",
+      "q": "What does a `.gitignore` NOT do?",
+      "choices": [
+        "It does not untrack a file that has already been committed",
+        "It does not affect new files",
+        "It does not work on directories",
+        "It does not apply to subfolders"
+      ],
+      "answer": 0,
+      "why": "You need `git rm --cached`. And if a secret was committed, ignoring it now does nothing — it is still in history, so rotate the credential.",
+      "tags": ["git", "secrets"],
+      "level": 2
+    },
+    {
+      "id": "gt-007",
+      "q": "What makes a good commit message?",
+      "choices": [
+        "A short imperative summary of what changed, and a body explaining why when it is not obvious",
+        "A list of every file touched",
+        "The ticket number alone",
+        "As much detail as possible about how"
+      ],
+      "answer": 0,
+      "why": "The diff already says how. Six months later, `git log` is the only record of why — 'fix bug' tells the next person nothing when they are bisecting a regression.",
+      "tags": ["git", "process"],
+      "level": 1
+    },
+    {
+      "id": "gt-008",
+      "q": "What is `git bisect` for?",
+      "choices": [
+        "Binary searching history to find the commit that introduced a bug",
+        "Splitting a commit in two",
+        "Comparing two branches",
+        "Splitting a repository"
+      ],
+      "answer": 0,
+      "why": "Mark a good commit and a bad one and Git walks you through the halves. It is why small, atomic commits pay off — a bisect that lands on a 2000-line commit tells you very little.",
+      "tags": ["git", "debugging"],
+      "level": 3
+    },
+    {
+      "id": "gt-009",
+      "q": "What should a CI pipeline run before a merge?",
+      "choices": [
+        "Build, lint, type-check, unit and integration tests — everything that must be true for the branch to be mergeable",
+        "Only the unit tests, for speed",
+        "A deployment to production",
+        "Nothing; run checks after merge"
+      ],
+      "answer": 0,
+      "why": "The point is that main is always releasable. Anything you would be embarrassed to merge belongs in the pipeline, and anything not in the pipeline will eventually be skipped.",
+      "tags": ["ci"],
+      "level": 1
+    },
+    {
+      "id": "gt-010",
+      "q": "What is the difference between continuous integration and continuous deployment?",
+      "choices": [
+        "CI merges and verifies changes frequently; CD automatically releases every passing build",
+        "They are the same",
+        "CD means deploying manually but often",
+        "CI includes deployment by definition"
+      ],
+      "answer": 0,
+      "why": "Continuous *delivery* means every build is releasable; continuous *deployment* means it actually ships without a human. Plenty of good teams do the former and gate the latter.",
+      "tags": ["ci", "cd"],
+      "level": 2
+    },
+    {
+      "id": "gt-011",
+      "q": "What is a container, precisely?",
+      "choices": [
+        "An isolated process sharing the host kernel, with its own filesystem and namespaces — not a virtual machine",
+        "A lightweight virtual machine with its own kernel",
+        "A packaged zip of the application",
+        "A process manager"
+      ],
+      "answer": 0,
+      "why": "Sharing the kernel is why containers start in milliseconds and VMs take seconds. It is also why a Linux container cannot run on a Windows kernel without a VM underneath.",
+      "tags": ["docker"],
+      "level": 2,
+      "asked": "The 'it's not a VM' distinction is the whole question."
+    },
+    {
+      "id": "gt-012",
+      "q": "What is the point of a multi-stage Dockerfile?",
+      "choices": [
+        "Build with the full SDK, then copy only the artefacts into a small runtime image",
+        "To build for multiple architectures",
+        "To run multiple processes in one container",
+        "To cache layers between projects"
+      ],
+      "answer": 0,
+      "why": "A .NET SDK image is roughly 800MB; the runtime image is a fraction of that. Smaller images pull faster, cost less to store, and contain fewer things a scanner can flag.",
+      "tags": ["docker"],
+      "level": 2
+    },
+    {
+      "id": "gt-013",
+      "q": "Why order Dockerfile instructions so dependency installs come before copying source?",
+      "choices": [
+        "Layer caching — a source change should not invalidate the dependency install layer",
+        "It reduces the final image size",
+        "Docker requires that order",
+        "It improves runtime performance"
+      ],
+      "answer": 0,
+      "why": "Copy package.json and run install, then copy the rest. Get it backwards and every one-line change reinstalls every dependency, turning a 10-second build into three minutes.",
+      "tags": ["docker", "ci"],
+      "level": 2
+    },
+    {
+      "id": "gt-014",
+      "q": "How should configuration differ between dev, staging and production?",
+      "choices": [
+        "Same build artefact everywhere, configured by environment variables injected at deploy",
+        "A separate build per environment",
+        "Config files committed per environment",
+        "Hard-coded switches on the hostname"
+      ],
+      "answer": 0,
+      "why": "Build once, promote the same artefact. If you rebuild per environment, the thing you tested is not the thing you shipped.",
+      "tags": ["config", "deployment"],
+      "level": 2
+    },
+    {
+      "id": "gt-015",
+      "q": "What is a blue/green deployment?",
+      "choices": [
+        "Run the new version alongside the old, switch traffic over, and switch back instantly if it fails",
+        "Deploying to two regions",
+        "Deploying half the features at a time",
+        "Running tests in production"
+      ],
+      "answer": 0,
+      "why": "Rollback is a traffic switch, not a redeploy. The catch is shared state: database schema must work with both versions during the overlap, which is why expand/contract migrations matter.",
+      "tags": ["deployment"],
+      "level": 3
+    },
+    {
+      "id": "gt-016",
+      "q": "What is a feature flag for?",
+      "choices": [
+        "Separating deploy from release, so code can ship dark and be turned on independently",
+        "Managing Git branches",
+        "A/B testing only",
+        "Disabling tests"
+      ],
+      "answer": 0,
+      "why": "It enables trunk-based development — merge small changes often without half-finished features reaching users. The cost is flag debt; every flag needs a removal date.",
+      "tags": ["deployment", "process"],
+      "level": 2
+    },
+    {
+      "id": "gt-017",
+      "q": "The pipeline is green but production is broken. What class of problem is this?",
+      "choices": [
+        "Something that only exists in the target environment — config, secrets, data, network, or scale",
+        "A flaky test",
+        "A compiler bug",
+        "A merge conflict"
+      ],
+      "answer": 0,
+      "why": "The pipeline validates the artefact, not the environment. This is why smoke tests after deploy and good observability matter more than adding another unit test.",
+      "tags": ["deployment", "debugging"],
+      "level": 2,
+      "asked": "A realistic scenario question. It tests whether you understand the limits of CI."
+    },
+    {
+      "id": "gt-018",
+      "q": "What does semantic versioning promise?",
+      "choices": [
+        "MAJOR breaks compatibility, MINOR adds compatibly, PATCH fixes compatibly",
+        "Version numbers increase over time",
+        "Every release is tested",
+        "Nothing — it is only a convention for libraries"
+      ],
+      "answer": 0,
+      "why": "It is a social contract, not an enforced rule, which is why lockfiles exist. For an application (rather than a library) it often matters less than a traceable build number.",
+      "tags": ["versioning"],
+      "level": 1
+    },
+    {
+      "id": "gt-019",
+      "q": "What is trunk-based development?",
+      "choices": [
+        "Short-lived branches merged to main frequently, keeping main always releasable",
+        "Committing directly to main with no review",
+        "One long-running branch per release",
+        "Working only in forks"
+      ],
+      "answer": 0,
+      "why": "The alternative — long-lived branches — produces enormous merges and integration pain. The trade-off is that incomplete work must be hidden behind flags.",
+      "tags": ["process", "git"],
+      "level": 2
+    },
+    {
+      "id": "gt-020",
+      "q": "Someone force-pushed over your commits on a shared branch. Are they gone?",
+      "choices": [
+        "Usually recoverable — `git reflog` locally, or the old commit SHA on the remote, still points at them",
+        "Yes, permanently",
+        "Only if you had pushed them",
+        "Only recoverable from a backup"
+      ],
+      "answer": 0,
+      "why": "Git rarely deletes objects immediately; the reflog records where HEAD has been. The real lesson is to protect main and require pull requests so this cannot happen.",
+      "tags": ["git", "recovery"],
+      "level": 3
+    },
+    {
+      "id": "gt-021",
+      "q": "What is the difference between `npm install` and `npm ci`?",
+      "choices": [
+        "install may update the lockfile; ci installs strictly from it and fails if package.json disagrees",
+        "ci is just faster",
+        "ci skips devDependencies",
+        "install works offline, ci does not"
+      ],
+      "answer": 0,
+      "why": "`npm ci` wipes node_modules and reproduces the lockfile exactly — which is what you want in a pipeline, where a surprise dependency upgrade should be an error, not a silent event.",
+      "tags": ["npm", "ci"],
+      "level": 2
+    },
+    {
+      "id": "gt-022",
+      "q": "What does a linter give you that the compiler does not?",
+      "choices": [
+        "Rules about style and likely-wrong-but-legal code, enforced consistently without review debate",
+        "Type checking",
+        "Faster builds",
+        "Security scanning"
+      ],
+      "answer": 0,
+      "why": "`no-floating-promises` and the React hooks rules catch real bugs a type checker will not. Automating style also removes the least valuable category of review comment.",
+      "tags": ["tooling"],
+      "level": 1
+    },
+    {
+      "id": "gt-023",
+      "q": "Why should build artefacts and `node_modules` not be in version control?",
+      "choices": [
+        "They are derived, huge, platform-specific and generate constant conflicts",
+        "Git cannot store binary files",
+        "It slows down the linter",
+        "Licensing prohibits it"
+      ],
+      "answer": 0,
+      "why": "Commit the lockfile — the recipe — not the result. Native modules compiled on your machine will not even run on the build server.",
+      "tags": ["git", "tooling"],
+      "level": 1
+    },
+    {
+      "id": "gt-024",
+      "q": "What is a rolling deployment's main constraint?",
+      "choices": [
+        "Old and new versions run simultaneously, so both must work against the same database and API contracts",
+        "It requires downtime",
+        "It only works with containers",
+        "It cannot be rolled back"
+      ],
+      "answer": 0,
+      "why": "This is why you never rename a column and deploy the code in the same release. Add, backfill, dual-write, migrate reads, then remove — across several deploys.",
+      "tags": ["deployment", "migrations"],
+      "level": 3,
+      "asked": "It connects deployment strategy to database migrations, which is a genuinely mid-level connection to make."
+    }
+  ]
+}

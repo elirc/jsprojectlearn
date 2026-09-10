@@ -1,0 +1,518 @@
+{
+  "id": "js-fundamentals",
+  "topic": "JavaScript",
+  "title": "JavaScript fundamentals",
+  "blurb": "Types, coercion, scope, closures, `this`, hoisting. The phone-screen material — the questions that get asked before anyone looks at your code.",
+  "questions": [
+    {
+      "id": "jsf-001",
+      "q": "What does this log?",
+      "code": "console.log(\"5\" + 3, \"5\" - 3);",
+      "lang": "js",
+      "choices": ["\"53\" 2", "8 2", "\"53\" \"2\"", "8 \"2\""],
+      "answer": 0,
+      "why": "`+` is overloaded: if either operand is a string it concatenates, so \"5\" + 3 is the string \"53\". `-` has no string meaning, so it coerces both sides to numbers and gives 2.",
+      "tags": ["coercion", "operators"],
+      "level": 1,
+      "asked": "The classic opener. It is really testing whether you know `+` is the only arithmetic operator that also does string work."
+    },
+    {
+      "id": "jsf-002",
+      "q": "Which of these is NOT falsy?",
+      "choices": ["\"0\"", "0", "NaN", "\"\""],
+      "answer": 0,
+      "why": "There are exactly eight falsy values: false, 0, -0, 0n, \"\", null, undefined, NaN. The string \"0\" is a non-empty string, so it is truthy — which surprises people reading config values.",
+      "tags": ["coercion", "truthiness"],
+      "level": 1,
+      "asked": "Because `if (value)` on a parsed string is a real production bug — \"0\" and \"false\" both pass."
+    },
+    {
+      "id": "jsf-003",
+      "q": "What does `typeof null` return?",
+      "choices": ["\"object\"", "\"null\"", "\"undefined\"", "throws a TypeError"],
+      "answer": 0,
+      "why": "A bug from the first version of JavaScript that can never be fixed without breaking the web. To test for null you compare directly: `value === null`.",
+      "tags": ["types", "null"],
+      "level": 1,
+      "asked": "It is trivia, but it filters people who have never had to write a null check by hand."
+    },
+    {
+      "id": "jsf-004",
+      "q": "What does this log?",
+      "code": "const volume = 0;\nconsole.log(volume || 50, volume ?? 50);",
+      "lang": "js",
+      "choices": ["50 0", "0 50", "50 50", "0 0"],
+      "answer": 0,
+      "why": "`||` falls through on any falsy value, and 0 is falsy — so it returns 50. `??` only falls through on null or undefined, so it keeps the deliberate 0. This is exactly why `??` was added.",
+      "tags": ["operators", "defaults"],
+      "level": 1,
+      "asked": "The single most common real bug this catches: a default kicking in over a legitimate 0 or empty string."
+    },
+    {
+      "id": "jsf-005",
+      "q": "What does this log?",
+      "code": "console.log(0.1 + 0.2 === 0.3);",
+      "lang": "js",
+      "choices": ["false", "true", "NaN", "throws"],
+      "answer": 0,
+      "why": "All JavaScript numbers are IEEE-754 doubles. 0.1 and 0.2 have no exact binary representation, so the sum is 0.30000000000000004. Compare with a tolerance, or store money as integer minor units.",
+      "tags": ["numbers", "floats"],
+      "level": 1,
+      "asked": "The follow-up is always 'so how would you store a price?' — and the answer is cents as an integer, or a decimal type."
+    },
+    {
+      "id": "jsf-006",
+      "q": "What does this log?",
+      "code": "function makeCounter() {\n  let count = 0;\n  return () => ++count;\n}\nconst a = makeCounter();\nconst b = makeCounter();\nconsole.log(a(), a(), b());",
+      "lang": "js",
+      "choices": ["1 2 1", "1 2 3", "1 1 1", "0 1 0"],
+      "answer": 0,
+      "why": "Each call to makeCounter creates a fresh `count` and a closure over it. `a` and `b` capture different variables, so b's counter starts again at 1.",
+      "tags": ["closures", "scope"],
+      "level": 1,
+      "asked": "This is the standard 'do you understand closures' question. The key insight is one closure per invocation, not one per function."
+    },
+    {
+      "id": "jsf-007",
+      "q": "What does this log?",
+      "code": "for (var i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}",
+      "lang": "js",
+      "choices": ["3 3 3", "0 1 2", "0 0 0", "1 2 3"],
+      "answer": 0,
+      "why": "`var` is function-scoped, so all three callbacks close over the same `i`. By the time the timers fire the loop has finished and `i` is 3. Changing `var` to `let` gives a fresh binding per iteration and logs 0 1 2.",
+      "tags": ["closures", "scope", "var"],
+      "level": 1,
+      "asked": "It tests closures, the event loop and block scope in four lines. Nearly every interviewer has a version of it."
+    },
+    {
+      "id": "jsf-008",
+      "q": "What happens here?",
+      "code": "console.log(x);\nlet x = 1;",
+      "lang": "js",
+      "choices": [
+        "ReferenceError: Cannot access 'x' before initialization",
+        "logs undefined",
+        "logs 1",
+        "SyntaxError"
+      ],
+      "answer": 0,
+      "why": "`let` and `const` declarations are hoisted but not initialised — the span before the declaration is the temporal dead zone, and reading there throws. `var` would have logged undefined instead.",
+      "tags": ["hoisting", "tdz"],
+      "level": 2,
+      "asked": "It separates people who say 'hoisting means var moves to the top' from people who know what actually happens."
+    },
+    {
+      "id": "jsf-009",
+      "q": "What is the difference between `==` and `===`?",
+      "choices": [
+        "`==` converts the operands to a common type before comparing; `===` requires the same type",
+        "`==` compares values, `===` compares memory addresses",
+        "They are identical; `===` is just a style preference",
+        "`===` works on objects, `==` only on primitives"
+      ],
+      "answer": 0,
+      "why": "`==` runs the abstract equality algorithm, which coerces — so `\"1\" == 1` and `null == undefined` are both true. `===` compares type first and returns false on a mismatch. Both compare objects by reference.",
+      "tags": ["equality", "coercion"],
+      "level": 1,
+      "asked": "The most-asked JavaScript question in existence. The good answer names a case where the coercion surprises you."
+    },
+    {
+      "id": "jsf-010",
+      "q": "What does this log?",
+      "code": "console.log([] == false, [] === false);",
+      "lang": "js",
+      "choices": ["true false", "false false", "true true", "false true"],
+      "answer": 0,
+      "why": "`==` coerces: [] becomes the primitive \"\", false becomes 0, \"\" becomes 0, and 0 == 0. `===` sees an object versus a boolean and returns false immediately. This is the strongest argument for always using ===.",
+      "tags": ["equality", "coercion"],
+      "level": 2,
+      "asked": "It is the punchline that justifies the lint rule."
+    },
+    {
+      "id": "jsf-011",
+      "q": "In a regular (non-arrow) function, what determines the value of `this`?",
+      "choices": [
+        "How the function is called",
+        "Where the function is defined",
+        "The file's module scope",
+        "The nearest enclosing class"
+      ],
+      "answer": 0,
+      "why": "`this` in a normal function is bound at call time: `obj.fn()` binds obj, a bare `fn()` binds undefined in strict mode, and call/apply/bind set it explicitly. Arrow functions are the exception — they capture `this` from where they were defined.",
+      "tags": ["this", "functions"],
+      "level": 2,
+      "asked": "The lead-in to 'why did this break when I passed the method as a callback?'"
+    },
+    {
+      "id": "jsf-012",
+      "q": "What does this log?",
+      "code": "const user = {\n  name: 'Ada',\n  greet() { return `hi ${this.name}`; },\n};\nconst greet = user.greet;\nconsole.log(greet());",
+      "lang": "js",
+      "choices": [
+        "TypeError, or 'hi undefined'",
+        "'hi Ada'",
+        "'hi '",
+        "ReferenceError: name is not defined"
+      ],
+      "answer": 0,
+      "why": "Detaching the method loses the receiver. In a module (strict mode) `this` is undefined and reading `.name` throws; in sloppy mode `this` is globalThis and you get 'hi undefined'. Fix with `user.greet.bind(user)` or an arrow wrapper.",
+      "tags": ["this", "binding"],
+      "level": 2,
+      "asked": "It is the same bug as passing `this.handleClick` to an event listener without binding."
+    },
+    {
+      "id": "jsf-013",
+      "q": "Which statement about arrow functions is TRUE?",
+      "choices": [
+        "They have no own `this`, `arguments`, or `prototype`",
+        "They are just shorter syntax with identical semantics",
+        "They cannot be used as callbacks",
+        "They always return undefined unless you write `return`"
+      ],
+      "answer": 0,
+      "why": "Arrows close over `this` lexically and have no `arguments` object or prototype, so they cannot be used as constructors or as object methods that need a dynamic receiver.",
+      "tags": ["functions", "this"],
+      "level": 1,
+      "asked": "The follow-up is 'so when would you NOT use an arrow function?' — object methods and prototype methods."
+    },
+    {
+      "id": "jsf-014",
+      "q": "What does this log?",
+      "code": "console.log(typeof NaN, NaN === NaN);",
+      "lang": "js",
+      "choices": ["\"number\" false", "\"NaN\" false", "\"number\" true", "\"undefined\" false"],
+      "answer": 0,
+      "why": "NaN is a numeric value meaning 'not a valid number', and it is the only value in JavaScript not equal to itself. Test for it with Number.isNaN(), never with ===.",
+      "tags": ["numbers", "equality"],
+      "level": 1,
+      "asked": "The practical follow-up: how do you check whether a parsed input failed?"
+    },
+    {
+      "id": "jsf-015",
+      "q": "What is the difference between `null` and `undefined`?",
+      "choices": [
+        "`undefined` means a value was never set; `null` is an explicit 'no value'",
+        "They are interchangeable",
+        "`null` is for objects, `undefined` for primitives",
+        "`undefined` can be assigned but `null` cannot"
+      ],
+      "answer": 0,
+      "why": "The language produces undefined (missing property, no return, unpassed parameter); you produce null deliberately. `null == undefined` is true but `null === undefined` is false, and JSON keeps null but drops undefined.",
+      "tags": ["null", "types"],
+      "level": 1,
+      "asked": "Because the API contract 'field absent' vs 'field explicitly empty' matters, and JSON treats them differently."
+    },
+    {
+      "id": "jsf-016",
+      "q": "What does this log?",
+      "code": "function f(a, b = a * 2) {\n  return [a, b];\n}\nconsole.log(f(3), f(3, undefined), f(3, null));",
+      "lang": "js",
+      "choices": [
+        "[3,6] [3,6] [3,null]",
+        "[3,6] [3,undefined] [3,null]",
+        "[3,6] [3,6] [3,6]",
+        "throws on f(3, null)"
+      ],
+      "answer": 0,
+      "why": "Default parameters fire only for `undefined`, not for null or any other falsy value. Passing undefined explicitly is the same as omitting the argument; passing null suppresses the default.",
+      "tags": ["functions", "defaults"],
+      "level": 2,
+      "asked": "It mirrors the `??` question: 'absent' and 'explicitly empty' are different, and defaults only handle the first."
+    },
+    {
+      "id": "jsf-017",
+      "q": "What does this log?",
+      "code": "console.log(typeof function () {}, typeof [], typeof class {});",
+      "lang": "js",
+      "choices": [
+        "\"function\" \"object\" \"function\"",
+        "\"function\" \"array\" \"class\"",
+        "\"object\" \"object\" \"object\"",
+        "\"function\" \"object\" \"object\""
+      ],
+      "answer": 0,
+      "why": "typeof has only eight results. Arrays are objects — use Array.isArray(). Classes are syntax over functions, so typeof reports \"function\".",
+      "tags": ["types"],
+      "level": 2,
+      "asked": "Leads directly to 'how do you reliably check whether something is an array?'"
+    },
+    {
+      "id": "jsf-018",
+      "q": "What does `\"use strict\"` change?",
+      "choices": [
+        "Silent failures become errors, and `this` is undefined in plain function calls",
+        "It enables newer syntax like optional chaining",
+        "It makes the code run faster in all engines",
+        "It turns on type checking"
+      ],
+      "answer": 0,
+      "why": "Strict mode makes assigning to an undeclared variable throw, forbids duplicate parameter names, and leaves `this` undefined rather than globalThis in a bare call. ES modules are strict automatically.",
+      "tags": ["strict-mode"],
+      "level": 2,
+      "asked": "Usually as a lead-in to 'why is `this` undefined in my module but not in the console?'"
+    },
+    {
+      "id": "jsf-019",
+      "q": "What does this log?",
+      "code": "const a = { n: 1 };\nconst b = a;\nb.n = 2;\nconsole.log(a.n);",
+      "lang": "js",
+      "choices": ["2", "1", "undefined", "throws — a is const"],
+      "answer": 0,
+      "why": "`const` prevents rebinding the variable, not mutating the object it points at. `a` and `b` reference the same object, so the change is visible through both.",
+      "tags": ["references", "const"],
+      "level": 1,
+      "asked": "It is the root of the React 'why didn't my component re-render' bug and half of all shared-state bugs."
+    },
+    {
+      "id": "jsf-020",
+      "q": "What does this log?",
+      "code": "console.log([1, 2, 3] + [4, 5]);",
+      "lang": "js",
+      "choices": ["\"1,2,34,5\"", "[1,2,3,4,5]", "\"[1,2,3][4,5]\"", "NaN"],
+      "answer": 0,
+      "why": "`+` has no array meaning, so both sides are converted to primitives — which for an array means join(\",\"). \"1,2,3\" + \"4,5\" concatenates to \"1,2,34,5\".",
+      "tags": ["coercion", "arrays"],
+      "level": 2,
+      "asked": "Nobody writes this on purpose; the point is understanding that every operator falls back to primitive conversion."
+    },
+    {
+      "id": "jsf-021",
+      "q": "Which correctly copies an object one level deep?",
+      "choices": [
+        "`{ ...original }`",
+        "`Object.freeze(original)`",
+        "`original.slice()`",
+        "`new Object(original)`"
+      ],
+      "answer": 0,
+      "why": "Spread (or Object.assign({}, original)) makes a new object with the same top-level values. Nested objects are still shared references — for a full copy use structuredClone().",
+      "tags": ["objects", "immutability"],
+      "level": 1,
+      "asked": "Immediately followed by 'and what happens to nested objects?'"
+    },
+    {
+      "id": "jsf-022",
+      "q": "What does optional chaining `a?.b.c` do if `a` is null?",
+      "choices": [
+        "Short-circuits the whole chain and evaluates to undefined",
+        "Throws a TypeError on `.c`",
+        "Returns null",
+        "Returns an empty object"
+      ],
+      "answer": 0,
+      "why": "Once `?.` short-circuits, the rest of the chain is skipped entirely — it does not resume and try `.c`. Note it only guards the link it is written on, so `a.b?.c` still throws if `a` is null.",
+      "tags": ["operators", "null"],
+      "level": 2,
+      "asked": "The trap is thinking `?.` protects the whole expression rather than one link."
+    },
+    {
+      "id": "jsf-023",
+      "q": "What does this log?",
+      "code": "const obj = { a: 1 };\nconsole.log(obj.toString === Object.prototype.toString);",
+      "lang": "js",
+      "choices": ["true", "false", "undefined", "throws"],
+      "answer": 0,
+      "why": "Property lookup walks the prototype chain. `obj` has no own toString, so it finds the one on Object.prototype — the same function object, hence true.",
+      "tags": ["prototypes"],
+      "level": 2,
+      "asked": "The lead-in to 'why should you use Object.hasOwn or a Map for a lookup table?'"
+    },
+    {
+      "id": "jsf-024",
+      "q": "Why is a `Map` often a better lookup table than a plain object?",
+      "choices": [
+        "Any value can be a key, insertion order is guaranteed, and it has no inherited keys",
+        "It is always faster for every operation",
+        "It serialises to JSON automatically",
+        "It prevents duplicate values"
+      ],
+      "answer": 0,
+      "why": "Object keys are strings or symbols, and every object inherits keys like `toString` and `__proto__` — which is a real bug when the keys come from user input. Map keys can be objects, and `map.size` is O(1).",
+      "tags": ["map", "objects"],
+      "level": 2,
+      "asked": "The concrete version is: 'a user types __proto__ into your word counter — what happens?'"
+    },
+    {
+      "id": "jsf-025",
+      "q": "What does this log?",
+      "code": "console.log([10, 9, 1, 100].sort());",
+      "lang": "js",
+      "choices": ["[1, 10, 100, 9]", "[1, 9, 10, 100]", "[100, 10, 9, 1]", "[10, 9, 1, 100]"],
+      "answer": 0,
+      "why": "Default sort converts every element to a string and compares those, so \"10\" sorts before \"9\". Pass a comparator: `sort((a, b) => a - b)`.",
+      "tags": ["arrays", "sort"],
+      "level": 1,
+      "asked": "It is the most common array footgun, and sort also mutates in place — worth saying so."
+    },
+    {
+      "id": "jsf-026",
+      "q": "What is a closure, in the shortest accurate form?",
+      "choices": [
+        "A function bundled with the variables from the scope where it was created",
+        "A function that has finished executing",
+        "A function defined inside an object literal",
+        "A private method on a class"
+      ],
+      "answer": 0,
+      "why": "The function keeps a live reference to the enclosing scope's bindings, so those variables survive after the outer function has returned. That is what makes counters, memoisation, and React hooks work.",
+      "tags": ["closures"],
+      "level": 1,
+      "asked": "Universal. What separates answers is whether you can name a real use rather than reciting a definition."
+    },
+    {
+      "id": "jsf-027",
+      "q": "What does this log?",
+      "code": "let x = 10;\nfunction show() {\n  console.log(x);\n  var x = 20;\n}\nshow();",
+      "lang": "js",
+      "choices": ["undefined", "10", "20", "ReferenceError"],
+      "answer": 0,
+      "why": "`var x` is hoisted to the top of the function, so the inner `x` shadows the outer one for the whole body — and at the log it is declared but not yet assigned, hence undefined.",
+      "tags": ["hoisting", "scope", "var"],
+      "level": 2,
+      "asked": "It is the cleanest demonstration of why `var` was replaced."
+    },
+    {
+      "id": "jsf-028",
+      "q": "What does `[...\"héllo\"].length` evaluate to, and why might it differ from `\"héllo\".length`?",
+      "choices": [
+        "Spreading iterates code points, `.length` counts UTF-16 code units",
+        "They are always the same",
+        "Spread removes accents",
+        "`.length` counts bytes"
+      ],
+      "answer": 0,
+      "why": "String iteration yields code points, so surrogate pairs (emoji, some CJK) count as one. `.length` counts UTF-16 units, so '👋'.length is 2. Neither counts user-perceived characters — combining marks still split.",
+      "tags": ["strings", "unicode"],
+      "level": 3,
+      "asked": "It comes up whenever a character-count feature has to handle emoji."
+    },
+    {
+      "id": "jsf-029",
+      "q": "What is the difference between a function declaration and a function expression?",
+      "choices": [
+        "A declaration is hoisted and callable before its line; an expression is not",
+        "Expressions cannot take parameters",
+        "Declarations cannot be nested",
+        "Expressions are always arrow functions"
+      ],
+      "answer": 0,
+      "why": "`function f() {}` is hoisted whole. `const f = function () {}` only binds when that line runs, so calling it earlier hits the temporal dead zone.",
+      "tags": ["functions", "hoisting"],
+      "level": 1,
+      "asked": "A standard warm-up that leads into hoisting."
+    },
+    {
+      "id": "jsf-030",
+      "q": "What does this log?",
+      "code": "const { a = 1, b = 2 } = { a: undefined, b: null };\nconsole.log(a, b);",
+      "lang": "js",
+      "choices": ["1 null", "1 2", "undefined null", "undefined 2"],
+      "answer": 0,
+      "why": "Destructuring defaults follow the same rule as parameter defaults: they apply only to undefined. `b` is explicitly null, so the default is skipped.",
+      "tags": ["destructuring", "defaults"],
+      "level": 2,
+      "asked": "It catches people who assume defaults handle 'empty' generally."
+    },
+    {
+      "id": "jsf-031",
+      "q": "What does `Object.freeze(obj)` guarantee?",
+      "choices": [
+        "obj's own properties cannot be added, removed or reassigned — but nested objects stay mutable",
+        "The object and everything inside it become deeply immutable",
+        "It becomes read-only for other modules only",
+        "It creates a copy that cannot be changed"
+      ],
+      "answer": 0,
+      "why": "freeze is shallow. `Object.freeze({ inner: { n: 1 } })` still lets you set `.inner.n = 2`. A deep freeze means recursing yourself.",
+      "tags": ["immutability", "objects"],
+      "level": 2,
+      "asked": "Because 'we froze the config so it's safe' is a claim that is often wrong."
+    },
+    {
+      "id": "jsf-032",
+      "q": "What does this log?",
+      "code": "console.log(typeof typeof 1);",
+      "lang": "js",
+      "choices": ["\"string\"", "\"number\"", "\"undefined\"", "\"object\""],
+      "answer": 0,
+      "why": "typeof always produces a string, so typeof of that string is \"string\". Pure trivia, but a fast way to check whether someone is reasoning or pattern-matching.",
+      "tags": ["types"],
+      "level": 1
+    },
+    {
+      "id": "jsf-033",
+      "q": "Which of these mutates the array it is called on?",
+      "choices": ["`splice`", "`slice`", "`concat`", "`map`"],
+      "answer": 0,
+      "why": "splice, push, pop, shift, unshift, sort, reverse and fill all mutate. slice, concat, map, filter and the newer toSorted/toReversed/with return new arrays.",
+      "tags": ["arrays", "immutability"],
+      "level": 1,
+      "asked": "Directly relevant to React: mutating state in place is why a component fails to re-render."
+    },
+    {
+      "id": "jsf-034",
+      "q": "What is the practical difference between `for...in` and `for...of`?",
+      "choices": [
+        "`for...in` iterates enumerable keys including inherited ones; `for...of` iterates values of an iterable",
+        "They are the same for arrays",
+        "`for...of` works only on arrays",
+        "`for...in` is faster"
+      ],
+      "answer": 0,
+      "why": "`for...in` over an array gives index strings and walks the prototype chain, so it is the wrong tool for arrays. Use `for...of` for values, `Object.entries()` for an object's own pairs.",
+      "tags": ["loops", "objects"],
+      "level": 2,
+      "asked": "The bug it prevents: someone adds a helper to Array.prototype and every for...in loop in the codebase changes behaviour."
+    },
+    {
+      "id": "jsf-035",
+      "q": "What does this log?",
+      "code": "const fns = [];\nfor (let i = 0; i < 3; i++) fns.push(() => i);\nconsole.log(fns.map((f) => f()));",
+      "lang": "js",
+      "choices": ["[0, 1, 2]", "[3, 3, 3]", "[0, 0, 0]", "[1, 2, 3]"],
+      "answer": 0,
+      "why": "`let` creates a fresh binding on every iteration, so each arrow closes over its own `i`. Swapping in `var` gives [3, 3, 3].",
+      "tags": ["closures", "scope"],
+      "level": 2,
+      "asked": "The counterpart to the setTimeout question — it checks you know why `let` fixes it, not just that it does."
+    },
+    {
+      "id": "jsf-036",
+      "q": "Why is `parseInt(\"08\")` safe today but `parseInt` still risky?",
+      "choices": [
+        "It ignores trailing garbage — parseInt(\"12abc\") is 12, and it stops at the first invalid character",
+        "It still treats a leading 0 as octal",
+        "It returns a string",
+        "It throws on non-numeric input"
+      ],
+      "answer": 0,
+      "why": "Modern engines no longer guess octal, but parseInt still parses as far as it can and ignores the rest, so \"12abc\" silently becomes 12. Number(\"12abc\") gives NaN, which is usually the failure you want.",
+      "tags": ["numbers", "parsing"],
+      "level": 2,
+      "asked": "Relevant every time you read a query-string parameter."
+    },
+    {
+      "id": "jsf-037",
+      "q": "What does the spread operator do with a string?",
+      "code": "console.log([...'abc']);",
+      "lang": "js",
+      "choices": ["['a', 'b', 'c']", "['abc']", "throws", "[97, 98, 99]"],
+      "answer": 0,
+      "why": "Strings are iterable, so spread produces an array of code points. It is the shortest way to split a string into characters while handling surrogate pairs correctly.",
+      "tags": ["strings", "spread"],
+      "level": 1
+    },
+    {
+      "id": "jsf-038",
+      "q": "What is the output?",
+      "code": "class A {\n  #secret = 1;\n  get value() { return this.#secret; }\n}\nconsole.log(Object.keys(new A()));",
+      "lang": "js",
+      "choices": ["[]", "['#secret']", "['secret']", "['value']"],
+      "answer": 0,
+      "why": "Private fields (#) are genuinely private — not enumerable, not reachable from outside, and invisible to Object.keys or JSON.stringify. `value` is a prototype accessor, so it is not an own key either.",
+      "tags": ["classes", "encapsulation"],
+      "level": 3,
+      "asked": "Follow-up to 'how do you make a field private in JavaScript?' — the old answer was closures or a leading underscore convention."
+    }
+  ]
+}

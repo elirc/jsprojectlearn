@@ -1,0 +1,357 @@
+{
+  "id": "react-hooks",
+  "topic": "React hooks",
+  "title": "Hooks, effects and data fetching",
+  "blurb": "useEffect dependencies, cleanup, races, stale closures, custom hooks. Where most React interviews actually spend their time.",
+  "questions": [
+    {
+      "id": "rh-001",
+      "q": "What does the dependency array of `useEffect` actually control?",
+      "choices": [
+        "Whether the effect re-runs after a render, by comparing each dependency with Object.is",
+        "When the component re-renders",
+        "The order effects run in",
+        "Whether the effect runs at all"
+      ],
+      "answer": 0,
+      "why": "The effect always runs after the first render. On later renders React compares each dependency to the previous value and skips if all match. An empty array means 'never re-run'; no array means 'after every render'.",
+      "tags": ["effects", "deps"],
+      "level": 1
+    },
+    {
+      "id": "rh-002",
+      "q": "Why does this effect run on every render?",
+      "code": "useEffect(() => {\n  load(options);\n}, [options]);\n// options = { page: 1 } defined in the component body",
+      "lang": "jsx",
+      "choices": [
+        "A new object literal each render is a new reference, so the dependency always differs",
+        "Objects cannot be dependencies",
+        "The effect is missing a cleanup",
+        "load is not memoised"
+      ],
+      "answer": 0,
+      "why": "Object.is compares references. Depend on the primitive fields (`[options.page]`), build the object inside the effect, or wrap it in useMemo.",
+      "tags": ["effects", "deps", "equality"],
+      "level": 2,
+      "asked": "The infinite-loop bug everyone hits. It is really a JavaScript reference-equality question."
+    },
+    {
+      "id": "rh-003",
+      "q": "What is the fetch race condition, and how do you fix it?",
+      "choices": [
+        "A slow earlier response overwrites a newer one — fix with an ignore flag in the cleanup, or AbortController",
+        "Two components fetching at once — fix with a global lock",
+        "The server responding out of order — fix on the server",
+        "A missing dependency — fix by removing the array"
+      ],
+      "answer": 0,
+      "why": "```let ignore = false; ... if (!ignore) setData(d); return () => { ignore = true; }``` Cleanup runs before the next effect, so the stale response is discarded. AbortController also stops the request itself.",
+      "tags": ["effects", "fetch", "race"],
+      "level": 2,
+      "asked": "The definitive React data-fetching question. Both fixes are acceptable; naming both is better."
+    },
+    {
+      "id": "rh-004",
+      "q": "When does an effect's cleanup function run?",
+      "choices": [
+        "Before the next run of that effect, and once on unmount",
+        "Only on unmount",
+        "After every render",
+        "Only if the component throws"
+      ],
+      "answer": 0,
+      "why": "That ordering is what makes cleanup work for subscriptions: unsubscribe from the old id before subscribing to the new one. In StrictMode development it also runs after the extra mount.",
+      "tags": ["effects", "cleanup"],
+      "level": 2
+    },
+    {
+      "id": "rh-005",
+      "q": "What is a stale closure in a hook?",
+      "choices": [
+        "A callback captured on an earlier render still referencing that render's values",
+        "A hook called after unmount",
+        "A memo whose cache never invalidates",
+        "A ref that was never assigned"
+      ],
+      "answer": 0,
+      "why": "Classic case: `useEffect(() => { const id = setInterval(() => setCount(count + 1), 1000); ... }, [])`. The interval captured count = 0 forever. Fix with the functional updater `setCount(c => c + 1)` or a ref.",
+      "tags": ["closures", "effects"],
+      "level": 2,
+      "asked": "Very common, and it directly reuses the plain-JavaScript closure question."
+    },
+    {
+      "id": "rh-006",
+      "q": "Which of these does NOT need an effect?",
+      "choices": [
+        "Filtering a list based on a search input",
+        "Subscribing to a WebSocket",
+        "Setting up a document event listener",
+        "Starting an interval timer"
+      ],
+      "answer": 0,
+      "why": "Filtering is a pure computation from existing state — do it during render (with useMemo only if it is genuinely expensive). Effects are for synchronising with systems outside React.",
+      "tags": ["effects", "derived-state"],
+      "level": 2,
+      "asked": "'You Might Not Need an Effect' is required reading, and interviewers know it."
+    },
+    {
+      "id": "rh-007",
+      "q": "What is the difference between `useMemo` and `useCallback`?",
+      "choices": [
+        "useMemo caches a computed value; useCallback caches a function identity",
+        "useMemo is for objects, useCallback for primitives",
+        "useCallback runs after render, useMemo during",
+        "They are identical"
+      ],
+      "answer": 0,
+      "why": "`useCallback(fn, deps)` is exactly `useMemo(() => fn, deps)`. Both exist to keep a reference stable so a memoised child, or an effect dependency, does not see a change.",
+      "tags": ["performance", "memo"],
+      "level": 1
+    },
+    {
+      "id": "rh-008",
+      "q": "When does `React.memo` actually help?",
+      "choices": [
+        "When the component is expensive AND its props are referentially stable between renders",
+        "Always — wrap every component",
+        "Only for components with no props",
+        "Whenever the parent re-renders"
+      ],
+      "answer": 0,
+      "why": "memo does a shallow prop comparison. If the parent passes a new object or inline arrow every render, the comparison always fails and you have added cost for nothing. Fix the props, or colocate the state instead.",
+      "tags": ["performance", "memo"],
+      "level": 2,
+      "asked": "The wrong answer — 'wrap everything in memo' — is a strong junior signal."
+    },
+    {
+      "id": "rh-009",
+      "q": "What is `useRef` for, besides DOM nodes?",
+      "choices": [
+        "Holding a mutable value across renders without triggering one when it changes",
+        "Caching expensive computations",
+        "Sharing state between components",
+        "Forcing a re-render"
+      ],
+      "answer": 0,
+      "why": "Timer ids, the previous value of a prop, a 'has submitted' flag, the latest callback. Changing `ref.current` never re-renders — which is exactly why you must not read it during render to decide output.",
+      "tags": ["refs"],
+      "level": 2
+    },
+    {
+      "id": "rh-010",
+      "q": "What does this print on mount, in StrictMode development?",
+      "code": "useEffect(() => {\n  console.log('run');\n  return () => console.log('clean');\n}, []);",
+      "lang": "jsx",
+      "choices": ["run, clean, run", "run", "run, run", "run, clean"],
+      "answer": 0,
+      "why": "React mounts, unmounts and remounts to prove your cleanup works. In production it logs 'run' once. If this double-run breaks something, the effect is missing cleanup.",
+      "tags": ["strictmode", "effects"],
+      "level": 2
+    },
+    {
+      "id": "rh-011",
+      "q": "What are the four states a data fetch UI needs?",
+      "choices": [
+        "loading, error, empty, and loaded-with-data",
+        "loading and loaded",
+        "pending and settled",
+        "idle, running, done"
+      ],
+      "answer": 0,
+      "why": "Empty is the one people forget, and it is the one that ships a blank screen with no explanation. A discriminated union makes all four explicit and impossible to conflate.",
+      "tags": ["fetch", "ux"],
+      "level": 1,
+      "asked": "A practical question about whether you have shipped a real screen."
+    },
+    {
+      "id": "rh-012",
+      "q": "Why is this custom hook wrong?",
+      "code": "function useUser(id) {\n  if (!id) return null;\n  const [user, setUser] = useState(null);\n  return user;\n}",
+      "lang": "jsx",
+      "choices": [
+        "The early return makes useState conditional, breaking hook call order",
+        "Custom hooks cannot return null",
+        "useState must be called with a function",
+        "The hook name is wrong"
+      ],
+      "answer": 0,
+      "why": "Hooks are matched by position. When id becomes truthy on a later render, React finds an extra hook it has no slot for. Move every hook above any conditional return.",
+      "tags": ["hooks", "rules"],
+      "level": 2
+    },
+    {
+      "id": "rh-013",
+      "q": "When should you extract a custom hook?",
+      "choices": [
+        "When stateful logic — state plus effects — is repeated or is obscuring the component",
+        "Whenever a component exceeds 50 lines",
+        "To share JSX between components",
+        "Only when you need to share state between components"
+      ],
+      "answer": 0,
+      "why": "A custom hook shares logic, not state — two components using useFetch each get their own. If you only need to share markup, that is a component, not a hook.",
+      "tags": ["custom-hooks"],
+      "level": 2,
+      "asked": "'Have you written a custom hook?' is a standard mid-level filter."
+    },
+    {
+      "id": "rh-014",
+      "q": "How do you read the latest value inside a `setInterval` started once on mount?",
+      "choices": [
+        "Keep the latest value in a ref and read `ref.current` inside the callback",
+        "Add the value to the effect's dependency array",
+        "Use useMemo",
+        "Call the setter with the value directly"
+      ],
+      "answer": 0,
+      "why": "Adding it to deps tears down and recreates the interval on every change, which resets the timing. A ref keeps the interval alive while giving the callback a live view. This is the standard useInterval pattern.",
+      "tags": ["refs", "timers", "closures"],
+      "level": 3
+    },
+    {
+      "id": "rh-015",
+      "q": "What does `useLayoutEffect` do differently from `useEffect`?",
+      "choices": [
+        "It runs synchronously after DOM mutation but before the browser paints",
+        "It runs before the render",
+        "It runs only on the server",
+        "It has no dependency array"
+      ],
+      "answer": 0,
+      "why": "Use it when you must measure or adjust the DOM before the user sees a flash — a tooltip's position, a scroll restore. It blocks paint, so it is the exception, not the default.",
+      "tags": ["effects", "layout"],
+      "level": 3
+    },
+    {
+      "id": "rh-016",
+      "q": "What does the lint rule complain about here, and is it right?",
+      "code": "useEffect(() => {\n  loadUser(userId);\n}, []);",
+      "lang": "jsx",
+      "choices": [
+        "`userId` is missing — and yes, otherwise the effect keeps the first id forever",
+        "It is a false positive; empty deps means 'on mount'",
+        "loadUser must be in the array, userId need not be",
+        "The array should be removed"
+      ],
+      "answer": 0,
+      "why": "Empty deps means 'the values I captured are correct forever'. When userId changes the effect never re-runs and the screen shows the wrong user. Lying to the dependency array is the root of most effect bugs.",
+      "tags": ["effects", "deps"],
+      "level": 2,
+      "asked": "The follow-up: 'when is it legitimate to omit a dependency?' — essentially never; restructure instead."
+    },
+    {
+      "id": "rh-017",
+      "q": "How do you avoid a debounced search firing a request per keystroke?",
+      "choices": [
+        "Debounce the value, then depend the effect on the debounced value",
+        "Debounce inside the effect body",
+        "Throttle the component's render",
+        "Use useCallback on the handler"
+      ],
+      "answer": 0,
+      "why": "`const q = useDebouncedValue(input, 300)` then `useEffect(..., [q])`. Debouncing inside the effect does nothing, because the effect itself is already re-running per keystroke.",
+      "tags": ["debounce", "effects"],
+      "level": 2
+    },
+    {
+      "id": "rh-018",
+      "q": "What is the functional update form and when do you need it?",
+      "choices": [
+        "`setX(prev => next)` — needed when the new value depends on the previous and the current render may be stale",
+        "It is a style preference",
+        "Only needed with useReducer",
+        "It makes updates synchronous"
+      ],
+      "answer": 0,
+      "why": "React passes the freshest state to the updater, so it is correct inside intervals, event handlers that fire multiple times, and async callbacks. It also lets you drop the state from the dependency array.",
+      "tags": ["state", "closures"],
+      "level": 2
+    },
+    {
+      "id": "rh-019",
+      "q": "Where should a fetch live in a modern React app?",
+      "choices": [
+        "In a data-fetching layer (a library or a router loader) rather than hand-rolled effects in every component",
+        "Always in useEffect in the component that displays it",
+        "In the component's render body",
+        "In a global variable populated at startup"
+      ],
+      "answer": 0,
+      "why": "Hand-rolled effects have to re-solve caching, deduplication, retries, races and invalidation every time. Knowing how to write it by hand matters; knowing why teams don't matters just as much.",
+      "tags": ["fetch", "architecture"],
+      "level": 2,
+      "asked": "An opinion question. The strong answer names the concerns a data library handles for you."
+    },
+    {
+      "id": "rh-020",
+      "q": "What happens if you call `setState` during render?",
+      "choices": [
+        "React re-renders immediately, and if it is unconditional you get an infinite loop",
+        "It is queued for the next render",
+        "It throws immediately",
+        "It is ignored"
+      ],
+      "answer": 0,
+      "why": "There is one legitimate use — adjusting state when a prop changes, guarded by a comparison — but it is rare. Unconditional setState during render is the 'Too many re-renders' error.",
+      "tags": ["state", "rendering"],
+      "level": 2
+    },
+    {
+      "id": "rh-021",
+      "q": "Why might a `useMemo` not prevent a child from re-rendering?",
+      "choices": [
+        "The child is not wrapped in React.memo, so it re-renders whenever the parent does",
+        "useMemo does not work on objects",
+        "The dependency array is required to be empty",
+        "Memoised values are recomputed each render anyway"
+      ],
+      "answer": 0,
+      "why": "Stabilising a prop only matters to something that compares props. Without React.memo the child re-renders regardless — so you have paid for the memo and got nothing.",
+      "tags": ["performance", "memo"],
+      "level": 2
+    },
+    {
+      "id": "rh-022",
+      "q": "What does `useSyncExternalStore` solve?",
+      "choices": [
+        "Subscribing to state outside React so reads stay consistent during concurrent rendering",
+        "Synchronising state to localStorage",
+        "Making effects run synchronously",
+        "Sharing state between tabs"
+      ],
+      "answer": 0,
+      "why": "Subscribing by hand with useEffect can tear — different components rendering from different versions of the store within one pass. This hook is the supported way to bridge an external store.",
+      "tags": ["external-store", "concurrent"],
+      "level": 3
+    },
+    {
+      "id": "rh-023",
+      "q": "Your effect sets state, which changes a dependency, which re-runs the effect. What is the fix?",
+      "choices": [
+        "Remove the loop: derive the value during render, or narrow the dependency to a primitive",
+        "Add a ref guard so it only runs once",
+        "Remove the dependency array",
+        "Wrap the setState in setTimeout"
+      ],
+      "answer": 0,
+      "why": "A guard hides the symptom and leaves a component that only works by accident. The real question is why the value is in state at all — usually it should be computed.",
+      "tags": ["effects", "debugging"],
+      "level": 2,
+      "asked": "A debugging scenario. The good answer diagnoses rather than patches."
+    },
+    {
+      "id": "rh-024",
+      "q": "What does an error boundary catch?",
+      "choices": [
+        "Errors thrown during rendering, lifecycle and constructors of the tree below it",
+        "Every error in the app including async ones",
+        "Errors in event handlers",
+        "Network failures"
+      ],
+      "answer": 0,
+      "why": "It does not catch errors in event handlers, in async code, or in the boundary itself — those need ordinary try/catch. Without one, a render error unmounts the whole tree and shows a blank page.",
+      "tags": ["errors", "boundaries"],
+      "level": 2
+    }
+  ]
+}

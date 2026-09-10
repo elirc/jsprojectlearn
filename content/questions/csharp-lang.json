@@ -1,0 +1,353 @@
+{
+  "id": "csharp-lang",
+  "topic": "C#",
+  "title": "The C# language",
+  "blurb": "Value vs reference types, LINQ, records, nullability, async. Written for someone who already knows JavaScript.",
+  "questions": [
+    {
+      "id": "cs-001",
+      "q": "What is the key difference between a value type and a reference type?",
+      "choices": [
+        "A value type variable holds the data itself; a reference type variable holds a reference to it",
+        "Value types are immutable, reference types are not",
+        "Value types are always faster",
+        "Reference types cannot be null"
+      ],
+      "answer": 0,
+      "why": "Assigning a struct copies it; assigning a class copies the reference and both names see the same object. `int`, `bool`, `DateTime`, enums and structs are value types; classes, interfaces, arrays, strings and delegates are reference types.",
+      "tags": ["types"],
+      "level": 1,
+      "asked": "The classic first C# question, and it explains a whole category of surprising behaviour."
+    },
+    {
+      "id": "cs-002",
+      "q": "What is the difference between `struct`, `class` and `record`?",
+      "choices": [
+        "struct is a value type; class is a reference type; record adds value-based equality and `with` expressions",
+        "record is a struct with methods",
+        "class and record are identical",
+        "struct cannot have methods"
+      ],
+      "answer": 0,
+      "why": "`record` is a reference type by default (and `record struct` exists). Its win is generated Equals, GetHashCode, ToString and non-destructive mutation — ideal for DTOs and domain values.",
+      "tags": ["types", "records"],
+      "level": 2
+    },
+    {
+      "id": "cs-003",
+      "q": "What does this print?",
+      "code": "var a = new List<int> { 1 };\nvar b = a;\nb.Add(2);\nConsole.WriteLine(a.Count);",
+      "lang": "cs",
+      "choices": ["2", "1", "0", "It does not compile"],
+      "answer": 0,
+      "why": "List<T> is a class, so `a` and `b` reference the same list. Same lesson as JavaScript object references — the syntax differs, the trap does not.",
+      "tags": ["types", "references"],
+      "level": 1
+    },
+    {
+      "id": "cs-004",
+      "q": "When does a LINQ query actually execute?",
+      "choices": [
+        "When it is enumerated — deferred until foreach, ToList, First, Count and so on",
+        "Immediately on the line it is written",
+        "When the method returns",
+        "Only inside a using block"
+      ],
+      "answer": 0,
+      "why": "Deferred execution means the query can run twice, or observe changes to the source made after it was defined. Against a database it also means the whole chain composes into one SQL statement — until you materialise it.",
+      "tags": ["linq"],
+      "level": 2,
+      "asked": "Nearly guaranteed. The follow-up is the IQueryable/IEnumerable question."
+    },
+    {
+      "id": "cs-005",
+      "q": "What is wrong here, against a database?",
+      "code": "var users = db.Users.ToList()\n    .Where(u => u.IsActive)\n    .Take(10);",
+      "lang": "cs",
+      "choices": [
+        "ToList() runs first, pulling every user into memory before filtering",
+        "Where cannot follow ToList",
+        "Take must come before Where",
+        "Nothing — EF optimises this"
+      ],
+      "answer": 0,
+      "why": "Once you call ToList the query stops being IQueryable and the rest happens in your process. Move ToList to the end and the filter and limit become SQL.",
+      "tags": ["linq", "ef-core", "performance"],
+      "level": 2,
+      "asked": "A very common real bug — and the reason to know the difference between the two interfaces."
+    },
+    {
+      "id": "cs-006",
+      "q": "What do nullable reference types (C# 8+) give you?",
+      "choices": [
+        "Compile-time warnings when a possibly-null reference is dereferenced — `string?` vs `string`",
+        "Runtime null checks on every access",
+        "Automatic null coalescing",
+        "They prevent NullReferenceException entirely"
+      ],
+      "answer": 0,
+      "why": "They are annotations plus flow analysis, erased at runtime — much like TypeScript's strictNullChecks. The `!` null-forgiving operator silences the warning without checking anything.",
+      "tags": ["null"],
+      "level": 2
+    },
+    {
+      "id": "cs-007",
+      "q": "What does `async void` do and when is it acceptable?",
+      "choices": [
+        "Exceptions cannot be awaited or caught by the caller and will crash the process — only for event handlers",
+        "It is the standard return type for async methods",
+        "It runs the method synchronously",
+        "It is required for fire-and-forget work"
+      ],
+      "answer": 0,
+      "why": "`async Task` gives the caller something to await and a place for the exception to surface. `async void` throws on the synchronization context, where nothing can catch it.",
+      "tags": ["async"],
+      "level": 2,
+      "asked": "A standard .NET question. The correct answer includes 'except for event handlers'."
+    },
+    {
+      "id": "cs-008",
+      "q": "What is the danger of `.Result` or `.Wait()` on a Task?",
+      "choices": [
+        "It blocks the thread and can deadlock where a synchronization context exists",
+        "It always throws",
+        "It silently discards the result",
+        "It converts the task to synchronous safely"
+      ],
+      "answer": 0,
+      "why": "Classic deadlock: the continuation needs the context thread, which is blocked waiting for the task. ASP.NET Core has no such context so it deadlocks less, but it still ties up a thread pool thread — 'async all the way' is the rule.",
+      "tags": ["async"],
+      "level": 3
+    },
+    {
+      "id": "cs-009",
+      "q": "What is the difference between `IEnumerable<T>` and `IQueryable<T>`?",
+      "choices": [
+        "IQueryable builds an expression tree a provider translates to SQL; IEnumerable iterates in memory",
+        "IQueryable is a newer name for the same thing",
+        "IEnumerable is only for arrays",
+        "IQueryable executes immediately"
+      ],
+      "answer": 0,
+      "why": "It decides where the work happens. A `Where` on IQueryable becomes a SQL WHERE clause; on IEnumerable it becomes a C# loop over rows you already fetched.",
+      "tags": ["linq", "ef-core"],
+      "level": 2
+    },
+    {
+      "id": "cs-010",
+      "q": "What does `using var stream = File.OpenRead(path);` do?",
+      "choices": [
+        "Disposes the stream at the end of the enclosing scope",
+        "Imports a namespace",
+        "Makes the variable readonly",
+        "Opens the file asynchronously"
+      ],
+      "answer": 0,
+      "why": "Deterministic cleanup for anything holding an unmanaged resource — file handles, sockets, database connections. The GC will not release those promptly on its own.",
+      "tags": ["idisposable"],
+      "level": 1
+    },
+    {
+      "id": "cs-011",
+      "q": "What is the difference between an interface and an abstract class?",
+      "choices": [
+        "A class can implement many interfaces but inherit only one base class; abstract classes can hold state and implementation",
+        "Interfaces can have fields",
+        "Abstract classes cannot have constructors",
+        "They are interchangeable"
+      ],
+      "answer": 0,
+      "why": "Use an interface for a capability ('this can be saved'), an abstract class for shared implementation in a real is-a hierarchy. Default interface methods blur the line, but the state and single-inheritance rules still decide it.",
+      "tags": ["oop"],
+      "level": 1,
+      "asked": "A guaranteed OOP question. The strong answer picks a concrete example."
+    },
+    {
+      "id": "cs-012",
+      "q": "What does the `?.` and `??` combination do here?",
+      "code": "var name = user?.Profile?.DisplayName ?? \"Anonymous\";",
+      "lang": "cs",
+      "choices": [
+        "Short-circuits to null if any link is null, then substitutes the fallback",
+        "Throws if user is null",
+        "Returns an empty string",
+        "Only checks the first link"
+      ],
+      "answer": 0,
+      "why": "Identical semantics to JavaScript's optional chaining and nullish coalescing — one of the easiest transfers between the two languages.",
+      "tags": ["null", "operators"],
+      "level": 1
+    },
+    {
+      "id": "cs-013",
+      "q": "What is boxing?",
+      "choices": [
+        "Wrapping a value type in an object on the heap when it is treated as object or an interface",
+        "Encapsulating fields behind properties",
+        "Wrapping a method in a try/catch",
+        "Storing a struct inside a class"
+      ],
+      "answer": 0,
+      "why": "It allocates and copies. In a hot loop, boxing in a non-generic collection or a poorly written interface call is a real allocation cost — which is why generics exist.",
+      "tags": ["performance", "types"],
+      "level": 3
+    },
+    {
+      "id": "cs-014",
+      "q": "What does `yield return` do?",
+      "choices": [
+        "Builds a lazy iterator — values are produced one at a time as the caller enumerates",
+        "Returns early from a loop",
+        "Returns a Task",
+        "Returns multiple values as a tuple"
+      ],
+      "answer": 0,
+      "why": "The compiler generates a state machine. It lets you stream results without materialising a list, and it means the method body does not run at all until enumeration starts.",
+      "tags": ["iterators"],
+      "level": 2
+    },
+    {
+      "id": "cs-015",
+      "q": "What is the difference between `String.Empty`, `null` and `\"\"` for a string?",
+      "choices": [
+        "null is no string at all; Empty and \"\" are the same zero-length string",
+        "All three are equivalent",
+        "Empty is null internally",
+        "\"\" allocates, Empty does not"
+      ],
+      "answer": 0,
+      "why": "`string.IsNullOrWhiteSpace` is the check you almost always want for user input — it covers null, empty and a string of spaces in one call.",
+      "tags": ["strings", "null"],
+      "level": 1
+    },
+    {
+      "id": "cs-016",
+      "q": "Which collection would you use for fast lookup by key?",
+      "choices": [
+        "Dictionary<TKey, TValue>",
+        "List<T>",
+        "Array",
+        "Queue<T>"
+      ],
+      "answer": 0,
+      "why": "O(1) average lookup versus a List's O(n) scan. HashSet<T> is the equivalent when you only need membership. The choice-of-collection question is the C# version of 'Map or object?'",
+      "tags": ["collections"],
+      "level": 1
+    },
+    {
+      "id": "cs-017",
+      "q": "What does a `record`'s `with` expression do?",
+      "code": "var updated = user with { Email = \"new@example.com\" };",
+      "lang": "cs",
+      "choices": [
+        "Creates a copy with that property changed, leaving the original untouched",
+        "Mutates the original in place",
+        "Creates a mutable view of the record",
+        "Merges two records"
+      ],
+      "answer": 0,
+      "why": "Non-destructive mutation — the same idea as `{ ...user, email }` in JavaScript, but generated by the compiler and type-checked.",
+      "tags": ["records", "immutability"],
+      "level": 2
+    },
+    {
+      "id": "cs-018",
+      "q": "When should you throw an exception rather than return a failure result?",
+      "choices": [
+        "For exceptional, unexpected conditions — not for ordinary expected outcomes like validation failure",
+        "Always; exceptions are the C# way",
+        "Never; always return a Result",
+        "Only in library code"
+      ],
+      "answer": 0,
+      "why": "'User not found' is an expected outcome of a lookup and belongs in the return type. 'The database connection string is malformed' is a bug and should throw. Exceptions are also expensive when thrown in a loop.",
+      "tags": ["errors"],
+      "level": 2,
+      "asked": "An opinion question that mirrors the TypeScript Result discussion."
+    },
+    {
+      "id": "cs-019",
+      "q": "What does `CancellationToken` do in an async method?",
+      "choices": [
+        "Lets a caller signal that the work should stop, so the method can abandon it cooperatively",
+        "Cancels the task immediately from outside",
+        "Times out the request automatically",
+        "Rolls back the transaction"
+      ],
+      "answer": 0,
+      "why": "Cooperative: the method must check it or pass it down. ASP.NET Core gives you `HttpContext.RequestAborted` — passing it into your database calls means a user who navigates away stops burning server work.",
+      "tags": ["async", "aspnet"],
+      "level": 2
+    },
+    {
+      "id": "cs-020",
+      "q": "What is pattern matching used for in modern C#?",
+      "choices": [
+        "Branching on shape and value: type patterns, property patterns, and exhaustive switch expressions",
+        "Regular expressions",
+        "String formatting",
+        "Reflection over attributes"
+      ],
+      "answer": 0,
+      "why": "`result switch { Success s => ..., NotFound => ..., _ => ... }` is C#'s answer to a discriminated union. Switch expressions warn on unhandled cases, which is the exhaustiveness check.",
+      "tags": ["pattern-matching"],
+      "level": 2
+    },
+    {
+      "id": "cs-021",
+      "q": "What does an extension method let you do?",
+      "choices": [
+        "Add a callable method to an existing type without modifying or inheriting from it",
+        "Override a sealed method",
+        "Add fields to an existing class",
+        "Change a type's interface at runtime"
+      ],
+      "answer": 0,
+      "why": "A static method whose first parameter is `this T value`. All of LINQ is extension methods on IEnumerable<T>. It cannot access private state — it is syntax, not inheritance.",
+      "tags": ["extension-methods", "linq"],
+      "level": 2
+    },
+    {
+      "id": "cs-022",
+      "q": "What is the difference between `==` and `.Equals()` for a class?",
+      "choices": [
+        "By default both compare references unless overridden — records and string override them for value equality",
+        "== always compares values",
+        ".Equals always compares references",
+        "They are identical in all cases"
+      ],
+      "answer": 0,
+      "why": "`==` is a static operator resolved at compile time; `Equals` is virtual and resolved at runtime. This is why comparing two structurally identical class instances gives false, and why records exist.",
+      "tags": ["equality"],
+      "level": 2
+    },
+    {
+      "id": "cs-023",
+      "q": "What does `readonly` on a field guarantee?",
+      "choices": [
+        "It can only be assigned in the declaration or the constructor — but a mutable object it points to can still change",
+        "Deep immutability",
+        "It is a compile-time constant",
+        "It becomes thread-safe"
+      ],
+      "answer": 0,
+      "why": "Exactly the same shallow guarantee as `const` in JavaScript for objects. `const` in C# is a genuine compile-time constant and is baked into callers at build time — which causes version-mismatch bugs across assemblies.",
+      "tags": ["immutability"],
+      "level": 2
+    },
+    {
+      "id": "cs-024",
+      "q": "What is the purpose of a generic constraint like `where T : class, new()`?",
+      "choices": [
+        "It restricts what T can be so the method can rely on those capabilities",
+        "It improves performance",
+        "It makes T nullable",
+        "It is required on all generics"
+      ],
+      "answer": 0,
+      "why": "Without a constraint you can barely do anything with T. `where T : IEntity` lets you access `T.Id`; `new()` lets you construct one. Same idea as `extends` in a TypeScript generic.",
+      "tags": ["generics"],
+      "level": 2
+    }
+  ]
+}

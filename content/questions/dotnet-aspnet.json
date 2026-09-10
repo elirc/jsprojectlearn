@@ -1,0 +1,364 @@
+{
+  "id": "dotnet-aspnet",
+  "topic": "ASP.NET Core",
+  "title": "ASP.NET Core and EF Core",
+  "blurb": "DI lifetimes, the middleware pipeline, model binding, configuration, EF Core. The two most reliably asked .NET interview questions live in here.",
+  "questions": [
+    {
+      "id": "dn-001",
+      "q": "What is the difference between Singleton, Scoped and Transient?",
+      "choices": [
+        "Singleton: one for the app's lifetime. Scoped: one per request. Transient: a new one every time it is resolved",
+        "They control thread safety",
+        "They control how long an object stays in memory before GC",
+        "Singleton is per request, Scoped is per application"
+      ],
+      "answer": 0,
+      "why": "DbContext is scoped because it tracks changes for one unit of work. Stateless helpers can be singletons. Transient is the safe default for cheap objects with no shared state.",
+      "tags": ["di"],
+      "level": 1,
+      "asked": "The single most asked .NET interview question. Know it cold."
+    },
+    {
+      "id": "dn-002",
+      "q": "What is a captive dependency?",
+      "choices": [
+        "A longer-lived service holding a shorter-lived one — e.g. a singleton capturing a scoped DbContext",
+        "A circular dependency between two services",
+        "A dependency registered twice",
+        "A service resolved outside the container"
+      ],
+      "answer": 0,
+      "why": "The scoped object is captured on first resolution and then reused for the life of the singleton — so one DbContext is shared across every request, which is neither thread-safe nor correct. Inject IServiceScopeFactory and create a scope per unit of work.",
+      "tags": ["di"],
+      "level": 3,
+      "asked": "The natural depth follow-up to the lifetimes question, and it separates real experience from memorisation."
+    },
+    {
+      "id": "dn-003",
+      "q": "Why does the order of `app.Use...` calls matter?",
+      "choices": [
+        "Middleware forms an ordered pipeline; each component can short-circuit or pass to the next",
+        "It does not matter — ASP.NET Core sorts them",
+        "Only the first and last matter",
+        "Order matters only for authentication"
+      ],
+      "answer": 0,
+      "why": "UseAuthentication must come before UseAuthorization, both must come before endpoints, and UseCors must come before anything that would short-circuit the preflight. Wrong order usually fails silently rather than crashing.",
+      "tags": ["middleware"],
+      "level": 1,
+      "asked": "The second most asked .NET question. Expect to be asked to place a few in order."
+    },
+    {
+      "id": "dn-004",
+      "q": "How does a middleware short-circuit the pipeline?",
+      "choices": [
+        "By writing a response and not calling `await next(context)`",
+        "By throwing an exception",
+        "By returning false",
+        "By calling context.Abort()"
+      ],
+      "answer": 0,
+      "why": "That is how authorisation returns 401 without ever reaching your endpoint, and how a caching middleware serves a hit. Calling next after writing the response is a common bug — headers are already sent.",
+      "tags": ["middleware"],
+      "level": 2
+    },
+    {
+      "id": "dn-005",
+      "q": "Where does ASP.NET Core read configuration from, and in what order?",
+      "choices": [
+        "appsettings.json, then appsettings.{Environment}.json, then user secrets, then environment variables, then command line — later wins",
+        "Only appsettings.json",
+        "Environment variables first, then files",
+        "In alphabetical order of provider"
+      ],
+      "answer": 0,
+      "why": "Later providers override earlier ones, which is exactly what lets a container override a file value with an environment variable. Nested keys use `Section__Key` in environment variables.",
+      "tags": ["configuration"],
+      "level": 2
+    },
+    {
+      "id": "dn-006",
+      "q": "What is the difference between `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>`?",
+      "choices": [
+        "IOptions is a singleton read once; IOptionsSnapshot is scoped and re-reads per request; IOptionsMonitor supports change notifications",
+        "They are equivalent",
+        "IOptions is for secrets only",
+        "IOptionsMonitor is obsolete"
+      ],
+      "answer": 0,
+      "why": "If a config change should take effect without a restart, IOptions will not see it. Note IOptionsSnapshot cannot be injected into a singleton — that is a captive dependency.",
+      "tags": ["configuration", "di"],
+      "level": 3
+    },
+    {
+      "id": "dn-007",
+      "q": "Where do model validation errors surface in a controller-based API?",
+      "choices": [
+        "`[ApiController]` automatically returns a 400 with a ValidationProblemDetails body before your action runs",
+        "You must check ModelState.IsValid manually in every action",
+        "They throw an exception",
+        "They are silently ignored"
+      ],
+      "answer": 0,
+      "why": "With `[ApiController]` the automatic 400 happens for you. Without the attribute — or in a minimal API — you check yourself. Knowing which applies is what the question is testing.",
+      "tags": ["validation", "model-binding"],
+      "level": 2
+    },
+    {
+      "id": "dn-008",
+      "q": "What is model binding?",
+      "choices": [
+        "Mapping route values, query string, headers and body onto action parameters and their types",
+        "Binding a view to a model",
+        "Mapping an entity to a database table",
+        "Serialising the response"
+      ],
+      "answer": 0,
+      "why": "The bug it causes: a complex type binds from the body by default, a simple type from the route or query. Getting a null parameter usually means the source is not where the binder looked — hence `[FromBody]`, `[FromQuery]`.",
+      "tags": ["model-binding"],
+      "level": 2
+    },
+    {
+      "id": "dn-009",
+      "q": "What is ProblemDetails?",
+      "choices": [
+        "The RFC 7807 standard error body — type, title, status, detail, and optional field errors",
+        "A logging format",
+        "An exception base class",
+        "A health check response"
+      ],
+      "answer": 0,
+      "why": "Using the standard shape means clients and tooling can parse errors without bespoke code. Wire it up in one exception-handling middleware rather than try/catch in every action.",
+      "tags": ["errors"],
+      "level": 2
+    },
+    {
+      "id": "dn-010",
+      "q": "What does EF Core's change tracker do?",
+      "choices": [
+        "Records the original values of loaded entities so SaveChanges can generate the right UPDATE statements",
+        "Logs every query for auditing",
+        "Caches query results between requests",
+        "Tracks schema migrations"
+      ],
+      "answer": 0,
+      "why": "It is why you can mutate an entity and call SaveChanges with no explicit update. For read-only queries `AsNoTracking()` skips the bookkeeping and is meaningfully faster on large result sets.",
+      "tags": ["ef-core"],
+      "level": 2,
+      "asked": "The follow-up is always AsNoTracking — an easy, concrete performance win to mention."
+    },
+    {
+      "id": "dn-011",
+      "q": "What causes an N+1 in EF Core, and how do you fix it?",
+      "choices": [
+        "Accessing a navigation property per row — fix with Include, a projection, or split queries",
+        "Using async methods",
+        "Calling SaveChanges too often",
+        "Registering DbContext as transient"
+      ],
+      "answer": 0,
+      "why": "`Include` eagerly joins. A `Select` projection into a DTO is often better — it fetches only the columns you need. Log the generated SQL in development so you can actually see it happening.",
+      "tags": ["ef-core", "performance"],
+      "level": 2
+    },
+    {
+      "id": "dn-012",
+      "q": "Why is DbContext registered as Scoped?",
+      "choices": [
+        "It is not thread-safe and represents one unit of work per request",
+        "Because it is expensive to construct",
+        "To keep the connection open across requests",
+        "Because EF Core requires it for migrations"
+      ],
+      "answer": 0,
+      "why": "Two concurrent requests sharing a context would corrupt the change tracker. For background work you create your own scope — you cannot inject the request-scoped one into a singleton.",
+      "tags": ["ef-core", "di"],
+      "level": 2
+    },
+    {
+      "id": "dn-013",
+      "q": "What is a migration in EF Core?",
+      "choices": [
+        "A generated, checked-in C# class describing a schema change, applied in order to bring a database up to date",
+        "A data import script",
+        "A change to the model classes only",
+        "A backup of the database"
+      ],
+      "answer": 0,
+      "why": "`dotnet ef migrations add` scaffolds it from model changes; `database update` applies it. In production, applying migrations automatically at startup is convenient and risky — a failed migration takes the app down and multiple instances race.",
+      "tags": ["ef-core", "migrations"],
+      "level": 2
+    },
+    {
+      "id": "dn-014",
+      "q": "What is the difference between a minimal API and a controller-based API?",
+      "choices": [
+        "Minimal APIs map endpoints directly with less ceremony; controllers give conventions, filters and attribute routing",
+        "Minimal APIs cannot use dependency injection",
+        "Controllers are deprecated",
+        "Minimal APIs cannot return JSON"
+      ],
+      "answer": 0,
+      "why": "Both are first-class. Minimal APIs suit small services and are faster to read; controllers earn their keep on large surfaces with cross-cutting filters and model binding conventions.",
+      "tags": ["aspnet"],
+      "level": 2
+    },
+    {
+      "id": "dn-015",
+      "q": "How should long-running work be handled in a request?",
+      "choices": [
+        "Queue it and return 202 Accepted with a way to check status; process it in a background service",
+        "Await it in the controller and increase the timeout",
+        "Use async void so the request returns immediately",
+        "Run it on a new Thread"
+      ],
+      "answer": 0,
+      "why": "Holding a request open ties up resources and dies with the deploy. A hosted service reading from a queue survives restarts; fire-and-forget on a thread pool thread does not.",
+      "tags": ["background-work", "design"],
+      "level": 2
+    },
+    {
+      "id": "dn-016",
+      "q": "What does `IHostedService` / `BackgroundService` give you?",
+      "choices": [
+        "A long-running task with proper startup and graceful shutdown hooks, tied to the host lifetime",
+        "A cron scheduler",
+        "A message queue implementation",
+        "Automatic retries"
+      ],
+      "answer": 0,
+      "why": "It gets a CancellationToken on shutdown so it can finish cleanly. It is per instance though — scale to three replicas and your 'nightly job' runs three times unless you add a distributed lock.",
+      "tags": ["background-work"],
+      "level": 3,
+      "asked": "The 'it runs on every instance' catch is the part that shows production experience."
+    },
+    {
+      "id": "dn-017",
+      "q": "What is the difference between authentication and authorization in ASP.NET Core?",
+      "choices": [
+        "Authentication establishes who the caller is; authorization decides what they may do",
+        "They are the same middleware",
+        "Authorization runs first",
+        "Authentication is only for cookies"
+      ],
+      "answer": 0,
+      "why": "UseAuthentication populates HttpContext.User from a cookie or token. UseAuthorization then evaluates policies and `[Authorize]` attributes. Registering them in the wrong order means every user looks anonymous.",
+      "tags": ["auth", "middleware"],
+      "level": 1
+    },
+    {
+      "id": "dn-018",
+      "q": "What is a claims-based identity?",
+      "choices": [
+        "The user is represented as a set of claims (key/value assertions) that policies evaluate",
+        "A role name stored in the database",
+        "A JWT signature",
+        "The username from the login form"
+      ],
+      "answer": 0,
+      "why": "Roles are just one kind of claim. Policy-based authorization (`RequireClaim`, `RequireAssertion`) scales better than scattering role names through attributes.",
+      "tags": ["auth"],
+      "level": 2
+    },
+    {
+      "id": "dn-019",
+      "q": "Why is `IMemoryCache` not enough once you scale out?",
+      "choices": [
+        "Each instance has its own copy, so entries are inconsistent and invalidation does not propagate",
+        "It has a hard size limit",
+        "It is not thread-safe",
+        "It cannot store objects"
+      ],
+      "answer": 0,
+      "why": "Three instances, three caches, three different answers — and evicting on one does nothing to the others. A distributed cache (Redis) gives one shared view at the cost of a network hop.",
+      "tags": ["caching", "scaling"],
+      "level": 2
+    },
+    {
+      "id": "dn-020",
+      "q": "What does `WebApplicationFactory<T>` enable?",
+      "choices": [
+        "Integration tests that boot the real app in memory and issue real HTTP requests, with services swappable",
+        "Load testing",
+        "Generating client SDKs",
+        "Running migrations in tests"
+      ],
+      "answer": 0,
+      "why": "It tests routing, model binding, middleware, filters and serialisation together — everything a unit test on a controller method misses. Usually paired with an in-memory or containerised database.",
+      "tags": ["testing"],
+      "level": 2
+    },
+    {
+      "id": "dn-021",
+      "q": "How do you configure CORS correctly in ASP.NET Core?",
+      "choices": [
+        "A named policy with explicit allowed origins, registered with UseCors before the endpoints",
+        "AllowAnyOrigin with AllowCredentials",
+        "Add the header manually in each controller",
+        "It is enabled by default"
+      ],
+      "answer": 0,
+      "why": "AllowAnyOrigin together with AllowCredentials is invalid and the browser rejects it — credentials require an explicit origin. And UseCors placed after the endpoints never sees the preflight.",
+      "tags": ["cors", "middleware"],
+      "level": 2
+    },
+    {
+      "id": "dn-022",
+      "q": "What does `services.AddHttpClient<T>()` solve?",
+      "choices": [
+        "Socket exhaustion and stale DNS from manually constructing or statically holding HttpClient",
+        "Automatic retries only",
+        "JSON serialisation",
+        "Authentication headers"
+      ],
+      "answer": 0,
+      "why": "`new HttpClient()` per request leaks sockets in TIME_WAIT; one static instance never picks up DNS changes. The factory pools handlers and recycles them, and gives you a place to add Polly retry policies.",
+      "tags": ["http", "di"],
+      "level": 3,
+      "asked": "A well-known .NET gotcha that shows whether you have debugged a production networking issue."
+    },
+    {
+      "id": "dn-023",
+      "q": "What is the difference between `Environment.IsDevelopment()` behaviour and production defaults?",
+      "choices": [
+        "Development shows the developer exception page with stack traces; production must not",
+        "Development disables dependency injection",
+        "Production disables logging",
+        "There is no difference"
+      ],
+      "answer": 0,
+      "why": "A stack trace tells an attacker your framework versions, file paths and sometimes connection strings. `ASPNETCORE_ENVIRONMENT` drives it, so getting that variable wrong in production is a real disclosure risk.",
+      "tags": ["configuration", "security"],
+      "level": 2
+    },
+    {
+      "id": "dn-024",
+      "q": "What is the recommended way to return a 404 from a minimal API endpoint?",
+      "choices": [
+        "Return `Results.NotFound()` (or `TypedResults.NotFound()`) from the handler",
+        "Throw a NotFoundException",
+        "Set context.Response.StatusCode and return",
+        "Return null"
+      ],
+      "answer": 0,
+      "why": "TypedResults additionally gives a strongly typed return you can assert on in tests and that feeds OpenAPI metadata correctly.",
+      "tags": ["aspnet"],
+      "level": 1
+    },
+    {
+      "id": "dn-025",
+      "q": "You add a field to an entity and the API stops returning existing rows correctly. Where do you look first?",
+      "choices": [
+        "Whether a migration was created and applied to that environment's database",
+        "The DI registration",
+        "The CORS policy",
+        "The JSON serialiser settings"
+      ],
+      "answer": 0,
+      "why": "Model and schema drift is the most common EF Core deployment failure. The general lesson: schema changes are deployments, and each environment has its own database state.",
+      "tags": ["ef-core", "debugging"],
+      "level": 2
+    }
+  ]
+}

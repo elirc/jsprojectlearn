@@ -1,0 +1,322 @@
+{
+  "id": "js-browser",
+  "topic": "Browser & DOM",
+  "title": "The browser, DOM and events",
+  "blurb": "Events, bubbling, storage, the render pipeline, and what actually happens between typing a URL and seeing pixels.",
+  "questions": [
+    {
+      "id": "jsb-001",
+      "q": "What is event bubbling?",
+      "choices": [
+        "After firing on the target, an event propagates up through each ancestor",
+        "Events fire on all elements simultaneously",
+        "Events are queued and replayed later",
+        "Events travel from the document down to the target only"
+      ],
+      "answer": 0,
+      "why": "The full sequence is capture (document → target), then target, then bubble (target → document). Listeners bubble by default; pass `{ capture: true }` for the way down.",
+      "tags": ["events"],
+      "level": 1,
+      "asked": "It underpins event delegation, which is the follow-up."
+    },
+    {
+      "id": "jsb-002",
+      "q": "What is event delegation and why use it?",
+      "choices": [
+        "One listener on a parent handles events from many children, including ones added later",
+        "Passing an event to another function",
+        "Using addEventListener twice for reliability",
+        "Delegating events to a Web Worker"
+      ],
+      "answer": 0,
+      "why": "One listener instead of a thousand, and it keeps working for rows added after page load. Inside the handler you check `event.target.closest('.row')` to find what was actually clicked.",
+      "tags": ["events", "performance"],
+      "level": 2,
+      "asked": "A standard vanilla-JS question, and a good sign someone has built UI without a framework."
+    },
+    {
+      "id": "jsb-003",
+      "q": "What is the difference between `stopPropagation()` and `preventDefault()`?",
+      "choices": [
+        "stopPropagation halts travel to other elements; preventDefault cancels the browser's default action",
+        "They are the same",
+        "preventDefault stops other listeners on the same element",
+        "stopPropagation cancels form submission"
+      ],
+      "answer": 0,
+      "why": "preventDefault stops the navigation, the form submit, the checkbox toggle. stopPropagation stops ancestors from ever hearing about the event. `return false` in an inline handler does both, which is why it's confusing.",
+      "tags": ["events"],
+      "level": 2
+    },
+    {
+      "id": "jsb-004",
+      "q": "Which storage survives a browser restart and is scoped per origin?",
+      "choices": ["localStorage", "sessionStorage", "an in-memory variable", "a non-persistent cookie"],
+      "answer": 0,
+      "why": "localStorage persists until cleared; sessionStorage dies with the tab. Both are per-origin, synchronous, string-only and roughly 5MB. Neither is sent to the server — cookies are.",
+      "tags": ["storage"],
+      "level": 1
+    },
+    {
+      "id": "jsb-005",
+      "q": "Why is localStorage a risky place for an auth token?",
+      "choices": [
+        "Any XSS on the page can read it; an HttpOnly cookie cannot be read by JavaScript",
+        "It is too small",
+        "It is sent with every request",
+        "It expires unpredictably"
+      ],
+      "answer": 0,
+      "why": "The trade-off: localStorage is immune to CSRF but exposed to XSS; an HttpOnly, Secure, SameSite cookie is immune to XSS theft but needs CSRF protection. Neither is free.",
+      "tags": ["storage", "security"],
+      "level": 2,
+      "asked": "One of the most common frontend security questions. The wrong answer is 'localStorage is fine'."
+    },
+    {
+      "id": "jsb-006",
+      "q": "What causes a layout reflow?",
+      "choices": [
+        "Reading a geometry property like offsetHeight after writing styles",
+        "Changing a CSS colour",
+        "Adding an event listener",
+        "Calling console.log"
+      ],
+      "answer": 0,
+      "why": "The browser batches style writes, but a geometry read forces it to compute layout immediately. Doing that inside a loop is 'layout thrashing' — batch your reads, then your writes.",
+      "tags": ["performance", "rendering"],
+      "level": 3,
+      "asked": "A frontend performance question that separates people who have profiled from people who have read about it."
+    },
+    {
+      "id": "jsb-007",
+      "q": "What does `defer` on a script tag do?",
+      "choices": [
+        "Downloads in parallel, executes after HTML parsing, in document order",
+        "Downloads and executes immediately, blocking the parser",
+        "Executes as soon as it downloads, order not guaranteed",
+        "Delays the download until after page load"
+      ],
+      "answer": 0,
+      "why": "`async` also downloads in parallel but runs the moment it lands, so order is not guaranteed — fine for analytics, wrong for app code with dependencies. No attribute at all blocks parsing.",
+      "tags": ["loading", "performance"],
+      "level": 2
+    },
+    {
+      "id": "jsb-008",
+      "q": "What is the DOM, precisely?",
+      "choices": [
+        "An in-memory tree of objects representing the parsed document, which scripts can read and mutate",
+        "The HTML source text of the page",
+        "The browser's rendering engine",
+        "A JavaScript library for manipulating HTML"
+      ],
+      "answer": 0,
+      "why": "The HTML is the input; the DOM is the live tree the browser builds from it and renders from. Changing the DOM does not change the HTML source, which is why 'view source' and devtools disagree.",
+      "tags": ["dom"],
+      "level": 1
+    },
+    {
+      "id": "jsb-009",
+      "q": "Why is 'state lives in data, not in the DOM' good advice?",
+      "choices": [
+        "Reading state back out of the DOM couples logic to markup and breaks the moment the markup changes",
+        "The DOM is slow to read",
+        "The DOM cannot store strings",
+        "It is only relevant when using React"
+      ],
+      "answer": 0,
+      "why": "If the truth is `todos`, rendering is a pure function of it and any bug is in one place. If the truth is 'whatever is currently in the list element', every feature has to re-derive it, and formatting changes become logic bugs.",
+      "tags": ["dom", "architecture"],
+      "level": 2,
+      "asked": "It is the single idea that makes React make sense, so it comes up in frontend interviews constantly."
+    },
+    {
+      "id": "jsb-010",
+      "q": "What is a debounce?",
+      "choices": [
+        "Wait until N ms after the last call, then run once",
+        "Run at most once every N ms",
+        "Run immediately then ignore calls for N ms",
+        "Queue every call and run them N ms apart"
+      ],
+      "answer": 0,
+      "why": "Debounce collapses a burst into one trailing call — right for a search box. Throttle guarantees a steady rate — right for scroll or resize handlers.",
+      "tags": ["events", "timing"],
+      "level": 1,
+      "asked": "Nearly universal. Be ready to write both from scratch."
+    },
+    {
+      "id": "jsb-011",
+      "q": "What does `event.target` differ from `event.currentTarget`?",
+      "choices": [
+        "target is what was actually clicked; currentTarget is the element the listener is attached to",
+        "They are always identical",
+        "currentTarget is the document",
+        "target is the parent element"
+      ],
+      "answer": 0,
+      "why": "In a delegated handler, currentTarget is the container and target is the deep descendant that received the click. Mixing them up is the classic delegation bug.",
+      "tags": ["events"],
+      "level": 2
+    },
+    {
+      "id": "jsb-012",
+      "q": "What is CORS actually enforcing?",
+      "choices": [
+        "The browser blocking a page from reading a cross-origin response unless the server opts in",
+        "The server refusing to accept the request",
+        "Encryption of cross-origin traffic",
+        "A firewall rule"
+      ],
+      "answer": 0,
+      "why": "The request often reaches the server and runs. The browser then withholds the response from your JavaScript because the Access-Control-Allow-Origin header is missing. That is why you fix CORS on the server, never in the client.",
+      "tags": ["cors", "security", "http"],
+      "level": 2,
+      "asked": "Universally asked, and the tell is whether you say 'the server has to send the header'."
+    },
+    {
+      "id": "jsb-013",
+      "q": "What triggers a CORS preflight request?",
+      "choices": [
+        "A method other than GET/HEAD/POST, a custom header, or a non-simple Content-Type like application/json",
+        "Every cross-origin request",
+        "Only requests with cookies",
+        "Requests over HTTP rather than HTTPS"
+      ],
+      "answer": 0,
+      "why": "The browser sends an OPTIONS request first to ask permission. Your server has to answer it — a 404 on OPTIONS is the most common 'CORS is broken' cause.",
+      "tags": ["cors", "http"],
+      "level": 3
+    },
+    {
+      "id": "jsb-014",
+      "q": "What is the difference between `innerHTML` and `textContent`?",
+      "choices": [
+        "innerHTML parses the string as HTML — user input there is an XSS hole; textContent sets literal text",
+        "textContent is faster but otherwise identical",
+        "innerHTML is read-only",
+        "textContent strips whitespace"
+      ],
+      "answer": 0,
+      "why": "Assigning unsanitised user input to innerHTML lets an attacker inject markup and script. Default to textContent, and only reach for innerHTML with content you generated or sanitised.",
+      "tags": ["dom", "security", "xss"],
+      "level": 1,
+      "asked": "The most direct XSS question there is."
+    },
+    {
+      "id": "jsb-015",
+      "q": "What happens between typing a URL and seeing the page?",
+      "choices": [
+        "DNS → TCP → TLS → HTTP request → HTML parsed into the DOM → CSSOM → layout → paint",
+        "The browser downloads the whole site then renders it",
+        "The server renders an image and sends it",
+        "JavaScript runs before any HTML is parsed"
+      ],
+      "answer": 0,
+      "why": "Knowing the stages lets you reason about where slowness lives — DNS/TLS is connection cost, a blocking script delays parsing, a huge CSS file delays first paint.",
+      "tags": ["network", "rendering"],
+      "level": 2,
+      "asked": "A classic open-ended question; interviewers use it to see how deep your mental model goes."
+    },
+    {
+      "id": "jsb-016",
+      "q": "Why does a `<button>` inside a `<form>` submit the form when clicked?",
+      "choices": [
+        "Its default type is `submit`",
+        "All buttons submit forms",
+        "Because of event bubbling",
+        "The browser cannot tell it apart from an input"
+      ],
+      "answer": 0,
+      "why": "Set `type=\"button\"` for a button that only runs JavaScript. This causes the classic 'my React page reloads when I click the button' bug.",
+      "tags": ["forms", "dom"],
+      "level": 1
+    },
+    {
+      "id": "jsb-017",
+      "q": "What is a memory leak in a browser app, most commonly?",
+      "choices": [
+        "Listeners, timers or observers that are never removed, holding references alive",
+        "Creating too many objects",
+        "Using const instead of let",
+        "Fetching too much data"
+      ],
+      "answer": 0,
+      "why": "A detached DOM node still referenced by a live listener cannot be collected. This is exactly what a React effect's cleanup function exists to prevent.",
+      "tags": ["memory", "events"],
+      "level": 2,
+      "asked": "It connects straight to 'why does useEffect need a cleanup?'"
+    },
+    {
+      "id": "jsb-018",
+      "q": "What does `requestAnimationFrame` give you over `setTimeout`?",
+      "choices": [
+        "The callback runs just before the next repaint and pauses in background tabs",
+        "It runs on a separate thread",
+        "It is more accurate to the millisecond",
+        "It runs before microtasks"
+      ],
+      "answer": 0,
+      "why": "Animating with setTimeout means running at a rate unrelated to the display's refresh, causing tearing and wasted work. rAF syncs to the frame and stops when the tab is hidden.",
+      "tags": ["rendering", "animation"],
+      "level": 2
+    },
+    {
+      "id": "jsb-019",
+      "q": "What are cookie attributes `HttpOnly`, `Secure` and `SameSite` for?",
+      "choices": [
+        "Hide from JavaScript, only send over HTTPS, and restrict cross-site sending",
+        "Encrypt, compress and expire the cookie",
+        "Set the domain, path and size",
+        "They are hints the browser may ignore"
+      ],
+      "answer": 0,
+      "why": "HttpOnly blocks XSS theft, Secure blocks interception on plain HTTP, and SameSite=Lax or Strict is the main defence against CSRF. Session cookies should carry all three.",
+      "tags": ["cookies", "security"],
+      "level": 2,
+      "asked": "A guaranteed follow-up to any auth question."
+    },
+    {
+      "id": "jsb-020",
+      "q": "What does the `key` of a `<script type=\"module\">` change?",
+      "choices": [
+        "It is deferred by default, strict mode, and has its own scope with import/export",
+        "Nothing — it is a hint for bundlers",
+        "It runs before other scripts",
+        "It disables the same-origin policy"
+      ],
+      "answer": 0,
+      "why": "Module scripts do not pollute the global scope, are always strict, and are fetched with CORS. That is why `this` is undefined at the top level of a module but globalThis in a classic script.",
+      "tags": ["modules", "loading"],
+      "level": 2
+    },
+    {
+      "id": "jsb-021",
+      "q": "Why does a page feel janky when JavaScript is busy?",
+      "choices": [
+        "Rendering and JavaScript share the main thread, so a long task blocks paint and input",
+        "The GPU runs out of memory",
+        "The browser throttles all scripts",
+        "CSS animations stop when scripts run"
+      ],
+      "answer": 0,
+      "why": "Anything over about 50ms is a 'long task' and delays the next frame. The fixes are: do less, chunk the work, or move it to a Web Worker.",
+      "tags": ["performance", "rendering"],
+      "level": 2
+    },
+    {
+      "id": "jsb-022",
+      "q": "Which selector method returns a live collection that updates as the DOM changes?",
+      "choices": [
+        "`getElementsByClassName`",
+        "`querySelectorAll`",
+        "`querySelector`",
+        "`closest`"
+      ],
+      "answer": 0,
+      "why": "The getElementsBy* family returns live HTMLCollections; querySelectorAll returns a static NodeList. Iterating a live collection while removing elements from it is a classic off-by-one bug.",
+      "tags": ["dom"],
+      "level": 3
+    }
+  ]
+}

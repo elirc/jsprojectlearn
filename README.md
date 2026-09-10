@@ -1,27 +1,97 @@
-# JS Project Learn
+# DevPath
 
-**263 projects** that teach **"good code is code that's easy to change"** —
-across five tracks:
+**An interactive upskilling app that takes you from your first line of code to a
+hireable mid-level CRUD web developer** — on JavaScript, TypeScript, React and
+Node, and on C# with ASP.NET Core.
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+```
+
+That opens the app. Everything below is the content it runs on.
+
+## What it is
+
+A **9-stage roadmap** (46 modules, ~278 hours) that sequences 233 hands-on
+projects, 22 written guides and **450 interview drill questions** into one
+ordered path, and tracks your progress through it.
+
+| | |
+|---|---|
+| **The path** | Levels 0–8, in order. Each module says why it exists and what interviewers ask about it. |
+| **Drills** | Rapid-fire multiple choice with spaced repetition. Wrong answers come back sooner; solid ones get spaced out. 17 decks across JS, TS, React, Node, C#, .NET, SQL, HTTP, auth, testing, Git and debugging. |
+| **Projects** | 233 build-it-then-refactor-it exercises, readable in the app or straight off disk. |
+| **Guides** | The material with no project attached: HTTP, SQL, REST design, auth, EF Core, Docker, CI/CD, observability, and an interview playbook. |
+| **Progress** | Per-stage completion, per-topic accuracy, streaks. Stored in your browser; exportable. |
+
+**Deliberately not here:** LeetCode and DSA grinding. Nothing asks you to invert
+a binary tree. The drills are what teams actually ask about — how HTTP works,
+why your effect runs twice, what a scoped DI lifetime is, why the API is doing
+400 queries per page load.
+
+## The stages
+
+| Level | Stage | You can… |
+|-------|-------|----------|
+| 0 | Programming, actually | Read a short program and predict what it prints |
+| 1 | Code that survives a team | Split pure logic from side effects, and prove it with tests |
+| 2 | The browser, without a framework | Explain what React actually buys you |
+| 3 | Async and the network | Debug a race condition on purpose |
+| 4 | TypeScript | Type an API boundary and narrow a union exhaustively |
+| 5 | React | Defend every render, with no effect races or leaks |
+| 6 | The backend, in Node | Design an API a frontend team would have to consume |
+| 7 | C# and ASP.NET Core | Discuss DI lifetimes, the pipeline and EF Core without bluffing |
+| 8 | Shipping and being interviewed | Take a broken system you didn't write and make progress |
+
+## Repository layout
+
+```
+app/          the Vite + React + TypeScript application
+content/
+  roadmap.json    the curriculum — stages, modules, steps
+  questions/      17 interview drill decks (450 questions)
+  modules/        22 long-form guides
+scripts/
+  build-content.mjs   indexes the repo into the app's content
+01-85/        the JavaScript track
+react/        the React track (60 projects)
+typescript/   the TypeScript track (52 projects)
+csharp/       the C# / .NET track (36 projects)
+```
+
+The repo is the source of truth. `scripts/build-content.mjs` discovers every
+project, bundles the decks and guides, and **fails the build** if the roadmap
+points at a project, deck or guide that does not exist.
+
+## Commands
+
+```bash
+npm run dev        # the app, with content regenerated first
+npm run build      # production build into app/dist
+npm run content    # regenerate the content index only
+npm test           # 2,552 tests: every project suite + the app's own
+npm run typecheck  # the TypeScript track and the app
+```
+
+## Working without the app
+
+Every project folder still stands alone, exactly as before — `LEARN.md` for
+beginners, `README.md` for the refactor rationale, `PRACTICE.md` for graded
+exercises, plus a per-track `HANDBOOK.md` and `QUIZ.md`. New to all of this?
+Read [START-HERE.md](START-HERE.md).
+
+Do the JS track first — the React and TypeScript tracks deliberately build on
+its lessons, and literally import some of its code.
 
 | Track | Projects | Focus |
 |-------|----------|-------|
-| **JavaScript** (this page, below) | 01–85 | Fundamentals, refactoring, state, architecture, async, servers, interpreters |
+| **JavaScript** (this page, below) | 01–85 | Fundamentals, refactoring, state, architecture, async, servers |
 | **[React](react/)** | react/01–60 | Components, hooks, effects, performance, patterns, accessibility |
 | **[TypeScript](typescript/)** | typescript/01–52 | Types that make wrong programs fail to compile |
 | **[C# / .NET](csharp/)** | csharp/01–36 | The same lessons in C#, then fullstack web dev with ASP.NET Core |
-| **[DSA](dsa/)** | dsa/01–30 | Solve-it-yourself algorithms & data structures with auto-activating tests |
 
-Every project folder also has a **`LEARN.md`** (beginner guide that teaches the
-concepts the README assumes) and a **`PRACTICE.md`** (graded exercises with
-worked solutions). Each track also has a **`HANDBOOK.md`** reference and a
-50-question **`QUIZ.md`**. New? Read [START-HERE.md](START-HERE.md) first.
-
-Do the JS track first — the React and TypeScript tracks deliberately build on
-its lessons (and literally import some of its code). Each track has its own
-README with the full curriculum. Verification: `npm test` runs every runtime
-test suite (all tracks); `npm run typecheck` runs the TypeScript track.
-
-## The JavaScript track (73 projects)
+## The JavaScript track (85 projects)
 
 Every folder contains:
 
@@ -190,8 +260,11 @@ wrong with it, then read the refactor and the README.
 
 - Every project folder also has **`PRACTICE.md`** — graded exercises with
   worked solutions (try before peeking).
-- **[dsa/](dsa/)** — 30 solve-it-yourself algorithm problems with starter
-  stubs, auto-activating tests, and full solution walkthroughs.
+- **[content/modules/](content/modules/)** — 22 written guides on the topics no
+  project covers: HTTP, SQL, REST design, auth, EF Core, Docker, CI/CD,
+  caching, observability, debugging, and the interview playbook.
+- **[content/questions/](content/questions/)** — 450 interview questions in 17
+  decks, each with an explanation and a note on why it gets asked.
 - **[HANDBOOK.md](HANDBOOK.md)** and **[QUIZ.md](QUIZ.md)** — the offline
   JavaScript reference and a 50-question quiz bank (each track has its own
   pair inside its folder).

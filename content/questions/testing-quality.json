@@ -1,0 +1,292 @@
+{
+  "id": "testing-quality",
+  "topic": "Testing",
+  "title": "Testing and code quality",
+  "blurb": "Unit vs integration, test doubles, what makes a test brittle, and how to answer 'what's your testing strategy' without bluffing.",
+  "questions": [
+    {
+      "id": "tq-001",
+      "q": "What makes a function easy to test?",
+      "choices": [
+        "It is pure: same input, same output, no side effects",
+        "It is short",
+        "It is in its own file",
+        "It has no parameters"
+      ],
+      "answer": 0,
+      "why": "No setup, no mocks, no cleanup — call it and assert. That is why 'separate deciding from doing' is a testability strategy, not just a style preference.",
+      "tags": ["purity"],
+      "level": 1
+    },
+    {
+      "id": "tq-002",
+      "q": "What is the difference between a unit test and an integration test?",
+      "choices": [
+        "A unit test exercises one piece in isolation; an integration test exercises several together, often with real infrastructure",
+        "Unit tests are faster to write",
+        "Integration tests use a UI",
+        "Unit tests run in CI, integration tests locally"
+      ],
+      "answer": 0,
+      "why": "The boundary is a judgement call — a test hitting a real database is integration by most definitions. What matters is knowing what each catches: units catch logic errors, integrations catch wiring errors.",
+      "tags": ["types"],
+      "level": 1
+    },
+    {
+      "id": "tq-003",
+      "q": "What is the testing pyramid, and what is the common criticism?",
+      "choices": [
+        "Many unit, fewer integration, few end-to-end — criticised because integration tests catch the bugs that actually ship",
+        "It is a Google-specific practice",
+        "It says to write end-to-end tests first",
+        "It applies only to backend code"
+      ],
+      "answer": 0,
+      "why": "The 'testing trophy' argument: most real defects are in the wiring between units, so heavily-mocked unit tests can pass while the app is broken. Either shape is defensible if you can explain what it buys.",
+      "tags": ["strategy"],
+      "level": 2,
+      "asked": "'What's your testing strategy?' — this is where a considered opinion beats a diagram."
+    },
+    {
+      "id": "tq-004",
+      "q": "What is the difference between a stub and a mock?",
+      "choices": [
+        "A stub returns canned values; a mock also asserts that it was called in a particular way",
+        "They are the same",
+        "A stub is generated, a mock is hand-written",
+        "A mock replaces the database, a stub replaces a function"
+      ],
+      "answer": 0,
+      "why": "The distinction matters because mocks couple your test to *how* the code works. Asserting 'saveUser was called once with X' breaks when you legitimately refactor; asserting on the resulting state does not.",
+      "tags": ["doubles"],
+      "level": 2
+    },
+    {
+      "id": "tq-005",
+      "q": "What makes a test brittle?",
+      "choices": [
+        "It asserts on implementation details rather than observable behaviour",
+        "It is too long",
+        "It runs slowly",
+        "It uses real data"
+      ],
+      "answer": 0,
+      "why": "Snapshot tests over whole DOM trees, mocks asserting internal call sequences, tests reaching into private state. They fail on every refactor and stop being trusted — and an untrusted test suite gets deleted or ignored.",
+      "tags": ["quality"],
+      "level": 2
+    },
+    {
+      "id": "tq-006",
+      "q": "A test passes locally and fails in CI intermittently. What is it most likely to be?",
+      "choices": [
+        "Shared state, ordering dependence, timing, or timezone assumptions",
+        "A CI configuration error",
+        "The test is too slow",
+        "A missing dependency"
+      ],
+      "answer": 0,
+      "why": "Flaky tests come from tests that depend on each other, on wall-clock timing, on real network calls, or on the machine's locale. A flaky test is worse than no test — it teaches people to re-run until green.",
+      "tags": ["flakiness", "ci"],
+      "level": 2,
+      "asked": "A scenario question everyone with real experience has an answer to."
+    },
+    {
+      "id": "tq-007",
+      "q": "What does test coverage actually tell you?",
+      "choices": [
+        "Which lines executed — not whether the assertions were meaningful",
+        "How well tested the code is",
+        "How many bugs remain",
+        "Whether all branches are correct"
+      ],
+      "answer": 0,
+      "why": "You can hit 100% with tests that assert nothing. It is useful as a *floor* to spot untested files, harmful as a target that people game.",
+      "tags": ["coverage"],
+      "level": 2
+    },
+    {
+      "id": "tq-008",
+      "q": "What is TDD, in one sentence?",
+      "choices": [
+        "Write a failing test, make it pass with the simplest change, then refactor",
+        "Write tests after the code, before the pull request",
+        "Test every function you write",
+        "Design the whole test suite up front"
+      ],
+      "answer": 0,
+      "why": "The value is less about tests and more about design pressure: you cannot write a test for code you have not decided the shape of. Red-green-refactor also guarantees the test can actually fail.",
+      "tags": ["tdd"],
+      "level": 1
+    },
+    {
+      "id": "tq-009",
+      "q": "Why write the failing test first, rather than writing the test after the fix?",
+      "choices": [
+        "A test that never failed has not been shown to detect the bug",
+        "It is faster",
+        "It produces better coverage numbers",
+        "It is required by most CI systems"
+      ],
+      "answer": 0,
+      "why": "Plenty of tests pass because they assert the wrong thing. Watching it go red, then green, proves the link between the test and the behaviour.",
+      "tags": ["tdd"],
+      "level": 2
+    },
+    {
+      "id": "tq-010",
+      "q": "Should a unit test hit the real database?",
+      "choices": [
+        "No — but you should have integration tests that do, because in-memory fakes hide real SQL and constraint behaviour",
+        "Yes, always, for realism",
+        "Never, at any test level",
+        "Only in CI"
+      ],
+      "answer": 0,
+      "why": "EF Core's in-memory provider does not enforce constraints or translate SQL, so tests can pass against behaviour the real database rejects. Containerised databases in the pipeline are the modern answer.",
+      "tags": ["integration", "database"],
+      "level": 2
+    },
+    {
+      "id": "tq-011",
+      "q": "What should a good test name communicate?",
+      "choices": [
+        "The scenario and the expected outcome, so a failure is diagnosable from the name alone",
+        "The function under test",
+        "The ticket number",
+        "The author"
+      ],
+      "answer": 0,
+      "why": "`rejects_transfer_when_balance_is_insufficient` tells you what broke from the CI summary. `test_transfer_2` requires opening the file.",
+      "tags": ["quality"],
+      "level": 1
+    },
+    {
+      "id": "tq-012",
+      "q": "What is arrange-act-assert?",
+      "choices": [
+        "A structure: set up the state, perform one action, assert the result",
+        "A naming convention",
+        "A mocking framework",
+        "A CI pipeline stage order"
+      ],
+      "answer": 0,
+      "why": "One action per test. A test that acts three times and asserts after each is really three tests, and its failure message will not tell you which part broke.",
+      "tags": ["structure"],
+      "level": 1
+    },
+    {
+      "id": "tq-013",
+      "q": "What is a property-based test?",
+      "choices": [
+        "Asserting an invariant that must hold for many generated inputs, rather than for hand-picked examples",
+        "Testing an object's properties",
+        "Testing configuration values",
+        "A test generated from the type signature"
+      ],
+      "answer": 0,
+      "why": "'Reversing a list twice gives the original' or 'the parser round-trips every value the serialiser produces'. It finds the edge cases you would never have thought to write.",
+      "tags": ["property-testing"],
+      "level": 3
+    },
+    {
+      "id": "tq-014",
+      "q": "How do you test code that depends on the current time?",
+      "choices": [
+        "Inject a clock abstraction and supply a fixed time in the test",
+        "Use a very short timeout",
+        "Mock the whole Date object globally",
+        "Skip the test in CI"
+      ],
+      "answer": 0,
+      "why": "Same principle as any other dependency: make the ambient thing an explicit input. It also removes the class of test that fails at midnight or during daylight saving.",
+      "tags": ["doubles", "design"],
+      "level": 2
+    },
+    {
+      "id": "tq-015",
+      "q": "What should you do when a bug is reported in production?",
+      "choices": [
+        "Write a failing test that reproduces it, then fix it — the test stops the regression returning",
+        "Fix it and deploy immediately",
+        "Add logging and wait for it to recur",
+        "Fix it and add it to the manual QA checklist"
+      ],
+      "answer": 0,
+      "why": "A regression test is the cheapest test to justify — you already know it catches a real bug, because it just did. It is also the answer that shows process maturity in an interview.",
+      "tags": ["process"],
+      "level": 2,
+      "asked": "'Walk me through how you fix a production bug' — this belongs in the answer."
+    },
+    {
+      "id": "tq-016",
+      "q": "What is the risk of mocking a third-party client heavily?",
+      "choices": [
+        "Your mock encodes your assumptions, so the tests pass even when the real API behaves differently",
+        "Mocks are slow",
+        "It violates the library licence",
+        "It requires too much setup"
+      ],
+      "answer": 0,
+      "why": "Contract tests or a recorded-response fake keep you honest. At minimum, have one integration test against the real thing running somewhere.",
+      "tags": ["doubles", "integration"],
+      "level": 3
+    },
+    {
+      "id": "tq-017",
+      "q": "What does a code review add that tests do not?",
+      "choices": [
+        "Judgement about design, naming, missing cases and whether the change should exist at all",
+        "Faster feedback",
+        "Coverage measurement",
+        "Nothing, if coverage is high"
+      ],
+      "answer": 0,
+      "why": "Tests verify the code does what it does. Review asks whether that is the right thing, whether someone else will understand it in six months, and whether an edge case is missing entirely.",
+      "tags": ["process"],
+      "level": 1
+    },
+    {
+      "id": "tq-018",
+      "q": "What makes a pull request easy to review?",
+      "choices": [
+        "Small, one concern, a clear description of what and why, and no unrelated formatting churn",
+        "Being comprehensive so it only needs one review",
+        "Including all related refactors",
+        "Having no tests, to keep it short"
+      ],
+      "answer": 0,
+      "why": "Review quality drops sharply with size — a 1000-line PR gets 'LGTM'. Separate the refactor commit from the behaviour change so the reviewer can see what actually changed.",
+      "tags": ["process", "review"],
+      "level": 2,
+      "asked": "A team-fit question as much as a technical one."
+    },
+    {
+      "id": "tq-019",
+      "q": "When is it reasonable to not write a test?",
+      "choices": [
+        "For a throwaway spike, or trivial code where the test would only restate the implementation",
+        "When the deadline is tight",
+        "For UI code, which cannot be tested",
+        "Never — everything must be tested"
+      ],
+      "answer": 0,
+      "why": "A test asserting that a getter returns the field costs maintenance and catches nothing. Being able to say where tests do not pay is a more credible answer than 'test everything'.",
+      "tags": ["strategy"],
+      "level": 2
+    },
+    {
+      "id": "tq-020",
+      "q": "What is a smoke test in a deployment pipeline?",
+      "choices": [
+        "A minimal check after deploy that the app is up and its critical path works",
+        "A full regression suite",
+        "A load test",
+        "A security scan"
+      ],
+      "answer": 0,
+      "why": "Hit the health endpoint and one real user journey. It catches the configuration and connectivity failures that no amount of pre-deploy testing can — because those only exist in the target environment.",
+      "tags": ["ci", "deployment"],
+      "level": 2
+    }
+  ]
+}

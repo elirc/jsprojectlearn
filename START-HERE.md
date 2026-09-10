@@ -1,8 +1,15 @@
 # ✈️ Start Here — Offline Learning Guide
 
-Every project folder in this repo now has a **`LEARN.md`** file written for a
-beginner. This page explains how to use them, especially offline (like on a
-plane with no wifi).
+**Most people should start with the app instead:** `npm install && npm run dev`
+gives you the ordered roadmap, the drills with spaced repetition, and progress
+tracking. See [README.md](README.md).
+
+This page is for using the raw project folders directly — especially offline
+(like on a plane with no wifi). Every project folder has a **`LEARN.md`** file
+written for a beginner; this explains how to use them.
+
+The app itself works offline too, once `npm install` has run: everything it
+serves is generated onto disk and fetched from your own machine.
 
 ## What's in each project folder
 
@@ -16,9 +23,11 @@ plane with no wifi).
 
 And beyond the project folders:
 
-- **`dsa/` (30 problems)** — the *solve-it-yourself* track: you write the code
-  in `attempt.js`, and its tests switch themselves on the moment you delete
-  the TODO line. Graded hints, full solution walkthroughs, all offline.
+- **`content/modules/` (22 guides)** — the written material with no project
+  attached: HTTP, SQL, REST design, auth, EF Core, Docker, CI/CD, caching,
+  observability, debugging, and the interview playbook.
+- **`content/questions/` (450 questions)** — the interview drill decks the app
+  serves with spaced repetition. Plain JSON, readable offline.
 - **`HANDBOOK.md` + `QUIZ.md` in each track** (JS at the root, and in
   `react/`, `typescript/`, `csharp/`) — a cover-to-cover offline reference
   and a 50-question quiz bank with explained answers.
@@ -33,7 +42,7 @@ And beyond the project folders:
 
 ## What works offline
 
-- **Everything in the JS track (01–73) that runs with `node`** — Node runs
+- **Everything in the JS track (01–85) that runs with `node`** — Node runs
   100% locally. `node 01-fizzbuzz/original.js`, `node --test 01-fizzbuzz/`,
   and `npm test` all work with no internet.
 - **Plain HTML projects** (todo app, snake, connect four, sierpinski, etc.) —
@@ -41,7 +50,7 @@ And beyond the project folders:
 - **The TypeScript track** — `npm run typecheck` from `typescript/` works
   offline **if `node_modules` is already installed**. If you haven't run
   `npm install` yet, do it before you board.
-- **The entire C# / .NET track (csharp/01–28)** — needs only the .NET SDK
+- **The entire C# / .NET track (csharp/01–36)** — needs only the .NET SDK
   (already installed). It uses zero NuGet packages, so building, running,
   and testing all work with no internet:
   `dotnet run csharp/01-hello-fizzbuzz/original.cs`,

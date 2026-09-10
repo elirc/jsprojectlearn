@@ -1,13 +1,21 @@
 {
-  "name": "js-project-learn",
-  "version": "1.0.0",
-  "description": "165 projects (JS/React/TS) that teach 'easy to change' code: build it messy, refactor it clean, compare.",
+  "name": "devpath",
+  "version": "2.0.0",
+  "private": true,
+  "description": "DevPath — an interactive upskilling app that takes you from first-line-of-code to a mid-level CRUD web developer on JS/TS/React/Node and C#/.NET.",
   "type": "module",
+  "workspaces": [
+    "app"
+  ],
   "scripts": {
-    "test": "node --test",
-    "typecheck": "tsc -p typescript"
+    "dev": "npm run dev --workspace app",
+    "build": "npm run build --workspace app",
+    "preview": "npm run preview --workspace app",
+    "content": "node scripts/build-content.mjs",
+    "test": "node --import ./app/test/register.mjs --test",
+    "typecheck": "tsc -p typescript && npm run typecheck --workspace app"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "typescript": "^5.9.3"
   }
 }

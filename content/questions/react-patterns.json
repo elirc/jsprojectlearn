@@ -1,0 +1,344 @@
+{
+  "id": "react-patterns",
+  "topic": "React patterns",
+  "title": "Composition, context, forms, performance",
+  "blurb": "Context, compound components, forms, optimistic updates, accessibility and routing — the parts of React you get asked about once past the basics.",
+  "questions": [
+    {
+      "id": "rp-001",
+      "q": "What problem does Context solve, and what does it cost?",
+      "choices": [
+        "It avoids prop drilling, but every consumer re-renders whenever the value changes",
+        "It replaces Redux entirely with no downsides",
+        "It makes state global and persistent",
+        "It memoises the subtree"
+      ],
+      "answer": 0,
+      "why": "Context is dependency injection, not a state manager. If a fast-changing value shares a provider with a slow-changing one, everything re-renders — split the contexts, or memoise the value object.",
+      "tags": ["context"],
+      "level": 2,
+      "asked": "'When would you use context?' The wrong answer is 'instead of Redux, for all state'."
+    },
+    {
+      "id": "rp-002",
+      "q": "Why does this provider re-render every consumer on each parent render?",
+      "code": "<ThemeContext.Provider value={{ theme, setTheme }}>",
+      "lang": "jsx",
+      "choices": [
+        "The object literal is a new reference each render",
+        "Providers always re-render consumers",
+        "setTheme changes identity each render",
+        "Context does not support objects"
+      ],
+      "answer": 0,
+      "why": "Context compares the value with Object.is. Wrap it: `useMemo(() => ({ theme, setTheme }), [theme])`. setTheme from useState is already stable.",
+      "tags": ["context", "performance"],
+      "level": 2
+    },
+    {
+      "id": "rp-003",
+      "q": "What is prop drilling, and is it always bad?",
+      "choices": [
+        "Passing props through components that don't use them — usually fine at two or three levels",
+        "Passing too many props to one component",
+        "Mutating props in a child",
+        "Using spread to forward props"
+      ],
+      "answer": 0,
+      "why": "Reaching for context at the first sign of drilling replaces an explicit, greppable data flow with an invisible one. Composition — passing elements as children — often removes the drilling without any context at all.",
+      "tags": ["composition", "props"],
+      "level": 2
+    },
+    {
+      "id": "rp-004",
+      "q": "How does passing `children` avoid a re-render?",
+      "code": "<Slow><Fast count={count} /></Slow>",
+      "lang": "jsx",
+      "choices": [
+        "children is created by the parent, so Slow re-rendering does not recreate that element",
+        "children is always memoised by React",
+        "It does not — children always re-render",
+        "Because Slow is a class component"
+      ],
+      "answer": 0,
+      "why": "The element object was made in the parent's render. If Slow re-renders for its own reasons, React sees the identical children element and can skip that subtree. It is memoisation without React.memo.",
+      "tags": ["composition", "performance"],
+      "level": 3,
+      "asked": "A sophisticated answer to 'how would you optimise this tree?'"
+    },
+    {
+      "id": "rp-005",
+      "q": "What are compound components?",
+      "choices": [
+        "A set of components sharing implicit state through context, like `<Tabs><Tab/></Tabs>`",
+        "Components that render other components",
+        "Higher-order components",
+        "Components built from multiple hooks"
+      ],
+      "answer": 0,
+      "why": "The consumer composes markup naturally instead of passing a config array of props. The trade-off is a less explicit API and required context, so it earns its place mainly in design systems.",
+      "tags": ["composition", "patterns"],
+      "level": 3
+    },
+    {
+      "id": "rp-006",
+      "q": "What is an optimistic update?",
+      "choices": [
+        "Applying the change in the UI immediately and rolling back if the request fails",
+        "Retrying a failed request automatically",
+        "Prefetching data before it is needed",
+        "Assuming the server is always available"
+      ],
+      "answer": 0,
+      "why": "It makes an app feel instant. It requires you to keep the previous state to restore, and to surface the rollback clearly — silently reverting is worse than a spinner.",
+      "tags": ["ux", "mutations"],
+      "level": 2,
+      "asked": "Common for mid-level frontend roles; the follow-up is 'how do you handle the failure case?'"
+    },
+    {
+      "id": "rp-007",
+      "q": "When should form validation run?",
+      "choices": [
+        "On blur and on submit; switch to on-change only after a field has errored once",
+        "On every keystroke from the start",
+        "Only on submit",
+        "Only on the server"
+      ],
+      "answer": 0,
+      "why": "Validating each keystroke shows 'invalid email' while someone is typing the second character. Validate on blur, then live-validate that field once it has errored so the message clears as they fix it. The server must validate regardless.",
+      "tags": ["forms", "ux"],
+      "level": 2
+    },
+    {
+      "id": "rp-008",
+      "q": "How do you prevent a double submit?",
+      "choices": [
+        "Disable the button while the request is in flight, tracked in state",
+        "Debounce the submit handler",
+        "Use a ref to count clicks",
+        "Rely on the server rejecting duplicates"
+      ],
+      "answer": 0,
+      "why": "The UI fix is a submitting flag. The robust fix is both: disabled button plus server-side idempotency, because a retry or a double-tap on flaky mobile can still get two requests through.",
+      "tags": ["forms", "reliability"],
+      "level": 2
+    },
+    {
+      "id": "rp-009",
+      "q": "What makes a modal accessible?",
+      "choices": [
+        "Focus moves in and is trapped, Escape closes it, background is inert, and it is labelled with role=\"dialog\"",
+        "A high z-index and a dark overlay",
+        "aria-hidden on the modal",
+        "Rendering it in a portal"
+      ],
+      "answer": 0,
+      "why": "Also: return focus to the element that opened it. A portal solves the stacking-context problem but does nothing for accessibility — and focus follows the React tree, not the DOM tree.",
+      "tags": ["a11y", "modal"],
+      "level": 2,
+      "asked": "A strong mid-level signal — most candidates only mention the overlay."
+    },
+    {
+      "id": "rp-010",
+      "q": "What is a portal for?",
+      "choices": [
+        "Rendering into a DOM node outside the parent, while keeping React context and event bubbling",
+        "Lazy loading a component",
+        "Server-side rendering",
+        "Sharing state across routes"
+      ],
+      "answer": 0,
+      "why": "It escapes `overflow: hidden` and z-index stacking for modals, tooltips and toasts. Events still bubble through the React tree, which surprises people expecting DOM behaviour.",
+      "tags": ["portals"],
+      "level": 2
+    },
+    {
+      "id": "rp-011",
+      "q": "Why put table filters in the URL query string?",
+      "choices": [
+        "The view becomes shareable, bookmarkable and survives a refresh or a back-button press",
+        "It is faster than state",
+        "It reduces re-renders",
+        "The server requires it"
+      ],
+      "answer": 0,
+      "why": "'Send me that filtered view' is a real user need. It also gives you back/forward for free. The rule of thumb: state that describes *what you are looking at* belongs in the URL.",
+      "tags": ["routing", "state"],
+      "level": 2,
+      "asked": "A design question that shows product sense as well as React knowledge."
+    },
+    {
+      "id": "rp-012",
+      "q": "What does list virtualisation do?",
+      "choices": [
+        "Renders only the rows in view plus a buffer, keeping DOM node count constant",
+        "Loads data lazily as you scroll",
+        "Caches rendered rows in memory",
+        "Compresses the list data"
+      ],
+      "answer": 0,
+      "why": "10,000 rows means 10,000 DOM nodes and a frozen page. Virtualising keeps ~30 mounted. The costs: variable row heights are hard, and Ctrl-F stops finding off-screen content.",
+      "tags": ["performance", "lists"],
+      "level": 2
+    },
+    {
+      "id": "rp-013",
+      "q": "What is the difference between infinite scroll and pagination, from an engineering view?",
+      "choices": [
+        "Infinite scroll needs cursor-based paging and accumulating state; pagination can use offsets and replaces state",
+        "They are the same with different styling",
+        "Infinite scroll is always faster",
+        "Pagination cannot be done client-side"
+      ],
+      "answer": 0,
+      "why": "Offset paging with a live dataset duplicates or skips rows as items are inserted. Infinite scroll also breaks the footer, breaks back-navigation position, and needs a keyboard-accessible alternative.",
+      "tags": ["pagination", "ux"],
+      "level": 2
+    },
+    {
+      "id": "rp-014",
+      "q": "How do you make a component controlled *and* uncontrolled?",
+      "choices": [
+        "Accept an optional `value` prop; fall back to internal state when it is undefined",
+        "Always keep internal state and sync it in an effect",
+        "Export two components",
+        "Use a ref for both cases"
+      ],
+      "answer": 0,
+      "why": "The standard 'controllable' pattern used by every component library. The trap is syncing a prop into state with an effect, which produces two sources of truth and a render of lag.",
+      "tags": ["component-api", "patterns"],
+      "level": 3
+    },
+    {
+      "id": "rp-015",
+      "q": "What is the keyboard contract for a dropdown menu?",
+      "choices": [
+        "Arrow keys move between items, Enter selects, Escape closes, Tab leaves the menu",
+        "Tab moves between items",
+        "Only mouse interaction is required",
+        "Space opens each submenu"
+      ],
+      "answer": 0,
+      "why": "Roving tabindex: the menu is one tab stop and arrows move within it. Making every item tabbable is the common mistake — it forces a keyboard user through 40 stops to get past your menu.",
+      "tags": ["a11y", "keyboard"],
+      "level": 3
+    },
+    {
+      "id": "rp-016",
+      "q": "How do you test a component well?",
+      "choices": [
+        "Assert on what a user sees and does — rendered text, roles, interactions — not on internal state",
+        "Snapshot every component",
+        "Test each hook's internal variables",
+        "Only test with end-to-end tests"
+      ],
+      "answer": 0,
+      "why": "Tests coupled to implementation break on every refactor and pass through real bugs. Querying by role also catches accessibility problems for free.",
+      "tags": ["testing"],
+      "level": 2,
+      "asked": "The Testing Library philosophy question; expect it for any React role that mentions tests."
+    },
+    {
+      "id": "rp-017",
+      "q": "What is wrong with syncing a prop into state?",
+      "code": "const [value, setValue] = useState(props.value);",
+      "lang": "jsx",
+      "choices": [
+        "It only reads the prop on the first render, so later prop changes are ignored",
+        "useState cannot take a prop",
+        "It causes an infinite loop",
+        "Nothing — this is the standard way to make a default"
+      ],
+      "answer": 0,
+      "why": "useState's argument is the *initial* value. If you meant 'reset when the prop changes', change the key. If you meant 'defaultValue', name the prop that way so the one-shot behaviour is documented.",
+      "tags": ["state", "props"],
+      "level": 2
+    },
+    {
+      "id": "rp-018",
+      "q": "You are asked to make a slow page faster. What do you do first?",
+      "choices": [
+        "Profile it to find what actually re-renders and how long",
+        "Wrap components in React.memo",
+        "Add useMemo around expensive-looking calculations",
+        "Split the bundle"
+      ],
+      "answer": 0,
+      "why": "The React Profiler tells you which component, how often and how long. Optimising by guesswork usually adds complexity and moves nothing — and sometimes makes it slower.",
+      "tags": ["performance", "debugging"],
+      "level": 2,
+      "asked": "Whether you measure before optimising is one of the clearest seniority signals there is."
+    },
+    {
+      "id": "rp-019",
+      "q": "What is code splitting in a React app?",
+      "choices": [
+        "Loading route or feature bundles on demand with lazy + Suspense instead of one large bundle",
+        "Splitting components into more files",
+        "Separating CSS from JS",
+        "Running components in parallel"
+      ],
+      "answer": 0,
+      "why": "The usual first cut is per route. Watch for a waterfall — lazy-loading a component that then fetches its own data serialises two round trips.",
+      "tags": ["performance", "bundling"],
+      "level": 2
+    },
+    {
+      "id": "rp-020",
+      "q": "What does a router give you beyond swapping components?",
+      "choices": [
+        "URL as state, back/forward, deep links, and per-route data loading and code splitting",
+        "Faster rendering",
+        "Server-side rendering",
+        "Automatic authentication"
+      ],
+      "answer": 0,
+      "why": "Building a hash router by hand makes this concrete: you end up implementing history, param parsing and matching yourself, which is why the answer to 'why use a router' is not 'because everyone does'.",
+      "tags": ["routing"],
+      "level": 2
+    },
+    {
+      "id": "rp-021",
+      "q": "When is a global state manager justified over context plus local state?",
+      "choices": [
+        "When many unrelated components read and write overlapping server or session state frequently",
+        "As soon as two components share a value",
+        "For any app over 10 components",
+        "Never — context is always sufficient"
+      ],
+      "answer": 0,
+      "why": "Much of what used to go in Redux is server cache, which a data-fetching library handles better. What remains — session, UI shell, cross-cutting toggles — is often small enough for context.",
+      "tags": ["state", "architecture"],
+      "level": 2,
+      "asked": "An opinion question. Distinguishing server state from client state is the strong move."
+    },
+    {
+      "id": "rp-022",
+      "q": "What is the risk of `dangerouslySetInnerHTML`?",
+      "choices": [
+        "It injects raw HTML, so unsanitised content is an XSS vulnerability",
+        "It is slow",
+        "It breaks the virtual DOM diff",
+        "It only works in development"
+      ],
+      "answer": 0,
+      "why": "React escapes interpolated values by default, which is why XSS is rare in React apps — this prop is the explicit opt-out. Sanitise with something like DOMPurify, and never pass raw user input.",
+      "tags": ["security", "xss"],
+      "level": 2
+    },
+    {
+      "id": "rp-023",
+      "q": "How would you implement undo/redo?",
+      "choices": [
+        "Keep past, present and future stacks of immutable states and move entries between them",
+        "Store a diff for each change and reverse it",
+        "Re-fetch the previous state from the server",
+        "Use useRef to store the last value"
+      ],
+      "answer": 0,
+      "why": "Immutable state makes this almost free — each state is a snapshot you can hold on to. It is also the strongest practical argument for not mutating state.",
+      "tags": ["state", "patterns"],
+      "level": 3
+    }
+  ]
+}

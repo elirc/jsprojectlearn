@@ -1,0 +1,398 @@
+{
+  "id": "react-core",
+  "topic": "React core",
+  "title": "React fundamentals",
+  "blurb": "Components, props, state, keys, rendering. The questions asked before anyone opens your portfolio.",
+  "questions": [
+    {
+      "id": "rc-001",
+      "q": "What is the `key` prop for?",
+      "choices": [
+        "It identifies a list item across renders so React can match elements to state",
+        "It is required by the linter but has no runtime effect",
+        "It sets the DOM id attribute",
+        "It controls render order"
+      ],
+      "answer": 0,
+      "why": "Without stable keys React matches by position. Delete the first row and every subsequent row's component state shifts up one — inputs keep the wrong values, checkboxes tick the wrong items.",
+      "tags": ["keys", "lists"],
+      "level": 1,
+      "asked": "Universal. The strong answer describes the bug bad keys cause, not just the rule."
+    },
+    {
+      "id": "rc-002",
+      "q": "When is using the array index as a key acceptable?",
+      "choices": [
+        "When the list is never reordered, filtered, or added to except at the end",
+        "Always — it is a stable number",
+        "Never, under any circumstance",
+        "Only when the list has fewer than 10 items"
+      ],
+      "answer": 0,
+      "why": "The index is only stable if positions are stable. A static list rendered once is fine; anything sortable, filterable or deletable needs a real id.",
+      "tags": ["keys", "lists"],
+      "level": 2
+    },
+    {
+      "id": "rc-003",
+      "q": "What renders when `items` is an empty array?",
+      "code": "return <div>{items.length && <List items={items} />}</div>;",
+      "lang": "jsx",
+      "choices": [
+        "A literal 0 on the page",
+        "Nothing",
+        "An empty List",
+        "It throws"
+      ],
+      "answer": 0,
+      "why": "`0 && ...` evaluates to 0, and React renders the number 0 (it only skips false, null and undefined). Use `items.length > 0 && ...` or a ternary.",
+      "tags": ["rendering", "conditional"],
+      "level": 1,
+      "asked": "A tiny bug that ships to production constantly — a great quick filter question."
+    },
+    {
+      "id": "rc-004",
+      "q": "What does this log on a single click?",
+      "code": "const [count, setCount] = useState(0);\nconst onClick = () => {\n  setCount(count + 1);\n  setCount(count + 1);\n  console.log(count);\n};",
+      "lang": "jsx",
+      "choices": [
+        "0, and count becomes 1",
+        "0, and count becomes 2",
+        "1, and count becomes 2",
+        "2, and count becomes 2"
+      ],
+      "answer": 0,
+      "why": "`count` is a constant captured by this render, so both calls set it to 0 + 1. The log shows the old value because state updates do not mutate the current render's variables. The functional form `setCount(c => c + 1)` twice would give 2.",
+      "tags": ["state", "batching"],
+      "level": 2,
+      "asked": "The single best question for finding out whether someone understands React's render model."
+    },
+    {
+      "id": "rc-005",
+      "q": "Why must you not mutate state directly?",
+      "code": "todos.push(newTodo);\nsetTodos(todos);",
+      "lang": "jsx",
+      "choices": [
+        "React compares the reference; the same array means 'nothing changed', so it may not re-render",
+        "Mutation throws in strict mode",
+        "It corrupts the virtual DOM",
+        "It is only a style preference"
+      ],
+      "answer": 0,
+      "why": "Bailout is based on Object.is against the previous value. A mutated array is still the same reference. `setTodos([...todos, newTodo])` gives React something new to compare.",
+      "tags": ["state", "immutability"],
+      "level": 1,
+      "asked": "Constant. It links directly to the JavaScript reference-equality question."
+    },
+    {
+      "id": "rc-006",
+      "q": "What is the difference between props and state?",
+      "choices": [
+        "Props are passed in and read-only to the component; state is owned and updated by the component",
+        "State is for objects, props for primitives",
+        "Props re-render, state does not",
+        "State is global, props are local"
+      ],
+      "answer": 0,
+      "why": "If a value comes from above and the component never changes it, it is a prop. If the component owns it over time, it is state. If it can be computed from either, it should be neither — derive it during render.",
+      "tags": ["props", "state"],
+      "level": 1
+    },
+    {
+      "id": "rc-007",
+      "q": "What is wrong with this?",
+      "code": "const [items, setItems] = useState([]);\nconst [count, setCount] = useState(0);\nuseEffect(() => setCount(items.length), [items]);",
+      "lang": "jsx",
+      "choices": [
+        "`count` is derived state — just compute `items.length` during render",
+        "The dependency array is wrong",
+        "setCount cannot be called in an effect",
+        "It needs a cleanup function"
+      ],
+      "answer": 0,
+      "why": "Storing derived state adds an extra render, a chance to go stale, and a synchronisation bug waiting to happen. Anything computable from existing state or props should be computed, not stored.",
+      "tags": ["derived-state", "effects"],
+      "level": 2,
+      "asked": "One of the 'you don't need an effect' patterns from the React docs — asked often."
+    },
+    {
+      "id": "rc-008",
+      "q": "What does 'lifting state up' mean?",
+      "choices": [
+        "Moving shared state to the closest common ancestor of the components that need it",
+        "Moving state into a global store",
+        "Moving state into a context provider",
+        "Converting local state to props"
+      ],
+      "answer": 0,
+      "why": "Two siblings that must agree cannot each own the value. The ancestor owns it and passes the value down plus a setter. The counter-pressure is colocation: keep state as low as it can go.",
+      "tags": ["state", "architecture"],
+      "level": 1
+    },
+    {
+      "id": "rc-009",
+      "q": "What is a controlled input?",
+      "choices": [
+        "Its value comes from React state and every keystroke goes through onChange",
+        "An input with validation attached",
+        "An input inside a form element",
+        "An input that cannot be edited"
+      ],
+      "answer": 0,
+      "why": "Controlled means React is the single source of truth, so you can format, validate or reset as you type. Uncontrolled leaves the value in the DOM and you read it with a ref at submit — lighter, and fine for simple forms.",
+      "tags": ["forms", "inputs"],
+      "level": 1
+    },
+    {
+      "id": "rc-010",
+      "q": "What happens if you pass `value` without `onChange` to an input?",
+      "choices": [
+        "The field is read-only and React warns about it",
+        "It works normally",
+        "The component crashes",
+        "React switches it to uncontrolled"
+      ],
+      "answer": 0,
+      "why": "React re-renders with the same value after every keystroke, so nothing you type appears. Use `defaultValue` for an uncontrolled field, or add the onChange handler.",
+      "tags": ["forms", "inputs"],
+      "level": 1
+    },
+    {
+      "id": "rc-011",
+      "q": "What is the virtual DOM and why does React use one?",
+      "choices": [
+        "A lightweight description of the UI that React diffs to compute the minimum set of real DOM changes",
+        "A faster reimplementation of the DOM",
+        "A copy of the page kept in a Web Worker",
+        "A browser API React polyfills"
+      ],
+      "answer": 0,
+      "why": "The value is not raw speed — hand-written DOM code is faster. The value is that you write `render(state)` declaratively and React works out the imperative steps.",
+      "tags": ["rendering", "vdom"],
+      "level": 2,
+      "asked": "The wrong answer is 'because it's faster than the DOM'."
+    },
+    {
+      "id": "rc-012",
+      "q": "When does a component re-render?",
+      "choices": [
+        "When its state changes, its parent re-renders, or a context it consumes changes",
+        "Only when its props change by value",
+        "On every browser frame",
+        "Only when you call forceUpdate"
+      ],
+      "answer": 0,
+      "why": "A parent re-rendering re-renders children by default, regardless of whether their props changed — that is what React.memo opts out of. Re-render does not mean DOM update; the diff may produce nothing.",
+      "tags": ["rendering"],
+      "level": 2
+    },
+    {
+      "id": "rc-013",
+      "q": "Why does this component lose its state?",
+      "code": "function Parent() {\n  function Child() { return <input />; }\n  return <Child />;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Child is redefined every render, so React sees a different component type and remounts it",
+        "Inputs cannot hold state",
+        "Child needs a key",
+        "It needs to be memoised"
+      ],
+      "answer": 0,
+      "why": "Identity matters. A new function on each render is a new type, so React unmounts the old tree and mounts a fresh one — state gone, input cleared, effects re-run. Define components at module level.",
+      "tags": ["rendering", "components"],
+      "level": 3,
+      "asked": "A subtle bug people hit when they extract a component 'for tidiness' inside another."
+    },
+    {
+      "id": "rc-014",
+      "q": "How do you reset a component's internal state when a prop changes?",
+      "choices": [
+        "Give it a `key` that changes with that prop",
+        "Call setState inside an effect on that prop",
+        "Use forceUpdate",
+        "There is no way; make it fully controlled"
+      ],
+      "answer": 0,
+      "why": "Changing the key makes React treat it as a different instance, so it unmounts and remounts with fresh state. This is the documented alternative to an effect that clears state.",
+      "tags": ["keys", "state"],
+      "level": 2,
+      "asked": "A neat trick that shows you have read the docs rather than only Stack Overflow."
+    },
+    {
+      "id": "rc-015",
+      "q": "What is JSX, mechanically?",
+      "choices": [
+        "Syntax sugar compiled to function calls that create element objects",
+        "A template language interpreted at runtime",
+        "HTML embedded in JavaScript",
+        "A React-specific string format"
+      ],
+      "answer": 0,
+      "why": "`<Foo bar={1} />` compiles to a call producing `{ type: Foo, props: { bar: 1 } }`. That is why components must be capitalised — lowercase compiles to the string 'div', not a reference.",
+      "tags": ["jsx"],
+      "level": 2
+    },
+    {
+      "id": "rc-016",
+      "q": "Why must hooks be called unconditionally at the top level?",
+      "choices": [
+        "React tracks them by call order, so a conditional call shifts every later hook's slot",
+        "It is a lint rule with no runtime effect",
+        "Conditional hooks are slower",
+        "Because of JavaScript hoisting"
+      ],
+      "answer": 0,
+      "why": "There is no name attached to a hook — only its position in the call sequence. Skip one on a later render and useState #2 reads the state belonging to #1.",
+      "tags": ["hooks", "rules"],
+      "level": 2,
+      "asked": "The good answer explains the mechanism rather than reciting 'the rules of hooks'."
+    },
+    {
+      "id": "rc-017",
+      "q": "When should you use `useReducer` instead of `useState`?",
+      "choices": [
+        "When several pieces of state change together, or the next state depends on the previous in complex ways",
+        "Whenever there is more than one state variable",
+        "Only with Redux",
+        "When state is an object"
+      ],
+      "answer": 0,
+      "why": "A reducer moves the transition logic out of handlers into one pure function you can test and read in isolation. For a wizard or a form with interdependent fields it is far clearer than five setters.",
+      "tags": ["state", "usereducer"],
+      "level": 2
+    },
+    {
+      "id": "rc-018",
+      "q": "What does this render on the second click?",
+      "code": "const [user, setUser] = useState({ name: 'A', age: 1 });\nconst bump = () => setUser({ ...user, age: user.age + 1 });",
+      "lang": "jsx",
+      "choices": [
+        "age 3 — each click reads the latest state from a fresh render",
+        "age 2 — the spread captures stale state",
+        "It throws",
+        "age 1 — objects never trigger a re-render"
+      ],
+      "answer": 0,
+      "why": "Each render closes over the state from that render, and the click happens after the re-render, so `user` is current. The stale-closure problem only appears when the handler is captured once — inside an effect, a timer, or a memoised callback.",
+      "tags": ["state", "closures"],
+      "level": 2
+    },
+    {
+      "id": "rc-019",
+      "q": "What is 'colocating state'?",
+      "choices": [
+        "Keeping state in the lowest component that needs it, so fewer components re-render",
+        "Storing all state in one file",
+        "Putting state next to the styles it affects",
+        "Using context instead of props"
+      ],
+      "answer": 0,
+      "why": "State lifted higher than necessary re-renders the whole subtree on every keystroke. Pushing it down is usually a bigger performance win than any amount of memo — and it is free.",
+      "tags": ["performance", "architecture"],
+      "level": 2,
+      "asked": "The correct first answer to 'how would you fix a slow React page?'"
+    },
+    {
+      "id": "rc-020",
+      "q": "What does React do with two elements of the same type and same key across renders?",
+      "choices": [
+        "Keeps the DOM node and component state, updating only changed props",
+        "Unmounts and remounts it",
+        "Replaces the DOM node but keeps state",
+        "Warns about a duplicate key"
+      ],
+      "answer": 0,
+      "why": "Reconciliation preserves the instance when type and key match at the same position. Change the type — or the key — and it tears down and rebuilds, losing state and re-running effects.",
+      "tags": ["rendering", "reconciliation"],
+      "level": 2
+    },
+    {
+      "id": "rc-021",
+      "q": "Why does React batch state updates?",
+      "choices": [
+        "To render once per event rather than once per setState call",
+        "To reduce memory usage",
+        "To guarantee update order",
+        "To avoid race conditions with the server"
+      ],
+      "answer": 0,
+      "why": "Three setState calls in one handler produce one render. Since React 18 this batching also covers promises, timeouts and native handlers — 'automatic batching'.",
+      "tags": ["state", "batching"],
+      "level": 2
+    },
+    {
+      "id": "rc-022",
+      "q": "What is the correct way to update one item in a list held in state?",
+      "choices": [
+        "`setItems(items.map(i => i.id === id ? { ...i, done: true } : i))`",
+        "`items.find(i => i.id === id).done = true; setItems(items)`",
+        "`setItems(items.splice(index, 1, updated))`",
+        "`items[index].done = true; setItems([...items])`"
+      ],
+      "answer": 0,
+      "why": "map gives a new array and a new object for the changed row, leaving the rest referentially identical — so memoised siblings do not re-render. The last option makes a new array but mutates the shared item object.",
+      "tags": ["state", "immutability", "lists"],
+      "level": 2,
+      "asked": "A great practical check: it needs both immutability and referential-equality reasoning."
+    },
+    {
+      "id": "rc-023",
+      "q": "What is a fragment (`<>...</>`) for?",
+      "choices": [
+        "Returning multiple elements without adding a wrapper node to the DOM",
+        "Rendering conditionally",
+        "Lazy loading a subtree",
+        "Grouping props"
+      ],
+      "answer": 0,
+      "why": "It avoids the 'div soup' that breaks CSS grid and flex layouts. Use `<React.Fragment key={id}>` when you need a key on it, since the short syntax cannot take props.",
+      "tags": ["jsx"],
+      "level": 1
+    },
+    {
+      "id": "rc-024",
+      "q": "Why is `<StrictMode>` double-invoking your effects in development?",
+      "choices": [
+        "To surface missing cleanup — an effect that cannot survive mount/unmount/mount has a bug",
+        "It is a bug in React 18",
+        "To measure render performance",
+        "Because the component renders twice"
+      ],
+      "answer": 0,
+      "why": "It only happens in development. If a double subscription, a duplicated request or a doubled counter appears, the effect is missing a cleanup — which would also break with fast navigation in production.",
+      "tags": ["strictmode", "effects"],
+      "level": 2,
+      "asked": "Everyone has hit this and googled 'why does my fetch run twice'. The good answer knows it is deliberate."
+    },
+    {
+      "id": "rc-025",
+      "q": "How should a child tell its parent something changed?",
+      "choices": [
+        "By calling a callback the parent passed down as a prop",
+        "By mutating a prop",
+        "By dispatching a DOM event",
+        "By writing to a global variable"
+      ],
+      "answer": 0,
+      "why": "Data flows down, events flow up. The parent owns the state and passes both the value and the updater, which keeps a single source of truth.",
+      "tags": ["props", "architecture"],
+      "level": 1
+    },
+    {
+      "id": "rc-026",
+      "q": "What is wrong with this event handler?",
+      "code": "<button onClick={handleClick()}>Save</button>",
+      "lang": "jsx",
+      "choices": [
+        "It calls handleClick during render and assigns the return value as the handler",
+        "It needs to be an arrow function",
+        "onClick must be lowercase",
+        "Nothing"
+      ],
+      "answer": 0,
+      "why": "Pass the function (`onClick={handleClick}`) or wrap it (`onClick={() => handleClick(id)}`). As written it fires on every render — and if it calls setState, that is an infinite render loop.",
+      "tags": ["events"],
+      "level": 1
+    }
+  ]
+}
