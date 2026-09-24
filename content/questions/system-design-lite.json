@@ -1,0 +1,428 @@
+{
+  "id": "system-design-lite",
+  "topic": "System design",
+  "title": "System design for CRUD apps",
+  "blurb": "Caches, queues, background jobs, file storage, email, webhooks, multi-tenancy and scaling a monolith: the design round for product-engineering roles, without the FAANG theatre.",
+  "questions": [
+    {
+      "id": "sd-001",
+      "q": "What is the difference between cache-aside and write-through caching?",
+      "choices": [
+        "Cache-aside keeps the cache on a separate server; write-through keeps it inside the database",
+        "Cache-aside fills the cache on a read miss; write-through updates the cache on every write",
+        "Cache-aside never expires its entries; write-through expires them as soon as the row changes",
+        "Cache-aside buffers writes until a batch is flushed; write-through sends each write straight on"
+      ],
+      "answer": 1,
+      "why": "Cache-aside loads lazily, so it only caches what is read, and entries go stale until invalidated or expired. Write-through keeps the cache fresh on every write, at the cost of caching data nobody reads. Buffering writes for later is write-behind, a third pattern.",
+      "tags": ["caching"],
+      "level": 2,
+      "asked": "The opening move of most caching discussions; the follow-up is how each one goes stale."
+    },
+    {
+      "id": "sd-002",
+      "q": "Product prices are cached for 10 minutes, so after an admin edits a price customers see the old one for up to 10 minutes. What removes that delay?",
+      "choices": [
+        "Delete or update the cache entry in the same code path that saves the new price",
+        "Lower the TTL to 10 seconds, which makes the cached price effectively always fresh",
+        "Move the cache into the database server, so it sees each update the moment it lands",
+        "Store the prices as strings in the cache, so a changed value is detected on read"
+      ],
+      "answer": 0,
+      "why": "Explicit invalidation on write removes the stale window; the TTL stays as a safety net for missed invalidations. A 10-second TTL only shrinks the window and multiplies database load by sixty.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Checks that you know 'there are only two hard things' is about this, and have an answer beyond a shorter TTL."
+    },
+    {
+      "id": "sd-003",
+      "q": "A popular cache key expires, and hundreds of concurrent requests miss at once and all query the database. What prevents this stampede?",
+      "choices": [
+        "Give the key a longer TTL, so the database is hit less often when it does expire",
+        "Let one request rebuild the value while the others wait for it or get the stale copy",
+        "Add a read replica, so the burst of identical queries is spread over two databases",
+        "Shorten the TTL, so each expiry releases a smaller burst of requests on the database"
+      ],
+      "answer": 1,
+      "why": "Request coalescing (a lock or single-flight per key), serving stale while one caller refreshes, or refreshing early with jitter all make one query do the work of hundreds. A longer TTL only makes the stampede rarer; a replica halves it.",
+      "tags": ["caching", "reliability"],
+      "level": 3,
+      "asked": "A production-scar question; people who have seen a stampede describe single-flight or stale-while-revalidate."
+    },
+    {
+      "id": "sd-004",
+      "q": "Your CDN caches `GET /api/me/orders`, and users start seeing each other's orders. What went wrong?",
+      "choices": [
+        "The CDN's TTL was too long; a TTL under a minute would keep each user's data apart",
+        "The CDN's edge servers share a disk, so all users on one edge location read the same stored file",
+        "A per-user response was cacheable by shared caches; it needs `private` or `no-store`",
+        "The API returned an ETag, and matching ETags let the CDN swap users' responses"
+      ],
+      "answer": 2,
+      "why": "Shared caches key on the URL, and `/me/orders` is the same URL for everyone. Personal responses must say `Cache-Control: private` (browser only) or `no-store`. A short TTL just leaks for less time.",
+      "tags": ["caching", "security"],
+      "level": 2,
+      "asked": "A real incident class; it tests whether you think about who else a cache serves."
+    },
+    {
+      "id": "sd-005",
+      "q": "A public product catalogue page is the same for every visitor and changes a few times a day. Where does caching it help most?",
+      "choices": [
+        "At the CDN edge, so most requests never reach your servers at all",
+        "In each app instance's memory, so every server keeps its own private copy",
+        "In the database's buffer cache, which keeps the hottest table pages in RAM",
+        "In the browser's localStorage, written by a script on each page view"
+      ],
+      "answer": 0,
+      "why": "Cache as close to the user as the data allows: public, rarely changing content belongs at the edge, and a purge on change keeps it fresh. An in-process cache still costs a request per visitor and is per instance, and localStorage helps only repeat visits by one person.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Tests whether you pick a cache layer from the data, not from habit."
+    },
+    {
+      "id": "sd-006",
+      "q": "Why put a message queue between the web app and the service that generates PDF invoices?",
+      "choices": [
+        "A queue makes each PDF render faster, because messages are processed in memory",
+        "The request returns quickly, and bursts are absorbed and worked off at the worker's pace",
+        "A queue guarantees each invoice is generated exactly once, even if a worker crashes midway",
+        "A queue lets the web app read the finished PDF in the same request that asked for it"
+      ],
+      "answer": 1,
+      "why": "The queue decouples the two: the web tier stays responsive, a spike becomes a backlog instead of an outage, and the worker can be down briefly without losing work. Most queues deliver at least once, so exactly-once is not what you get.",
+      "tags": ["queues"],
+      "level": 1,
+      "asked": "The first question in any async-work discussion; \"smoothing spikes\" is the phrase interviewers listen for."
+    },
+    {
+      "id": "sd-007",
+      "q": "Your queue delivers at least once, and a 'charge card' message is occasionally processed twice. What is the standard fix?",
+      "choices": [
+        "Switch the queue to exactly-once mode, which removes every duplicate on the broker",
+        "Acknowledge the message before processing, so it can never be delivered again",
+        "Make the consumer idempotent, for example by recording processed message ids",
+        "Delay each charge briefly so the duplicate arrives first and can be dropped"
+      ],
+      "answer": 2,
+      "why": "At-least-once delivery plus an idempotent consumer gives effectively-once effects: store the message id (or pass an idempotency key to the payment provider) and skip repeats. Acknowledging first turns it into at-most-once, so a crash loses the charge.",
+      "tags": ["queues", "reliability"],
+      "level": 2,
+      "asked": "The single most important queue fact; candidates who say \"exactly once\" without caveats get probed hard."
+    },
+    {
+      "id": "sd-008",
+      "q": "What is a dead-letter queue for?",
+      "choices": [
+        "Storing messages for consumers that are offline, until they come back online",
+        "Archiving every processed message, so the full history can be replayed later",
+        "Holding messages that failed processing too many times, so they can be inspected",
+        "Delaying messages that are scheduled to be processed at a later time of day, such as reminders"
+      ],
+      "answer": 2,
+      "why": "After a set number of failed deliveries the broker moves the message aside, so it stops blocking or burning the consumer. Someone must alert on it and replay or discard its contents; a DLQ nobody watches is silent data loss.",
+      "tags": ["queues"],
+      "level": 1,
+      "asked": "A vocabulary check; the strong answer adds \"and alert on it\"."
+    },
+    {
+      "id": "sd-009",
+      "q": "You save an order, then publish an OrderPlaced event; if the process dies between the two, the event is lost. What does the outbox pattern do?",
+      "choices": [
+        "Publishes the event first and saves the order only once the broker confirms receipt",
+        "Saves the event in an outbox table in the same transaction; a relay publishes it later",
+        "Wraps the database write and the broker publish together in one two-phase commit",
+        "Retries the publish in a loop inside the request until the broker finally accepts it"
+      ],
+      "answer": 1,
+      "why": "The order and its event commit or roll back together, and a separate relay reads the outbox and publishes, retrying until it succeeds. Consumers may see a duplicate, so they stay idempotent. Publishing first just moves the gap, and two-phase commit across a DB and a broker is what the outbox avoids.",
+      "tags": ["queues", "reliability"],
+      "level": 3,
+      "asked": "A mid-to-senior design question; naming the dual-write problem before the pattern is the strong answer."
+    },
+    {
+      "id": "sd-010",
+      "q": "One malformed message makes the consumer throw every time, and the queue keeps redelivering it. What should the consumer setup do?",
+      "choices": [
+        "Retry it forever with exponential backoff, since the bug will eventually be fixed",
+        "Delete it silently on the first failure, so it can never block the queue again",
+        "Restart the consumer process after each failure, which clears the bad state",
+        "Cap delivery attempts, then move the message to a dead-letter queue and alert"
+      ],
+      "answer": 3,
+      "why": "A poison message never succeeds, so unbounded retries waste capacity and can block ordered queues. Capping attempts and dead-lettering keeps the message for diagnosis. Deleting on the first failure also throws away messages that failed for a transient reason.",
+      "tags": ["queues", "reliability"],
+      "level": 2,
+      "asked": "Tests whether you separate transient failures from permanent ones in a consumer."
+    },
+    {
+      "id": "sd-011",
+      "q": "Several consumers process order events in parallel, but events for the same order must be handled in sequence. What is the usual approach?",
+      "choices": [
+        "Partition by order id, so every event for one order reaches the same consumer in order",
+        "Add a timestamp to each event and have consumers sleep until earlier ones finish",
+        "Use one consumer for the whole queue, since that is the only way to keep any order",
+        "Let any consumer take any event, and sort the order's history in the database later"
+      ],
+      "answer": 0,
+      "why": "Ordering is needed per key, not globally, so partitioning by key (Kafka partitions, SQS FIFO message groups, Service Bus sessions) keeps parallelism across orders. A single consumer works but throws away all throughput.",
+      "tags": ["queues", "scaling"],
+      "level": 3,
+      "asked": "Checks whether you know ordering is a per-key property you design for."
+    },
+    {
+      "id": "sd-012",
+      "q": "Users upload videos of up to 2 GB. Which design keeps that traffic off your API servers?",
+      "choices": [
+        "Stream each upload through the API and write it into a binary column in the database",
+        "The API hands out a short-lived pre-signed URL; the browser uploads straight to storage",
+        "Raise the API's body-size limit and request timeout, then scale the API out to cope",
+        "Split the file into chunks in the browser and post all of the chunks to the API in parallel"
+      ],
+      "answer": 1,
+      "why": "A pre-signed URL grants time-limited permission to write one object, so the bytes go from browser to object storage while your API only authorises and records the key. Chunking through the API still pushes every byte through your servers.",
+      "tags": ["files"],
+      "level": 2,
+      "asked": "A standard design-round step; the follow-up is how you know the upload finished."
+    },
+    {
+      "id": "sd-013",
+      "q": "Why do most CRUD apps keep uploaded files in object storage and only a key in the database?",
+      "choices": [
+        "Databases cannot store binary data reliably, so files have to live somewhere else",
+        "Blobs bloat backups and database memory, while object storage is cheap and serves files",
+        "Object storage encrypts every file automatically, which a relational database cannot do",
+        "Storing files in the database breaks foreign keys whenever a file is replaced"
+      ],
+      "answer": 1,
+      "why": "Databases can hold blobs, but they then swell backups, replication and the buffer cache, and every download costs a database connection. Object storage is priced for bytes and can serve files directly or through a CDN.",
+      "tags": ["files"],
+      "level": 1,
+      "asked": "A junior design check; the strong answer mentions backups and serving files through a CDN."
+    },
+    {
+      "id": "sd-014",
+      "q": "After upload, each image needs a thumbnail and a malware scan. Where should that work run?",
+      "choices": [
+        "Inside the upload request itself, so the user waits and then sees the thumbnail at once",
+        "In the browser before upload, so the server receives a thumbnail and a clean file",
+        "In a background worker fired by an upload event, with the file marked pending meanwhile",
+        "In a nightly batch job, which processes all of the day's uploads in one efficient run"
+      ],
+      "answer": 2,
+      "why": "Slow, failure-prone work belongs in a worker that can retry, while the file stays unusable until the scan passes. The browser cannot be trusted to scan its own upload, and a nightly batch leaves files unscanned for hours.",
+      "tags": ["files", "queues"],
+      "level": 2,
+      "asked": "Combines storage and background work; the \"pending until scanned\" state is the detail interviewers want."
+    },
+    {
+      "id": "sd-015",
+      "q": "Why do apps send transactional email through a queue and an email provider rather than over SMTP inside the request?",
+      "choices": [
+        "SMTP cannot send HTML email, so a provider is needed to format the message body",
+        "Email providers deliver instantly, while SMTP servers batch messages once an hour",
+        "The request stays fast, and a failed send is retried without the user resubmitting",
+        "Browsers block requests that open SMTP connections, so the server must hand them off"
+      ],
+      "answer": 2,
+      "why": "Mail servers are slow and sometimes down, so sending inline makes signup slow and fragile. A queued send retries on its own, and a provider handles deliverability, bounces and sender reputation.",
+      "tags": ["email", "queues"],
+      "level": 1,
+      "asked": "A small design question that shows whether you move slow side effects out of the request by default."
+    },
+    {
+      "id": "sd-016",
+      "q": "Your app sends webhooks to customer endpoints, which are sometimes down. What should the sender do?",
+      "choices": [
+        "Retry immediately in a tight loop until the endpoint responds, so no event is late",
+        "Send each event once and drop it on failure, since the customer can poll the API",
+        "Block the business action that caused the event until the customer's endpoint accepts it",
+        "Retry with exponential backoff and jitter, and keep a delivery log customers can replay"
+      ],
+      "answer": 3,
+      "why": "Backoff with jitter gives a struggling endpoint room to recover, and a delivery log with status and replay lets customers recover from long outages themselves. Tying your own transaction to a customer's uptime makes their outage yours.",
+      "tags": ["webhooks"],
+      "level": 2,
+      "asked": "Tests whether you design for the other side being unreliable, which is always true of webhooks."
+    },
+    {
+      "id": "sd-017",
+      "q": "You are building a SaaS app for thousands of small customers. Which tenancy model is the usual starting point?",
+      "choices": [
+        "A database per tenant, so each customer's data is fully isolated from day one",
+        "A schema per tenant, so each customer gets its own tables inside one database",
+        "One shared schema, with a tenant_id column on every tenant-owned table",
+        "One app deployment per tenant, each with its own database and its own domain"
+      ],
+      "answer": 2,
+      "why": "A shared schema is the cheapest to run: one migration, one connection pool, easy cross-tenant reporting. Thousands of databases or schemas multiply migrations and connections. The price is that isolation depends on every query filtering by tenant.",
+      "tags": ["multi-tenancy"],
+      "level": 2,
+      "asked": "The standard SaaS design question; strong answers name the operational cost of the isolated options."
+    },
+    {
+      "id": "sd-018",
+      "q": "In a shared-schema multi-tenant app, what stops one forgotten `WHERE tenant_id = …` from leaking data?",
+      "choices": [
+        "Applying the tenant filter centrally, such as an ORM global filter or row-level security",
+        "Asking reviewers to check every new query for a tenant clause during each code review",
+        "Hiding tenant ids from the client, so users can never guess or enumerate another tenant's id",
+        "Giving each tenant its own API key, so requests only reach their own data"
+      ],
+      "answer": 0,
+      "why": "Make the safe path the default: an EF Core global query filter or Postgres row-level security adds the tenant condition to every query automatically. Review helps but misses one query eventually, and hiding ids does nothing when a query forgets the filter.",
+      "tags": ["multi-tenancy", "security"],
+      "level": 2,
+      "asked": "Checks whether you rely on discipline or on design for your most dangerous bug class."
+    },
+    {
+      "id": "sd-019",
+      "q": "One tenant's nightly export saturates the shared database and slows every other tenant. What handles this noisy neighbour without buying capacity for one tenant's peak?",
+      "choices": [
+        "Per-tenant quotas and rate limits, with heavy exports moved to a queue and a replica",
+        "A larger database instance, so there is always spare capacity for every tenant",
+        "An index on tenant_id, so every tenant's queries run faster regardless of load",
+        "Separate login pages per tenant, so their traffic arrives through different routes"
+      ],
+      "answer": 0,
+      "why": "Isolate the heavy workload: throttle per tenant, and run exports as background jobs against a replica so they cannot starve interactive traffic. A bigger instance buys time until the next export grows. Very large tenants may eventually get their own database.",
+      "tags": ["multi-tenancy", "scaling"],
+      "level": 3,
+      "asked": "A senior-leaning SaaS question; the strong answer separates interactive and batch workloads."
+    },
+    {
+      "id": "sd-020",
+      "q": "A large enterprise customer requires its own database, while your other tenants share one. What does this hybrid cost you?",
+      "choices": [
+        "Nothing extra; the ORM routes queries to the right database without any changes",
+        "Tenant-aware connection routing, and running every migration against each database",
+        "The shared tenants must move to their own databases too, since models cannot mix",
+        "Cross-tenant reports become impossible, because one SQL query cannot read from two databases"
+      ],
+      "answer": 1,
+      "why": "You now resolve the tenant before opening a connection, and every migration and backup must run per database. Cross-tenant reporting gets harder (usually via a warehouse), but it is not impossible, and the shared tenants can stay as they are.",
+      "tags": ["multi-tenancy"],
+      "level": 3,
+      "asked": "Tests whether you can price a sales request in engineering terms."
+    },
+    {
+      "id": "sd-021",
+      "q": "Your single-server app slows as traffic grows, and nothing is badly tuned. What is usually the cheapest first step?",
+      "choices": [
+        "Split the app into microservices so that each part can be scaled on its own",
+        "Scale vertically: move to a bigger instance, which needs no code changes",
+        "Rewrite the hottest paths in a faster language before adding any hardware",
+        "Shard the database by customer, so each shard holds a fraction of the data"
+      ],
+      "answer": 1,
+      "why": "A bigger machine is a config change, and modern instances go a long way. Scale out when you need redundancy or hit the ceiling. Microservices and sharding add permanent complexity to solve a problem you may not have yet.",
+      "tags": ["scaling"],
+      "level": 1,
+      "asked": "Checks for pragmatism; jumping to microservices is the answer that worries interviewers."
+    },
+    {
+      "id": "sd-022",
+      "q": "Why must app servers be stateless before you put several of them behind a load balancer?",
+      "choices": [
+        "Any instance can serve any request, because sessions and files live in shared stores",
+        "Stateless servers use less memory, so the load balancer can pack more onto a host",
+        "Load balancers refuse to route traffic to servers holding data in local memory",
+        "Stateless servers never need a database, so they can be copied without running any migrations"
+      ],
+      "answer": 0,
+      "why": "If a session or uploaded file lives on one server, the next request may land elsewhere and find nothing. Sticky sessions paper over it but break on deploys and uneven load. Move sessions, files and caches that must be shared to shared stores.",
+      "tags": ["scaling"],
+      "level": 1,
+      "asked": "A foundation for every scaling discussion; the strong answer mentions why sticky sessions are a crutch."
+    },
+    {
+      "id": "sd-023",
+      "q": "Reads go to a read replica. A user saves their profile, the page reloads, and it shows the old values. Why?",
+      "choices": [
+        "The replica caches query results and only refreshes them every few minutes",
+        "Replication is asynchronous, so the replica briefly lags behind the primary",
+        "The write went to the replica and was rejected, since replicas are read-only",
+        "The ORM reuses the first connection it opened, which still sees the old data"
+      ],
+      "answer": 1,
+      "why": "The write is committed on the primary and reaches the replica a moment later. For read-your-writes, send that user's reads to the primary for a short window after a write, or read from the primary for pages that follow a save.",
+      "tags": ["scaling", "database"],
+      "level": 2,
+      "asked": "Replicas are the first scaling step for reads; lag is the catch every interviewer checks you know."
+    },
+    {
+      "id": "sd-024",
+      "q": "You scale from 4 to 40 app instances, each with a pool of 50 connections, and Postgres starts refusing connections. What is the usual fix?",
+      "choices": [
+        "Raise the Postgres `max_connections` to 2,000 so every instance pool fits",
+        "Put a pooler such as PgBouncer in front of Postgres and shrink each app pool",
+        "Remove the app-side pools so each request opens and closes its own connection",
+        "Add a read replica, so half of the connections go to a second database server"
+      ],
+      "answer": 1,
+      "why": "Each Postgres connection is a process with its own memory, so thousands of mostly idle connections hurt performance. A pooler multiplexes many client connections onto a few server ones. Dropping app pools makes it worse, and a replica only helps reads.",
+      "tags": ["scaling", "database"],
+      "level": 3,
+      "asked": "A real scaling wall; people who have hit it name PgBouncer or an equivalent immediately."
+    },
+    {
+      "id": "sd-025",
+      "q": "A team of six is starting a new product. Why is a modular monolith usually preferred over microservices?",
+      "choices": [
+        "Monoliths scale better under load, because function calls are faster than HTTP calls",
+        "Microservices need a separate database technology per service, which six people cannot run",
+        "Microservices cannot share one code repository, so each service needs its own team",
+        "Clear module boundaries without network calls, distributed failures or many pipelines"
+      ],
+      "answer": 3,
+      "why": "You keep the design benefit (boundaries you can later extract along) without paying for network calls, partial failures, distributed data and many deploys. Microservices solve team-scaling problems a team of six does not have. Monorepos with many services are common.",
+      "tags": ["scaling"],
+      "level": 2,
+      "asked": "A judgement question; interviewers want to hear the cost of microservices, not their brochure."
+    },
+    {
+      "id": "sd-026",
+      "q": "A list endpoint over 50 million rows is slow mainly because it returns an exact total count with every page. What is the usual fix?",
+      "choices": [
+        "Cache the total count forever, since the table grows too slowly for it to matter",
+        "Drop the exact total: return 'has more', or an estimate, and count only when asked",
+        "Add an index on every filter column, which makes COUNT(*) instant even on very big tables",
+        "Switch to offset pagination, which returns the total count free with each page"
+      ],
+      "answer": 1,
+      "why": "An exact count over a filtered large table still visits every matching row or index entry, on every page. Most UIs only need \"next page exists\", which you get by fetching one extra row, or an approximate count from planner statistics.",
+      "tags": ["scaling", "database"],
+      "level": 2,
+      "asked": "Tests whether you question a requirement that is expensive at scale."
+    },
+    {
+      "id": "sd-027",
+      "q": "A downstream service is timing out, and your retries are making its recovery harder. What does a circuit breaker add?",
+      "choices": [
+        "It retries each failed call straight away, several times, until one succeeds",
+        "It routes the calls to a cached copy of the service kept on the calling side",
+        "After repeated failures it fails fast for a cool-off period instead of calling",
+        "It raises the timeout on each call, so slow responses stop counting as failures"
+      ],
+      "answer": 2,
+      "why": "Once failures pass a threshold the breaker opens and calls fail immediately, then a trial call tests recovery. That stops your retries from piling onto a struggling service and frees your own threads. Pair it with timeouts and backoff, and a fallback where you have one.",
+      "tags": ["reliability"],
+      "level": 2,
+      "asked": "Checks whether you know retries can cause outages, and what stops them."
+    },
+    {
+      "id": "sd-028",
+      "q": "Anonymous bots hammer your public search endpoint. Where is it cheapest to reject the excess traffic?",
+      "choices": [
+        "In the database, with a statement timeout that cancels queries past a limit",
+        "Inside each controller action, after the request is authenticated and parsed",
+        "In the browser, by disabling the search button for a few seconds after each search is run",
+        "At the edge, in the CDN, gateway or load balancer, before requests reach the app"
+      ],
+      "answer": 3,
+      "why": "Every layer a request passes costs you, so coarse per-IP limits belong at the edge. Per-user and per-plan limits still live in the app, backed by a shared counter. Bots do not use your UI, so a disabled button stops nobody.",
+      "tags": ["reliability", "security"],
+      "level": 2,
+      "asked": "A placement question; the strong answer layers edge limits with app-level per-user limits."
+    }
+  ]
+}

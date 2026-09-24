@@ -1,0 +1,323 @@
+{
+  "id": "behavioral",
+  "topic": "Behavioural",
+  "title": "Behavioural interview",
+  "blurb": "STAR answers, conflict, ownership, mistakes and ambiguity, framed as 'which response lands best' so you can see why.",
+  "questions": [
+    {
+      "id": "bh-001",
+      "q": "Asked to describe a time you improved something, which ending gives the strongest Result in a STAR answer?",
+      "choices": [
+        "\"In the end the page was a lot faster and the whole team was really happy with it, so I think it went well.\"",
+        "\"Load time fell from 4.1 to 1.2 seconds and the support tickets about it stopped. I learned to measure first.\"",
+        "\"We shipped it on time after a lot of hard work from everyone, and my manager praised it at the sprint review.\"",
+        "\"I used new techniques like caching and lazy loading that I had wanted to try, so I learned a great deal.\""
+      ],
+      "answer": 1,
+      "why": "A Result should be something the interviewer could verify: a number, a before and after, and what you took away. \"A lot faster and everyone was happy\" has no measure. \"Shipped on time with praise\" reports effort and approval, not the effect of the change. The techniques answer describes what you enjoyed, not what the improvement achieved.",
+      "tags": ["star"],
+      "level": 1,
+      "asked": "Interviewers score the Result hardest because it is where vague candidates run out of detail."
+    },
+    {
+      "id": "bh-002",
+      "q": "Which answer makes the candidate's own contribution clearest?",
+      "choices": [
+        "\"We noticed the import was failing, so we dug into the logs, found the encoding bug and fixed it all together.\"",
+        "\"The team struggled with the import, and it was a great example of everyone pitching in to fix it.\"",
+        "\"I traced the failing import to an encoding bug in the CSV parser, then wrote the fix and a regression test.\"",
+        "\"The import had an encoding bug that broke about a third of uploads, and it was fixed in the next release.\""
+      ],
+      "answer": 2,
+      "why": "The interviewer is hiring you, not your team, so they need to hear what you did, with verbs they can ask about. The \"we\" answer hides whether you found the bug or watched. The team-spirit answer praises collaboration without a single action. The passive answer has a good measure but nobody doing anything. Crediting others is fine once your own part is clear.",
+      "tags": ["star"],
+      "level": 1,
+      "asked": "A standard probe: if every sentence is \"we\", the next question is \"what did you personally do?\"."
+    },
+    {
+      "id": "bh-003",
+      "q": "The interviewer asks for \"a quick example\" of working under pressure. Which answer best fits the time you have?",
+      "choices": [
+        "\"On launch day our payment provider failed; I switched to the fallback, posted updates, and we lost no orders.\"",
+        "\"First I need to explain how our team was structured in 2023, then how the migration plan changed over time.\"",
+        "\"I work well under pressure in general: I stay calm, prioritise what matters and communicate with my team.\"",
+        "\"There are a few: the launch, the migration, the audit last year and that outage, which were all stressful.\""
+      ],
+      "answer": 0,
+      "why": "\"Quick\" means one story with situation, action and result in a few sentences, which you can expand if asked. The background-first answer spends the time on context and may never reach an action. The general claim has no example at all, which is what the question asked for. Listing four stories without telling one shows no depth.",
+      "tags": ["star"],
+      "level": 2,
+      "asked": "Tests whether you can size an answer to the question; rambling is one of the most common behavioural-round failures."
+    },
+    {
+      "id": "bh-004",
+      "q": "Asked about \"a technical challenge\", which choice of story gives the interviewer the most to probe?",
+      "choices": [
+        "\"The tutorial app I built to learn React, since it was my first time using hooks and it was really hard.\"",
+        "\"Our big platform migration, since it was the largest project the company ran, though I joined near the end.\"",
+        "\"A bug that turned out to be a typo, since it shows how persistent I am when a problem takes a long time.\"",
+        "\"The flaky checkout test I found was a race condition, since I can explain my reasoning, fix and trade-offs.\""
+      ],
+      "answer": 3,
+      "why": "A good story is one where you made the decisions and can defend them under follow-up questions. The tutorial was hard for you but has no real stakes. The migration is impressive, but you joined late, so the probing will expose how little you drove. The typo story shows persistence but no technical reasoning to discuss.",
+      "tags": ["star"],
+      "level": 2,
+      "asked": "Story selection is half the answer; interviewers follow up on whatever you pick, so pick something you owned."
+    },
+    {
+      "id": "bh-005",
+      "q": "Which answer best shows you can disagree productively with a more senior engineer?",
+      "choices": [
+        "\"I raised my concern once, but they were senior, so I went along with the design and kept my doubts quiet.\"",
+        "\"I explained in the team channel why their design was wrong, several people agreed, and so they changed it.\"",
+        "\"I wrote a one-page comparison with a benchmark, walked them through it, and we trialled my idea on one endpoint.\"",
+        "\"I built my version on a branch over the weekend without telling them, so the results could speak for themselves.\""
+      ],
+      "answer": 2,
+      "why": "Productive disagreement brings evidence, in private, and proposes a cheap way to find out who is right. Staying quiet because of seniority withholds information the team needed. Winning in a public channel may get the result but damages the relationship. The secret weekend branch skips the conversation entirely and reads as going around a colleague.",
+      "tags": ["conflict"],
+      "level": 2,
+      "asked": "Teams want people who push back with data and without drama; both silence and public point-scoring are red flags."
+    },
+    {
+      "id": "bh-006",
+      "q": "Which answer best shows you can unblock a pull request without bypassing review?",
+      "choices": [
+        "\"I asked for a short call, understood their concern, split out the safe part to merge, and followed up on the rest.\"",
+        "\"I asked our manager to overrule them, because the deadline mattered more than one reviewer's preferences.\"",
+        "\"I made every change they asked for without discussion, even ones I thought were wrong, to avoid slowing us down.\"",
+        "\"I found another reviewer who was happy to approve it as it was, merged it, and told the first one afterwards.\""
+      ],
+      "answer": 0,
+      "why": "The strong answer changes the channel from comments to conversation, finds the real concern and still ships something. Escalating to a manager first turns a technical question into a power question. Accepting every change silently avoids conflict but lets possibly wrong changes in. Reviewer-shopping bypasses the review process, which most teams treat as a serious breach of trust.",
+      "tags": ["conflict"],
+      "level": 2,
+      "asked": "Code review friction is daily life; this checks you resolve it rather than escalate or route around it."
+    },
+    {
+      "id": "bh-007",
+      "q": "The team chose an approach you argued against. Which answer best demonstrates disagree-and-commit?",
+      "choices": [
+        "\"I built it their way but kept a list of every problem it caused, so I could show at the retro that I had been right.\"",
+        "\"I built it their way and said nothing more, since raising a decision again only slows the team and hurts morale.\"",
+        "\"I agreed in the meeting but quietly kept my design in a separate module, so we could switch over if theirs failed.\"",
+        "\"I said I still preferred my option, then built theirs properly and proposed a metric to check after a month.\""
+      ],
+      "answer": 3,
+      "why": "Disagree-and-commit means your dissent is on record, then you execute the decision fully, and you agree how to learn whether it worked. Keeping a list to prove yourself right is commitment in name only. Staying silent forever confuses committing with never revisiting. Hiding your own design in a module undermines the decision while pretending to support it.",
+      "tags": ["conflict"],
+      "level": 3,
+      "asked": "Senior-leaning question; the metric-to-revisit detail is what separates a mature answer from compliance."
+    },
+    {
+      "id": "bh-008",
+      "q": "Which answer best demonstrates ownership of an outage you caused?",
+      "choices": [
+        "\"Checkout went down after a deploy; a config value was wrong, which our review process should have caught.\"",
+        "\"My config change took checkout down; I rolled back in ten minutes, said it was mine, and added a validation check.\"",
+        "\"I made a mistake with a config change and felt terrible for weeks, so now I'm extremely careful with deploys.\"",
+        "\"The outage was short and hit only a few users, so in the end it was not a big deal for the business overall.\""
+      ],
+      "answer": 1,
+      "why": "Ownership is saying \"mine\" early, fixing the immediate problem fast, and preventing a repeat with a mechanism rather than a promise. Blaming the review process shifts responsibility, even if the process also failed. Feeling terrible and \"being careful\" is emotion plus intention, with no fix. Minimising the impact dodges the question the interviewer actually asked.",
+      "tags": ["ownership"],
+      "level": 1,
+      "asked": "Everyone breaks production eventually; the interviewer wants to know what you do in the first hour and the week after."
+    },
+    {
+      "id": "bh-009",
+      "q": "Midway through a sprint you realise you will miss a deadline. Which answer best shows ownership?",
+      "choices": [
+        "\"I worked late every night to try to make it, and told the team on the last day that it wasn't quite done.\"",
+        "\"I kept my head down and delivered two days late with high quality, which mattered more than the date.\"",
+        "\"On day three I told my lead it would slip two days, explained why, and offered to cut the export to keep the date.\"",
+        "\"I told the team the estimate had been unrealistic, since I hadn't been part of the planning session for it.\""
+      ],
+      "answer": 2,
+      "why": "Bad news early, with a reason and options, lets others re-plan while there is still time. Working late and revealing the slip on the last day removes every option except \"late\". Delivering late without warning assumes the date did not matter to anyone else. Blaming the estimate may be fair, but it is not ownership of what happens next.",
+      "tags": ["ownership"],
+      "level": 1,
+      "asked": "Managers care less that estimates slip than about when they find out; this is the most common ownership probe."
+    },
+    {
+      "id": "bh-010",
+      "q": "You find a bug in code a colleague wrote. Which answer best demonstrates ownership?",
+      "choices": [
+        "\"I told the colleague it was their code and their bug, so they should fix it when they had time, and moved on.\"",
+        "\"I fixed it quietly in my own branch without mentioning it, since pointing out a mistake can feel awkward.\"",
+        "\"I raised it in the retro as an example of why we need stricter reviews, so that everyone could learn from it.\"",
+        "\"I wrote a failing test, fixed it, and added the colleague as a reviewer with a note on the cause for context.\""
+      ],
+      "answer": 3,
+      "why": "Owning the product means fixing what you find, whoever wrote it, and bringing the author along so they learn the cause. Handing it back as \"their bug\" leaves users exposed while it waits. A silent fix deprives the colleague of the lesson and hides a pattern. Using it as a retro example turns one bug into public blame.",
+      "tags": ["ownership"],
+      "level": 2,
+      "asked": "Tests whether you think in terms of \"our code\" and can fix things without making it personal."
+    },
+    {
+      "id": "bh-011",
+      "q": "Which answer best shows follow-through after an incident review?",
+      "choices": [
+        "\"The postmortem produced five action items that we all agreed mattered, so I'm sure most got done eventually.\"",
+        "\"I suggested a follow-up meeting in a month to discuss whether the action items were still relevant to us.\"",
+        "\"I wrote a detailed postmortem covering every step of the timeline, which the team said was very thorough.\"",
+        "\"I took the alerting action item, gave it a date, shipped it next sprint, and closed the loop in the channel.\""
+      ],
+      "answer": 3,
+      "why": "Follow-through is visible completion: an owner, a date, the thing shipped and people told. \"I'm sure most got done\" admits nobody tracked them. A thorough document is useful, but writing it is not the same as changing anything. Scheduling a meeting to discuss relevance postpones the work and invites it to be dropped.",
+      "tags": ["ownership"],
+      "level": 2,
+      "asked": "Postmortems whose actions never land are a known failure mode; interviewers look for people who close loops."
+    },
+    {
+      "id": "bh-012",
+      "q": "You spot a security hole in a colleague's code that shipped last week. Which answer best demonstrates ownership?",
+      "choices": [
+        "\"I told my lead and the colleague privately that day, checked the logs for abuse, and we paired on a fix.\"",
+        "\"I posted the details in the busy team channel straight away so that everyone could check their own code for it.\"",
+        "\"I left a comment on the merged pull request describing it, so the author would see it when they next logged in.\"",
+        "\"I waited for the next security audit, since the auditors are better placed to judge how serious it really is.\""
+      ],
+      "answer": 0,
+      "why": "A live vulnerability needs the right people told the same day, a check on whether it was exploited, and a fix, handled quietly. Posting details in a busy channel spreads an exploitable weakness further than needed. A comment on a merged PR may not be read for days. Waiting for an audit leaves users exposed for weeks.",
+      "tags": ["ownership"],
+      "level": 3,
+      "asked": "Combines urgency, discretion and teamwork; how you raise it matters as much as that you do."
+    },
+    {
+      "id": "bh-013",
+      "q": "Which answer best shows you can resolve an unclear requirement at the lowest cost?",
+      "choices": [
+        "\"I built what I thought they meant, since asking too many questions makes you look like you don't get it.\"",
+        "\"I waited until the product owner rewrote the ticket in full detail, since a vague ticket wastes time.\"",
+        "\"I built all three interpretations behind feature flags, so whichever they meant would be ready to ship.\"",
+        "\"I wrote down my assumptions and two examples, confirmed them with the product owner, then built it.\""
+      ],
+      "answer": 3,
+      "why": "Writing assumptions down and checking them costs minutes and turns ambiguity into a decision someone signed off. Guessing to avoid looking uninformed risks building the wrong thing. Waiting for a perfect ticket stalls work and pushes your job onto someone else. Building every interpretation triples the work to avoid one conversation.",
+      "tags": ["ambiguity"],
+      "level": 1,
+      "asked": "Real tickets are always vague; interviewers want to hear that you clarify cheaply and early."
+    },
+    {
+      "id": "bh-014",
+      "q": "You join a team whose stack you have never used. Which answer best shows you can get productive fast?",
+      "choices": [
+        "\"I read the official docs cover to cover for two weeks before touching the code, so I understood it first.\"",
+        "\"I asked my manager for a training course first, since learning on the job leads to bad habits later.\"",
+        "\"I rewrote a small service in the stack I already knew to prove it would be faster, then offered to migrate.\"",
+        "\"I picked a small bug in week one, traced it end to end with a teammate, and noted my questions as I went.\""
+      ],
+      "answer": 3,
+      "why": "Learning through a small real change with a guide gives feedback within days and touches the actual codebase and deploy path. Two weeks of reading delays any contribution and teaches the docs, not this code. Rewriting in your old stack avoids learning and creates a second stack to maintain. Waiting for a course puts your ramp-up on someone else's schedule.",
+      "tags": ["ambiguity"],
+      "level": 2,
+      "asked": "Most hires land in an unfamiliar codebase; the interviewer wants a concrete learning method, not enthusiasm."
+    },
+    {
+      "id": "bh-015",
+      "q": "In the interview you are asked a technical question you cannot answer. Which response gives the interviewer the most to assess?",
+      "choices": [
+        "\"I'm not sure. I haven't worked with that, so I can't really say anything useful. Could we move on?\"",
+        "\"I haven't used it, but I'd guess it works like connection pooling; I'd check by reading up and testing it.\"",
+        "\"Great question. It's something every good developer should know, and it's on my list to read up on.\"",
+        "\"Yes, I know that well: it's basically a cache, and we used something like it at my last company.\""
+      ],
+      "answer": 1,
+      "why": "Saying you do not know, then reasoning aloud from something related and naming how you would confirm it, shows how you work on the job. Stopping at \"I don't know\" gives the interviewer nothing to assess. Praising the question fills time without an answer. Bluffing is the worst option, because the follow-up question exposes it and costs your credibility on everything else.",
+      "tags": ["ambiguity"],
+      "level": 1,
+      "asked": "Every interview hits a gap; interviewers are testing honesty and reasoning, not whether you know everything."
+    },
+    {
+      "id": "bh-016",
+      "q": "Which answer best shows you can act on critical feedback?",
+      "choices": [
+        "\"My lead said my PRs were too big. I asked for an example, kept them under 300 lines, and checked back a month on.\"",
+        "\"My lead said my PRs were too big, but I explained the features were complex, and they understood in the end.\"",
+        "\"My lead said my PRs were too big. I thanked them, since feedback is a gift, and I always try to stay open to it.\"",
+        "\"My lead said my PRs were too big, which surprised me, so I asked the rest of the team whether they agreed.\""
+      ],
+      "answer": 0,
+      "why": "Acting on feedback means clarifying it, changing something measurable, and checking whether the change worked. Explaining why the feedback was wrong is defending, not listening. Thanking them and \"staying open\" is the right attitude with no change attached. Polling the team for agreement treats the feedback as a vote rather than information.",
+      "tags": ["feedback"],
+      "level": 1,
+      "asked": "Coachability is one of the main things a behavioural round screens for."
+    },
+    {
+      "id": "bh-017",
+      "q": "Which answer best shows you can give a peer difficult feedback?",
+      "choices": [
+        "\"I mentioned it to our manager for their next one-to-one, since giving that sort of feedback is really their job.\"",
+        "\"I told them privately that in two reviews their comments read as dismissive, quoted one, and asked their intent.\"",
+        "\"I left it, because they are very experienced and I assumed they already knew how their comments came across.\"",
+        "\"I raised review tone in the retro as a general point without naming anyone, so nobody would feel singled out.\""
+      ],
+      "answer": 1,
+      "why": "Good peer feedback is direct, private, specific (a quoted example) and curious about intent. Routing it through the manager avoids the conversation and can feel like a report. Saying nothing assumes they know, which they usually do not. A general retro point without names is so indirect that the person it concerns rarely recognises themselves.",
+      "tags": ["feedback"],
+      "level": 2,
+      "asked": "Mid-level engineers are expected to give feedback, not only receive it; specificity is what interviewers listen for."
+    },
+    {
+      "id": "bh-018",
+      "q": "Which answer best shows mentoring that builds a junior developer's independence?",
+      "choices": [
+        "\"When they got stuck I took the keyboard and fixed it quickly, since that saved time and they could read my commit.\"",
+        "\"I sent them a list of good books and courses, and told them to come to me with any questions about anything.\"",
+        "\"I paired on their first ticket, let them drive the second while I asked questions, and we reviewed each Friday.\"",
+        "\"I reviewed their PRs very thoroughly and left detailed comments on every issue, so they saw every problem at once.\""
+      ],
+      "answer": 2,
+      "why": "Effective mentoring hands over control step by step and builds in regular reflection. Taking the keyboard solves today's problem and teaches dependence. A reading list plus \"ask me anything\" puts all the initiative on the person least able to take it. Exhaustive PR comments are feedback without guidance on what matters most, and often overwhelm.",
+      "tags": ["feedback"],
+      "level": 3,
+      "asked": "Signals readiness for a senior role; the interviewer wants a method, not \"I am always available\"."
+    },
+    {
+      "id": "bh-019",
+      "q": "Asked \"Why do you want to work here?\", which answer shows the most genuine, specific interest?",
+      "choices": [
+        "\"You're a well-known company with a great reputation, and working here would look really good on my CV.\"",
+        "\"I've heard great things about your culture, and the benefits and hybrid working are what I'm after.\"",
+        "\"Your API docs taught me webhooks, and your Postgres migration post is exactly the work I want to do.\"",
+        "\"I'm passionate about technology and love learning new things, so a fast-moving company suits me.\""
+      ],
+      "answer": 2,
+      "why": "A convincing answer names something only this company has and connects it to what you want to do. The reputation-and-CV answer is about what the company does for you. Culture and benefits are generic and true of many employers. Passion for technology could be said to any tech company, so it shows no research at all.",
+      "tags": ["motivation"],
+      "level": 1,
+      "asked": "Checks that you did your homework; a specific reason is easy to prepare and rare to hear."
+    },
+    {
+      "id": "bh-020",
+      "q": "At the end you are invited to ask questions. Which question best helps you judge whether the role suits you?",
+      "choices": [
+        "\"How much holiday do I get, and how soon after starting could I take time off for a trip I've planned?\"",
+        "\"I think you've covered everything really well, thank you, so I don't have any questions right now.\"",
+        "\"What does a typical week look like in this role, and how does work get from a ticket into production?\"",
+        "\"What does your company actually do, and which of its products matter most to the business right now?\""
+      ],
+      "answer": 2,
+      "why": "Asking about the day-to-day and the delivery path tells you about the work, the tooling and the team's maturity, and signals that you are thinking about doing the job. Holiday questions belong to the offer stage. Having no questions reads as low interest. Asking what the company does reveals you did not research it.",
+      "tags": ["motivation"],
+      "level": 2,
+      "asked": "Your questions are assessed too; a good one shows you are evaluating the role, not only hoping to be picked."
+    },
+    {
+      "id": "bh-021",
+      "q": "Two stakeholders each say their request is the most urgent and you can only do one this week. Which answer best shows you can prioritise without simply picking the louder voice?",
+      "choices": [
+        "\"I did the one whose stakeholder had asked first, since first come first served is the fairest rule and avoids arguments.\"",
+        "\"I put both to my lead and the two stakeholders with the cost of each delay, and we agreed which shipped first.\"",
+        "\"I worked evenings to deliver both, since choosing between stakeholders is not really a developer's decision to make.\"",
+        "\"I started both so each stakeholder saw progress, then finished whichever one was closer to done at the end of the week.\""
+      ],
+      "answer": 1,
+      "why": "Prioritising means making the trade-off visible to the people who own it, with the cost of each option, and getting a decision rather than absorbing the conflict. First-come is a rule, not a judgement: it ignores impact entirely. Working evenings hides the capacity problem this week and sets up the same clash next week. Starting both spreads effort so that neither is done, and 'closer to done' is a decision made by accident.",
+      "tags": ["ambiguity"],
+      "level": 2,
+      "asked": "Competing asks are weekly life for a mid-level developer; interviewers want to see the conflict escalated with data, not resolved by fatigue."
+    }
+  ]
+}

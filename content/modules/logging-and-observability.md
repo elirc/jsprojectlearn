@@ -37,6 +37,20 @@ The second one lets you ask "how many order.update.failed events for this
 customer in the last hour, grouped by reason". The first one requires a regex
 and hope.
 
+In .NET the same rule is a classic interview question. `ILogger` takes a
+**message template**, and each placeholder becomes a named, queryable property:
+
+```csharp
+logger.LogInformation("Order {OrderId} shipped to {CustomerId}", orderId, customerId);  // structured
+logger.LogInformation($"Order {orderId} shipped to {customerId}");                      // a flat string
+```
+
+Interpolating throws the structure away and formats the string even when the
+level is disabled. The usual tools: **pino** in Node, **Serilog** (or the
+built-in JSON console logger) in .NET, and **OpenTelemetry** in both, whose
+auto-instrumentation adds traces and metrics for HTTP, database and outgoing
+calls without hand-written code.
+
 **Write to stdout.** The container runtime, systemd or the platform collects it.
 An application managing its own log files and rotation is solving a problem it
 does not have.
@@ -134,6 +148,14 @@ alerts.
 Every alert should have: a clear meaning, an obvious first action, and a real
 consequence if ignored. An alert nobody acts on should be deleted — alert
 fatigue is how the real one gets missed.
+
+**SLIs, SLOs and error budgets** give "symptoms" a number. An **SLI** is a
+measurement of what users experience: the share of requests that succeed in
+under 500 ms, say. An **SLO** is the target for it: 99.9% over 30 days. The
+**error budget** is what is left: 0.1%, about 43 minutes of failure a month.
+Alert when the budget is burning fast, not on every blip; and when it is spent,
+the team slows feature work and fixes reliability. 100% is never the target,
+because every nine costs more than the last.
 
 ## Errors specifically
 

@@ -9,66 +9,74 @@
       "q": "What does this log?",
       "code": "const a = { user: { name: 'Ada' } };\nconst b = { ...a };\nb.user.name = 'Grace';\nconsole.log(a.user.name);",
       "lang": "js",
-      "choices": ["Grace", "Ada", "undefined", "throws"],
-      "answer": 0,
-      "why": "Spread is a shallow copy: `b.user` and `a.user` are the same object. For a real copy use structuredClone(a), or copy each level you intend to change.",
+      "choices": ["Ada", "Grace", "undefined", "throws a TypeError"],
+      "answer": 1,
+      "why": "Spread is a shallow copy: `b.user` and `a.user` are the same object, so the write shows through `a`. 'Ada' is the answer people expect when they think spread copies every level; for that use `structuredClone(a)`, or copy each level you intend to change.",
       "tags": ["copying", "immutability"],
       "level": 1,
-      "asked": "This is the React state bug in its purest form."
+      "asked": "This is the React state bug in its purest form, and the follow-up is always 'so how do you update a nested field correctly?'."
     },
     {
       "id": "jsc-002",
-      "q": "Which produces a new array with an item replaced at index 2, without mutating?",
+      "q": "Which produces a new array with the item at index 2 replaced, leaving `items` untouched?",
       "choices": [
+        "`const copy = items; copy[2] = next;`",
+        "`items.splice(2, 1, next)` and use its return value",
         "`items.map((item, i) => (i === 2 ? next : item))`",
-        "`items[2] = next`",
-        "`items.splice(2, 1, next)`",
-        "`items.fill(next, 2, 3)`"
+        "`items.fill(next, 2, 3)`, since fill returns the array"
       ],
-      "answer": 0,
-      "why": "map returns a new array. Direct assignment, splice and fill all mutate in place — fine for a local array, wrong for anything held as state. Modern engines also offer `items.with(2, next)`.",
+      "answer": 2,
+      "why": "map always returns a new array. `copy = items` copies the reference, not the array; splice mutates and returns the *removed* elements; fill mutates and returns the same array. ES2023 also gives `items.with(2, next)` for exactly this.",
       "tags": ["arrays", "immutability"],
-      "level": 1
+      "level": 1,
+      "asked": "Replacing one row in a list held as state is daily React work; interviewers want the non-mutating version without a pause."
     },
     {
       "id": "jsc-003",
       "q": "What does `reduce` do?",
       "choices": [
-        "Folds an array into a single accumulated value",
-        "Removes elements that fail a test",
-        "Shortens the array to a fixed length",
-        "Sorts and deduplicates"
+        "Removes the elements that fail a predicate",
+        "Shortens the array in place to a given length",
+        "Merges adjacent duplicates into single items",
+        "Folds the array into one accumulated value"
       ],
-      "answer": 0,
-      "why": "reduce((acc, item) => next, initial). It can express map and filter, but if a map or filter says it more clearly, use those instead — readability is the whole point.",
+      "answer": 3,
+      "why": "`reduce((acc, item) => next, initial)` threads an accumulator through every element and returns the final value. Removing elements that fail a test is `filter`. reduce can express map and filter, but use those when they say it more clearly.",
       "tags": ["arrays"],
       "level": 1,
-      "asked": "The follow-up is usually 'implement groupBy with reduce'."
+      "asked": "The follow-up is usually 'implement groupBy with reduce', which shows whether you can actually drive the accumulator."
     },
     {
       "id": "jsc-004",
-      "q": "What does this log?",
-      "code": "const nums = [1, 2, 3];\nconst doubled = nums.map((n) => { n * 2; });\nconsole.log(doubled);",
+      "q": "What does `doubled` contain?",
+      "code": "const nums = [1, 2, 3];\nconst doubled = nums.map((n) => { n * 2; });",
       "lang": "js",
-      "choices": ["[undefined, undefined, undefined]", "[2, 4, 6]", "[1, 2, 3]", "undefined"],
+      "choices": [
+        "Three `undefined` values",
+        "The numbers 2, 4 and 6",
+        "The original numbers 1, 2 and 3",
+        "An empty array, since nothing is returned"
+      ],
       "answer": 0,
-      "why": "The arrow has a block body with no return, so every callback returns undefined. Removing the braces (or adding `return`) fixes it.",
+      "why": "Braces make the arrow a block body, and a block body with no `return` returns undefined, so map collects three undefineds. map still produces one slot per element, which is why it is not empty. Drop the braces or add `return`.",
       "tags": ["arrays", "functions"],
-      "level": 1
+      "level": 1,
+      "asked": "A two-second bug in code review that still costs people ten minutes in the debugger; it checks you read arrow syntax precisely."
     },
     {
       "id": "jsc-005",
-      "q": "How do you deduplicate an array of primitives?",
+      "q": "Which expression removes duplicate numbers from an array?",
       "choices": [
-        "`[...new Set(items)]`",
-        "`items.unique()`",
         "`items.filter(Boolean)`",
-        "`Object.keys(items)`"
+        "`Object.keys(items)`",
+        "`[...new Set(items)]`",
+        "`[...new Map(items)]`"
       ],
-      "answer": 0,
-      "why": "Set keeps insertion order and uses SameValueZero equality. It does not deduplicate objects with equal contents — those are different references, so you need a key function.",
+      "answer": 2,
+      "why": "A Set keeps one of each value (SameValueZero equality) in insertion order, and spreading it back gives an array. `filter(Boolean)` only drops falsy values, `Object.keys` returns the index strings, and `new Map(items)` throws because numbers are not [key, value] entries.",
       "tags": ["set", "arrays"],
-      "level": 1
+      "level": 1,
+      "asked": "The warm-up before the harder follow-up: deduplicating objects, where a Set no longer works."
     },
     {
       "id": "jsc-006",
@@ -77,7 +85,7 @@
       "lang": "js",
       "choices": ["2", "1", "0", "throws"],
       "answer": 0,
-      "why": "Set compares by reference for objects. Two structurally identical literals are different objects. Deduplicate by a key: build a Map keyed on item.id.",
+      "why": "Set compares objects by reference, and two object literals are two different objects even with identical contents. To deduplicate records, key them: `new Map(items.map((i) => [i.id, i]))`.",
       "tags": ["set", "equality"],
       "level": 2,
       "asked": "The natural follow-up to the dedupe question, and it catches a lot of people."
@@ -86,41 +94,43 @@
       "id": "jsc-007",
       "q": "What is the difference between `find` and `filter`?",
       "choices": [
-        "find returns the first matching element or undefined; filter returns an array of all matches",
-        "find mutates, filter does not",
-        "find works on objects, filter on arrays",
-        "They are aliases"
+        "find returns the index of the first match; filter returns the matches",
+        "find throws when nothing matches; filter returns an empty array",
+        "find returns the first match; filter returns an array of all matches",
+        "find returns every match as an iterator; filter returns an array"
       ],
-      "answer": 0,
-      "why": "find short-circuits on the first hit. Using `filter(...)[0]` works but scans the whole array and allocates an array you throw away.",
+      "answer": 2,
+      "why": "find short-circuits and returns the element itself, or undefined when nothing matches; returning the index is `findIndex`. Using `filter(...)[0]` works but scans the whole array and allocates one you throw away.",
       "tags": ["arrays"],
-      "level": 1
+      "level": 1,
+      "asked": "Checks you pick the method that says what you mean, and that you know find returns undefined rather than throwing."
     },
     {
       "id": "jsc-008",
       "q": "What does this log?",
       "code": "console.log(Object.keys({ 2: 'b', 1: 'a', x: 'c' }));",
       "lang": "js",
-      "choices": ["['1', '2', 'x']", "['2', '1', 'x']", "['x', '1', '2']", "['2', '1', 'c']"],
-      "answer": 0,
-      "why": "Integer-like keys come first in ascending numeric order, then string keys in insertion order. This is why you cannot rely on an object to preserve an arbitrary order — use a Map or an array.",
+      "choices": ["['2', '1', 'x']", "['x', '1', '2']", "['1', '2', 'x']", "['2', '1', 'c']"],
+      "answer": 2,
+      "why": "Integer-like keys come first in ascending numeric order, then string keys in insertion order. So insertion order is not preserved for id-like keys; use a Map or an array when order matters.",
       "tags": ["objects", "ordering"],
       "level": 3,
       "asked": "It comes up when someone stores an ordered list in an object keyed by id and the order changes."
     },
     {
       "id": "jsc-009",
-      "q": "How do you safely check whether an object has its own property `key`?",
+      "q": "How do you reliably check whether an object has its own property `key`?",
       "choices": [
-        "`Object.hasOwn(obj, key)`",
         "`obj[key] !== undefined`",
         "`key in obj`",
-        "`obj.hasOwnProperty` called directly on a possibly-null-prototype object"
+        "`obj.hasOwnProperty(key)`",
+        "`Object.hasOwn(obj, key)`"
       ],
-      "answer": 0,
-      "why": "`in` also finds inherited properties. Checking against undefined cannot distinguish a missing key from one explicitly set to undefined. Object.hasOwn works even on objects created with a null prototype.",
+      "answer": 3,
+      "why": "`in` also finds inherited keys, and the undefined check cannot tell a missing key from one set to undefined. `obj.hasOwnProperty` is the tempting one: it throws on `Object.create(null)` objects and can be shadowed by an own `hasOwnProperty` key from parsed input. `Object.hasOwn` (ES2022) has neither problem.",
       "tags": ["objects"],
-      "level": 2
+      "level": 2,
+      "asked": "It separates people who have been bitten by untrusted keys from people who learned the old idiom and stopped there."
     },
     {
       "id": "jsc-010",
@@ -128,13 +138,13 @@
       "code": "const counts = {};\ncounts['__proto__'] = (counts['__proto__'] || 0) + 1;\nconsole.log(counts['__proto__']);",
       "lang": "js",
       "choices": [
-        "An object (the prototype), not 1",
-        "1",
-        "undefined",
-        "throws"
+        "1, because `__proto__` is an ordinary own key",
+        "Object.prototype, because the write is ignored",
+        "NaN, because an object plus 1 is not a number",
+        "undefined, because the setter deletes the key"
       ],
-      "answer": 0,
-      "why": "`__proto__` is an accessor on Object.prototype: assigning a number to it is ignored, and reading it returns the prototype. Counting user-supplied words in a plain object is therefore a real bug — use a Map or Object.create(null).",
+      "answer": 1,
+      "why": "__proto__ is an accessor on Object.prototype. The read returns Object.prototype (truthy, so || 0 never fires), the sum is the string '[object Object]1', and the setter ignores any non-object value, so the key is never written. Node prints that value as [Object: null prototype] {}. A word counter over user input silently breaks on this word; use a Map or Object.create(null).",
       "tags": ["objects", "prototypes"],
       "level": 3,
       "asked": "It is the concrete reason 'use a Map for a lookup keyed by user input' is real advice, not style."
@@ -143,52 +153,55 @@
       "id": "jsc-011",
       "q": "What does `array.flatMap(fn)` do?",
       "choices": [
-        "Maps then flattens one level — useful for map-and-filter in one pass",
-        "Flattens deeply then maps",
-        "Sorts and maps",
-        "Removes null values"
+        "Maps each element, then flattens the result by one level",
+        "Flattens nested arrays fully, then maps each element",
+        "Maps each element and drops any that return null",
+        "Maps each element into a Map keyed by the result"
       ],
       "answer": 0,
-      "why": "Returning `[]` from the callback drops the element and returning `[value]` keeps it, so flatMap expresses 'map some, skip others' without two passes.",
+      "why": "flatMap is `map` followed by `flat(1)`. Returning `[]` from the callback drops an element and returning `[value]` keeps it, so it expresses 'map some, skip others' in one pass. It does not drop null by itself; you return `[]` for that.",
       "tags": ["arrays"],
-      "level": 2
+      "level": 2,
+      "asked": "A signal of fluency with the array API; the strong answer mentions the map-and-filter-in-one-pass use."
     },
     {
       "id": "jsc-012",
       "q": "What does this log?",
       "code": "const arr = [1, 2, 3];\narr.length = 1;\nconsole.log(arr);",
       "lang": "js",
-      "choices": ["[1]", "[1, 2, 3]", "[1, undefined, undefined]", "throws"],
+      "choices": ["[1]", "[1, 2, 3]", "[1, <2 empty items>]", "throws a TypeError"],
       "answer": 0,
-      "why": "length is writable — shrinking it truncates the array in place. Growing it creates holes, which most array methods skip rather than visit.",
+      "why": "`length` is writable, and shrinking it deletes the elements past the new length in place. Holes appear only when you grow `length`, which is where the empty-items output comes from.",
       "tags": ["arrays"],
-      "level": 2
+      "level": 2,
+      "asked": "An old way to clear an array that still shows up in legacy code; knowing it mutates in place matters when that array is shared."
     },
     {
       "id": "jsc-013",
-      "q": "Which is the correct immutable way to add an item to the front of an array?",
+      "q": "Which adds `newItem` to the front of `items` without mutating it?",
       "choices": [
-        "`[newItem, ...items]`",
-        "`items.unshift(newItem)`",
+        "`items.concat(newItem)`",
+        "`[...items].unshift(newItem)`",
         "`items.splice(0, 0, newItem)`",
-        "`items.concat(newItem)`"
+        "`[newItem, ...items]`"
       ],
-      "answer": 0,
-      "why": "unshift and splice mutate. concat appends to the end. Spread with the new item first builds a fresh array in the right order.",
+      "answer": 3,
+      "why": "Spread with the new item first builds a fresh array in the right order. `concat` appends to the end, splice mutates, and `[...items].unshift(newItem)` copies correctly but returns the new *length*, not the array.",
       "tags": ["arrays", "immutability"],
-      "level": 1
+      "level": 1,
+      "asked": "Prepending to a list in React state is common, and the unshift-returns-a-number trap catches people who half know the answer."
     },
     {
       "id": "jsc-014",
       "q": "What is wrong with `JSON.parse(JSON.stringify(obj))` as a deep clone?",
       "choices": [
-        "It loses Dates, Maps, Sets, undefined, functions, and throws on cycles",
-        "It is not deep",
-        "It mutates the original",
-        "Nothing — it is the recommended approach"
+        "It copies only the top level, so nested objects stay shared",
+        "It keeps Dates and Maps but drops every function and symbol",
+        "Dates become strings, Maps and undefined vanish, cycles throw",
+        "It works on anything but is too slow for objects over 1 MB"
       ],
-      "answer": 0,
-      "why": "Dates become strings, undefined-valued keys vanish, Map/Set become {}, and a circular reference throws. `structuredClone` handles all of those (though still not functions).",
+      "answer": 2,
+      "why": "The round trip only survives what JSON can express: Dates become ISO strings, Map and Set become `{}`, undefined-valued keys disappear and a cycle throws. It is deep, which is why people trust it. `structuredClone` handles Dates, Maps, Sets and cycles (not functions).",
       "tags": ["copying"],
       "level": 2,
       "asked": "Everyone has used this trick; the question is whether you know its limits."
@@ -198,40 +211,42 @@
       "q": "What does this log?",
       "code": "console.log([1, 2, 3].includes(NaN), [NaN].includes(NaN), [NaN].indexOf(NaN));",
       "lang": "js",
-      "choices": ["false true -1", "false false -1", "false true 0", "true true 0"],
-      "answer": 0,
+      "choices": ["false false -1", "false true 0", "true true 0", "false true -1"],
+      "answer": 3,
       "why": "includes uses SameValueZero, which treats NaN as equal to itself. indexOf uses strict equality, and NaN !== NaN, so it can never find one.",
       "tags": ["arrays", "equality"],
-      "level": 3
+      "level": 2,
+      "asked": "A quick check that you know the array methods do not all share one equality rule."
     },
     {
       "id": "jsc-016",
-      "q": "How do you group an array of objects by a field?",
+      "q": "Which groups `items` into lists keyed by `type`?",
       "choices": [
-        "`Object.groupBy(items, (item) => item.type)` — or a reduce into a Map",
-        "`items.groupBy('type')`",
-        "`items.sort((a, b) => a.type)`",
-        "`new Set(items.map((i) => i.type))`"
+        "`items.groupBy((item) => item.type)`",
+        "`Object.groupBy(items, (item) => item.type)`",
+        "`Object.fromEntries(items.map((i) => [i.type, i]))`",
+        "`new Map(items.map((item) => [item.type, item]))`"
       ],
-      "answer": 0,
-      "why": "Object.groupBy (and Map.groupBy) are the modern built-ins. Before them the idiom was a reduce that pushes into `acc[key] ??= []` — worth being able to write from memory.",
+      "answer": 1,
+      "why": "`Object.groupBy` (ES2024, Node 21+) returns `{ [type]: item[] }`. The fromEntries and Map versions build a key per type but keep only the *last* item for each. The array method was proposed and renamed to a static for web compatibility, so `items.groupBy` does not exist.",
       "tags": ["arrays", "objects"],
       "level": 2,
-      "asked": "A very common live-coding warm-up."
+      "asked": "A very common live-coding warm-up; the follow-up is to write it with reduce and `acc[key] ??= []`."
     },
     {
       "id": "jsc-017",
       "q": "What is the difference between `Object.entries` and `Object.getOwnPropertyNames`?",
       "choices": [
-        "entries gives enumerable string-keyed pairs; getOwnPropertyNames includes non-enumerable keys",
-        "entries includes inherited properties",
-        "They are the same",
-        "getOwnPropertyNames returns values"
+        "entries includes inherited keys; getOwnPropertyNames only own ones",
+        "entries skips non-enumerable keys; getOwnPropertyNames includes them",
+        "entries includes symbol keys; getOwnPropertyNames only string ones",
+        "entries returns only values; getOwnPropertyNames returns key names"
       ],
-      "answer": 0,
-      "why": "Both look only at own properties, but entries skips non-enumerable ones and returns [key, value] pairs. Neither sees symbol keys.",
+      "answer": 1,
+      "why": "Both look only at own string keys. entries skips non-enumerable ones and returns [key, value] pairs; getOwnPropertyNames returns names including non-enumerable ones (such as an array's `length`). Neither sees symbol keys, and `Object.values` is the values-only one.",
       "tags": ["objects"],
-      "level": 3
+      "level": 2,
+      "asked": "Enumerability explains why some properties vanish from spreads, logs and JSON; this is the entry point to that conversation."
     },
     {
       "id": "jsc-018",
@@ -240,7 +255,7 @@
       "lang": "js",
       "choices": ["true", "false", "throws", "undefined"],
       "answer": 0,
-      "why": "sort mutates and returns the same array reference. So `const sorted = state.sort()` mutates your state and hands you the same object back — which React will then think is unchanged.",
+      "why": "sort mutates and returns the same array reference. So `const sorted = state.sort()` mutates your state and hands the same object back, which React then treats as unchanged. `toSorted()` (ES2023) returns a copy.",
       "tags": ["arrays", "immutability"],
       "level": 2,
       "asked": "A great one-liner for testing whether someone understands referential equality."
@@ -249,90 +264,212 @@
       "id": "jsc-019",
       "q": "When would you use a `WeakMap` over a `Map`?",
       "choices": [
-        "To attach data to objects without preventing them from being garbage collected",
-        "When you need it to be faster",
-        "When keys are strings",
-        "When you need to iterate the entries"
+        "To attach data to objects without keeping them from being collected",
+        "To look up string keys faster than a Map once the table grows large",
+        "To store entries that you need to iterate later in insertion order",
+        "To hold keys by value, so that mutating a key object cannot affect it"
       ],
       "answer": 0,
-      "why": "WeakMap holds keys weakly, so an entry disappears when nothing else references the key object. That is why it cannot be iterated or sized — and why it is right for caches and private data keyed by instance.",
+      "why": "A WeakMap holds its keys weakly: an entry disappears once nothing else references the key object. That is also why it only accepts objects as keys and cannot be iterated or sized, which rules out the string-key and iteration uses.",
       "tags": ["map", "memory"],
       "level": 3,
-      "asked": "A memory-leak question in disguise."
+      "asked": "A memory-leak question in disguise: per-object caches in a plain Map keep every object alive."
     },
     {
       "id": "jsc-020",
       "q": "What does this log?",
       "code": "const rows = [{ n: 1 }, { n: 2 }];\nconst copy = rows.map((row) => row);\ncopy[0].n = 99;\nconsole.log(rows[0].n);",
       "lang": "js",
-      "choices": ["99", "1", "undefined", "throws"],
-      "answer": 0,
+      "choices": ["1", "undefined", "throws", "99"],
+      "answer": 3,
       "why": "map creates a new array but copies the same references into it. To copy each row too: `rows.map((row) => ({ ...row }))`.",
       "tags": ["copying", "arrays"],
       "level": 2,
-      "asked": "The 'I did copy it' bug — the array is new, the contents are not."
+      "asked": "The 'I did copy it' bug: the array is new, the contents are not."
     },
     {
       "id": "jsc-021",
-      "q": "What is the result?",
+      "q": "The first line logs 6. What does the second line do?",
       "code": "console.log([1, 2, 3].reduce((a, b) => a + b));\nconsole.log([].reduce((a, b) => a + b));",
       "lang": "js",
       "choices": [
-        "6, then a TypeError",
-        "6, then 0",
-        "6, then undefined",
-        "Both throw"
+        "Logs 0, the sum of nothing",
+        "Throws a TypeError",
+        "Logs undefined",
+        "Logs an empty array"
       ],
-      "answer": 0,
-      "why": "reduce with no initial value on an empty array throws 'Reduce of empty array with no initial value'. Always pass the initial value — it also fixes the type when the accumulator differs from the elements.",
+      "answer": 1,
+      "why": "Without an initial value, reduce uses the first element as the accumulator, and an empty array has none, so it throws 'Reduce of empty array with no initial value'. It cannot know 0 is the identity for your callback. Always pass the initial value; it also fixes the accumulator's type.",
       "tags": ["arrays", "edge-cases"],
-      "level": 2
+      "level": 2,
+      "asked": "A total over a filtered list that happens to be empty is a classic production crash."
     },
     {
       "id": "jsc-022",
-      "q": "Which comparison correctly sorts objects by a date field, newest first?",
+      "q": "Each item's `date` is a `Date`. Which returns the items newest first without mutating `items`?",
       "choices": [
-        "`items.sort((a, b) => b.date - a.date)` with Date values",
-        "`items.sort((a, b) => a.date > b.date)`",
-        "`items.sort((a, b) => b.date.localeCompare(a.date))` for Date objects",
-        "`items.sort().reverse()`"
+        "`items.toSorted((a, b) => a.date > b.date)`",
+        "`items.toSorted((a, b) => b.date - a.date)`",
+        "`items.sort((a, b) => b.date - a.date)`",
+        "`items.toSorted((a, b) => b.date.localeCompare(a.date))`"
       ],
-      "answer": 0,
-      "why": "A comparator must return a number: negative, zero or positive. Returning a boolean coerces to 0 or 1 and never says 'a before b', so the sort is unstable garbage. Dates subtract cleanly because they coerce to timestamps.",
+      "answer": 1,
+      "why": "A comparator must return a number; Dates subtract cleanly to milliseconds. A boolean coerces to 0 or 1 and never says 'a before b', so the order is wrong. `sort` mutates `items`, and Dates have no `localeCompare` (that works on ISO strings). `toSorted` is ES2023.",
       "tags": ["arrays", "sort"],
       "level": 2,
       "asked": "Returning a boolean from a comparator is a surprisingly common bug that mostly works on small arrays."
     },
     {
       "id": "jsc-023",
-      "q": "What does destructuring with a rest element do?",
+      "q": "What is `rest` after this line?",
       "code": "const { id, ...rest } = { id: 1, a: 2, b: 3 };",
       "lang": "js",
       "choices": [
-        "rest is a new object { a: 2, b: 3 } — a shallow copy without id",
-        "rest is an array [2, 3]",
-        "rest is the original object",
-        "It throws"
+        "An array of the remaining values, `[2, 3]`",
+        "A new object, `{ a: 2, b: 3 }`",
+        "The original object with `id` deleted",
+        "A copy of everything, `{ id: 1, a: 2, b: 3 }`"
       ],
-      "answer": 0,
-      "why": "This is the idiomatic 'omit a key' operation, and it is also how React components forward unknown props: `const { className, ...rest } = props`.",
+      "answer": 1,
+      "why": "Object rest collects the remaining own enumerable properties into a new object, a shallow copy without `id`; the source is not modified. Array rest is what gives an array. It is the idiomatic 'omit a key', and how components forward props: `const { className, ...rest } = props`.",
       "tags": ["destructuring", "objects"],
-      "level": 1
+      "level": 1,
+      "asked": "Everyday syntax in React code; the interviewer wants 'new object, source untouched'."
     },
     {
       "id": "jsc-024",
-      "q": "Why can two structurally identical objects fail an equality check?",
+      "q": "Why does `{ a: 1 } === { a: 1 }` evaluate to false?",
       "choices": [
-        "=== compares object identity, not contents",
-        "Because of key ordering",
-        "Because of prototype differences only",
-        "They cannot — JavaScript compares contents"
+        "`===` compares object references, not contents",
+        "`===` only compares contents for frozen objects",
+        "The literals get different hidden prototypes",
+        "Number values inside objects are compared as strings"
       ],
       "answer": 0,
-      "why": "Every object literal creates a new reference. Comparing contents means writing a deep-equal, or comparing a canonical key. This is also why an inline object as a React dependency re-triggers an effect on every render.",
+      "why": "Every object literal creates a new object, and `===` (and `==`) compare objects by identity. Comparing contents means a deep-equal or a canonical key. It is also why an inline object in a React dependency array re-runs the effect every render.",
       "tags": ["equality", "references"],
       "level": 1,
       "asked": "It links directly to the React useEffect dependency question."
+    },
+    {
+      "id": "jsc-025",
+      "q": "What does this log (Node 20+)?",
+      "code": "const a = [3, 1, 2];\nconst b = a.toSorted();\nconst c = a.with(0, 9);\nconsole.log(a, b, c);",
+      "lang": "js",
+      "choices": [
+        "[1, 2, 3] [1, 2, 3] [9, 2, 3]",
+        "[3, 1, 2] [1, 2, 3] [9, 1, 2]",
+        "[9, 1, 2] [1, 2, 3] [9, 1, 2]",
+        "[3, 1, 2] [1, 2, 3] [9, 3, 1, 2]"
+      ],
+      "answer": 1,
+      "why": "`toSorted` and `with` (ES2023) are the copying versions of `sort` and index assignment: each returns a new array and leaves `a` alone. `with(0, 9)` replaces index 0; it does not insert. `toReversed` and `toSpliced` complete the set.",
+      "tags": ["arrays", "immutability"],
+      "level": 2,
+      "asked": "These methods exist precisely for immutable state updates; knowing them signals current JavaScript, not 2015 JavaScript."
+    },
+    {
+      "id": "jsc-026",
+      "q": "What does this log?",
+      "code": "const a = [1, , 3];\nlet calls = 0;\na.forEach(() => calls++);\nconsole.log(calls, a.length);",
+      "lang": "js",
+      "choices": ["3 3", "2 2", "2 3", "3 2"],
+      "answer": 2,
+      "why": "`[1, , 3]` has a hole at index 1: the length is 3 but there is no element there. forEach, map, filter and reduce skip holes, while `for...of` and `Array.from` visit them as undefined. Holes also come from `new Array(n)` and from growing `length`.",
+      "tags": ["arrays", "edge-cases"],
+      "level": 3,
+      "asked": "It explains the classic `new Array(5).map(...)` does-nothing bug, which is the practical version of this question."
+    },
+    {
+      "id": "jsc-027",
+      "q": "Which returns a new object with every value of `prices` doubled?",
+      "choices": [
+        "`Object.entries(prices).map(([k, v]) => ({ [k]: v * 2 }))`",
+        "`Object.fromEntries(Object.entries(prices).forEach(([k, v]) => [k, v * 2]))`",
+        "`Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, v * 2]))`",
+        "`Object.keys(prices).map((k) => ({ k: prices[k] * 2 }))`"
+      ],
+      "answer": 2,
+      "why": "entries turns the object into [key, value] pairs, map transforms them, and fromEntries (ES2019) builds a new object. The forEach version passes undefined to fromEntries and throws; the other two return arrays of one-key objects, and `{ k: ... }` uses the literal key 'k'.",
+      "tags": ["objects", "arrays"],
+      "level": 2,
+      "asked": "Transforming a keyed object is a constant chore with API payloads; this idiom is the one reviewers expect."
+    },
+    {
+      "id": "jsc-028",
+      "q": "Which expression builds `[0, 1, 2, 3, 4]`?",
+      "choices": [
+        "`new Array(5).map((_, i) => i)`",
+        "`Array.of(5).map((_, i) => i)`",
+        "`Array.from(5, (_, i) => i)`",
+        "`Array.from({ length: 5 }, (_, i) => i)`"
+      ],
+      "answer": 3,
+      "why": "`Array.from` accepts any array-like, and `{ length: 5 }` is one, so the map function runs for each index. `new Array(5)` is five holes, which `map` skips; `Array.of(5)` is `[5]`; and a number is not array-like, so `Array.from(5)` is `[]`.",
+      "tags": ["arrays"],
+      "level": 1,
+      "asked": "Building a range for pagination buttons or test fixtures comes up constantly, and the `new Array(n).map` trap is common."
+    },
+    {
+      "id": "jsc-029",
+      "q": "An order has no items yet. What does this log?",
+      "code": "const items = [];\nconsole.log(items.every((i) => i.shipped), items.some((i) => i.shipped));",
+      "lang": "js",
+      "choices": ["false false", "true true", "false true", "true false"],
+      "answer": 3,
+      "why": "`every` on an empty array is true (no element fails) and `some` is false (no element passes). So an 'all items shipped' badge lights up on an empty order unless you also check `items.length > 0`.",
+      "tags": ["arrays", "edge-cases"],
+      "level": 2,
+      "asked": "Empty-collection edge cases are where validation and status logic go wrong; interviewers use this to see if you think about them."
+    },
+    {
+      "id": "jsc-030",
+      "q": "What happens when a `forEach` callback runs `return` on the first invalid row?",
+      "choices": [
+        "It stops the loop, like `break` in a for loop",
+        "It skips that row and moves on to the next one",
+        "It stops the loop and forEach returns that row",
+        "It throws, because forEach callbacks cannot return"
+      ],
+      "answer": 1,
+      "why": "`return` only ends that one call of the callback; forEach keeps calling it for every element and always returns undefined. To stop early use `for...of` with `break`, or `some`/`find`, which stop at the first truthy result.",
+      "tags": ["arrays", "functions"],
+      "level": 1,
+      "asked": "It checks that you understand forEach is a function call per element, not loop syntax."
+    },
+    {
+      "id": "jsc-031",
+      "q": "What does this log?",
+      "code": "const cache = { users: new Map([['u1', 'Ada']]) };\nconsole.log(JSON.stringify(cache));",
+      "lang": "js",
+      "choices": [
+        "{\"users\":{\"u1\":\"Ada\"}}",
+        "{\"users\":{}}",
+        "{\"users\":[[\"u1\",\"Ada\"]]}",
+        "TypeError: cannot serialise a Map"
+      ],
+      "answer": 1,
+      "why": "JSON.stringify only serialises own enumerable properties, and a Map keeps its entries internally, so it becomes `{}` silently. Convert first: `Object.fromEntries(map)` for an object or `[...map]` for pairs.",
+      "tags": ["map", "objects"],
+      "level": 2,
+      "asked": "Caching or sending a Map over the wire and getting `{}` back is a real bug; this checks you would know why."
+    },
+    {
+      "id": "jsc-032",
+      "q": "What does this log?",
+      "code": "const defaults = { page: 1, size: 20 };\nconst query = { size: undefined };\nconsole.log({ ...defaults, ...query });",
+      "lang": "js",
+      "choices": [
+        "{ page: 1, size: 20 }",
+        "{ page: 1, size: undefined }",
+        "{ page: 1, size: null }",
+        "{ page: 1 }"
+      ],
+      "answer": 1,
+      "why": "Spread copies every own enumerable property, including ones whose value is undefined, so the later `size: undefined` overwrites the default. Destructuring defaults skip undefined; spread does not. Strip undefined keys first or merge with `??`.",
+      "tags": ["objects", "copying"],
+      "level": 3,
+      "asked": "Merging defaults with parsed query options is everywhere, and this is how a page size silently becomes undefined."
     }
   ]
 }

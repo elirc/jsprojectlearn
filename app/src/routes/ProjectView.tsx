@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { loadDoc, TRACK_LABEL } from '../lib/content.ts';
-import { highlight, normaliseLang } from '../lib/highlight.ts';
+import CodeBlock from '../components/CodeBlock.tsx';
+import CopyButton from '../components/CopyButton.tsx';
+import StepBar, { usePathSteps } from '../components/StepBar.tsx';
+import { loadDoc, runCommands, TRACK_LABEL } from '../lib/content.ts';
+import { normaliseLang } from '../lib/highlight.ts';
 import { useAsync } from '../lib/hooks.ts';
 import { renderMarkdown } from '../lib/markdown.ts';
-import type { Content } from '../lib/types.ts';
+import { useContent } from '../lib/content-context.ts';
 
 /** Docs read in a deliberate order, so the tabs are ordered too. */
 const DOC_ORDER = ['LEARN.md', 'README.md', 'PRACTICE.md', 'SOLUTION.md'];
@@ -15,20 +18,22 @@ const DOC_LABEL: Record<string, string> = {
   'SOLUTION.md': 'Solutions',
 };
 
-export default function ProjectView({ content }: { content: Content }) {
+export default function ProjectView() {
+  const content = useContent();
   const { track, name } = useParams();
   const project = content.projects.find((p) => p.id === `${track}/${name}`);
   const [tab, setTab] = useState<string | undefined>(undefined);
+  const pathSteps = usePathSteps(project ? { kind: 'build', project: project.id } : undefined);
 
   const tabs = useMemo(() => {
     if (!project) return [];
-    const docs = [...project.docs].sort(
-      (a, b) => docRank(a) - docRank(b) || a.localeCompare(b),
-    );
+    const docs = [...project.docs].sort((a, b) => docRank(a) - docRank(b) || a.localeCompare(b));
     return [...docs, ...project.sources.map((s) => s.path)];
   }, [project]);
 
-  const active = tab ?? tabs[0];
+  // A tab this project doesn't have (state carried over from another
+  // project) must fall back to the first one rather than 404.
+  const active = tab && tabs.includes(tab) ? tab : tabs[0];
 
   if (!project) {
     return (
@@ -41,6 +46,8 @@ export default function ProjectView({ content }: { content: Content }) {
     );
   }
 
+  const commands = runCommands(project);
+
   return (
     <div className="page stack stack-4">
       <header className="page-head">
@@ -51,32 +58,29 @@ export default function ProjectView({ content }: { content: Content }) {
         </div>
         <h1>{project.title}</h1>
         <p className="lede">{project.blurb}</p>
-        <div className="banner" style={{ marginTop: 14 }}>
-          <strong>Run it locally.</strong>{' '}
-          <span className="mono">
-            {project.track === 'csharp'
-              ? `dotnet run --project ${project.dir}/refactored`
-              : project.track === 'react'
-                ? `open ${project.dir}/original.html`
-                : `node ${project.dir}/original.js`}
-          </span>
-          {project.hasTests && (
-            <>
-              {' · tests: '}
-              <span className="mono">
-                {project.track === 'csharp'
-                  ? `dotnet run --project ${project.dir}/refactored -- test`
-                  : `node --test ${project.dir}/`}
-              </span>
-            </>
-          )}
-        </div>
+        {commands.length > 0 && (
+          <div className="banner run-it mt-3">
+            <strong>Run it locally</strong>
+            <span className="faint"> — from the repo root</span>
+            {commands.map((command) => (
+              <div key={command.label} className="cmd">
+                <span className="cmd-label">{command.label}</span>
+                <code className="mono">{command.cmd}</code>
+                <CopyButton text={command.cmd} label={command.label} />
+              </div>
+            ))}
+          </div>
+        )}
       </header>
 
-      <div className="tabs">
+      <StepBar steps={pathSteps} />
+
+      <div className="tabs" role="tablist" aria-label="Project files">
         {tabs.map((file) => (
           <button
             key={file}
+            role="tab"
+            aria-selected={active === file}
             className={`tab${active === file ? ' active' : ''}`}
             onClick={() => setTab(file)}
           >
@@ -85,7 +89,15 @@ export default function ProjectView({ content }: { content: Content }) {
         ))}
       </div>
 
-      {active && <FileView repoPath={`${project.dir}/${active}`} baseDir={project.dir} />}
+      {active && (
+        <div role="tabpanel">
+          <FileView
+            repoPath={`${project.dir}/${active}`}
+            baseDir={project.dir}
+            routePath={`/project/${project.id}`}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -95,30 +107,35 @@ function docRank(file: string): number {
   return index === -1 ? DOC_ORDER.length : index;
 }
 
-export function FileView({ repoPath, baseDir }: { repoPath: string; baseDir?: string }) {
-  const state = useAsync(() => loadDoc(repoPath), [repoPath]);
+export function FileView({
+  repoPath,
+  baseDir,
+  routePath,
+}: {
+  repoPath: string;
+  baseDir?: string;
+  routePath?: string;
+}) {
+  const state = useAsync(repoPath, () => loadDoc(repoPath));
+  const data = state.status === 'ready' ? state.data : undefined;
+  const html = useMemo(
+    () => (data !== undefined && repoPath.endsWith('.md') ? renderMarkdown(data, { baseDir, routePath }) : ''),
+    [data, repoPath, baseDir, routePath],
+  );
 
   if (state.status === 'loading') return <div className="empty">Loading…</div>;
   if (state.status === 'error') {
-    return <div className="banner">Could not load {repoPath}: {state.error.message}</div>;
-  }
-
-  if (repoPath.endsWith('.md')) {
     return (
-      <article
-        className="prose"
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(state.data, { baseDir }) }}
-      />
+      <div className="banner">
+        Could not load {repoPath}: {state.error.message}
+      </div>
     );
   }
 
+  if (repoPath.endsWith('.md')) {
+    return <article className="prose" dangerouslySetInnerHTML={{ __html: html }} />;
+  }
+
   const ext = repoPath.split('.').pop() ?? '';
-  return (
-    <figure className="code">
-      <figcaption>{repoPath}</figcaption>
-      <pre>
-        <code dangerouslySetInnerHTML={{ __html: highlight(state.data, normaliseLang(ext)) }} />
-      </pre>
-    </figure>
-  );
+  return <CodeBlock code={state.data} lang={normaliseLang(ext)} caption={repoPath} />;
 }

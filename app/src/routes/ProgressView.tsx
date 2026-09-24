@@ -1,15 +1,20 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { allQuestions } from '../lib/content.ts';
-import { useProgress } from '../lib/hooks.ts';
+import Heatmap from '../components/Heatmap.tsx';
+import { useNow, useProgress } from '../lib/hooks.ts';
+import { currentStreak, dayKey } from '../lib/progress.ts';
 import { overallCompletion, stageCompletion } from '../lib/selectors.ts';
 import { accuracyOf, topicStats } from '../lib/session.ts';
-import type { Content } from '../lib/types.ts';
+import { useContent } from '../lib/content-context.ts';
+import ProgressBar from '../components/ProgressBar.tsx';
+import Stat from '../components/Stat.tsx';
 
-export default function ProgressView({ content }: { content: Content }) {
+export default function ProgressView() {
+  const content = useContent();
   const progress = useProgress();
-  const questions = useMemo(() => allQuestions(content), [content]);
-  const stats = useMemo(() => topicStats(questions, progress), [questions, progress]);
+  const questions = content.questions;
+  const now = useNow();
+  const stats = useMemo(() => topicStats(questions, progress, now), [questions, progress, now]);
   const overall = overallCompletion(content.roadmap, progress);
 
   const answered = stats.reduce((n, s) => n + s.seen, 0);
@@ -25,43 +30,31 @@ export default function ProgressView({ content }: { content: Content }) {
       </header>
 
       <div className="stat-row">
-        <div className="stat">
-          <b>{Math.round(overall.ratio * 100)}%</b>
-          <span>path complete</span>
-        </div>
-        <div className="stat">
-          <b>{answered === 0 ? '—' : `${Math.round((correct / answered) * 100)}%`}</b>
-          <span>drill accuracy</span>
-        </div>
-        <div className="stat">
-          <b>{mastered}</b>
-          <span>questions locked in</span>
-        </div>
-        <div className="stat">
-          <b>{progress.streak.current}</b>
-          <span>day streak</span>
-        </div>
+        <Stat value={`${Math.round(overall.ratio * 100)}%`} label="path complete" />
+        <Stat value={answered === 0 ? '—' : `${Math.round((correct / answered) * 100)}%`} label="drill accuracy" />
+        <Stat value={mastered} label="questions locked in" />
+        <Stat value={currentStreak(progress.streak, dayKey(now))} label="day streak" />
       </div>
 
       <section>
+        <h2>Activity</h2>
+        <Heatmap activity={progress.activity} now={now} />
+      </section>
+
+      <section>
         <h2>By stage</h2>
-        <div style={{ marginTop: 12 }}>
+        <div className="mt-3">
           {content.roadmap.stages.map((stage) => {
             const completion = stageCompletion(stage, progress);
             return (
               <div key={stage.id} className="topic-row">
                 <Link to={`/path/${stage.id}`}>
-                  <span className="faint mono" style={{ marginRight: 8 }}>
+                  <span className="faint mono mr-2">
                     L{stage.level}
                   </span>
                   {stage.title}
                 </Link>
-                <div className="bar">
-                  <i
-                    style={{ width: `${Math.round(completion.ratio * 100)}%` }}
-                    className={completion.ratio === 1 ? 'good' : ''}
-                  />
-                </div>
+                <ProgressBar percent={Math.round(completion.ratio * 100)} good={completion.ratio === 1} label={`${stage.title} progress`} />
                 <span className="mono faint">
                   {completion.done}/{completion.total}
                 </span>
@@ -73,27 +66,22 @@ export default function ProgressView({ content }: { content: Content }) {
 
       <section>
         <h2>By topic</h2>
-        <p className="faint" style={{ marginTop: 4 }}>
+        <p className="faint mt-1">
           Accuracy across every drill answer. A topic with a low bar and a high “due” count is the
           one to open next.
         </p>
-        <div style={{ marginTop: 12 }}>
+        <div className="mt-3">
           {stats.map((stat) => (
             <div key={stat.topic} className="topic-row">
               <div>
                 <Link to={`/drill/mixed?topic=${encodeURIComponent(stat.topic)}&count=15`}>
                   {stat.topic}
                 </Link>
-                <span className="faint" style={{ marginLeft: 10 }}>
-                  {stat.due} due of {stat.total}
+                <span className="faint ml-2">
+                  {stat.due} due · {stat.fresh} new of {stat.total}
                 </span>
               </div>
-              <div className="bar">
-                <i
-                  style={{ width: `${Math.round(accuracyOf(stat) * 100)}%` }}
-                  className={accuracyOf(stat) > 0.75 ? 'good' : ''}
-                />
-              </div>
+              <ProgressBar percent={Math.round(accuracyOf(stat) * 100)} good={accuracyOf(stat) > 0.75} label={`${stat.topic} accuracy`} />
               <span className="mono faint">
                 {stat.seen === 0 ? '—' : `${Math.round(accuracyOf(stat) * 100)}%`}
               </span>
@@ -107,24 +95,20 @@ export default function ProgressView({ content }: { content: Content }) {
         {recent.length === 0 ? (
           <p className="faint">No drills yet. <Link to="/drill">Start one.</Link></p>
         ) : (
-          <div style={{ marginTop: 12 }}>
+          <div className="mt-3">
             {recent.map((session) => (
-              <div key={session.at} className="topic-row" style={{ gridTemplateColumns: '1fr 120px 62px' }}>
+              <div key={session.at} className="topic-row session-row">
                 <div>
-                  <span className="mono faint" style={{ marginRight: 10 }}>
+                  <span className="mono faint mr-2">
                     {new Date(session.at).toLocaleDateString(undefined, {
                       month: 'short',
                       day: 'numeric',
                     })}
                   </span>
-                  {session.deck}
+                  {session.deck === 'mixed' ? 'Mixed' : (content.decks.find((d) => d.id === session.deck)?.title ?? session.deck)}
+                  {session.mode === 'mock' && <span className="pill accent ml-2">Mock</span>}
                 </div>
-                <div className="bar">
-                  <i
-                    style={{ width: `${(session.correct / session.asked) * 100}%` }}
-                    className={session.correct / session.asked > 0.75 ? 'good' : ''}
-                  />
-                </div>
+                <ProgressBar percent={(session.correct / session.asked) * 100} good={session.correct / session.asked > 0.75} label="Session score" />
                 <span className="mono faint">
                   {session.correct}/{session.asked}
                 </span>

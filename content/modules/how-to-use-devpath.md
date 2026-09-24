@@ -6,8 +6,8 @@ filter to the orders table and make it stick when the user reloads" and you
 ship it without supervision. On JavaScript/TypeScript with React and Node, or
 on C# with ASP.NET Core. Often both.
 
-This page explains how to actually use the app so the next 300 hours aren't
-wasted.
+This page explains how to actually use the app so the next few hundred hours
+aren't wasted.
 
 ## The three kinds of work
 
@@ -55,10 +55,11 @@ slowly. You do not have to manage any of this. Just do the "due" drills.
 
 ## How much, how often
 
-The whole path is roughly **250–300 hours** of focused work. That is:
+The whole path is **about 300–370 hours** of focused work: nearer 300 with one
+backend stack, nearer 370 with both. That is:
 
-- 3 months at 20 hours a week
-- 6 months at 10 hours a week
+- About 4 months at 20 hours a week
+- About 8 months at 10 hours a week
 - Longer than any bootcamp promises and shorter than most people take
 
 **Daily minimum that actually works:** one drill session (5 minutes) plus one
@@ -70,20 +71,28 @@ week, because spaced repetition is doing half the work and it needs the spacing.
 
 ## The order
 
-Stages 0–3 are strictly sequential. The React track assumes stage 2 (the DOM
-without a framework), and the TypeScript track assumes stage 1 (functions and
-data modelling). Skipping ahead to React because it is the fun part is the most
-common way people stall six weeks later.
+Stages are named by title here rather than number, because the path grows and
+numbers shift; the Path page shows each stage's title and tagline, and the
+taglines tell you which stages are optional for your stack.
 
-After stage 5 you have a choice:
+Everything up to and including "React" is strictly sequential. React assumes
+"The browser, without a framework" (the DOM without a framework), and
+TypeScript assumes "Code that survives contact with a team" (functions and data
+modelling). Skipping ahead to React because it is the fun part is the most
+common way people stall six weeks later. "React in a real codebase" follows
+React.
 
-- **Going for a JS/TS job:** stages 6 and 8, then stage 7 if you have time.
-  Node backends and deployment are what you will be asked about.
-- **Going for a .NET job:** stage 7 immediately after stage 5, then 6 and 8.
-  About half the CRUD jobs on the market are .NET jobs and the field is less
-  crowded.
-- **Not sure:** do stage 6 then 7. Being credible in both is a genuinely strong
-  position and the concepts transfer almost completely.
+After React you have a choice. Everyone does **"The backend, in concepts"** — it
+is short, stack-neutral, and every backend interview draws on it.
+
+- **JS/TS job:** then "The backend, in Node", "Backend systems", "Shipping". Do
+  .NET if you have time.
+- **.NET job:** then "C# and ASP.NET Core" straight away, skipping the Node
+  stage. The app's "next step" will keep suggesting the Node stage — ignore it
+  and pick steps from the Path page until you are past it. The C# projects
+  mention their JS twins ("js#65 in C#"); you do not need to have done them,
+  LEARN.md teaches each from scratch.
+- **Not sure:** Node, then .NET. Being credible in both is a strong position.
 
 ## What "mid-level" actually means
 
@@ -100,7 +109,8 @@ them:
 4. **You know the boundaries of what you know.** "I haven't used that, here's
    how I'd approach it" beats a confident wrong answer every single time.
 
-Stage 8 exists because the fourth one is a skill you can practise.
+The "Shipping and being interviewed" stage exists because the fourth one is a
+skill you can practise.
 
 ## What this path deliberately skips
 
@@ -114,8 +124,9 @@ do it after this, not instead of it.
 
 ## When you are ready to apply
 
-You are ready earlier than you think. Concretely: **after stage 6** (or stage 7)
-you can do the job. Stage 8 makes you better at proving it.
+You are ready earlier than you think. Concretely: **after either backend stage**
+you can do the job. "Shipping and being interviewed" makes you better at proving
+it.
 
 A reasonable signal: you can hold 80%+ accuracy on a 40-question mixed mock
 drill, and you have two capstone projects you can talk about for ten minutes

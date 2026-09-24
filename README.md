@@ -2,7 +2,7 @@
 
 **An interactive upskilling app that takes you from your first line of code to a
 hireable mid-level CRUD web developer** — on JavaScript, TypeScript, React and
-Node, and on C# with ASP.NET Core.
+Node, and on C# with ASP.NET Core — with a journal that carries on to senior.
 
 ```bash
 npm install
@@ -13,17 +13,19 @@ That opens the app. Everything below is the content it runs on.
 
 ## What it is
 
-A **9-stage roadmap** (46 modules, ~278 hours) that sequences 233 hands-on
-projects, 22 written guides and **450 interview drill questions** into one
-ordered path, and tracks your progress through it.
+A **12-stage roadmap** (63 modules, 283 steps, ~346 hours) that sequences 234
+hands-on projects, 37 written guides and **1,043 interview drill questions** into
+one ordered path, tracks your progress through it, and tells you what to do today.
 
 | | |
 |---|---|
-| **The path** | Levels 0–8, in order. Each module says why it exists and what interviewers ask about it. |
-| **Drills** | Rapid-fire multiple choice with spaced repetition. Wrong answers come back sooner; solid ones get spaced out. 17 decks across JS, TS, React, Node, C#, .NET, SQL, HTTP, auth, testing, Git and debugging. |
-| **Projects** | 233 build-it-then-refactor-it exercises, readable in the app or straight off disk. |
-| **Guides** | The material with no project attached: HTTP, SQL, REST design, auth, EF Core, Docker, CI/CD, observability, and an interview playbook. |
-| **Progress** | Per-stage completion, per-topic accuracy, streaks. Stored in your browser; exportable. |
+| **Today** | One card: the reviews that are due, a handful of new questions from topics you have reached, and the next step on the path. "Welcome back" after a gap. |
+| **The path** | Levels 0–11, in order. Each module says why it exists and what interviewers ask about it. Mark steps done from the page you did them on. |
+| **Drills** | Rapid-fire multiple choice with spaced repetition. Modes: today, due, new, missed, saved, and a 40-question timed **mock interview** with no feedback until the end and a readiness verdict. Save a question with `S`. |
+| **Projects** | 234 build-it-then-refactor-it exercises, readable in the app with copyable run commands. |
+| **Guides** | 37 guides on the material no project covers: HTTP, REST design, SQL, data modelling, EF Core, auth, security, DI, async in C#, testing in both stacks, background jobs, integrations, system design, architecture, Docker, CI/CD, observability, debugging, and the interview playbook. |
+| **Progress** | Per-stage completion, per-topic accuracy, a 12-week activity heatmap, streaks. Stored in your browser, versioned, exportable. |
+| **[Upskilling journal](upskilling/)** | For after the path: nine case studies drawn from decisions made in this very repo, ten chapters on how seniors work, a competency matrix, a 90-day plan, templates and worked examples. |
 
 **Deliberately not here:** LeetCode and DSA grinding. Nothing asks you to invert
 a binary tree. The drills are what teams actually ask about — how HTTP works,
@@ -32,29 +34,39 @@ why your effect runs twice, what a scoped DI lifetime is, why the API is doing
 
 ## The stages
 
-| Level | Stage | You can… |
-|-------|-------|----------|
-| 0 | Programming, actually | Read a short program and predict what it prints |
-| 1 | Code that survives a team | Split pure logic from side effects, and prove it with tests |
-| 2 | The browser, without a framework | Explain what React actually buys you |
-| 3 | Async and the network | Debug a race condition on purpose |
-| 4 | TypeScript | Type an API boundary and narrow a union exhaustively |
-| 5 | React | Defend every render, with no effect races or leaks |
-| 6 | The backend, in Node | Design an API a frontend team would have to consume |
-| 7 | C# and ASP.NET Core | Discuss DI lifetimes, the pipeline and EF Core without bluffing |
-| 8 | Shipping and being interviewed | Take a broken system you didn't write and make progress |
+| Level | Stage | You are done when… |
+|-------|-------|--------------------|
+| 0 | Programming, actually | You can read a short program and predict what it prints |
+| 1 | Code that survives contact with a team | You split pure logic from side effects, and write the test before the fix |
+| 2 | The browser, without a framework | You can explain what React actually buys you, because you did it by hand |
+| 3 | Async and the network | You can explain the event loop and debug a race condition on purpose |
+| 4 | TypeScript | You can type an API boundary and narrow a union exhaustively |
+| 5 | React | You can defend every render, with no effect races or leaks |
+| 6 | React in a real codebase | You know what TanStack Query, React 19 actions and Testing Library each replace |
+| 7 | The backend, in concepts | You can defend an endpoint design, write the JOIN it needs, and explain its login — in either stack |
+| 8 | The backend, in Node | You can design the API a frontend team would have to consume |
+| 9 | C# and ASP.NET Core | You can discuss DI lifetimes, the pipeline and EF Core without bluffing |
+| 10 | Backend systems, either stack | You can design a CRUD system on a whiteboard, including what not to build yet |
+| 11 | Shipping and being interviewed | You can take a broken system you didn't write and make progress |
+
+Going .NET-first? Do "The backend, in concepts" (it is stack-neutral), then jump
+straight to "C# and ASP.NET Core" — the app's "next step" will keep pointing at the
+Node stage; ignore it and pick from the Path page. The how-to guide inside the app
+explains the choice.
 
 ## Repository layout
 
 ```
-app/          the Vite + React + TypeScript application
+app/          the Vite + React 19 + TypeScript application
 content/
   roadmap.json    the curriculum — stages, modules, steps
-  questions/      17 interview drill decks (450 questions)
-  modules/        22 long-form guides
+  questions/      34 interview drill decks (1,043 questions)
+  modules/        37 long-form guides
+upskilling/   the junior → senior journal (case studies, chapters, plan, templates)
 scripts/
-  build-content.mjs   indexes the repo into the app's content
-01-85/        the JavaScript track
+  build-content.mjs    indexes the repo into the app's content, validates it
+  check-questions.mjs  the question-bank quality gate
+01-86/        the JavaScript track (86 includes a real SQL database via node:sqlite)
 react/        the React track (60 projects)
 typescript/   the TypeScript track (52 projects)
 csharp/       the C# / .NET track (36 projects)
@@ -62,17 +74,31 @@ csharp/       the C# / .NET track (36 projects)
 
 The repo is the source of truth. `scripts/build-content.mjs` discovers every
 project, bundles the decks and guides, and **fails the build** if the roadmap
-points at a project, deck or guide that does not exist.
+points at a project, deck, guide, document anchor or tag pool that does not exist,
+if a module id repeats, or if the question bank fails its quality gate.
+
+### The quality gate
+
+The first version of the bank had a tell: in 91% of questions the correct choice
+was the longest one, so you could score ~90% by always picking the long option.
+`scripts/check-questions.mjs` now fails any deck where that holds for more than
+40% of questions, any question whose correct choice is over twice the median wrong
+one, decks with under 60% "why interviewers ask this" notes, empty difficulty
+levels, and copy-pasted stems across decks. It runs inside `npm run content`.
 
 ## Commands
 
 ```bash
 npm run dev        # the app, with content regenerated first
 npm run build      # production build into app/dist
-npm run content    # regenerate the content index only
-npm test           # 2,552 tests: every project suite + the app's own
+npm run content    # regenerate and validate the content index
+npm test           # every project suite + the app's own unit and jsdom smoke tests
+npm run lint       # ESLint (typescript-eslint + react-hooks)
 npm run typecheck  # the TypeScript track and the app
+node scripts/check-questions.mjs [deck-id ...]   # the quality gate, on its own
 ```
+
+CI runs all of those on every push and pull request (`.github/workflows/ci.yml`).
 
 ## Working without the app
 
@@ -86,12 +112,12 @@ its lessons, and literally import some of its code.
 
 | Track | Projects | Focus |
 |-------|----------|-------|
-| **JavaScript** (this page, below) | 01–85 | Fundamentals, refactoring, state, architecture, async, servers |
+| **JavaScript** (this page, below) | 01–86 | Fundamentals, refactoring, state, architecture, async, servers, a real database |
 | **[React](react/)** | react/01–60 | Components, hooks, effects, performance, patterns, accessibility |
 | **[TypeScript](typescript/)** | typescript/01–52 | Types that make wrong programs fail to compile |
 | **[C# / .NET](csharp/)** | csharp/01–36 | The same lessons in C#, then fullstack web dev with ASP.NET Core |
 
-## The JavaScript track (85 projects)
+## The JavaScript track (86 projects)
 
 Every folder contains:
 
@@ -106,7 +132,7 @@ wrong with it, then read the refactor and the README.
 ## How to run things
 
 - Node projects: `node 01-fizzbuzz/original.js`, `node 01-fizzbuzz/refactored/cli.js`
-- Tests (Node 20+): `node --test 01-fizzbuzz/` or `npm test` for everything
+- Tests (Node 24): `node --test "01-fizzbuzz/**/*.test.js"` or `npm test` for everything
 - HTML projects: double-click the `.html` file, or open it in a browser
 
 ## The curriculum
@@ -255,6 +281,7 @@ wrong with it, then read the refactor and the README.
 | 83 | [Event-sourcing bank](83-event-sourcing-bank/) | Mutable balance vs an append-only event log + projections |
 | 84 | [Worker pool](84-worker-pool/) | CPU work freezing the event loop vs worker_threads |
 | 85 | [Streaming log parser](85-streaming-log-parser/) | readFileSync memory spikes vs streams + readline |
+| 86 | [SQLite orders](86-sqlite-orders/) | Real SQL with `node:sqlite`, zero installs: constraints, transactions, N+1 vs JOIN, keyset pagination, parameterised queries |
 
 ## Beyond the project folders
 

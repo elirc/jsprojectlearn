@@ -1,0 +1,470 @@
+{
+  "id": "react-ecosystem",
+  "topic": "React ecosystem",
+  "title": "The React ecosystem",
+  "blurb": "Routing, server-state caches, form libraries, client state stores and what React 19 and server components change, at the level interviewers probe.",
+  "questions": [
+    {
+      "id": "re-001",
+      "q": "In a router with nested routes, what does a shared parent layout route give you when the user moves between its child routes?",
+      "choices": [
+        "Each child route is split into its own bundle automatically, with no configuration",
+        "The layout stays mounted and keeps its state while only the child segment is swapped",
+        "The parent route refetches its data on every child navigation, so it is never stale",
+        "Each child's loader data is kept once loaded, so moving between siblings never refetches it"
+      ],
+      "answer": 1,
+      "why": "The router renders the layout once and places the matched child in its outlet, so a sidebar, open panels or scroll position survive navigation between siblings. Each child still runs its own loader when it becomes active, and code splitting per route is a separate opt-in (lazy routes), not something nesting does for you.",
+      "tags": [
+        "routing"
+      ],
+      "level": 1,
+      "asked": "It checks that you have built a real multi-screen app rather than one page with conditional rendering."
+    },
+    {
+      "id": "re-002",
+      "q": "On the URL `/products/42?tab=reviews`, why is the product id a path param while the tab is a search param?",
+      "choices": [
+        "Path params are encrypted in transit, while search params are sent to the server in plain text",
+        "Search params cannot hold numbers, so numeric identifiers have to be placed in the path instead",
+        "The id says which resource the page shows; the tab is an optional view setting on that resource",
+        "Path params survive a back-button press, while search params are dropped from browser history"
+      ],
+      "answer": 2,
+      "why": "The path identifies the resource, so the route cannot render without it; search params are optional, have defaults and describe how to view it. Both travel in the same URL, so neither is more private: HTTPS encrypts the whole request line, and both are kept in history.",
+      "tags": [
+        "routing"
+      ],
+      "level": 1,
+      "asked": "Interviewers use it to see whether you design URLs deliberately instead of stuffing everything into one of the two."
+    },
+    {
+      "id": "re-003",
+      "q": "A parent route and its child route each need data. What does fetching in route loaders change compared with fetching in each component's effect?",
+      "choices": [
+        "Loaders run only on the server, so the fetch no longer costs the browser any time",
+        "Loaders cache every response indefinitely, so a second visit never hits the network",
+        "Loaders run after the first paint, so the page can show its loading spinner sooner",
+        "The loaders for both routes start in parallel at navigation, before either renders"
+      ],
+      "answer": 3,
+      "why": "A router with loaders knows every matched route as soon as the URL changes, so it can start all their requests together before rendering. Effects run only after their component renders, so a child cannot start fetching until its parent has fetched and rendered: a waterfall. Loaders run in the browser in a client-rendered app (React Router is an example).",
+      "tags": [
+        "routing",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "The waterfall is the concrete cost of fetch-on-render, and naming it is what separates using loaders from understanding them."
+    },
+    {
+      "id": "re-004",
+      "q": "Why does this route guard check `loading` before checking `user`?",
+      "code": "function RequireAuth({ children }) {\n  const { user, loading } = useSession();\n  if (loading) return <Spinner />;\n  if (!user) return <Navigate to=\"/login\" replace />;\n  return children;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Without it, a signed-in user who refreshes is sent to login before the session loads",
+        "Without it, the redirect runs during render and the router throws an error at runtime",
+        "Without it, the protected API calls in `children` start before the token is validated",
+        "Without it, the spinner never appears, because `user` is always set on the first render"
+      ],
+      "answer": 0,
+      "why": "On a hard refresh the session is restored asynchronously, so `user` is briefly null for everyone; redirecting then bounces signed-in users to the login page. The guard only controls which screens render: the API must still reject requests without a valid session, because client code can be bypassed.",
+      "tags": [
+        "routing",
+        "auth"
+      ],
+      "level": 2,
+      "asked": "The refresh-bounces-to-login bug is a common real one, and a strong answer adds that the server, not the guard, is the security boundary."
+    },
+    {
+      "id": "re-005",
+      "q": "A user opens `/orders/999`, which matches the `/orders/:id` route, but the loader finds no such order. How should the route respond?",
+      "choices": [
+        "Let the catch-all `*` route handle it, since the URL did not match any real order",
+        "Signal not-found from the loader so the route's error element renders a 404 view",
+        "Render the order page with empty fields so the layout does not shift for the user",
+        "Redirect to the home page so the user never lands on an error screen at all"
+      ],
+      "answer": 1,
+      "why": "A catch-all route only handles URLs that match no route pattern; `/orders/999` matches `/orders/:id`, so the missing record has to be reported by that route. Throwing a not-found response from the loader lets its error boundary show a 404 with a way back, rather than a blank form or a confusing redirect.",
+      "tags": [
+        "routing",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "It separates \"unknown URL\" from \"unknown record\", which is where many apps show a blank page or a crash."
+    },
+    {
+      "id": "re-006",
+      "q": "Two components on the same screen read the current user through a server-state cache using the same key. What happens when they mount together?",
+      "choices": [
+        "Two requests are sent, one per component, and the later response overwrites the first",
+        "The second component waits until the first one unmounts before it starts its own fetch",
+        "One request is sent, and both components render from the same cached entry",
+        "Each component keeps a private copy of the response that can drift out of sync"
+      ],
+      "answer": 2,
+      "why": "A server-state cache (TanStack Query and SWR are examples) stores entries by key and deduplicates in-flight requests, so both subscribers share one request and one entry. Hand-rolled fetches in each component give you the two-request, two-copy behaviour the distractors describe.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 1,
+      "asked": "Deduplication is the first concrete reason to adopt a cache, and interviewers want it named rather than \"it is easier\"."
+    },
+    {
+      "id": "re-007",
+      "q": "Switching `status` from \"open\" to \"shipped\" keeps showing open orders. Why?",
+      "code": "function OrderList({ status }) {\n  const { data } = useServerQuery(['orders'], () =>\n    fetchOrders(status),\n  );\n  return <OrderTable rows={data} />;\n}",
+      "lang": "jsx",
+      "choices": [
+        "The fetcher closes over the first `status` value and never reads the new prop",
+        "The cache ignores prop changes until the browser window regains focus",
+        "`status` has to be copied into state before the cache can observe it",
+        "The key omits `status`, so both filters share one cached entry"
+      ],
+      "answer": 3,
+      "why": "A server-state cache identifies data by its key alone; if the key is just the list name, every filter value maps to the same entry and no new fetch is triggered. Put every input the fetcher uses into the key, for example the list name plus `status`. The fetcher is recreated each render, so a stale closure is not the problem.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 2,
+      "asked": "Missing key parts is the most common server-cache bug in code review, so interviewers show it and wait for you to spot it."
+    },
+    {
+      "id": "re-008",
+      "q": "A component mounts and a server-state cache already holds a stale entry for its key. What does stale-while-revalidate do?",
+      "choices": [
+        "Renders the cached data at once and refetches in the background, then swaps in the result",
+        "Shows a loading state until the refetch completes, then renders only the fresh data",
+        "Renders the cached data and skips any refetch until the entry is garbage collected",
+        "Discards the stale entry, refetches, and renders nothing until the new data arrives"
+      ],
+      "answer": 0,
+      "why": "Stale means \"may be out of date\", not \"unusable\": the user sees the last known data instantly while a background request brings it up to date. Blocking on a spinner throws away the cache's main UX benefit, and never refetching would leave the data stale indefinitely.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 1,
+      "asked": "The term comes from HTTP caching, and knowing that it applies to both shows you understand the idea rather than one library."
+    },
+    {
+      "id": "re-009",
+      "q": "After a mutation that adds an order succeeds, the order list still shows the old rows. What is the usual fix with a server-state cache?",
+      "choices": [
+        "Call the list fetcher from the mutation and keep its result in local component state",
+        "Invalidate the orders keys so mounted lists refetch and others refetch on next use",
+        "Set the list's freshness time to zero so it refetches on every single render",
+        "Reload the page after the mutation so the whole cache is rebuilt from scratch"
+      ],
+      "answer": 1,
+      "why": "Invalidating marks every matching entry stale and refetches the ones in use, so all screens showing orders update from one line. A freshness time of zero does not refetch on each render; it only makes the next mount or focus trigger a fetch, so the list on screen stays wrong.",
+      "tags": [
+        "server-state",
+        "mutations"
+      ],
+      "level": 2,
+      "asked": "Interviewers ask it to see whether you keep the server as the source of truth instead of patching copies by hand."
+    },
+    {
+      "id": "re-010",
+      "q": "A cache entry has a 1-minute freshness time and a 5-minute garbage-collection time. Its only component unmounts and mounts again 3 minutes later. What happens?",
+      "choices": [
+        "A loading state shows, because the entry was removed when its last user unmounted",
+        "The cached data renders and no request is sent, since the entry is still cached",
+        "The cached data renders at once, and a background refetch starts because it is stale",
+        "A loading state shows, because the entry turned stale after a minute and was discarded"
+      ],
+      "answer": 2,
+      "why": "Freshness (`staleTime` in TanStack Query) decides when data needs refetching; garbage collection (`gcTime`) decides how long an unused entry is kept in memory. After 3 minutes the entry is stale but still cached, so it renders immediately and refetches. Stale data is not discarded; only unused data past the GC time is.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 3,
+      "asked": "Confusing the two timers is common, and a strong answer explains which one to raise for data that rarely changes."
+    },
+    {
+      "id": "re-011",
+      "q": "Why does this optimistic update cancel in-flight fetches for the key before writing to the cache?",
+      "code": "async function addTodoOptimistic(cache, todo) {\n  await cache.cancelQueries(['todos']);\n  const previous = cache.getData(['todos']);\n  cache.setData(['todos'], (old) => [...old, todo]);\n  return previous; // restored if the mutation fails\n}",
+      "lang": "js",
+      "choices": [
+        "A cache refuses writes to a key while a fetch for the same key is still pending",
+        "Cancelling marks the key as fresh, so the list is not refetched after the mutation",
+        "Cancelling frees the network connection, so the mutation request is sent sooner",
+        "An older fetch could resolve after the write and overwrite the optimistic list"
+      ],
+      "answer": 3,
+      "why": "A refetch that started before the mutation carries the old server list; if it resolves after the optimistic write, it silently removes the new item. Cancelling closes that race, the saved `previous` value is the rollback, and invalidating on settle brings in the real server state.",
+      "tags": [
+        "server-state",
+        "mutations"
+      ],
+      "level": 3,
+      "asked": "Anyone can define an optimistic update; explaining the cancel, snapshot and rollback steps shows you have shipped one."
+    },
+    {
+      "id": "re-012",
+      "q": "Why do many form libraries register inputs as uncontrolled by default?",
+      "choices": [
+        "Typing updates the DOM without re-rendering the whole form on each keystroke",
+        "Native browser validation only works on inputs that React does not control",
+        "Controlled inputs cannot take default values that arrive from the server",
+        "Uncontrolled inputs keep their values after the form component unmounts"
+      ],
+      "answer": 0,
+      "why": "With controlled inputs every keystroke sets state in the form component, so the form and all its fields re-render; uncontrolled inputs keep the value in the DOM and the library reads it through refs when needed. React Hook Form is the usual example. Native validation works on both kinds, and both lose their values on unmount.",
+      "tags": [
+        "forms",
+        "re-renders"
+      ],
+      "level": 2,
+      "asked": "It tests whether you know the cost model behind a library choice rather than only its API."
+    },
+    {
+      "id": "re-013",
+      "q": "What is the main reason to share one validation schema between the form and the API handler?",
+      "choices": [
+        "The server can skip its own checks, because the client has already run the same schema",
+        "The rules live in one place, so client and server cannot drift apart on what is valid",
+        "The browser enforces the schema on requests, so users cannot bypass the form anymore",
+        "The schema moves validation work off the server, which lowers its response times"
+      ],
+      "answer": 1,
+      "why": "Writing the rules once (for example a Zod schema imported by both sides) means a new constraint cannot be added to one side and forgotten on the other. The server still has to validate, because anyone can send a request without your form.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 1,
+      "asked": "The follow-up is always \"so can the server trust the client?\", and the answer must be no."
+    },
+    {
+      "id": "re-014",
+      "q": "The rows show inputs A, B and C. What do the inputs show after clicking the first Remove button?",
+      "code": "function LineItems({ items, onRemove }) {\n  return items.map((item, i) => (\n    <div key={i}>\n      <input defaultValue={item.name} />\n      <button onClick={() => onRemove(i)}>Remove</button>\n    </div>\n  ));\n}",
+      "lang": "jsx",
+      "choices": [
+        "B and C, because the row for A is removed from the list",
+        "A and B, because rows 0 and 1 keep their existing inputs",
+        "B and B, because each row re-reads `defaultValue` once",
+        "A, B and C, because uncontrolled inputs ignore removals"
+      ],
+      "answer": 1,
+      "why": "With index keys, React sees keys 0 and 1 still present and key 2 gone, so it deletes the last row and keeps the first two DOM inputs; `defaultValue` only applies on mount, so they still show A and B. Field arrays give each row a stable generated id to use as the key for exactly this reason.",
+      "tags": [
+        "forms"
+      ],
+      "level": 3,
+      "asked": "Dynamic line items are in most CRUD apps, and this bug ships because it only appears after a removal."
+    },
+    {
+      "id": "re-015",
+      "q": "The API rejects a form submission with a 422 and a list of per-field errors. What should the form do?",
+      "choices": [
+        "Clear only the invalid fields so the user can retype those values from scratch",
+        "Retry the request automatically, because a 422 is usually a transient server fault",
+        "Map each error onto its field and keep all entered values so the user can resubmit",
+        "Reset the form and show a generic error toast so the user can start over cleanly"
+      ],
+      "answer": 2,
+      "why": "A 422 means the request was understood but the data broke a rule, so retrying sends the same invalid data. Form libraries let you set server errors on named fields, which keeps the submit state honest and the user's work intact; clearing fields throws away input the user must then retype.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 2,
+      "asked": "Handling the server's answer is the half of form work that tutorials skip, and interviewers know it."
+    },
+    {
+      "id": "re-016",
+      "q": "Which of these is client state rather than server state?",
+      "choices": [
+        "The orders list for the signed-in user",
+        "The current user's profile and roles",
+        "The number of unread notifications",
+        "Whether the sidebar is collapsed"
+      ],
+      "answer": 3,
+      "why": "Server state is owned by the backend and only cached in the browser, so it can go stale and needs refetching; the sidebar flag exists only in this browser. Keeping the two apart lets a server-state cache handle the first group and a small store or local state handle the rest.",
+      "tags": [
+        "client-state"
+      ],
+      "level": 1,
+      "asked": "The split explains why modern apps need far less global store than older Redux apps did."
+    },
+    {
+      "id": "re-017",
+      "q": "Why does `CartBadge` re-render when the theme changes, and what fixes it?",
+      "code": "const useStore = createStore((set) => ({\n  user: null, cart: [], theme: 'light',\n  setTheme: (theme) => set({ theme }),\n}));\nfunction CartBadge() {\n  const state = useStore();\n  return <span>{state.cart.length}</span>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Stores re-render every subscriber on change; wrap `CartBadge` in `React.memo`",
+        "It subscribes to the whole store; select only `cart.length` to narrow updates",
+        "The store is recreated on each render; move `createStore` out of the component",
+        "Theme changes re-render the entire tree; move the theme into a context instead"
+      ],
+      "answer": 1,
+      "why": "Called without a selector, the hook returns the whole state object, which changes on every update, so the component re-renders for any field. A selector such as `(s) => s.cart.length` makes it re-render only when that value changes. `React.memo` cannot help, because the re-render comes from the component's own subscription, not from its props.",
+      "tags": [
+        "client-state",
+        "re-renders"
+      ],
+      "level": 2,
+      "asked": "Selectors are what make a store scale, and Zustand and Redux Toolkit users are expected to explain them."
+    },
+    {
+      "id": "re-018",
+      "q": "Your fetch wrapper must clear the session whenever any request returns 401. Why is a module-level store easier to use here than React context?",
+      "choices": [
+        "Context values are reset whenever a request fails, so the session is lost anyway",
+        "A store saves itself to local storage, so the session survives a reload by default",
+        "A store can be read and updated from plain modules; context only inside components",
+        "Context can hold only primitive values, so a session object needs a store instead"
+      ],
+      "answer": 2,
+      "why": "A store such as Zustand or Redux Toolkit lives outside the component tree and exposes get and set functions any module can call, and components subscribed to it re-render. Context is read through a hook, so non-React code such as a fetch wrapper cannot reach it without awkward plumbing. Persistence is an opt-in middleware, not a default.",
+      "tags": [
+        "client-state",
+        "auth"
+      ],
+      "level": 2,
+      "asked": "It moves the store-versus-context debate from taste to a concrete capability."
+    },
+    {
+      "id": "re-019",
+      "q": "You persist a store to local storage. After a release renames a field, some returning users crash on load. What prevents this?",
+      "choices": [
+        "Clear local storage on every page load so outdated data can never be read back in",
+        "Use session storage instead, because browsers clear it whenever a new build ships",
+        "Wrap the whole app in an error boundary that retries the render after a crash",
+        "Version the persisted shape and migrate or discard saved data from older versions"
+      ],
+      "answer": 3,
+      "why": "Persisted state outlives your code, so an old shape meets new code that expects the renamed field. Storing a version and a migration step (persist middleware in Zustand and redux-persist both support this) upgrades or drops old data. Clearing on every load defeats persisting at all, and session storage is cleared per tab session, not per deploy.",
+      "tags": [
+        "client-state"
+      ],
+      "level": 3,
+      "asked": "It is a production-experience signal: people who have persisted state have usually been bitten by this once."
+    },
+    {
+      "id": "re-020",
+      "q": "In React 19, which of these can a Server Component do?",
+      "choices": [
+        "Read from the database directly and pass the result to children as props",
+        "Hold state with `useState` and update it when the user clicks a button",
+        "Attach an `onClick` handler that runs on the server when it is clicked",
+        "Run an effect after hydration to measure the size of a rendered element"
+      ],
+      "answer": 0,
+      "why": "Server Components run only on the server (or at build time) and send their rendered output, so they can use server resources such as a database but have no state, effects or event handlers. Interactivity lives in Client Components marked with \"use client\"; server-side work triggered by a click is a Server Function, not an `onClick` on a Server Component.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 1,
+      "asked": "It is the entry question on Server Components, checking you know what runs where."
+    },
+    {
+      "id": "re-021",
+      "q": "In React 19, what is wrong with this Server Component?",
+      "code": "import LikeButton from './LikeButton'; // has 'use client'\n\nexport default async function ProductPage({ id }) {\n  const product = await db.products.find(id);\n  return <LikeButton product={product} onLiked={() => log(id)} />;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Server Components cannot be `async`, so the `await` must move into an effect",
+        "A Server Component cannot import a Client Component, only the other way round",
+        "It passes an ordinary function to a Client Component, which cannot be serialised",
+        "The `product` object reaches the client, so the query runs a second time there"
+      ],
+      "answer": 2,
+      "why": "Props crossing from server to client must be serialisable, and a plain closure is not; only functions marked \"use server\" (Server Functions) can be passed, as references. Async Server Components and server-imports-client are both normal, and `product` is sent as data, not re-queried.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 3,
+      "asked": "Serialisation at the boundary is where people who have only read about Server Components get stuck."
+    },
+    {
+      "id": "re-022",
+      "q": "In React 19 apps, which rendering mode is cheapest to serve and fastest for a marketing page whose content changes once a week and must be indexed?",
+      "choices": [
+        "Client-side rendering, with the content fetched after the JavaScript has loaded",
+        "Server rendering on every request, so each visitor sees the most recent copy",
+        "Streaming server rendering, with the page content inside a Suspense boundary",
+        "Static generation at build time, rebuilt and redeployed when the content changes"
+      ],
+      "answer": 3,
+      "why": "Content that changes weekly gains nothing from being rendered per request: static HTML from a CDN is the cheapest and fastest option and is fully indexable. Server rendering is right when content is per-user or changes constantly, and client-side rendering delays the content until JavaScript runs.",
+      "tags": [
+        "react19",
+        "ssr"
+      ],
+      "level": 1,
+      "asked": "The criterion matters more than the acronym, and interviewers want you to pick by how often the data changes."
+    },
+    {
+      "id": "re-023",
+      "q": "In React 19 with server rendering, why does this component cause a hydration error?",
+      "code": "function Footer() {\n  return <p>Rendered at {new Date().toLocaleTimeString()}</p>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "The server and the browser render different times, so the markup does not match",
+        "`toLocaleTimeString` does not exist in Node, so the server render throws an error",
+        "Dates cannot be serialised into HTML, so the server sends an empty paragraph",
+        "StrictMode renders it twice in development, so the two client times differ"
+      ],
+      "answer": 0,
+      "why": "Hydration expects the first client render to produce the same markup as the server HTML; a clock, a random id or a locale-dependent format differs, so React 19 reports the mismatch and re-renders that tree on the client. Render such values after mount (an effect) or mark the node with `suppressHydrationWarning`.",
+      "tags": [
+        "react19",
+        "ssr"
+      ],
+      "level": 2,
+      "asked": "Hydration errors are the first bug anyone meets after adding server rendering, so interviewers ask for causes and fixes."
+    },
+    {
+      "id": "re-024",
+      "q": "In React 19, what does `saveProfile` receive when this form is submitted?",
+      "code": "const [state, formAction, isPending] =\n  useActionState(saveProfile, { error: null });\nreturn (\n  <form action={formAction}>\n    <input name=\"email\" />\n    <button disabled={isPending}>Save</button>\n  </form>\n);",
+      "lang": "jsx",
+      "choices": [
+        "The submit event, and it must call `preventDefault` on it itself",
+        "The previous state and then the form's `FormData` object",
+        "Only the `FormData`, because the hook keeps the previous state",
+        "An object of field values keyed by each input's `name` attribute"
+      ],
+      "answer": 1,
+      "why": "An action passed to `useActionState` is called as `(previousState, formData)`, and whatever it returns becomes the new `state`; `isPending` is true while it runs. React handles the submit event, so there is nothing to `preventDefault`, and you read fields with `formData.get(\"email\")`.",
+      "tags": [
+        "react19"
+      ],
+      "level": 2,
+      "asked": "Actions change how forms are written in React 19, and the argument order trips up people who have only skimmed the release notes."
+    },
+    {
+      "id": "re-025",
+      "q": "In React 19, the user clicks Like and `likeProduct` rejects. What does the button show once the action has settled?",
+      "code": "const [likes, addLike] = useOptimistic(product.likes, (n) => n + 1);\nasync function like() {\n  addLike();\n  try { await likeProduct(product.id); } catch { toast('Like failed'); }\n}\n// <form action={like}><button>Like {likes}</button></form>",
+      "lang": "jsx",
+      "choices": [
+        "`product.likes` again, because the optimistic value is dropped as soon as the action settles",
+        "The optimistic count, until the next successful action replaces it with a server value",
+        "The optimistic count, because only another `addLike` call can change what the hook returns",
+        "`undefined`, because the failed action never returned a new value for the hook to render"
+      ],
+      "answer": 0,
+      "why": "`useOptimistic` shows the optimistic value only while the action is pending; when the action finishes, whether it resolved or threw, React re-renders from the real `product.likes`. That is also why a successful action must update the source (refetch or set state) or the count snaps back. The rollback is automatic, which is what separates it from a hand-rolled optimistic update.",
+      "tags": [
+        "react19",
+        "mutations"
+      ],
+      "level": 2,
+      "asked": "It checks whether you know the hook's contract, especially that the optimistic value disappears the moment the action settles."
+    }
+  ]
+}

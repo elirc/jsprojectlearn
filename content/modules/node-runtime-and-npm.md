@@ -68,12 +68,28 @@ Friction to expect:
 
 - `__dirname` and `__filename` do not exist in ESM. Use
   `import.meta.dirname` (modern Node) or derive from `import.meta.url`.
-- ESM can import CommonJS. CommonJS importing ESM needs dynamic `import()`.
+- ESM can import CommonJS, and since Node 22.12 / 20.19 CommonJS can
+  `require()` ESM too, unflagged (and warning-free in Node 24). The one
+  exception: an ES module graph with top-level `await` still throws
+  `ERR_REQUIRE_ASYNC_MODULE`, and needs dynamic `import()`.
 - Static imports are what make tree shaking possible, and they enable top-level
   `await`.
 
 Prefix built-ins with `node:` (`node:fs`, `node:path`). It is unambiguous and
 cannot be shadowed by a package.
+
+## What Node 24 does that used to need a package
+
+- **`.env` files:** `node --env-file=.env server.js`, or
+  `process.loadEnvFile()` in code. dotenv is no longer required.
+- **TypeScript type stripping:** `node server.ts` runs by default in Node 24
+  (and 22.18+). It erases annotations and does **no type-checking**, and it only
+  handles erasable syntax: no `enum`, no parameter properties, no namespaces
+  with runtime code. `tsc --noEmit` still runs in CI.
+- **SQLite:** `node:sqlite` ships in the box (`DatabaseSync`), unflagged,
+  still marked experimental — enough for scripts, tests and small tools.
+- **`fetch`, `node --test` and `node --watch`** are built in, which covers what
+  node-fetch, a test runner and nodemon used to.
 
 ## Streams
 
@@ -160,9 +176,15 @@ An **unhandled promise rejection** terminates the process by default since Node
 **Graceful shutdown** matters more than people expect:
 
 ```js
+import { promisify } from 'node:util';
+
 process.on('SIGTERM', async () => {
-  server.close();                 // stop accepting new connections
-  await drainInFlightRequests();
+  // A stuck request must not block the rolling deploy forever
+  setTimeout(() => process.exit(1), 10_000).unref();
+  // Stop accepting; resolves once in-flight requests have finished
+  const closed = promisify(server.close.bind(server))();
+  server.closeIdleConnections();  // idle keep-alive sockets would hold it open
+  await closed;
   await db.end();
   process.exit(0);
 });

@@ -12,8 +12,9 @@
     "build": "npm run build --workspace app",
     "preview": "npm run preview --workspace app",
     "content": "node scripts/build-content.mjs",
-    "test": "node --import ./app/test/register.mjs --test",
-    "typecheck": "tsc -p typescript && npm run typecheck --workspace app"
+    "test": "node --import ./app/test/register.mjs --test \"app/src/**/*.test.ts\" \"scripts/**/*.test.mjs\" \"[0-9][0-9]-*/**/*.test.js\" \"react/**/*.test.js\"",
+    "typecheck": "tsc -p typescript && npm run typecheck --workspace app",
+    "lint": "eslint app scripts/build-content.mjs scripts/build-content.test.mjs scripts/gen-legacy-step-keys.mjs eslint.config.js"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

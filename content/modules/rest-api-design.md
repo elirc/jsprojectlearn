@@ -54,8 +54,9 @@ empty. Returning 404 forces every client to treat a normal case as an error.
 
 ## A consistent error body
 
-Pick one shape and use it everywhere. RFC 7807 ProblemDetails is a good default
-and ASP.NET Core emits it natively:
+Pick one shape and use it everywhere. ProblemDetails (RFC 9457, which replaced
+RFC 7807 in 2023 with the same shape) is a good default and ASP.NET Core emits
+it natively:
 
 ```json
 {
@@ -96,22 +97,12 @@ endpoint. Every rule that matters is enforced server-side.
 
 ## Pagination
 
-Never return an unbounded collection. Two options:
-
-**Offset** — `GET /orders?page=3&limit=20`
-
-- Simple, allows jumping to page 47
-- Breaks under concurrent inserts: rows shift between pages, so users see
-  duplicates or miss records
-- Slow at depth — the database still scans everything before the offset
-
-**Cursor (keyset)** — `GET /orders?after=eyJpZCI6...&limit=20`
-
-- Stable under inserts, fast at any depth
-- No random page access, no total count without an extra query
-
-Default to cursor for feeds and anything busy; offset is fine for a small admin
-table. Always send back enough for the client to continue:
+Never return an unbounded collection. Offset (`?page=3&limit=20`) is simple and
+fine for a small admin table; cursor (`?after=…&limit=20`) is stable under
+inserts and fast at any depth, so default to it for feeds and anything busy.
+The details, including the SQL, are in [the pagination
+guide](api-pagination-filtering.md). Always send back enough for the client to
+continue:
 
 ```json
 {
@@ -189,7 +180,8 @@ Idempotency-Key: 9f2b1c...
 
 Store the key with the result. A repeat of the same key replays the stored
 response instead of doing the work twice. This is how every payment API works
-and it is a strong thing to mention unprompted.
+and it is a strong thing to mention unprompted. `Idempotency-Key` is the
+de-facto header name; it is still an IETF draft rather than a finished standard.
 
 ## Long-running work
 
@@ -207,6 +199,31 @@ GET  /reports/8f3    ->  200 { "status": "running" }
 An API nobody can call is not finished. OpenAPI generated from the code (rather
 than maintained separately, where it will drift) gives you a browsable spec,
 generated clients, and a contract you can test against.
+
+In ASP.NET Core, the templates since .NET 9 use the built-in
+`Microsoft.AspNetCore.OpenApi` package (`AddOpenApi()` and `MapOpenApi()`) and
+no longer ship Swashbuckle. Older tutorials that start with `AddSwaggerGen()`
+still work, but that is no longer the default. Pair the document with a UI such
+as Scalar or Swagger UI if you want one.
+
+## REST vs GraphQL vs gRPC
+
+"Why not GraphQL?" is a common follow-up. Have a short, balanced answer:
+
+| | REST | GraphQL | gRPC |
+|---|---|---|---|
+| Shape | Resources and HTTP verbs | One endpoint; the client writes a query for the fields it wants | Typed remote procedure calls from `.proto` files |
+| HTTP caching | Works out of the box (GET, ETag, CDN) | Mostly lost: everything is a POST to `/graphql` | None; binary over HTTP/2 |
+| Best at | Public and CRUD APIs, most web apps | Many clients with different data needs (web, iOS, Android), aggregating several backends | Service-to-service calls inside your own system |
+| Costs | Over- or under-fetching; several round trips for one screen | N+1 through resolvers (needs a DataLoader), authorisation per field, query-cost limits | Not callable from a browser without a proxy; harder to debug by hand |
+
+GraphQL earns its complexity when many clients need different slices of the
+same data, or when one team fronts several services. For one web app talking
+to its own backend, REST is less work. gRPC is for backends talking to
+backends, where the typed contract and speed matter and nobody opens it in a
+browser. (tRPC, in TypeScript monorepos, gives end-to-end types by sharing the
+server's function signatures with the client; it only works when both ends are
+TypeScript.)
 
 ## The design questions to ask out loud in an interview
 

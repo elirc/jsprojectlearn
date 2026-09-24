@@ -9,9 +9,16 @@ works on your laptop and fails in production. This guide is the difference.
 and takes the service down with 400,000. Always have a default limit and a
 maximum limit, and enforce both server-side:
 
+```js
+const limit = Math.min(Math.max(1, Math.trunc(Number(query.limit)) || 20), 100);
 ```
-const limit = Math.min(Number(query.limit) || 20, 100);
-```
+
+Each piece is there for a reason. `Number('abc')` is `NaN` and `Math.trunc`
+keeps it `NaN`, so `|| 20` supplies the default (as it does for `0`). But
+`-5 || 20` is `-5`, because a negative number is truthy, so `Math.max(1, …)` is
+what stops `?limit=-5` reaching the database, where Postgres rejects
+`LIMIT -5` with a 500. `Math.min(…, 100)` is the ceiling. Or validate with a
+schema and return 400; either way, never pass the raw value through.
 
 ## Offset pagination
 
@@ -21,6 +28,8 @@ GET /orders?page=3&limit=20
 
 ```sql
 SELECT * FROM orders ORDER BY created_at DESC LIMIT 20 OFFSET 40;
+-- SQL Server (ORDER BY is required):
+SELECT * FROM orders ORDER BY created_at DESC OFFSET 40 ROWS FETCH NEXT 20 ROWS ONLY;
 ```
 
 **Good for:** small admin tables, anything where users expect page numbers and
@@ -46,6 +55,24 @@ SELECT * FROM orders
 WHERE (created_at, id) < ($1, $2)
 ORDER BY created_at DESC, id DESC
 LIMIT 20;
+```
+
+That `(created_at, id) < (…)` is a row-value comparison. Postgres, MySQL and
+SQLite accept it; **SQL Server does not**. The portable form, which works
+everywhere, spells it out:
+
+```sql
+WHERE created_at < @c OR (created_at = @c AND id < @id)
+```
+
+In EF Core the same keyset page is three lines, and it translates to that
+portable form on any provider:
+
+```csharp
+var page = await db.Orders
+    .Where(o => o.CreatedAt < c || (o.CreatedAt == c && o.Id < id))
+    .OrderByDescending(o => o.CreatedAt).ThenByDescending(o => o.Id).Take(20)
+    .ToListAsync();
 ```
 
 The cursor encodes the sort key of the last row you saw. The index seeks

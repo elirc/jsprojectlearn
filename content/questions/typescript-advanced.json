@@ -1,0 +1,515 @@
+{
+  "id": "typescript-advanced",
+  "topic": "TypeScript+",
+  "title": "TypeScript, the type-level parts",
+  "blurb": "Conditional and mapped types, inference, overloads, module settings and the soundness holes: what a senior reviewer expects you to read fluently even if you rarely write it.",
+  "questions": [
+    {
+      "id": "tsa-001",
+      "q": "Which call fails to compile, and why?",
+      "code": "function len<T extends { length: number }>(x: T) {\n  return x.length;\n}\nlen('abc');\nlen(42);",
+      "lang": "ts",
+      "choices": [
+        "`len('abc')`, because a string primitive is not an object with properties",
+        "Neither, because T is inferred from each argument and so always satisfies it",
+        "`len(42)`, because `number` has no `length` property to meet the constraint",
+        "Both, because a constrained generic needs an explicit type argument"
+      ],
+      "answer": 2,
+      "why": "`extends { length: number }` limits T to types with a numeric `length`. Strings qualify, because primitives are checked through their wrapper type's members. Inference picks T from the argument, but the inferred T must still satisfy the constraint, so 42 is rejected.",
+      "tags": [
+        "generics"
+      ],
+      "level": 1,
+      "asked": "Constraints are the first thing that separates a useful generic from `any` with angle brackets."
+    },
+    {
+      "id": "tsa-002",
+      "q": "What is the type of `r.data`?",
+      "code": "type ApiResponse<T = unknown> = { data: T; status: number };\nconst r: ApiResponse = { data: 42, status: 200 };",
+      "lang": "ts",
+      "choices": [
+        "`number`, inferred from the value 42 that is assigned to it",
+        "`unknown`, because the omitted argument takes the default",
+        "`any`, because no type argument was supplied at all",
+        "A compile error: `ApiResponse` needs one type argument"
+      ],
+      "answer": 1,
+      "why": "A default makes the type argument optional, and an annotation that omits it gets the default. A type in an annotation is never inferred from the initialiser, so it is not `number`; and without `= unknown` the line would be a 'requires 1 type argument' error.",
+      "tags": [
+        "generics"
+      ],
+      "level": 1,
+      "asked": "Defaults are all over library signatures, and reading them tells you what you get when you leave the angle brackets off."
+    },
+    {
+      "id": "tsa-003",
+      "q": "What does tsc report for the call to `pair`?",
+      "code": "function pair<T>(a: T, b: T): T[] {\n  return [a, b];\n}\nconst p = pair(1, 'one');",
+      "lang": "ts",
+      "choices": [
+        "Nothing; T is widened to the union `string | number` to fit both of the arguments",
+        "Nothing; T is inferred as `unknown` because the arguments disagree",
+        "An error on `1`: number is not assignable to a parameter of type string",
+        "An error on `'one'`: string is not assignable to a parameter of type number"
+      ],
+      "answer": 3,
+      "why": "With several candidates for T, inference looks for a best common type rather than building a union; `number` and `string` have none, so T is fixed from the first candidate and `'one'` is rejected. Write `pair<string | number>(1, 'one')` if a union is what you want.",
+      "tags": [
+        "generics",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "It tests whether you know inference is a heuristic with rules, not a solver that finds any type that works."
+    },
+    {
+      "id": "tsa-004",
+      "q": "In TypeScript 5.0+, what is the type of `r`?",
+      "code": "function roles<const T extends readonly string[]>(list: T) {\n  return list;\n}\nconst r = roles(['admin', 'editor']);",
+      "lang": "ts",
+      "choices": [
+        "`readonly ['admin', 'editor']`",
+        "`['admin', 'editor']`",
+        "`('admin' | 'editor')[]`",
+        "`readonly ('admin' | 'editor')[]`"
+      ],
+      "answer": 0,
+      "why": "A `const` type parameter makes inference treat the argument as if the caller had written `as const`, so the literals and the tuple shape survive, and the readonly constraint lets the readonly tuple fit. Without the modifier, T is inferred as plain `string[]`.",
+      "tags": [
+        "generics",
+        "inference"
+      ],
+      "level": 3,
+      "asked": "Router and schema libraries use it to get literal types without making every caller type `as const`."
+    },
+    {
+      "id": "tsa-005",
+      "q": "What does `A` resolve to?",
+      "code": "type ToArray<T> = T extends unknown ? T[] : never;\ntype A = ToArray<string | number>;",
+      "lang": "ts",
+      "choices": [
+        "`(string | number)[]`",
+        "`[string, number]`",
+        "`string[] | number[]`",
+        "`string[] & number[]`"
+      ],
+      "answer": 2,
+      "why": "A conditional type whose checked type is a bare type parameter distributes over a union: it runs once per member and unions the results. So each member gets its own array type rather than one mixed array, which is what `(string | number)[]` would be.",
+      "tags": [
+        "conditional",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "Distribution explains most \"why did my utility type produce this?\" surprises, and it is how Exclude and Extract work under the hood."
+    },
+    {
+      "id": "tsa-006",
+      "q": "What does `X` resolve to?",
+      "code": "type FirstArg<F> =\n  F extends (first: infer A, ...rest: any[]) => any ? A : never;\ntype X = FirstArg<(id: number, name: string) => void>;",
+      "lang": "ts",
+      "choices": [
+        "`[number, string]`",
+        "`number`",
+        "`(id: number) => void`",
+        "`unknown`"
+      ],
+      "answer": 1,
+      "why": "`infer A` declares a type variable that the compiler fills in by matching F against the pattern, so A captures the first parameter's type. `[number, string]` is what you get by inferring the whole parameter list, which is how the built-in `Parameters` is written.",
+      "tags": [
+        "conditional",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "Reading `infer` fluently is what a reviewer needs for library types; writing a small one is the usual follow-up."
+    },
+    {
+      "id": "tsa-007",
+      "q": "What does `A` resolve to?",
+      "code": "type IsString<T> = [T] extends [string] ? true : false;\ntype A = IsString<'a' | 1>;",
+      "lang": "ts",
+      "choices": [
+        "`boolean`",
+        "`true`",
+        "`never`",
+        "`false`"
+      ],
+      "answer": 3,
+      "why": "Wrapping T in a one-element tuple means the checked type is no longer a naked type parameter, so the union is tested as a whole, and `'a' | 1` is not assignable to string. Without the brackets it would distribute into `true | false`, which is `boolean`.",
+      "tags": [
+        "conditional",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "The bracket trick is the standard answer to \"my conditional type behaves oddly with unions\"."
+    },
+    {
+      "id": "tsa-008",
+      "q": "What does `A` resolve to?",
+      "code": "type IsNever<T> = T extends never ? true : false;\ntype A = IsNever<never>;",
+      "lang": "ts",
+      "choices": [
+        "`true`",
+        "`false`",
+        "`never`",
+        "`boolean`"
+      ],
+      "answer": 2,
+      "why": "`never` is the empty union, and a distributive conditional runs once per member, so with no members the result is never; write `[T] extends [never]` to test it. The same rule is why never vanishes from unions: `string | never` is just `string`.",
+      "tags": [
+        "conditional",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "It looks like trivia, but it is the root cause of utility types that silently return never."
+    },
+    {
+      "id": "tsa-009",
+      "q": "What does `G` resolve to?",
+      "code": "type Getters<T> = {\n  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];\n};\ntype G = Getters<{ name: string; age: number }>;",
+      "lang": "ts",
+      "choices": [
+        "`{ getName: () => string; getAge: () => number }`",
+        "`{ name: () => string; age: () => number }`",
+        "`{ getName: string; getAge: number }`",
+        "`{ getName: () => unknown; getAge: () => unknown }`"
+      ],
+      "answer": 0,
+      "why": "The `as` clause renames each key while `T[K]` still indexes with the original key, so the value types survive the rename. `string & K` is needed because `keyof T` can include number and symbol keys, which `Capitalize` does not accept.",
+      "tags": [
+        "mapped"
+      ],
+      "level": 2,
+      "asked": "Key remapping is how libraries derive handler and getter names, and reviewers meet it in form and store typings."
+    },
+    {
+      "id": "tsa-010",
+      "q": "What does `M` resolve to?",
+      "code": "type Mutable<T> = { -readonly [K in keyof T]: T[K] };\ntype M = Mutable<{ readonly id: number }>;",
+      "lang": "ts",
+      "choices": [
+        "`{ readonly id: number }`, since modifiers cannot be removed",
+        "`{ id?: number }`, since the `-` prefix marks it optional",
+        "A compile error, since `readonly` is fixed where declared",
+        "`{ id: number }`, since `-readonly` strips the modifier"
+      ],
+      "answer": 3,
+      "why": "Mapped types can add (`+`, the default) or remove (`-`) the `readonly` and `?` modifiers; `-?` is how `Required<T>` is written. The removal is shallow: a nested readonly array stays readonly.",
+      "tags": [
+        "mapped",
+        "modifiers"
+      ],
+      "level": 1,
+      "asked": "A quick check that you can read modifier syntax in library types rather than skipping over it."
+    },
+    {
+      "id": "tsa-011",
+      "q": "Which statement about `A` and `B` is true?",
+      "code": "type User = { id: number; note?: string };\ntype A = { [K in keyof User]: User[K] };\ntype B = { [K in 'id' | 'note']: User[K] };",
+      "lang": "ts",
+      "choices": [
+        "`A` and `B` both keep `note` optional, as its property type is identical",
+        "`A` keeps `note` optional; in `B` it is required but may be undefined",
+        "`A` and `B` both make `note` required, as mapped types drop modifiers",
+        "`B` keeps `note` optional; `A` makes every property required"
+      ],
+      "answer": 1,
+      "why": "A mapped type over `keyof T` is homomorphic: the compiler knows each key came from T and copies its `?` and `readonly` modifiers. Mapping over a literal key union has no source object, so `note` becomes a required `string | undefined` and `{ id: 1 }` no longer fits B.",
+      "tags": [
+        "mapped",
+        "modifiers"
+      ],
+      "level": 3,
+      "asked": "It explains why `Pick` preserves optionality while a `Record` over the same keys does not."
+    },
+    {
+      "id": "tsa-012",
+      "q": "Which type for per-field error messages rejects misspelt field names but lets a valid field have no error?",
+      "code": "type User = { email: string; age: number };",
+      "lang": "ts",
+      "choices": [
+        "`Record<string, string | undefined>`",
+        "`{ [K in keyof User]: string }`",
+        "`{ [K in keyof User]?: string }`",
+        "`{ [K in keyof User]?: User[K] }`"
+      ],
+      "answer": 2,
+      "why": "Mapping over `keyof User` keeps the errors type in step with the model, and `?` lets a field have no entry. `Record<string, string>` accepts `emial`, the non-optional mapping demands a message for every field, and `?: User[K]` (which is `Partial<User>`) keeps the field types, so an age message would have to be a number.",
+      "tags": [
+        "mapped"
+      ],
+      "level": 2,
+      "asked": "Deriving form state from the model is the most common place a mid-level developer writes a mapped type."
+    },
+    {
+      "id": "tsa-013",
+      "q": "What is `Action`?",
+      "code": "const handlers = { create() {}, remove() {} };\ntype Action = keyof typeof handlers;",
+      "lang": "ts",
+      "choices": [
+        "`'create' | 'remove'`",
+        "`string`",
+        "`{ create(): void; remove(): void }`",
+        "`('create' | 'remove')[]`"
+      ],
+      "answer": 0,
+      "why": "`typeof` in a type position turns a value into its type, and `keyof` then gives the union of its keys. Writing `keyof handlers` on its own is an error, because `handlers` is a value, not a type.",
+      "tags": [
+        "type-ops"
+      ],
+      "level": 1,
+      "asked": "Deriving a union from a runtime object keeps one source of truth, and interviewers want to see you reach for it."
+    },
+    {
+      "id": "tsa-014",
+      "q": "What is `User`?",
+      "code": "const users = [{ id: 1, name: 'Ann' }, { id: 2, name: 'Bo' }];\ntype User = (typeof users)[number];",
+      "lang": "ts",
+      "choices": [
+        "`{ id: number; name: string }[]`",
+        "`number`",
+        "`{ id: 1; name: 'Ann' } | { id: 2; name: 'Bo' }`",
+        "`{ id: number; name: string }`"
+      ],
+      "answer": 3,
+      "why": "Indexing an array type with `number` gives its element type, because any numeric index yields an element. The literals are widened because the array and its objects are mutable; only `as const` would keep them.",
+      "tags": [
+        "type-ops"
+      ],
+      "level": 1,
+      "asked": "It is the everyday way to name the element type of data you already have, such as fixtures or a config list."
+    },
+    {
+      "id": "tsa-015",
+      "q": "In TypeScript 5.4+, what happens on the last line?",
+      "code": "function pickSize<T extends string>(options: T[], initial: NoInfer<T>) {}\npickSize(['sm', 'md'], 'xl');",
+      "lang": "ts",
+      "choices": [
+        "It compiles, and T is inferred as `'sm' | 'md' | 'xl'`",
+        "An error: `'xl'` is not assignable to `'sm' | 'md'`",
+        "It compiles, and T is widened to `string` by `'xl'`",
+        "An error: `NoInfer` cannot wrap a constrained type parameter"
+      ],
+      "answer": 1,
+      "why": "`NoInfer<T>` stops that position from contributing inference candidates, so T comes only from `options` and `'xl'` is then checked against it. Without it both arguments are candidates and T silently becomes `'sm' | 'md' | 'xl'`, the bug the helper exists to prevent.",
+      "tags": [
+        "type-ops",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "It shows you know which arguments drive inference, the question behind most \"why did this generic accept that?\" bugs."
+    },
+    {
+      "id": "tsa-016",
+      "q": "What does tsc report on the last line?",
+      "code": "function parse(x: string): number;\nfunction parse(x: number): string;\nfunction parse(x: string | number) {\n  return typeof x === 'string' ? Number(x) : String(x);\n}\ndeclare const input: string | number;\nparse(input);",
+      "lang": "ts",
+      "choices": [
+        "An error: no overload matches a `string | number` argument",
+        "Nothing; the implementation signature accepts the union",
+        "Nothing; the call resolves to a return type of `number | string`",
+        "An error: the implementation's return type is not annotated"
+      ],
+      "answer": 0,
+      "why": "Callers see only the overload signatures, each tried on its own, and a `string | number` argument fits neither. The implementation signature is invisible from outside, so it does not rescue the call. Add a union overload, or use one signature with a conditional return type.",
+      "tags": [
+        "functions",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "The follow-up is \"overloads or a union parameter?\", and the usual answer is the union unless the return type depends on the input."
+    },
+    {
+      "id": "tsa-017",
+      "q": "What is the type of `el` on the last line?",
+      "code": "function assertDefined<T>(v: T): asserts v is NonNullable<T> {\n  if (v == null) throw new Error('missing');\n}\nconst el = document.getElementById('app');\nassertDefined(el);\nel.textContent = 'ready';",
+      "lang": "ts",
+      "choices": [
+        "`HTMLElement | null`, because the call result is never checked",
+        "`never`, because the function may throw before returning",
+        "`HTMLElement`, because the assertion narrows the code after it",
+        "`unknown`, because the generic `T` is erased by the assertion"
+      ],
+      "answer": 2,
+      "why": "`asserts v is X` tells the compiler that if the call returns at all, the condition held, so control-flow analysis narrows `el` for the rest of the scope. A `v is X` type guard needs an `if` around the call; an assertion function acts like an inline `if (!el) throw`.",
+      "tags": [
+        "functions"
+      ],
+      "level": 2,
+      "asked": "Assertion functions are the tidy way to fail fast on invariants, and they pair naturally with validation at a boundary."
+    },
+    {
+      "id": "tsa-018",
+      "q": "What does tsc report?",
+      "code": "function greet(this: { name: string }, greeting: string) {\n  return `${greeting}, ${this.name}`;\n}\ngreet('Hi');",
+      "lang": "ts",
+      "choices": [
+        "An error: `greet` expected 2 arguments, but got 1",
+        "Nothing; `this` is typed as `any` at a plain call site",
+        "Nothing; `'Hi'` binds to `this` and `greeting` is undefined",
+        "An error: a `this` of type `void` does not match `{ name: string }`"
+      ],
+      "answer": 3,
+      "why": "A `this` parameter is a fake first parameter: it is erased from the output and does not count as an argument, it only types what `this` must be at the call. A bare call has `this: void`, so tsc rejects it, while `user.greet('Hi')` on an object with a `name` compiles.",
+      "tags": [
+        "functions"
+      ],
+      "level": 2,
+      "asked": "It comes up when typing DOM handlers and callback APIs that rely on `this`, and it separates careful readers from skimmers."
+    },
+    {
+      "id": "tsa-019",
+      "q": "What does tsc report?",
+      "code": "// models.ts: export class User { constructor(public name = '') {} }\nimport type { User } from './models';\nconst u = new User('Ann');",
+      "lang": "ts",
+      "choices": [
+        "Nothing; `import type` is only a hint and the class is still imported",
+        "An error: `User` cannot be used as a value after `import type`",
+        "Nothing at compile time, but `new User` throws a ReferenceError",
+        "An error: only interfaces and type aliases can use `import type`"
+      ],
+      "answer": 1,
+      "why": "`import type` is always erased from the output, so the name exists only in type positions and `new User` is an error. Importing a class this way is allowed when you only use it in annotations, which rules out the last choice. `verbatimModuleSyntax` builds on this: every import not marked `type` is emitted as written.",
+      "tags": [
+        "modules"
+      ],
+      "level": 1,
+      "asked": "Type-only imports stop types from dragging runtime modules, and their side effects or cycles, into a bundle."
+    },
+    {
+      "id": "tsa-020",
+      "q": "With `isolatedModules` on, why does tsc reject this re-export?",
+      "code": "// models.ts: export interface User { name: string }\nexport { User } from './models';",
+      "lang": "ts",
+      "choices": [
+        "A per-file transpiler cannot tell `User` is a type, so it would emit a runtime export",
+        "Interfaces cannot be re-exported at all, so consumers must import from `models`",
+        "`isolatedModules` forbids every re-export, so each export must be declared locally",
+        "The re-export creates a circular import that single-file transpilers cannot resolve"
+      ],
+      "answer": 0,
+      "why": "esbuild, SWC and Babel compile one file at a time without type information, so they cannot know `User` has no runtime value and would emit an export that fails at load time. `export type { User }` states the intent, and plain value re-exports stay legal. `verbatimModuleSyntax` extends the same rule to imports.",
+      "tags": [
+        "modules",
+        "config"
+      ],
+      "level": 2,
+      "asked": "Vite and Next.js templates turn this flag on, so the error is one you meet on day one."
+    },
+    {
+      "id": "tsa-021",
+      "q": "With `module: nodenext`, `\"type\": \"module\"` in package.json and other settings at their defaults, how must this import be written?",
+      "code": "// math.ts exists alongside this file and exports add\nimport { add } from './math';",
+      "lang": "ts",
+      "choices": [
+        "As it is; tsc resolves `./math` to `math.ts` the way a bundler would",
+        "As `'./math.ts'`, naming the source file that actually exists on disk",
+        "As `'./math.js'`, naming the file that Node will load at runtime",
+        "As `'./math/index.js'`, since Node's ESM loader tries folders first"
+      ],
+      "answer": 2,
+      "why": "Under `nodenext`, tsc models Node's ESM loader, which never guesses extensions, and imports name the emitted file, so you write `.js` even though only `math.ts` exists. `moduleResolution: bundler` drops the rule because Vite and webpack resolve extensionless relative paths. A `.ts` path needs `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`.",
+      "tags": [
+        "modules",
+        "config"
+      ],
+      "level": 3,
+      "asked": "Choosing between `bundler` and `nodenext` is the first tsconfig decision on a new project, and it depends on what runs the output."
+    },
+    {
+      "id": "tsa-022",
+      "q": "This declaration file, which has no imports or exports, is included, yet `window.appVersion` is still a type error. What fixes it?",
+      "code": "// src/types/window.d.ts\ndeclare global {\n  interface Window { appVersion: string }\n}",
+      "lang": "ts",
+      "choices": [
+        "Rename it to `window.ts`, since `.d.ts` files cannot contain `declare global`",
+        "Replace the `interface` with a `type`, since `Window` is a built-in type",
+        "List the file in the `types` array of tsconfig.json so it loads globally",
+        "Add `export {}`, so the file becomes a module and `declare global` is allowed"
+      ],
+      "answer": 3,
+      "why": "`declare global` augments the global scope from inside a module; a file with no imports or exports is a script, so tsc rejects the block (silently, if skipLibCheck is on) and nothing is added. Add `export {}`, or drop the wrapper and declare `interface Window` at top level. Interface merging is what makes it work, so a `type` would clash instead.",
+      "tags": [
+        "modules"
+      ],
+      "level": 2,
+      "asked": "Adding a global, or a field to a library's `Request` type, is routine and exposes whether you understand script versus module files."
+    },
+    {
+      "id": "tsa-023",
+      "q": "With `strict` on, which assignments compile?",
+      "code": "interface MethodStyle { handle(e: string | number): void }\ninterface PropStyle { handle: (e: string | number) => void }\nconst onlyStrings = { handle: (e: string) => e.trim() };\nconst a: MethodStyle = onlyStrings;\nconst b: PropStyle = onlyStrings;",
+      "lang": "ts",
+      "choices": [
+        "Both, since `onlyStrings` has a `handle` function in each case",
+        "Only `a`, since method parameters stay bivariant even under strict",
+        "Only `b`, since property functions are compared more loosely",
+        "Neither, since `strictFunctionTypes` rejects both of them"
+      ],
+      "answer": 1,
+      "why": "`strictFunctionTypes` checks parameters contravariantly only for function-typed properties; members written with method syntax stay bivariant for compatibility with the DOM and older libraries. So `a` compiles and will call `trim` on a number at runtime, while `b` errors.",
+      "tags": [
+        "soundness",
+        "config"
+      ],
+      "level": 3,
+      "asked": "Few candidates know this hole exists, and it explains why some codebases declare callbacks as properties."
+    },
+    {
+      "id": "tsa-024",
+      "q": "Which declarations compile?",
+      "code": "type Point = { x: number; y: number };\nconst a: Point = { x: 1, y: 2, z: 3 };\nconst tmp = { x: 1, y: 2, z: 3 };\nconst b: Point = tmp;",
+      "lang": "ts",
+      "choices": [
+        "Only `b`; excess property checks apply only to fresh object literals",
+        "Only `a`; literals are checked by shape, but variables must match exactly",
+        "Both; extra properties are always fine because typing is structural",
+        "Neither; `z` is not a property of `Point` in either declaration"
+      ],
+      "answer": 0,
+      "why": "Structural typing lets an object with extra properties satisfy Point, so `b` is fine. As a typo guard, tsc additionally rejects unknown properties when an object literal is written directly against a type; once it passes through a variable that check no longer applies.",
+      "tags": [
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "It explains why a misspelt optional option sometimes goes unnoticed, and it is a good probe of structural typing."
+    },
+    {
+      "id": "tsa-025",
+      "q": "Which line fails to compile?",
+      "code": "let a: {} = 'hi';\nlet b: object = 'hi';\nlet c: unknown = 'hi';",
+      "lang": "ts",
+      "choices": [
+        "`a`, because `{}` means an empty object literal",
+        "`c`, because `unknown` values must be narrowed first",
+        "`b`, because `object` means any non-primitive value",
+        "`a` and `b`, because a string is not an object type"
+      ],
+      "answer": 2,
+      "why": "`{}` means any value except null and undefined, so a string fits; `object` excludes primitives; `unknown` accepts everything, and narrowing is only needed to use one, not to assign to it. For a plain object with unknown keys, `Record<string, unknown>` says what you mean.",
+      "tags": [
+        "soundness"
+      ],
+      "level": 1,
+      "asked": "Linters flag `{}` as a type for exactly this reason, and knowing why is a quick signal of type-system fluency."
+    },
+    {
+      "id": "tsa-026",
+      "q": "Which assignment fails to compile?",
+      "code": "interface UserI { name: string }\ntype UserT = { name: string };\ndeclare const i: UserI;\ndeclare const t: UserT;\nconst a: Record<string, unknown> = i;\nconst b: Record<string, unknown> = t;",
+      "lang": "ts",
+      "choices": [
+        "Both, because neither type declares a `string` index signature",
+        "`b`, because a type alias needs an explicit index signature",
+        "Neither, because every value is assignable to `unknown` anyway",
+        "`a`, because interfaces get no implicit index signature"
+      ],
+      "answer": 3,
+      "why": "Object type aliases get an implicit index signature, so `t` fits `Record<string, unknown>`. Interfaces do not, because declaration merging could add incompatible members later. Spread the value (`{ ...i }`) or accept `object` in the helper's signature.",
+      "tags": [
+        "soundness"
+      ],
+      "level": 3,
+      "asked": "It surfaces when passing a typed DTO to a generic logging or serialising helper, and the error baffles people the first time."
+    }
+  ]
+}

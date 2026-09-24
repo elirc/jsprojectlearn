@@ -1,0 +1,308 @@
+{
+  "id": "agile-process",
+  "topic": "Working in a team",
+  "title": "Working in a team",
+  "blurb": "Tickets, estimates, pull requests, code review, ceremonies and incidents: the day-to-day process questions that decide whether a team wants to work with you.",
+  "questions": [
+    {
+      "id": "ag-001",
+      "q": "What are acceptance criteria on a user story?",
+      "choices": [
+        "The checklist every story must pass before release, such as tests and code review",
+        "The conditions this story must meet for the product owner to accept it as working",
+        "The estimate the team agrees on during planning, expressed in story points",
+        "The list of technical tasks a developer must finish to implement the story"
+      ],
+      "answer": 1,
+      "why": "Acceptance criteria are specific to one story and testable, often written as given/when/then. The checklist that applies to every story (tested, reviewed, deployed) is the definition of done, which is the confusion this question checks.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "A vocabulary check; the strong answer separates it from the definition of done without being asked."
+    },
+    {
+      "id": "ag-002",
+      "q": "A story reads 'Customers can manage their saved addresses'. Which split lets each piece ship to users on its own?",
+      "choices": [
+        "Database tables first, then the API endpoints, then the UI screens last",
+        "One story for the frontend team and one for the backend team, done in parallel",
+        "Design and estimates in the first sprint, implementation in the second sprint",
+        "Add an address end to end, then edit one, then delete one, then set a default"
+      ],
+      "answer": 3,
+      "why": "Vertical slices cut through every layer, so each one is usable and gives feedback when it ships. Horizontal splits by layer or team deliver nothing a user can touch until the last piece lands.",
+      "tags": ["tickets"],
+      "level": 2,
+      "asked": "Tests whether you can break work down so it ships in days, which is most of being productive on a team."
+    },
+    {
+      "id": "ag-003",
+      "q": "What are story points a measure of?",
+      "choices": [
+        "The exact number of hours a story will take, rounded to the Fibonacci scale",
+        "The business value a story delivers, so the backlog can be ordered by its points",
+        "Each developer's personal productivity, tracked sprint by sprint for reviews",
+        "Relative effort and uncertainty compared with other stories, not hours of work"
+      ],
+      "answer": 3,
+      "why": "Points compare stories with each other, folding in complexity and risk, so a team can plan from its own history. Converting them to hours or using them to rate individuals destroys the thing that makes them useful.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "Checks that you know what an estimate is for, not just the ritual around it."
+    },
+    {
+      "id": "ag-004",
+      "q": "What is a spike in agile planning?",
+      "choices": [
+        "A time-boxed investigation to answer a question, so the real work can be estimated",
+        "A sudden rise in reported bugs just after a release, tracked as its own ticket type",
+        "A story that is too big for one sprint and is carried over into the next one",
+        "An urgent production fix that skips the normal sprint and review process"
+      ],
+      "answer": 0,
+      "why": "A spike buys knowledge rather than features: try the library, prototype the integration, then estimate. The time box matters, and its output is an answer or a throwaway prototype, not production code.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "Shows whether you know how to handle \"we cannot estimate this yet\" without guessing."
+    },
+    {
+      "id": "ag-005",
+      "q": "What is a team's definition of done?",
+      "choices": [
+        "A shared checklist every item must meet to count as done, such as tested, reviewed, deployed",
+        "The acceptance criteria that the product owner writes for a single story during refinement",
+        "The date by which a sprint's stories must be merged, after which the scope is frozen",
+        "The point at which a developer has finished writing the code and handed it over to QA"
+      ],
+      "answer": 0,
+      "why": "It applies to every item and stops \"done\" from meaning \"done except tests\". Acceptance criteria are per story; the definition of done is per team. Handing over to QA is exactly the half-done state it exists to rule out.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "The follow-up is what is in your current team's definition of done."
+    },
+    {
+      "id": "ag-006",
+      "q": "Which kind of review comment is best left to an automated tool rather than a reviewer?",
+      "choices": [
+        "A missing edge case, such as what happens when the incoming list of items is empty",
+        "Whether this change should exist at all, given what the ticket actually asked for",
+        "A confusing name that is likely to mislead the next person who reads the function",
+        "Formatting and import order, which a formatter or linter can enforce on every change"
+      ],
+      "answer": 3,
+      "why": "Anything a machine can check consistently should be checked by a machine, so human attention goes on design, correctness and naming. Style comments in review are slow, inconsistent and cause friction.",
+      "tags": ["code-review"],
+      "level": 1,
+      "asked": "Tests whether you spend review time where only a human can help."
+    },
+    {
+      "id": "ag-007",
+      "q": "PRs on your team wait two days for a first review. Which change most reduces that turnaround?",
+      "choices": [
+        "Require two approvals on every PR, so the review load is shared among more people",
+        "Batch reviews into one session each Friday, so that reviewers are not interrupted",
+        "Agree that picking up waiting reviews comes before starting new work each day",
+        "Let authors merge after 24 hours without review if nobody has commented yet"
+      ],
+      "answer": 2,
+      "why": "Finishing work in progress beats starting new work: a review is someone else's nearly-done item. Two required approvals doubles the waiting, weekly batches guarantee it, and merging unreviewed removes review rather than speeding it up.",
+      "tags": ["code-review", "flow"],
+      "level": 2,
+      "asked": "A team-habits question; the strong answer ties review speed to flow rather than to individual effort."
+    },
+    {
+      "id": "ag-008",
+      "q": "What are stacked pull requests?",
+      "choices": [
+        "Several unrelated PRs merged together in one batch at the end of the sprint",
+        "A single PR that bundles a refactor and a feature so both can be reviewed at once",
+        "A chain of small PRs, each based on the previous one's branch, reviewed in order",
+        "PRs queued in CI that are merged one at a time, in order, once their checks pass"
+      ],
+      "answer": 2,
+      "why": "Stacking lets you keep working on step two while step one is in review, and each PR stays small. The cost is rebasing the stack when an earlier PR changes. A queue that merges PRs one by one is a merge queue, a different tool.",
+      "tags": ["code-review"],
+      "level": 2,
+      "asked": "Shows whether you have found a way to keep PRs small on large features."
+    },
+    {
+      "id": "ag-009",
+      "q": "What is an architecture decision record (ADR)?",
+      "choices": [
+        "A short document recording one decision, its context and its consequences",
+        "A diagram of the whole system's architecture, updated on every release",
+        "A log of every deploy, with the version and the person who approved it",
+        "A meeting where architects approve or reject each team's technical designs"
+      ],
+      "answer": 0,
+      "why": "An ADR captures why a choice was made (the options, constraints and trade-offs) at the time it was made, and lives next to the code. When someone later asks \"why Postgres?\", the answer exists and can be superseded by a new ADR rather than argued from memory.",
+      "tags": ["code-review"],
+      "level": 2,
+      "asked": "Signals that you think about the next developer, not just the current change."
+    },
+    {
+      "id": "ag-010",
+      "q": "In code review, what does prefixing a comment with 'nit:' usually signal?",
+      "choices": [
+        "A blocking problem that must be fixed before the reviewer will approve",
+        "A question the reviewer wants answered in the PR description, not the code",
+        "A note that the reviewer has not run the code and has only read the diff",
+        "A minor, optional suggestion that should not block the PR from merging"
+      ],
+      "answer": 3,
+      "why": "Labelling severity tells the author what they must do versus what they may do, which cuts back-and-forth. Conventional comments extend the idea with prefixes such as \"suggestion:\", \"question:\" and \"blocking:\".",
+      "tags": ["code-review"],
+      "level": 1,
+      "asked": "A small convention that shows you have worked in a real review culture."
+    },
+    {
+      "id": "ag-011",
+      "q": "What is the daily stand-up for?",
+      "choices": [
+        "Giving the manager a detailed status report from each developer, one by one",
+        "Surfacing blockers and coordinating the day's work, not reporting to a manager",
+        "Solving technical problems together as a group, which is why it has no time limit",
+        "Re-estimating every open story so the burndown chart stays accurate each day"
+      ],
+      "answer": 1,
+      "why": "It is for the team to coordinate: who needs help, what is blocked, what finishes today. Problem-solving happens after, with only the people involved, which is how it stays at fifteen minutes.",
+      "tags": ["ceremonies"],
+      "level": 1,
+      "asked": "Checks whether you see ceremonies as tools for the team or as reporting."
+    },
+    {
+      "id": "ag-012",
+      "q": "Which retrospective outcome is most likely to change how the team works next sprint?",
+      "choices": [
+        "One or two concrete actions, each with an owner, reviewed at the next retro",
+        "A long list of everything that went wrong, shared with the wider department",
+        "A vote on who contributed most, so good behaviour is recognised in public",
+        "Agreement that everyone will try harder to communicate better next sprint"
+      ],
+      "answer": 0,
+      "why": "Change needs a specific action, a person and a check-in; \"communicate better\" has none of those. A long list feels thorough but spreads effort so thin that nothing changes.",
+      "tags": ["ceremonies"],
+      "level": 2,
+      "asked": "Tests whether you have seen retros that work and know why most do not."
+    },
+    {
+      "id": "ag-013",
+      "q": "What is the key structural difference between Scrum and Kanban?",
+      "choices": [
+        "Scrum is meant for software teams, while Kanban is only for operations and support",
+        "Scrum has no roles or meetings, while Kanban prescribes a product owner and master",
+        "Scrum runs fixed-length sprints of planned work; Kanban is continuous flow with WIP limits",
+        "Scrum estimates all of its work in hours, while Kanban estimates every item in story points"
+      ],
+      "answer": 2,
+      "why": "Scrum commits to a sprint backlog and reviews it at a fixed cadence; Kanban pulls work continuously and controls flow by limiting work in progress. Scrum is the one with defined roles, and many teams mix the two.",
+      "tags": ["ceremonies", "flow"],
+      "level": 2,
+      "asked": "A vocabulary question that leads into how your current team actually works."
+    },
+    {
+      "id": "ag-014",
+      "q": "What do incident severity levels (such as SEV1 to SEV4) decide?",
+      "choices": [
+        "Which engineer caused the incident, so the right person leads the follow-up",
+        "How many story points the eventual fix is worth when it is planned into a sprint",
+        "How urgently to respond, who is paged and how often to communicate, by impact",
+        "Which customers receive a refund, calculated from the minutes of downtime"
+      ],
+      "answer": 2,
+      "why": "A severity scale defined in advance by user impact removes debate during the incident: a SEV1 pages people at 3 a.m. and gets frequent updates, a SEV4 waits for business hours. It says nothing about blame.",
+      "tags": ["incidents"],
+      "level": 1,
+      "asked": "Checks that you have been on, or near, an on-call rota."
+    },
+    {
+      "id": "ag-015",
+      "q": "What does the incident commander do during an outage?",
+      "choices": [
+        "Debugs the system hands-on, since they are the most senior engineer available",
+        "Writes the postmortem while the incident is still in progress, to save time later",
+        "Handles only customer communication, leaving technical decisions to the team",
+        "Coordinates the response, assigns roles and makes decisions, rather than debugging"
+      ],
+      "answer": 3,
+      "why": "Someone must hold the whole picture: who is investigating what, when to roll back, when to escalate. If that person is also deep in a debugger, nobody is coordinating. Communication is often a separate role that reports to them.",
+      "tags": ["incidents"],
+      "level": 2,
+      "asked": "Tests whether you know incidents need a coordinator, not just the best debugger."
+    },
+    {
+      "id": "ag-016",
+      "q": "During an ongoing outage, which update practice best stops stakeholders from interrupting the responders?",
+      "choices": [
+        "Updates at a stated interval, even with no news, each giving the next update time",
+        "Updates only once the root cause is known, so nobody is ever given wrong information",
+        "A shared call that every stakeholder joins to hear the engineers debug live",
+        "Replying individually to each stakeholder who messages the on-call engineer"
+      ],
+      "answer": 0,
+      "why": "People interrupt when they do not know when they will next hear something. A predictable cadence, such as every 30 minutes with \"next update at 14:30\", answers that. Waiting for the root cause can mean hours of silence.",
+      "tags": ["incidents"],
+      "level": 2,
+      "asked": "A communication question with a concrete right answer; people who have run incidents know it."
+    },
+    {
+      "id": "ag-017",
+      "q": "Which postmortem action item is most likely to actually get done?",
+      "choices": [
+        "'Everyone should be more careful when running database migrations in production'",
+        "'Add a CI check that fails when a migration drops a column; owner Sam, due 14 March'",
+        "'Improve monitoring and alerting across all of our services so we catch issues sooner'",
+        "'Investigate whether the whole deployment process ought to be redesigned from scratch'"
+      ],
+      "answer": 1,
+      "why": "Action items that get done are specific, have one owner and a date, and change the system rather than asking people to try harder. Vague or open-ended items are how the same incident happens twice.",
+      "tags": ["incidents"],
+      "level": 3,
+      "asked": "Separates people who have followed up on an incident from people who have only attended the meeting."
+    },
+    {
+      "id": "ag-018",
+      "q": "Why does a work-in-progress (WIP) limit shorten cycle time?",
+      "choices": [
+        "It pushes developers to work longer hours until the board's column has room again",
+        "It lets the team start more items at once, because each item has to be kept small",
+        "It removes the need for code review, since fewer items reach the review stage",
+        "With fewer items in progress, each waits less and finishes sooner, with less switching"
+      ],
+      "answer": 3,
+      "why": "Little's law: average cycle time equals work in progress divided by throughput. With throughput unchanged, less WIP means each item finishes sooner, and less context switching often raises throughput too. Stop starting, start finishing.",
+      "tags": ["flow"],
+      "level": 2,
+      "asked": "A flow question with a textbook answer; naming Little's law is a bonus, not a requirement."
+    },
+    {
+      "id": "ag-019",
+      "q": "What does cycle time measure that velocity does not?",
+      "choices": [
+        "The elapsed time for each item from starting work until it is done",
+        "The number of story points the team completes in each sprint",
+        "The hours each developer logs against a ticket before it finally closes",
+        "How often the team deploys to production over a rolling 30 days"
+      ],
+      "answer": 0,
+      "why": "Velocity is points per sprint, a planning aid that is easy to inflate. Cycle time is measured per item in calendar time, so it shows how predictable delivery is and where work waits. Lead time extends it back to when the request arrived.",
+      "tags": ["flow"],
+      "level": 3,
+      "asked": "Tests whether you can talk about delivery with a metric that is hard to game."
+    },
+    {
+      "id": "ag-020",
+      "q": "Team A merges to main several times a day; team B merges once per sprint. What does team A gain from its smaller batches?",
+      "choices": [
+        "Fewer tests to write, because each small change needs far less test coverage",
+        "No need for feature flags, since unfinished work can never reach main this way",
+        "Faster feedback and smaller, lower-risk changes that are easier to review and revert",
+        "A higher velocity in story points, since the points are counted once per merge to main"
+      ],
+      "answer": 2,
+      "why": "Small batches surface integration problems within hours, keep each review and each deploy small, and make any single change cheap to revert. Frequent merging actually needs feature flags more, because unfinished work does reach main, switched off.",
+      "tags": ["flow"],
+      "level": 3,
+      "asked": "Links batch size to risk, which is the argument behind CI and trunk-based development."
+    }
+  ]
+}

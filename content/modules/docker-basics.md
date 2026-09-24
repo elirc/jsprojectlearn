@@ -25,7 +25,7 @@ Node:
 
 ```dockerfile
 # --- build stage ---
-FROM node:22-alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 
 # Dependency layer first, so a source change does not reinstall everything
@@ -36,7 +36,7 @@ COPY . .
 RUN npm run build
 
 # --- runtime stage ---
-FROM node:22-alpine
+FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
@@ -53,14 +53,14 @@ CMD ["node", "dist/server.js"]
 .NET:
 
 ```dockerfile
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY *.csproj ./
 RUN dotnet restore
 COPY . .
 RUN dotnet publish -c Release -o /app
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
 USER $APP_UID
@@ -123,18 +123,19 @@ This is where Docker pays for itself day to day:
 ```yaml
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: devpath
     ports: ["5432:5432"]
-    volumes: ["pgdata:/var/lib/postgresql/data"]
+    # 18+ images keep data under a versioned subfolder; mount the parent
+    volumes: ["pgdata:/var/lib/postgresql"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine   # or valkey/valkey, the BSD-licensed fork
     ports: ["6379:6379"]
 
   api:
@@ -174,7 +175,7 @@ object storage for files and stdout for logs.
 
 ## Images and tags
 
-`node:22-alpine` is a repository, a version and a variant. `alpine` is small
+`node:24-alpine` is a repository, a version and a variant. `alpine` is small
 but uses musl instead of glibc, which occasionally breaks native modules — the
 `-slim` Debian variants are a safer default when that bites.
 
@@ -193,6 +194,19 @@ normal.
 Also make sure signals actually reach your process: `CMD ["node", "server.js"]`
 (exec form) runs node as PID 1 and gets the signal. `CMD npm start` wraps it in
 a shell that may not forward it.
+
+Receiving the signal is not the same as acting on it. The kernel applies no
+default action to PID 1, and Node installs no SIGTERM handler of its own, so
+without a `process.on('SIGTERM')` handler the container ignores it and is
+SIGKILLed when the grace period ends. Node needs a handler (see the Node guide)
+or `docker run --init` / tini as PID 1; ASP.NET Core's host handles SIGTERM for
+you.
+
+On .NET you can skip the Dockerfile entirely: `dotnet publish
+/t:PublishContainer` builds an image from the project file (chiseled Ubuntu
+base images are the small, shell-less option). Note too that `COPY *.csproj`
+above only works for a single project; a solution needs each project file
+copied into its own folder before `dotnet restore`.
 
 ## Kubernetes, in one paragraph
 

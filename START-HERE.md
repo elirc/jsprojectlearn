@@ -23,11 +23,15 @@ serves is generated onto disk and fetched from your own machine.
 
 And beyond the project folders:
 
-- **`content/modules/` (22 guides)** — the written material with no project
+- **`content/modules/` (37 guides)** — the written material with no project
   attached: HTTP, SQL, REST design, auth, EF Core, Docker, CI/CD, caching,
   observability, debugging, and the interview playbook.
-- **`content/questions/` (450 questions)** — the interview drill decks the app
-  serves with spaced repetition. Plain JSON, readable offline.
+- **`content/questions/` (1,043 questions in 34 decks)** — the interview drill
+  decks the app serves with spaced repetition. Plain JSON, readable offline,
+  gated by `scripts/check-questions.mjs`.
+- **`upskilling/`** — the junior → senior journal: nine case studies drawn from
+  decisions made in this repo, ten chapters on how seniors work, a competency
+  matrix, a 90-day plan, templates and worked examples. Markdown only.
 - **`HANDBOOK.md` + `QUIZ.md` in each track** (JS at the root, and in
   `react/`, `typescript/`, `csharp/`) — a cover-to-cover offline reference
   and a 50-question quiz bank with explained answers.
@@ -42,8 +46,8 @@ And beyond the project folders:
 
 ## What works offline
 
-- **Everything in the JS track (01–85) that runs with `node`** — Node runs
-  100% locally. `node 01-fizzbuzz/original.js`, `node --test 01-fizzbuzz/`,
+- **Everything in the JS track (01–86) that runs with `node`** — Node runs
+  100% locally. `node 01-fizzbuzz/original.js`, `node --test "01-fizzbuzz/**/*.test.js"`,
   and `npm test` all work with no internet.
 - **Plain HTML projects** (todo app, snake, connect four, sierpinski, etc.) —
   double-click the file; browsers render local files without internet.

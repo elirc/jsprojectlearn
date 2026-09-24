@@ -6,433 +6,545 @@
   "questions": [
     {
       "id": "hr-001",
-      "q": "Which methods are expected to be idempotent?",
+      "q": "Which HTTP methods are defined as idempotent?",
       "choices": [
-        "GET, PUT, DELETE, HEAD — repeating them leaves the same end state",
-        "Only GET",
-        "All of them",
-        "POST and PATCH"
+        "GET and HEAD only, since they are the only methods that never change state",
+        "POST and PATCH, because the server can detect and skip a repeated request",
+        "GET, HEAD, PUT, DELETE, OPTIONS and TRACE: repeating one leaves the same end state",
+        "Every method at all, provided the client resends a byte-identical request body"
       ],
-      "answer": 0,
-      "why": "Idempotent means N identical requests have the same effect as one. DELETE twice: still deleted (the second may return 404, which is fine). POST creates a new resource each time, so it is not — which is why double-submits create duplicate orders.",
+      "answer": 2,
+      "why": "Idempotent means N identical requests have the same effect on the server as one. DELETE twice leaves it deleted (the second may return 404, which is fine). GET and HEAD are safe as well as idempotent; PUT and DELETE change state but idempotently. POST is not, which is why double-submits create duplicate orders.",
       "tags": ["methods", "idempotency"],
-      "level": 2,
+      "level": 1,
       "asked": "Extremely common, because it explains retries, double-submits and payment bugs."
     },
     {
       "id": "hr-002",
       "q": "What is the difference between PUT and PATCH?",
       "choices": [
-        "PUT replaces the whole resource; PATCH applies a partial change",
-        "PUT creates, PATCH updates",
-        "PATCH is a newer alias for PUT",
-        "PUT is for JSON, PATCH for form data"
+        "PUT only ever creates resources; PATCH only ever updates existing ones",
+        "PUT replaces the whole resource; PATCH applies a partial change to it",
+        "PATCH is a newer alias for PUT, and servers must treat them identically",
+        "PUT is for JSON bodies; PATCH is for form-encoded bodies from HTML forms"
       ],
-      "answer": 0,
-      "why": "A PUT missing a field should clear that field, because you sent the full representation. PATCH sends only what changes — which is why 'field absent' vs 'field set to null' matters so much in a PATCH payload.",
+      "answer": 1,
+      "why": "A PUT that omits a field should clear it, because you sent the full representation. PATCH sends only what changes, which is why \"field absent\" vs \"field set to null\" matters so much in a PATCH payload. PUT can also create a resource at a URI the client chooses.",
       "tags": ["methods"],
-      "level": 1
+      "level": 1,
+      "asked": "A phone-screen staple; the absent-vs-null follow-up shows whether you have built a PATCH endpoint."
     },
     {
       "id": "hr-003",
-      "q": "401 or 403?",
+      "q": "What distinguishes a 401 response from a 403?",
       "choices": [
-        "401 means not authenticated (who are you?); 403 means authenticated but not allowed",
-        "401 is for expired tokens, 403 for missing ones",
-        "They are interchangeable",
-        "403 means the resource does not exist"
+        "401 is for an expired token; 403 is for a request with no token at all",
+        "401 means not authenticated; 403 means authenticated but not allowed",
+        "401 is for API clients; 403 is the same error when shown to a browser",
+        "403 means the resource does not exist; 401 means it exists but is locked"
       ],
-      "answer": 0,
-      "why": "401 should carry a WWW-Authenticate header and tells the client to log in. 403 means logging in again will not help. Some APIs deliberately return 404 instead of 403 to avoid revealing that a resource exists.",
+      "answer": 1,
+      "why": "401 (despite its name, \"Unauthorized\") means \"who are you?\" and should carry a WWW-Authenticate header; an expired token is a 401 too. 403 means logging in again will not help. Some APIs deliberately return 404 instead of 403 to avoid revealing that a resource exists.",
       "tags": ["status-codes", "auth"],
       "level": 1,
-      "asked": "Asked constantly, and easy to get right — so getting it wrong stands out."
+      "asked": "Asked constantly, and easy to get right, so getting it wrong stands out."
     },
     {
       "id": "hr-004",
-      "q": "A request body fails validation. What status?",
+      "q": "A request body fails validation. Which status should the API return?",
       "choices": [
-        "400 (or 422 if you distinguish malformed from semantically invalid)",
-        "500",
-        "404",
-        "200 with an error field"
+        "500, because the server could not complete the request as sent",
+        "404, because no resource matching the submitted data exists yet",
+        "400, or 422 if you separate malformed syntax from invalid content",
+        "200 with an error field, so every client parses replies the same way"
       ],
-      "answer": 0,
-      "why": "400 means the client sent something wrong. 422 is the finer-grained 'syntactically valid JSON, semantically invalid content'. Returning 200 with `{ error: ... }` breaks every generic HTTP client and monitoring tool.",
+      "answer": 2,
+      "why": "4xx says the client must change the request; 500 says the server failed and invites a retry. 422 is the finer-grained \"valid JSON, invalid content\". Returning 200 with `{ error }` breaks every generic HTTP client, retry policy and monitoring dashboard.",
       "tags": ["status-codes", "validation"],
-      "level": 1
+      "level": 1,
+      "asked": "Checks you know status codes are a contract with clients and monitoring, not decoration."
     },
     {
       "id": "hr-005",
-      "q": "What does 409 Conflict mean, in practice?",
+      "q": "What does 409 Conflict mean in practice?",
       "choices": [
-        "The request conflicts with the current state — a duplicate unique field, or a lost-update collision",
-        "The server is overloaded",
-        "The client sent conflicting headers",
-        "Two requests arrived at once"
+        "The server is overloaded and rejects any new writes until its load drops",
+        "The client sent two headers whose values contradict one another",
+        "Two requests for the same resource reached the server at exactly the same moment",
+        "It clashes with current state, such as a duplicate email or a stale version"
       ],
-      "answer": 0,
-      "why": "Typical uses: registering an email that already exists, or an optimistic-concurrency failure where the resource changed since the client read it (usually with ETag/If-Match).",
+      "answer": 3,
+      "why": "Typical uses: registering an email that already exists, or an optimistic-concurrency failure where the resource changed since the client read it. Overload is 503 (or 429 per client), and two simultaneous requests are only a conflict if one invalidates the other.",
       "tags": ["status-codes"],
-      "level": 2
+      "level": 2,
+      "asked": "Leads straight into how you detect a stale write, which is the interesting part."
     },
     {
       "id": "hr-006",
-      "q": "How should you name REST resources?",
+      "q": "How should REST resource URLs be named?",
       "choices": [
-        "Plural nouns with ids and nesting: `/users/42/orders`",
-        "Verbs describing the action: `/getUserOrders`",
-        "A single `/api` endpoint taking a command",
-        "Whatever matches your function names"
+        "Verbs that describe the action, such as /getUserOrders?userId=42",
+        "Plural nouns with ids and shallow nesting, such as /users/42/orders",
+        "One /api endpoint that takes a command name in the request body",
+        "Whatever matches the controller's method names, so code and URL agree"
       ],
-      "answer": 0,
-      "why": "The HTTP method is the verb; the URL is the noun. Nest only one level — `/users/42/orders/7/items/3` is worse than `/order-items/3`.",
+      "answer": 1,
+      "why": "The HTTP method is the verb and the URL is the noun. Nest one level at most: `/users/42/orders/7/items/3` is worse than `/order-items/3`. A single command endpoint is RPC, which is a legitimate style but not REST.",
       "tags": ["design"],
-      "level": 1
+      "level": 1,
+      "asked": "A quick check that you have read and designed more than one API."
     },
     {
       "id": "hr-007",
       "q": "What does a 201 Created response usually include?",
       "choices": [
-        "A Location header pointing at the new resource, and often the created representation",
-        "An empty body only",
-        "The full collection",
-        "A redirect to the list page"
+        "An empty body, since the client already has the data it just sent",
+        "The full collection, so that the client can refresh its whole list in one go",
+        "A redirect to the list page, so a browser refresh cannot resubmit",
+        "A Location header for the new resource, and often its representation"
       ],
-      "answer": 0,
-      "why": "Returning the created object saves the client a round trip and gives it the server-assigned id and timestamps. 204 No Content is the right answer when there genuinely is nothing to return.",
+      "answer": 3,
+      "why": "Returning the created object gives the client the server-assigned id and timestamps without another round trip; 204 is right when there is genuinely nothing to return. Redirect-after-POST is a pattern for HTML form pages (303), not for JSON APIs.",
       "tags": ["status-codes", "design"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you think about what the client needs next, not just what the server did."
     },
     {
       "id": "hr-008",
-      "q": "Offset pagination (`?page=3&limit=20`) breaks how, on a busy dataset?",
+      "q": "How does offset pagination (`?page=3&limit=20`) break on a busy dataset?",
       "choices": [
-        "Rows inserted or deleted between pages cause items to be skipped or repeated",
-        "It cannot sort",
-        "It is limited to 1000 rows",
-        "It does not work with JSON"
+        "It cannot be combined with ORDER BY, so pages arrive in random order",
+        "Databases cap OFFSET at 1,000 rows, so deep pages return an error",
+        "Inserts and deletes between requests make rows skip or repeat across pages",
+        "It needs a total row count, which the database must recompute for every page"
       ],
-      "answer": 0,
-      "why": "Deep offsets are also slow — the database still scans and discards everything before the offset. Cursor pagination ('give me the 20 after this id') is stable and fast, at the cost of no random page access.",
+      "answer": 2,
+      "why": "If a row is inserted before page 3 while the user is on page 2, every later row shifts by one and one is shown twice. Deep offsets are also slow, because the database still walks and discards every row before the offset. Keyset pagination fixes both.",
       "tags": ["pagination"],
       "level": 2,
       "asked": "A great question: it needs both API design and database awareness."
     },
     {
       "id": "hr-009",
-      "q": "What is the point of an ETag?",
+      "q": "What is an ETag for?",
       "choices": [
-        "A version fingerprint enabling conditional requests — 304 on read, and optimistic concurrency on write",
-        "Compressing the response",
-        "Identifying the client",
-        "Tagging a release version of the API"
+        "A checksum the client verifies to detect corruption of the body in transit",
+        "A version fingerprint for conditional requests: 304 on reads, 412 on stale writes",
+        "An id the server assigns each client so it can track them across requests",
+        "A label naming the API release that served the response, for debugging"
       ],
-      "answer": 0,
-      "why": "Client sends If-None-Match on GET; server replies 304 with no body if unchanged. On PUT, If-Match lets the server reject a write based on a stale read with 412 — that is how you prevent lost updates.",
+      "answer": 1,
+      "why": "The client sends `If-None-Match` on GET and gets a bodyless 304 if nothing changed. On PUT, `If-Match` lets the server reject a write based on a stale read with 412, which is how HTTP prevents lost updates. Integrity in transit is TLS's job.",
       "tags": ["caching", "concurrency"],
-      "level": 3
+      "level": 3,
+      "asked": "Few candidates know the write-side use; naming If-Match is a strong signal."
     },
     {
       "id": "hr-010",
-      "q": "What does `Cache-Control: no-store` mean versus `no-cache`?",
+      "q": "What is the difference between `Cache-Control: no-store` and `no-cache`?",
       "choices": [
-        "no-store forbids storing the response at all; no-cache allows storing but requires revalidation before reuse",
-        "They are the same",
-        "no-cache disables caching entirely",
-        "no-store applies only to proxies"
+        "no-cache forbids keeping a copy; no-store keeps one but revalidates it first",
+        "They are synonyms; no-cache is simply the HTTP/1.0 spelling of no-store",
+        "no-store applies only to shared proxies; no-cache applies only to browsers",
+        "no-store forbids keeping a copy; no-cache keeps one but revalidates it first"
       ],
-      "answer": 0,
-      "why": "The naming is genuinely backwards. `no-store` is what you want for sensitive responses. `no-cache` is the 'check with me first' mode, usually paired with an ETag.",
+      "answer": 3,
+      "why": "The naming is genuinely backwards, which is why the swapped option is tempting. `no-store` is what you want for sensitive responses. `no-cache` is \"check with me first\", usually paired with an ETag so the check is cheap. The HTTP/1.0 relic is `Pragma: no-cache`.",
       "tags": ["caching", "headers"],
-      "level": 3,
+      "level": 2,
       "asked": "A precise question that separates people who have configured caching from those who have read about it."
     },
     {
       "id": "hr-011",
-      "q": "How do you version an API without breaking clients?",
+      "q": "How do you evolve a public API without breaking existing clients?",
       "choices": [
-        "Add fields rather than change them; version the path or a header only for genuinely breaking changes",
-        "Bump the version on every release",
-        "Never change the API",
-        "Use a query parameter for each change"
+        "Bump the version on every release so clients always know what changed",
+        "Add fields rather than change them; version only for breaking changes",
+        "Never change a published API; build a new one beside it per feature",
+        "Add a query parameter per change so clients opt in one at a time"
       ],
-      "answer": 0,
-      "why": "Additive changes are backwards compatible if clients ignore unknown fields. Breaking changes need a real migration path — run both versions and give consumers a deprecation window.",
+      "answer": 1,
+      "why": "Additive changes are compatible as long as clients ignore unknown fields. Breaking changes need a new version and a migration path: run both and give consumers a deprecation window. Versioning every release forces needless migrations.",
       "tags": ["versioning", "design"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you have maintained an API that someone else depended on."
     },
     {
       "id": "hr-012",
-      "q": "What should an error response body contain?",
+      "q": "What should an API error response body contain?",
       "choices": [
-        "A consistent, machine-readable shape: a stable code, a human message, and field-level details",
-        "A stack trace",
-        "Just a string message",
-        "Nothing — the status code is enough"
+        "The exception message and stack trace, so client developers can debug it",
+        "A plain string message, since the status code already carries the meaning",
+        "A consistent shape: a stable code, a human message and field-level details",
+        "Nothing at all, because well-behaved clients should branch on the status code alone"
       ],
-      "answer": 0,
-      "why": "Clients need to branch on something stable, not on English prose. RFC 7807 ProblemDetails (`type`, `title`, `status`, `detail`, `errors`) is a ready-made shape, and .NET emits it by default.",
+      "answer": 2,
+      "why": "Clients need to branch on something stable, not on English prose, and forms need to know which field failed. RFC 9457 Problem Details (formerly RFC 7807: `type`, `title`, `status`, `detail`) is a ready-made shape that ASP.NET Core emits by default. Stack traces belong in logs.",
       "tags": ["errors", "design"],
       "level": 2,
       "asked": "Very common for backend roles. Never leak a stack trace to a client."
     },
     {
       "id": "hr-013",
-      "q": "What does 429 mean and what should accompany it?",
+      "q": "What does a 429 status mean, and what should accompany it?",
       "choices": [
-        "Too Many Requests, ideally with a Retry-After header",
-        "Request timeout, with a Timeout header",
-        "Payload too large",
-        "Server overloaded, with a redirect"
+        "Request Timeout, sent with a Keep-Alive header to extend it",
+        "Payload Too Large, sent with a Content-Length header to cap it",
+        "Too Many Requests, ideally sent with a Retry-After header",
+        "Service Unavailable, sent with a Location header to redirect"
       ],
-      "answer": 0,
-      "why": "Retry-After tells the client exactly how long to back off, which turns a guess into a contract. A well-behaved client honours it rather than retrying blindly.",
+      "answer": 2,
+      "why": "Retry-After tells the client exactly how long to back off, which turns a guess into a contract. Timeout is 408, payload too large 413 and unavailable 503. A well-behaved client honours Retry-After rather than retrying in a tight loop.",
       "tags": ["status-codes", "rate-limit"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you can name the header that makes rate limiting cooperative."
     },
     {
       "id": "hr-014",
-      "q": "Why is a GET with side effects a problem?",
+      "q": "Why is a GET endpoint with side effects a problem?",
       "choices": [
-        "Browsers, proxies and crawlers prefetch and cache GETs, so the effect fires unexpectedly",
-        "GET cannot have a body",
-        "GET is slower",
-        "It is only a style issue"
+        "GET requests cannot carry a body, so the change has no data to work with",
+        "GET responses are slower, because browsers revalidate them every time",
+        "It only breaks naming conventions; clients and proxies treat it exactly the same",
+        "Crawlers, prefetchers and caches may issue or replay GETs you never expect"
       ],
-      "answer": 0,
-      "why": "The classic disaster: a `/delete?id=5` link that a crawler or a link prefetcher walks, deleting everything. Safe methods must not change state.",
+      "answer": 3,
+      "why": "GET is defined as safe, so browsers prefetch links, crawlers follow them and retries repeat them. The classic disaster is a `/delete?id=5` link that a crawler walks. Data for a GET travels in the URL, so the lack of a body is not the problem.",
       "tags": ["methods", "safety"],
-      "level": 2
+      "level": 2,
+      "asked": "The crawler-deleted-everything story is a favourite; it tests whether \"safe\" means anything to you."
     },
     {
       "id": "hr-015",
-      "q": "What is the difference between HTTP/1.1 and HTTP/2 that matters to you?",
+      "q": "What difference between HTTP/1.1 and HTTP/2 matters to a web developer?",
       "choices": [
-        "HTTP/2 multiplexes many requests over one connection, so domain sharding and file concatenation stop helping",
-        "HTTP/2 encrypts everything automatically",
-        "HTTP/2 removes headers",
-        "There is no practical difference"
+        "HTTP/2 lets the server skip status codes, as each stream signals success",
+        "HTTP/2 drops request headers and moves the metadata into the body",
+        "HTTP/2 keeps one request per connection but opens far more of them",
+        "HTTP/2 multiplexes requests over one connection, so bundling matters less"
       ],
-      "answer": 0,
-      "why": "Under HTTP/1.1, six-connection limits made bundling essential. With multiplexing, many small cacheable files can beat one big bundle. Header compression also makes cookies cheaper.",
+      "answer": 3,
+      "why": "Under HTTP/1.1 browsers opened about six connections per host and each carried one request at a time, so concatenating files and sharding domains paid off. With multiplexing, many small cacheable files can beat one big bundle. HTTP/2 also compresses headers, making cookies cheaper.",
       "tags": ["protocol", "performance"],
-      "level": 3
+      "level": 3,
+      "asked": "Checks your build and hosting habits are current rather than inherited from 2012."
     },
     {
       "id": "hr-016",
-      "q": "What is a preflight request and when is it sent?",
+      "q": "The browser sends this preflight before a cross-origin PUT. What must your server return for the PUT to go ahead?",
+      "code": "OPTIONS /api/orders/7 HTTP/1.1\nOrigin: https://app.example.com\nAccess-Control-Request-Method: PUT\nAccess-Control-Request-Headers: content-type, authorization",
+      "lang": "http",
       "choices": [
-        "An OPTIONS request the browser sends before a non-simple cross-origin request, to check permission",
-        "A HEAD request to check availability",
-        "The first request in a keep-alive connection",
-        "A DNS lookup"
+        "A 204 with an Allow: PUT header, which browsers read to decide on CORS",
+        "A 401 when unauthenticated, as the preflight carries the Authorization header",
+        "A 2xx with Access-Control-Allow-Origin, -Methods and -Headers covering it",
+        "A 200 with the resource body, which the browser reuses for the real PUT"
       ],
-      "answer": 0,
-      "why": "Triggered by a custom header, a method beyond GET/HEAD/POST, or Content-Type: application/json. Your server must respond to OPTIONS with the Allow-* headers — a 404 there is the usual cause of a mystery CORS failure.",
-      "tags": ["cors"],
+      "answer": 2,
+      "why": "The browser checks the Access-Control-Allow-* headers on an ok response against the method and headers it asked about, then sends the PUT. A preflight never carries credentials, so auth middleware that rejects OPTIONS with 401 is a classic cause of mystery CORS failures. `Allow` is unrelated to CORS.",
+      "tags": ["cors", "headers"],
       "level": 2,
-      "asked": "Guaranteed if the role touches a browser and an API on different origins."
+      "asked": "Guaranteed if the role touches a browser and an API on different origins; the 401-on-OPTIONS bug is the follow-up."
     },
     {
       "id": "hr-017",
       "q": "Where does authentication information belong in an HTTP request?",
       "choices": [
-        "The Authorization header, or a cookie for browser sessions — never the URL",
-        "A query parameter, for simplicity",
-        "The request body",
-        "A custom header named after your company"
+        "A query parameter, so the token survives redirects and is easy to test",
+        "The request body, so that it is encrypted along with the payload",
+        "The Authorization header, or a cookie for browser sessions, never the URL",
+        "A custom X-Token header, since Authorization is reserved for HTTP Basic auth"
       ],
-      "answer": 0,
-      "why": "URLs end up in browser history, server logs, proxy logs and Referer headers. A token in a query string is a token leaked to everything in the path.",
+      "answer": 2,
+      "why": "URLs end up in browser history, server and proxy logs, and Referer headers, so a token in a query string leaks to everything in the path. Under TLS the headers are encrypted exactly like the body. Authorization carries any scheme, Bearer included.",
       "tags": ["auth", "security"],
-      "level": 1
+      "level": 1,
+      "asked": "Checks you know where URLs leak to, which is the whole reason for the rule."
     },
     {
       "id": "hr-018",
-      "q": "What does 'REST is stateless' actually mean?",
+      "q": "What does \"REST is stateless\" actually mean?",
       "choices": [
-        "Each request carries everything the server needs; the server keeps no per-client conversation state",
-        "The server stores no data at all",
-        "Responses cannot be cached",
-        "Clients cannot use cookies"
+        "The server stores no data at all, so all application state lives in the client",
+        "Each request carries what the server needs; no session lives in memory",
+        "Responses cannot be cached, since each depends on the request state",
+        "Clients cannot use cookies, since a cookie is state between requests"
       ],
-      "answer": 0,
-      "why": "The database is state; a per-connection in-memory session is not. Statelessness is what lets you put any request on any instance behind a load balancer.",
+      "answer": 1,
+      "why": "The database is state; a per-connection, in-memory conversation is what REST forbids. A session id in a cookie is fine if the session lives in a shared store. Statelessness is what lets any instance behind a load balancer serve any request.",
       "tags": ["principles", "scaling"],
       "level": 2,
       "asked": "A conceptual question with a very practical consequence: horizontal scaling."
     },
     {
       "id": "hr-019",
-      "q": "Filtering, sorting and searching a collection — where do those go?",
+      "q": "Where do filtering, sorting and search go in a REST API for a collection?",
       "choices": [
-        "Query parameters on the collection: `/orders?status=open&sort=-created&q=blue`",
-        "Separate endpoints per filter",
-        "In the request body of a POST",
-        "As path segments"
+        "A separate endpoint per filter, such as /orders/open and /orders/by-date",
+        "Request headers such as X-Filter-Status, so the URLs stay short and clean",
+        "Path segments in a fixed order, such as /orders/status/open/sort/created",
+        "Query parameters on the collection: /orders?status=open&sort=-created"
       ],
-      "answer": 0,
-      "why": "One resource, many views of it. Whitelist sortable fields — passing user input straight into an ORDER BY is both an injection risk and an accidental full table scan.",
+      "answer": 3,
+      "why": "One resource, many views of it, and the URL stays bookmarkable and cacheable. Headers are invisible in links and are not part of the cache key without `Vary`. Allow-list sortable fields: user input straight into ORDER BY is an injection risk and a surprise table scan.",
       "tags": ["design", "pagination"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you design URLs for caching and sharing, not only for your router."
     },
     {
       "id": "hr-020",
       "q": "What is an idempotency key?",
       "choices": [
-        "A client-generated id sent with a POST so the server can detect and ignore a retry of the same request",
-        "A hash of the request body used for caching",
-        "The primary key of the created row",
-        "An API key scoped to one operation"
+        "A hash of the request body, which the server then uses as its response cache key",
+        "A client-generated id sent with a POST so the server can recognise a retry",
+        "The primary key of the created row, returned so that clients can retry",
+        "An API key scoped to a single operation that expires once it is used"
       ],
-      "answer": 0,
-      "why": "It is how payment APIs make 'create a charge' safe to retry. The server stores the key with the result and replays that result instead of charging twice.",
+      "answer": 1,
+      "why": "It is how payment APIs make \"create a charge\" safe to retry after a timeout: the server stores the key with the result and replays that result instead of charging twice. A body hash cannot tell a retry from a genuine second identical order.",
       "tags": ["idempotency", "reliability"],
       "level": 3,
-      "asked": "A strong answer to 'how do you stop a double charge?'"
+      "asked": "A strong answer to \"how do you stop a double charge?\""
     },
     {
       "id": "hr-021",
-      "q": "What is the difference between 502 and 503?",
+      "q": "Behind a reverse proxy, what is the difference between 502 and 503?",
       "choices": [
-        "502 means an upstream gave a bad response; 503 means this service is unavailable or overloaded",
-        "They are equivalent",
-        "502 is a client error",
-        "503 means the DNS failed"
+        "502: the upstream took too long; 503: the upstream returned invalid HTML",
+        "502: a proxy got a bad reply from upstream; 503: the service is refusing work",
+        "502: the app threw an unhandled exception; 503: the database is unreachable",
+        "502: the client sent a malformed request; 503: the DNS lookup failed"
       ],
-      "answer": 0,
-      "why": "In practice: 502 usually points at your app being down behind a proxy; 503 is the app or load balancer refusing work, often with Retry-After. Both are worth retrying with backoff; a 400 is not.",
+      "answer": 1,
+      "why": "502 usually means the app behind the proxy is down or closed the connection; 503 is the app or load balancer declining work, often with Retry-After. A slow upstream is 504, and an unhandled exception in your app is a 500 that the proxy passes through.",
       "tags": ["status-codes", "operations"],
-      "level": 2
+      "level": 2,
+      "asked": "Every on-call engineer has read these codes at 3am; knowing which layer each points at speeds up triage."
     },
     {
       "id": "hr-022",
-      "q": "Should a REST API return 200 with an empty array, or 404, for a collection with no matches?",
+      "q": "A search on a collection matches nothing. What should the API return?",
       "choices": [
-        "200 with an empty array — the collection exists, it is just empty",
-        "404, because there is nothing there",
-        "204 No Content",
-        "It does not matter"
+        "404, because nothing matched and the client should treat it as missing",
+        "204 No Content, since there are no items to put in a response body",
+        "200 with an empty array: the collection exists and simply has no items",
+        "400, because the filter was too narrow to match any of the rows"
       ],
-      "answer": 0,
-      "why": "404 means the *endpoint or resource* does not exist. Returning it for an empty result forces every client to treat a normal case as an error.",
+      "answer": 2,
+      "why": "404 means the endpoint or resource does not exist; using it for an empty result forces every client to treat a normal case as an error. 204 breaks clients that always parse a JSON array. An empty list is a successful answer.",
       "tags": ["status-codes", "design"],
-      "level": 1
+      "level": 1,
+      "asked": "Tests whether you design for the client code that consumes the response."
     },
     {
       "id": "hr-023",
-      "q": "What is the practical difference between REST and GraphQL for a CRUD app?",
+      "q": "For a CRUD app, what is the practical trade-off between REST and GraphQL?",
       "choices": [
-        "GraphQL lets clients specify exactly the fields they need; REST gives simpler caching and a smaller server surface",
-        "GraphQL is always faster",
-        "REST cannot do relationships",
-        "GraphQL replaces the database"
+        "GraphQL lets clients pick fields; REST keeps HTTP caching and the surface simple",
+        "GraphQL is faster in every case, since it always needs one round trip",
+        "REST cannot express relationships, so related data needs GraphQL to fetch",
+        "GraphQL replaces the data layer, so the server needs no ORM or SQL at all"
       ],
       "answer": 0,
-      "why": "GraphQL solves over- and under-fetching for many different clients. It costs you HTTP caching, brings N+1 risk, and needs query-depth limits. For one web client with a small team, REST is usually the right call.",
+      "why": "GraphQL solves over- and under-fetching for many different clients. It costs you URL-based HTTP caching, brings resolver N+1 risk, and needs query depth and cost limits. For one web client and a small team, REST is usually the right call.",
       "tags": ["design", "graphql"],
       "level": 2,
-      "asked": "An opinion question. Naming the trade-offs matters more than the choice."
+      "asked": "An opinion question in disguise; naming the trade-offs matters more than the choice."
     },
     {
       "id": "hr-024",
-      "q": "Why does an API need rate limiting?",
+      "q": "Why does an internal-facing API still need rate limiting?",
       "choices": [
-        "To protect capacity and stop one client — buggy or hostile — degrading service for everyone",
-        "To make billing easier",
-        "To reduce log volume",
-        "It is only needed for public APIs"
+        "To make billing simpler, since each request then costs a fixed amount",
+        "To cut log volume, since rejected requests are never written to logs",
+        "It does not: internal callers are trusted, so limits only add latency",
+        "So one buggy or hostile client cannot use up capacity for everyone"
       ],
-      "answer": 0,
-      "why": "Common algorithms: token bucket (allows bursts) and sliding window. Return 429 with Retry-After, and document the limit in headers so clients can self-regulate.",
+      "answer": 3,
+      "why": "Most rate-limit incidents are self-inflicted: a retry loop or a runaway batch job from a trusted service. A limit per caller turns \"the whole API is down\" into \"one client gets 429s\".",
       "tags": ["rate-limit", "operations"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you think of limits as capacity protection, not only as an anti-abuse feature."
     },
     {
       "id": "hr-025",
-      "q": "What does `Content-Type` vs `Accept` mean on a request?",
+      "q": "On a request, what do `Content-Type` and `Accept` each describe?",
       "choices": [
-        "Content-Type describes the body you are sending; Accept says what you want back",
-        "They are the same header for different HTTP versions",
-        "Accept is for the server, Content-Type for the client",
-        "Content-Type is only valid on responses"
+        "They are one header, renamed between HTTP/1.1 and HTTP/2",
+        "Content-Type describes the body sent; Accept, what you want back",
+        "Accept is set by servers; Content-Type is only set by clients",
+        "Content-Type belongs on responses; requests describe bodies with Accept"
       ],
-      "answer": 0,
-      "why": "Forgetting Content-Type: application/json on a POST is why a body arrives as undefined — the server's JSON parser skipped it because the type did not match.",
+      "answer": 1,
+      "why": "Forgetting `Content-Type: application/json` on a POST is why the body goes missing: the JSON parser skips a type it does not match, so in Express 5 `req.body` stays undefined (Express 4 gave `{}`). Accept drives content negotiation for the response.",
       "tags": ["headers"],
-      "level": 1
+      "level": 1,
+      "asked": "Basic, but it explains the most common \"my body is empty\" bug."
     },
     {
       "id": "hr-026",
       "q": "A DELETE succeeds. What should it return?",
       "choices": [
-        "204 No Content, or 200 with a body if you have something useful to say",
-        "201",
-        "404 to indicate it is gone",
-        "302 redirecting to the collection"
+        "201 Created, because the deletion is recorded as a new server event",
+        "404 Not Found, to confirm the resource no longer exists after the call",
+        "302 Found, redirecting the client to the collection it was removed from",
+        "204 No Content, or 200 with a body if there is something useful to say"
       ],
-      "answer": 0,
-      "why": "And a second DELETE of the same id? Either 204 (idempotent view) or 404 (literal view) is defensible — pick one and document it.",
+      "answer": 3,
+      "why": "A second DELETE of the same id may return 204 (idempotent view) or 404 (literal view); both are defensible, so pick one and document it. The first, successful call should not look like a failure.",
       "tags": ["status-codes", "methods"],
-      "level": 2
+      "level": 2,
+      "asked": "The second-DELETE follow-up tests whether you understand idempotency is about state, not status codes."
     },
     {
       "id": "hr-027",
-      "q": "What is HTTPS actually protecting?",
+      "q": "What does HTTPS actually protect?",
       "choices": [
-        "Confidentiality and integrity in transit, plus server identity — not the data at rest or in your logs",
-        "The server from attacks",
-        "The database contents",
-        "Against SQL injection"
+        "The server itself from attacks, since only encrypted requests reach the app",
+        "Stored data too, since TLS also encrypts the rows at rest inside the database server",
+        "Against injection, since TLS rejects any request whose payload was altered",
+        "Confidentiality and integrity in transit, plus proof of the server's identity"
       ],
-      "answer": 0,
-      "why": "TLS stops interception and tampering between client and server. It does nothing about what you then store in plain text, log, or expose through a broken authorisation check.",
+      "answer": 3,
+      "why": "TLS stops interception and tampering between client and server, and the certificate proves who the server is. An attacker can send a perfectly encrypted injection payload; what you store, log or expose afterwards is outside TLS.",
       "tags": ["security", "tls"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you do not treat \"we use HTTPS\" as a security posture."
     },
     {
       "id": "hr-028",
-      "q": "Your endpoint takes 4 seconds because it calls three services in sequence. What is the cheapest fix?",
+      "q": "Your endpoint takes 4 seconds because it calls three independent services in sequence. What is the cheapest fix that keeps the response the same?",
       "choices": [
-        "Call the independent ones concurrently",
-        "Add a cache in front of the endpoint",
-        "Increase the timeout",
-        "Move the work to a background job"
+        "Put a cache in front of the endpoint so repeat calls skip all three",
+        "Call the three services concurrently instead of one after another",
+        "Raise the client timeout so the four seconds stop causing errors",
+        "Move the work to a background job and return 202 straight away"
       ],
-      "answer": 0,
-      "why": "Three 1.3s calls in series is 4s; in parallel it is 1.3s. Caching and background jobs are real tools, but concurrency is free and changes nothing about the contract.",
+      "answer": 1,
+      "why": "Three 1.3 s calls in series take 4 s; concurrently they take about 1.3 s. A cache still pays full price on every miss, a longer timeout hides the latency, and 202 changes the contract the client depends on.",
       "tags": ["performance", "design"],
       "level": 2,
-      "asked": "A practical latency question — the same lesson as the async/await Promise.all question, at the service level."
+      "asked": "A practical latency question: the same lesson as the Promise.all question, at the service level."
     },
     {
       "id": "hr-029",
       "q": "What is a webhook?",
       "choices": [
-        "The provider calls your endpoint when an event happens, instead of you polling",
-        "A hook installed in the browser",
-        "A long-lived WebSocket connection",
-        "A scheduled job"
+        "The provider calls your endpoint when an event happens, instead of polling",
+        "A script the browser runs when the page receives a push notification",
+        "A long-lived WebSocket that the provider keeps open to your server",
+        "A scheduled job that fetches changes from the provider every minute"
       ],
       "answer": 0,
-      "why": "You must verify the signature, respond fast (do the work async), and handle duplicates — providers retry, so your handler has to be idempotent.",
+      "why": "Your endpoint must verify the signature, respond fast (do the work asynchronously) and tolerate duplicates, because providers retry until they get a 2xx. Fetching on a schedule is polling, the thing webhooks replace.",
       "tags": ["integration"],
-      "level": 2
+      "level": 2,
+      "asked": "Every payment or SaaS integration uses them; the retries-mean-duplicates point is what interviewers want."
     },
     {
       "id": "hr-030",
-      "q": "WebSockets, SSE or polling — how do you choose?",
+      "q": "How do you choose between WebSockets, server-sent events and polling?",
       "choices": [
-        "Bidirectional and chatty → WebSocket; server-to-client only → SSE; infrequent updates → polling",
-        "Always WebSockets",
-        "Polling is always wrong",
-        "SSE is deprecated"
+        "WebSockets for everything, since SSE and polling are legacy workarounds",
+        "SSE for chat, since it is two-way; WebSockets only for file uploads",
+        "Two-way and chatty: WebSocket; server-to-client: SSE; rare updates: polling",
+        "Polling for anything live, since WebSockets always fail behind load balancers"
+      ],
+      "answer": 2,
+      "why": "WebSockets cost you connection state, reconnection logic and load-balancer configuration. SSE is one-way over plain HTTP with automatic reconnect, enough for notifications or a progress feed. Polling every 30 seconds is genuinely fine for many dashboards.",
+      "tags": ["realtime", "design"],
+      "level": 2,
+      "asked": "Checks you pick the cheapest tool that meets the need instead of defaulting to WebSockets."
+    },
+    {
+      "id": "hr-031",
+      "q": "You move `POST /v1/orders` to `/v2/orders`. Which redirect makes clients repeat the POST, body included, at the new URL?",
+      "choices": [
+        "301 Moved Permanently, the standard code for any permanent move",
+        "302 Found, which tells clients to repeat the exact request elsewhere",
+        "308 Permanent Redirect, which requires the method and body be kept",
+        "303 See Other, which re-sends the original body to the new URL"
+      ],
+      "answer": 2,
+      "why": "Clients, browsers included, may turn a POST into a GET on 301 and 302, and 303 means \"now GET this\" by definition. 307 (temporary) and 308 (permanent) forbid changing the method, so the body is re-sent.",
+      "tags": ["status-codes", "redirects"],
+      "level": 2,
+      "asked": "A detail that bites during API migrations; it shows you have read the method-preservation rules."
+    },
+    {
+      "id": "hr-032",
+      "q": "A client POSTs an XML body to an endpoint that only reads JSON. Which status names the problem precisely?",
+      "choices": [
+        "406 Not Acceptable, as the server cannot accept the media format it was sent",
+        "415 Unsupported Media Type, as the body's Content-Type is not supported",
+        "422 Unprocessable Content, as the XML is well-formed but unexpected",
+        "501 Not Implemented, as the server has no XML parser installed at all"
+      ],
+      "answer": 1,
+      "why": "415 is about the request body's Content-Type. 406 is the mirror image: the server cannot produce any format listed in the request's Accept header. The names invite the swap, which is exactly why interviewers ask. 501 means the method itself is unsupported.",
+      "tags": ["status-codes", "headers"],
+      "level": 1,
+      "asked": "A quick precision check on content negotiation vocabulary."
+    },
+    {
+      "id": "hr-033",
+      "q": "`GET /report` returns JSON or CSV depending on the Accept header, and a CDN caches it. Which response header stops the CDN serving one format to clients that asked for the other?",
+      "choices": [
+        "ETag, so that the CDN can tell the JSON body apart from the CSV body",
+        "Content-Type, which caches already fold into the cache key they use",
+        "Cache-Control: public, so the CDN re-checks the format on each request",
+        "Vary: Accept, so caches keep a separate copy per Accept header value"
+      ],
+      "answer": 3,
+      "why": "A cache keys on the URL unless `Vary` names request headers that also change the response. Without it, the first client's format is served to everyone. The same applies to `Accept-Encoding` (compressed vs not) and `Accept-Language`; an ETag validates a copy, it does not select one.",
+      "tags": ["caching", "headers"],
+      "level": 3,
+      "asked": "Checks you understand how caches choose a stored response, which explains a whole class of CDN bugs."
+    },
+    {
+      "id": "hr-034",
+      "q": "What is a client's `Accept-Encoding: gzip, br` header asking for?",
+      "choices": [
+        "A compressed response body, which the server labels with Content-Encoding",
+        "A response in a character set other than UTF-8, such as br or gzip",
+        "Encryption of the body with one of the listed ciphers, on top of TLS",
+        "Chunked transfer, so the body arrives in pieces as soon as it is ready"
       ],
       "answer": 0,
-      "why": "WebSockets cost you connection state, reconnection logic and load-balancer configuration. SSE is plain HTTP with automatic reconnect and is enough for notifications or a progress feed. Polling every 30 seconds is genuinely fine for a lot of dashboards.",
-      "tags": ["realtime", "design"],
-      "level": 2
+      "why": "The server may compress with gzip or Brotli and says which in `Content-Encoding`; JSON and HTML typically shrink by 70% or more. Character sets travel in the `charset` parameter of Content-Type, and chunking is Transfer-Encoding.",
+      "tags": ["headers", "performance"],
+      "level": 1,
+      "asked": "A junior-level check that you know the free performance win and where it is configured."
+    },
+    {
+      "id": "hr-035",
+      "q": "What does designing an API contract-first with OpenAPI buy a team?",
+      "choices": [
+        "The server is generated in full, so no handlers are written by hand",
+        "Runtime validation becomes unnecessary, since the spec rejects bad input",
+        "The teams agree one spec early, then generate clients, mocks and tests",
+        "Versioning becomes unnecessary, since a spec guarantees compatibility"
+      ],
+      "answer": 2,
+      "why": "Frontend and backend can work in parallel against the agreed spec, with typed clients and mock servers generated from it, and CI can diff the spec to catch breaking changes. Generators produce stubs, not business logic, and the server must still validate what it receives.",
+      "tags": ["design", "tooling"],
+      "level": 2,
+      "asked": "Common in teams with separate frontend and backend developers; checks you know what the spec is for."
+    },
+    {
+      "id": "hr-036",
+      "q": "A bulk endpoint creates 100 items and 3 fail validation. Which response lets the client recover cleanly?",
+      "choices": [
+        "201, since most items were created and the client can re-fetch for gaps",
+        "400 listing the three errors, while the other 97 items remain created",
+        "A per-item result list with status and errors, so it retries only failures",
+        "500, since the batch did not fully complete and the client should resend all of it"
+      ],
+      "answer": 2,
+      "why": "The client needs to know exactly which items succeeded. Return per-item results (200 or 207 Multi-Status with an entry per index), or make the batch atomic and reject all of it. A 400 while 97 rows exist lies about state, and \"resend it all\" creates duplicates unless creation is idempotent.",
+      "tags": ["design", "errors"],
+      "level": 3,
+      "asked": "Checks you design the failure path of a batch, which is where imports and syncs go wrong."
     }
   ]
 }

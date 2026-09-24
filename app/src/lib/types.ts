@@ -34,7 +34,8 @@ export interface Guide {
   title: string;
   blurb: string;
   words: number;
-  headings: string[];
+  /** H2 sections, with the heading id the renderer produces. */
+  headings: { id: string; text: string }[];
 }
 
 /** Rough seniority the question is pitched at. */
@@ -69,7 +70,14 @@ export type Step =
   | { kind: 'read'; doc: string; anchor?: string; title: string; minutes: number }
   | { kind: 'guide'; guide: string; title: string; minutes: number }
   | { kind: 'build'; project: string; title: string; minutes: number }
-  | { kind: 'drill'; deck: string; count: number; title: string };
+  | {
+      kind: 'drill';
+      deck: string;
+      count: number;
+      title: string;
+      /** Narrow the deck to questions carrying any of these tags. */
+      tags?: string[];
+    };
 
 export interface Module {
   id: string;
@@ -111,7 +119,7 @@ export interface Stats {
 }
 
 export interface SearchRow {
-  kind: 'project' | 'deck' | 'module';
+  kind: 'project' | 'deck' | 'module' | 'page' | 'stage' | 'guide' | 'heading';
   id: string;
   title: string;
   sub: string;
@@ -127,7 +135,39 @@ export interface Content {
   search: SearchRow[];
 }
 
-/** A stable id for one step, used as the progress key. */
-export function stepKey(stageId: string, moduleId: string, index: number): string {
-  return `${stageId}/${moduleId}/${index}`;
+/** Content plus what every screen derives from it, computed once on load. */
+export interface ContentIndex extends Content {
+  /** Every question in every deck. */
+  questions: Question[];
+  /** The synthetic all-decks deck behind /drill/mixed. */
+  mixed: Deck;
+}
+
+/**
+ * What a step points at. A tagged drill is a different step from the same
+ * deck untagged, so its tags are part of the target (in authored order).
+ */
+export function stepTarget(step: Step): string {
+  switch (step.kind) {
+    case 'build':
+      return step.project;
+    case 'guide':
+      return step.guide;
+    case 'drill':
+      return step.tags?.length ? `${step.deck}|${step.tags.join(',')}` : step.deck;
+    case 'read':
+      // The anchor already carries its '#'.
+      return `${step.doc}${step.anchor ?? ''}`;
+  }
+}
+
+/**
+ * The progress key for one step: `module/kind:target`, e.g.
+ * `m-values/build:js/01-fizzbuzz`. Derived from what the step points at, not
+ * its position, so inserting a step never moves anyone's ticks. Module ids are
+ * globally unique and kind:target is unique within a module (build-content
+ * fails the build otherwise).
+ */
+export function stepKey(moduleId: string, step: Step): string {
+  return `${moduleId}/${step.kind}:${stepTarget(step)}`;
 }

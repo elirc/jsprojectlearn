@@ -48,22 +48,31 @@ on:
   push: { branches: [main] }
   pull_request:
 
+# Least privilege: the GITHUB_TOKEN can read the repo and nothing else
+permissions:
+  contents: read
+
+# A new push to the same branch or PR cancels the run it supersedes
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:17
+        image: postgres:18
         env: { POSTGRES_PASSWORD: test }
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-retries 5
         ports: ['5432:5432']
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
 
       - run: npm ci
@@ -92,9 +101,13 @@ seconds. A slow pipeline is one people learn to bypass.
 Pin your actions and base images to a version, not to a floating tag:
 
 ```yaml
-- uses: actions/checkout@v4        # a tag that moves within v4
-- uses: actions/checkout@8ade135   # a SHA — fully reproducible
+- uses: actions/checkout@v5        # a tag that moves within v5
+- uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
 ```
+
+The SHA must be the **full 40 characters**; GitHub rejects an abbreviated one.
+The trailing `# v5.0.0` comment is not decoration: Dependabot reads it to know
+which release the SHA is, and bumps both together when a new one ships.
 
 A floating tag means a third party can change what runs in your pipeline —
 which has been used as a real supply-chain attack vector.

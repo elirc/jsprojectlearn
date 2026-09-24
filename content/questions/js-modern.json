@@ -1,0 +1,372 @@
+{
+  "id": "js-modern",
+  "topic": "Modern JS",
+  "title": "Modern JavaScript (ES2020+)",
+  "blurb": "Modules, iterators, Intl, the newer built-ins and what Temporal will change: the language features that separate 'learned JS in 2015' from current.",
+  "questions": [
+    {
+      "id": "jsm-001",
+      "q": "When would you use `await import('./chart.js')` instead of a static `import` at the top of the file?",
+      "choices": [
+        "To import a CommonJS package, because static `import` only accepts ES modules",
+        "To get a fresh copy of the module's state each time, bypassing the module cache",
+        "To load the module only when a code path needs it, as a promise of its namespace",
+        "To import inside a function body, where a static `import` would run synchronously"
+      ],
+      "answer": 2,
+      "why": "Dynamic `import()` (ES2020) returns a promise and loads the module on demand, so bundlers split it into its own chunk; static imports are hoisted and all load before the module body runs. It shares the same module cache, so a second call returns the same instance, and Node can statically import CommonJS just fine.",
+      "tags": ["modules"],
+      "level": 1,
+      "asked": "It opens the code-splitting conversation: a strong answer mentions lazy-loading a heavy editor or chart route and the loading state you then have to render."
+    },
+    {
+      "id": "jsm-002",
+      "q": "`counter.mjs` exports `let count = 0` and an `increment()` that runs `count++`. In Node 24, what does `main.mjs` print?",
+      "code": "import { count, increment } from './counter.mjs';\nincrement();\nconsole.log(count);\ntry { count = 5; } catch (e) { console.log(e.constructor.name); }",
+      "lang": "js",
+      "choices": ["0, then TypeError", "1, then TypeError", "1, then nothing", "0, then nothing"],
+      "answer": 1,
+      "why": "ES modules (ES2015) export live bindings, not copies, so the importer sees `count` become 1 after `increment()`. The binding is read-only on the importing side, so assigning to it throws a TypeError; the CommonJS habit of 'you get a snapshot you can overwrite' is what makes 0 tempting.",
+      "tags": ["modules", "esm"],
+      "level": 2,
+      "asked": "It separates people who have only used bundlers from people who understand what ESM actually is, and it explains circular-import surprises."
+    },
+    {
+      "id": "jsm-003",
+      "q": "Why do many teams prefer named exports over `export default` for shared utilities?",
+      "choices": [
+        "Named exports are copied at import time, so callers cannot see later mutations",
+        "A default export disables tree shaking for every other export in that file",
+        "Default exports load asynchronously, while named exports resolve at parse time",
+        "A named export has one name everywhere, so renames, grep and auto-import agree"
+      ],
+      "answer": 3,
+      "why": "With `export default` every importer picks its own name, so the same function turns up as `format`, `fmt` and `formatDate`, and rename refactors and search miss call sites. Both forms are live bindings in ES2015 modules and both load in the same static phase; a default export does not stop the rest of the file being tree-shaken.",
+      "tags": ["modules"],
+      "level": 2,
+      "asked": "It is a code-style question with a real maintenance answer; interviewers want the refactoring argument, not 'the linter says so'."
+    },
+    {
+      "id": "jsm-004",
+      "q": "In an ES module running on Node 24, `__dirname` is undefined. How do you get the current file's directory?",
+      "choices": [
+        "Use `import.meta.dirname`, or `fileURLToPath` on `new URL('.', import.meta.url)`",
+        "Use `process.cwd()`, which Node sets to the folder of the running module file",
+        "Use `path.dirname(__filename)`, because `__filename` is still defined in ESM",
+        "Use `new URL('.', location.href)`, because ESM exposes the browser `location`"
+      ],
+      "answer": 0,
+      "why": "`import.meta.url` (ES2020) is the module's own `file:` URL, and Node 20.11+ also adds `import.meta.dirname` and `import.meta.filename`. `process.cwd()` is wherever the process was started, so reading `./data.json` relative to it breaks as soon as someone runs the script from another folder.",
+      "tags": ["modules", "esm"],
+      "level": 2,
+      "asked": "Everyone migrating a CommonJS service to ESM hits this in the first hour, so it is a quick check of real migration experience."
+    },
+    {
+      "id": "jsm-005",
+      "q": "`slow.mjs` logs 'slow start', runs `await new Promise((r) => setTimeout(r, 200))` at top level, then logs 'slow done'. In Node 24, what order does `app.mjs` print?",
+      "code": "console.log('app body');\nimport './slow.mjs';",
+      "lang": "js",
+      "choices": [
+        "app body, slow start, slow done",
+        "slow start, app body, slow done",
+        "slow start, slow done, app body",
+        "app body, then a SyntaxError"
+      ],
+      "answer": 2,
+      "why": "Imports are hoisted and evaluated before the importing module's body, and top-level await (ES2022, Node 14.8+) makes `slow.mjs` async: every module that imports it waits until its await settles. The tempting 'slow start, app body' assumes the importer carries on while the dependency waits, which is exactly what top-level await does not allow.",
+      "tags": ["modules", "esm", "promises"],
+      "level": 3,
+      "asked": "The follow-up is 'so what happens if a config module awaits a slow network call at top level?': a strong answer says every importer and app startup stalls."
+    },
+    {
+      "id": "jsm-006",
+      "q": "In Node 24, what does this print?",
+      "code": "const cfg = { retries: 0, name: '' };\ncfg.retries ||= 3;\ncfg.name ??= 'default';\ncfg.timeout ??= 5000;\nconsole.log(cfg);",
+      "lang": "js",
+      "choices": [
+        "{ retries: 0, name: '', timeout: 5000 }",
+        "{ retries: 0, name: 'default', timeout: 5000 }",
+        "{ retries: 3, name: 'default', timeout: 5000 }",
+        "{ retries: 3, name: '', timeout: 5000 }"
+      ],
+      "answer": 3,
+      "why": "Logical assignment (ES2021) assigns only when the operator would fall through: `||=` fires on any falsy value, so 0 becomes 3, while `??=` fires only on null or undefined, so the empty string stays and the missing `timeout` is filled. Using `||=` for defaults is how a deliberate 0 retries gets silently overwritten.",
+      "tags": ["syntax"],
+      "level": 1,
+      "asked": "It is the modern form of the classic defaults bug; interviewers want to hear which operator you would pick for config values and why."
+    },
+    {
+      "id": "jsm-007",
+      "q": "In Node 24, what does this print?",
+      "code": "const a = [10, 20, 30];\nconsole.log(a.at(-1), a[-1], a.at(5));",
+      "lang": "js",
+      "choices": ["30 30 undefined", "30 undefined undefined", "30 undefined 30", "30 30 30"],
+      "answer": 1,
+      "why": "`Array.prototype.at` (ES2022, Node 16.6+) accepts negative indexes counted from the end, so `at(-1)` is 30. Bracket access has no such rule: `a[-1]` looks up a property named '-1', which does not exist, and `at` does not wrap around, so an out-of-range index is undefined.",
+      "tags": ["syntax", "arrays"],
+      "level": 1,
+      "asked": "A quick check that you have written JavaScript recently; `arr[arr.length - 1]` still works, but `at(-1)` is what reviewers expect now."
+    },
+    {
+      "id": "jsm-008",
+      "q": "What does this print when run in Node 24?",
+      "code": "const n = [3, 8, 2, 9, 4];\nconsole.log(n.findLast((x) => x > 5), n.findLastIndex((x) => x > 10));",
+      "lang": "js",
+      "choices": ["9 -1", "8 -1", "9 undefined", "4 -1"],
+      "answer": 0,
+      "why": "`findLast` and `findLastIndex` (ES2023, Node 18+) search from the end, so the first match from the right is 9. Like `find`/`findIndex`, the value version returns undefined when nothing matches and the index version returns -1, so 'undefined' for the index is the mix-up.",
+      "tags": ["syntax", "arrays"],
+      "level": 1,
+      "asked": "It replaces the old `[...arr].reverse().find()` idiom, and interviewers like candidates who know it copies nothing and mutates nothing."
+    },
+    {
+      "id": "jsm-009",
+      "q": "In Node 24, what does converting these query parameters to an object print?",
+      "code": "const params = new URLSearchParams('page=2&sort=name&page=3');\nconsole.log(Object.fromEntries(params));",
+      "lang": "js",
+      "choices": [
+        "{ page: '2', sort: 'name' }",
+        "{ page: ['2', '3'], sort: 'name' }",
+        "{ page: '3', sort: 'name' }",
+        "{ page: 3, sort: 'name' }"
+      ],
+      "answer": 2,
+      "why": "`Object.fromEntries` (ES2019) accepts any iterable of pairs, including a `Map` or `URLSearchParams`, and a later pair overwrites an earlier key, so the last `page` wins. It never groups duplicates into arrays and never converts values from strings; use `params.getAll('page')` when a key can repeat.",
+      "tags": ["syntax"],
+      "level": 2,
+      "asked": "Parsing query strings is everyday API work, and the repeated-key case is where filter endpoints quietly drop values."
+    },
+    {
+      "id": "jsm-010",
+      "q": "In Node 24, what does this print?",
+      "code": "console.log(1_000_000 + 1, Number('1_000'), parseInt('1_000'));",
+      "lang": "js",
+      "choices": ["1000001 1000 1000", "1000001 NaN 1", "1000001 NaN NaN", "1000001 1000 1"],
+      "answer": 1,
+      "why": "Numeric separators (ES2021) are source-code syntax only: the literal `1_000_000` is one million, but string parsing ignores the feature. `Number('1_000')` rejects the whole string as NaN, while `parseInt` reads digits until the first invalid character and returns 1.",
+      "tags": ["syntax", "numbers"],
+      "level": 1,
+      "asked": "It checks whether you know the difference between literal syntax and runtime parsing, which matters when config values arrive as strings."
+    },
+    {
+      "id": "jsm-011",
+      "q": "An order id arrives as a BigInt. In Node 24, what does this print?",
+      "code": "const id = 9007199254740993n;\ntry { console.log(id + 1); } catch (e) { console.log(e.constructor.name); }\nconsole.log(10n / 3n, 1n == 1, 1n === 1);",
+      "lang": "js",
+      "choices": [
+        "9007199254740994n, then 3n true false",
+        "TypeError, then 3.3333333333333335 true true",
+        "9007199254740994, then 3n false false",
+        "TypeError, then 3n true false"
+      ],
+      "answer": 3,
+      "why": "BigInt (ES2020) never mixes with Number in arithmetic, so `id + 1` throws a TypeError and you must write `id + 1n`. BigInt division truncates to 3n, and loose equality compares the mathematical values (true) while strict equality also compares types (false). `JSON.stringify` throws on BigInt too, so APIs usually send large ids as strings.",
+      "tags": ["syntax", "numbers"],
+      "level": 3,
+      "asked": "Large database ids above 2^53 are a real integration bug, and the follow-up is how you serialise them over JSON."
+    },
+    {
+      "id": "jsm-012",
+      "q": "What does this generator code print in Node 24?",
+      "code": "function* ids() {\n  console.log('start');\n  yield 1;\n  yield 2;\n}\nconst it = ids();\nconsole.log('created');\nconsole.log(it.next(), it.next().value);",
+      "lang": "js",
+      "choices": [
+        "created, start, { value: 1, done: false } 2",
+        "start, created, { value: 1, done: false } 2",
+        "created, start, 1 2",
+        "start, created, 1 { value: 2, done: false }"
+      ],
+      "answer": 0,
+      "why": "Generators (ES2015) are lazy: calling `ids()` runs none of the body, it only returns an iterator, so 'created' logs first and 'start' only when the first `next()` runs. `next()` returns the `{ value, done }` result object, while `.value` unwraps it, which is why the two logged items look different.",
+      "tags": ["iterators", "generators"],
+      "level": 2,
+      "asked": "Laziness is why generators suit paging through large result sets, and interviewers want to hear that nothing runs until someone pulls."
+    },
+    {
+      "id": "jsm-013",
+      "q": "What must an object provide for `for...of` and spread syntax to work on it?",
+      "choices": [
+        "A numeric `length` property and indexed keys from 0 up to `length - 1`",
+        "A `forEach(callback)` method that calls the callback once for each item",
+        "An `entries()` method returning `[key, value]` pairs, the way `Map` does",
+        "A `[Symbol.iterator]()` method returning an object with a `next()` method"
+      ],
+      "answer": 3,
+      "why": "The iterator protocol (ES2015) is the contract: `[Symbol.iterator]()` returns an iterator whose `next()` yields `{ value, done }`. An array-like with `length` works with `Array.from` but not with `for...of`, which is why a plain object throws 'is not iterable'.",
+      "tags": ["iterators"],
+      "level": 1,
+      "asked": "It underpins spread, destructuring, `Map`, `Set` and generators, so it tells the interviewer whether you know why those all compose."
+    },
+    {
+      "id": "jsm-014",
+      "q": "In Node 24, what does this print?",
+      "code": "class Range {\n  constructor(from, to) { this.from = from; this.to = to; }\n  *[Symbol.iterator]() { for (let i = this.from; i <= this.to; i++) yield i; }\n}\nconst r = new Range(1, 3);\nconsole.log([...r], Math.max(...r));",
+      "lang": "js",
+      "choices": [
+        "TypeError: r is not iterable",
+        "[ 1, 2, 3 ] 3",
+        "[ Range { from: 1, to: 3 } ] NaN",
+        "[ 1, 2, 3 ] NaN"
+      ],
+      "answer": 1,
+      "why": "A generator method named `[Symbol.iterator]` (ES2015) makes every instance iterable, and each spread calls it again for a fresh iterator, so both spreads see 1, 2, 3. The NaN answers assume the second spread finds the iterator exhausted, which would only happen if you returned one shared iterator.",
+      "tags": ["iterators", "generators"],
+      "level": 2,
+      "asked": "Custom iterables show up in domain types such as date ranges and paged collections, and the fresh-iterator detail is a good depth probe."
+    },
+    {
+      "id": "jsm-015",
+      "q": "In Node 24, what does this print?",
+      "code": "function* naturals() { let n = 1; while (true) yield n++; }\nconst evens = naturals().filter((n) => n % 2 === 0).map((n) => n * 10).take(3);\nconsole.log(typeof evens.next, [...evens]);",
+      "lang": "js",
+      "choices": [
+        "It hangs, because `filter` drains the infinite generator",
+        "TypeError: `filter` is not a function on a generator",
+        "function [ 20, 40, 60 ]",
+        "object [ 20, 40, 60 ]"
+      ],
+      "answer": 2,
+      "why": "Iterator helpers (ES2025, Node 22+) put lazy `map`, `filter`, `take` and friends on iterators themselves, so each step pulls one value at a time and `take(3)` stops the infinite source. The result is another iterator, hence `next` is a function. On older runtimes the TypeError answer is correct, which is why you check support before relying on them.",
+      "tags": ["iterators", "generators", "version-support"],
+      "level": 3,
+      "asked": "It tests whether you track the language after ES2015 and whether you know helpers stay lazy, unlike spreading into an array first."
+    },
+    {
+      "id": "jsm-016",
+      "q": "In Node 24, what does this price formatter print?",
+      "code": "const price = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'JPY' });\nconsole.log(price.format(1234.5));",
+      "lang": "js",
+      "choices": ["¥1,234.50", "¥1,235", "¥1,234.5", "1,234.50 JPY"],
+      "answer": 1,
+      "why": "Intl.NumberFormat (ECMA-402; full ICU bundled in Node 13+) applies each currency's own minor units, and the yen has none, so the amount is rounded to ¥1,235. Assuming two decimals for every currency is the bug that hand-rolled '$' + n.toFixed(2) formatting ships.",
+      "tags": ["intl", "numbers"],
+      "level": 2,
+      "asked": "Any product with international customers needs this, and the strong answer adds that the stored amount stays in minor units and only display is localised."
+    },
+    {
+      "id": "jsm-017",
+      "q": "In Node 24, what does this print for the same stored instant?",
+      "code": "const d = new Date('2026-01-15T23:30:00Z');\nconst fmt = (timeZone) => new Intl.DateTimeFormat('en-GB', { timeZone, dateStyle: 'medium' }).format(d);\nconsole.log(fmt('Asia/Tokyo'), '|', fmt('UTC'));",
+      "lang": "js",
+      "choices": [
+        "16 Jan 2026 | 15 Jan 2026",
+        "15 Jan 2026 | 15 Jan 2026",
+        "15 Jan 2026 | 16 Jan 2026",
+        "16 Jan 2026 | 16 Jan 2026"
+      ],
+      "answer": 0,
+      "why": "A `Date` is one instant; `Intl.DateTimeFormat` with a `timeZone` option (ES2015 Intl, IANA zones built into Node 13+) renders it as a wall-clock date in that zone. 23:30 UTC is 08:30 the next day in Tokyo (UTC+9), so the calendar date differs. Formatting without `timeZone` uses the server's zone, which is how 'the report shows yesterday' bugs appear.",
+      "tags": ["intl", "time-zones"],
+      "level": 2,
+      "asked": "It filters for anyone who has shipped dates to users in more than one zone, and the follow-up is where the user's zone comes from."
+    },
+    {
+      "id": "jsm-018",
+      "q": "Which call sorts `['zebra', 'Éclair', 'apple', 'Zoe']` into the order a user expects for a display list?",
+      "choices": [
+        "`names.sort()`, since the default comparison is alphabetical",
+        "`names.sort((a, b) => a.toLowerCase() > b.toLowerCase())`",
+        "`names.sort((a, b) => a.charCodeAt(0) - b.charCodeAt(0))`",
+        "`names.sort(new Intl.Collator('en').compare)`"
+      ],
+      "answer": 3,
+      "why": "The default sort compares UTF-16 code units, so 'Zoe' lands before 'apple' and 'Éclair' goes last; Intl.Collator (ECMA-402, in every Node 13+ build) or localeCompare sorts by language rules, and { numeric: true } also puts 'item2' before 'item10'. A comparator returning a boolean never returns a negative number, so its order is unreliable.",
+      "tags": ["intl"],
+      "level": 1,
+      "asked": "Sorting names and product titles is everyday UI work, and the accented or mixed-case entry is the bug report you get from real users."
+    },
+    {
+      "id": "jsm-019",
+      "q": "On a server whose local time zone is America/New_York, what does this print in Node 24?",
+      "code": "const d = new Date('2026-03-10');\nconsole.log(d.getMonth(), d.getDate());",
+      "lang": "js",
+      "choices": ["3 10", "2 10", "2 9", "3 9"],
+      "answer": 2,
+      "why": "Months in `Date` are 0-based, so March is 2. A date-only ISO string is parsed as UTC midnight (specified since ES2015), while `'2026-03-10T00:00'` would be local time; UTC midnight is still 9 March in New York, so `getDate()` returns 9. Treat a birthday or due date as a plain date string, not a `Date`.",
+      "tags": ["dates", "time-zones"],
+      "level": 3,
+      "asked": "Off-by-one-day bugs from this exact rule are common in form inputs, and the strong answer explains the UTC versus local parsing split."
+    },
+    {
+      "id": "jsm-020",
+      "q": "Temporal is shipping now (Chrome 144, Firefox 139, Node 26) but Node 24 still needs a flag. Which Temporal type fits a customer's birthday?",
+      "choices": [
+        "`Temporal.PlainDate`, a calendar date with no time and no zone",
+        "`Temporal.Instant`, an exact moment on the UTC timeline",
+        "`Temporal.ZonedDateTime`, a moment pinned to an IANA zone",
+        "`Temporal.PlainDateTime`, a local date and wall-clock time"
+      ],
+      "answer": 0,
+      "why": "Temporal separates concepts Date conflates: Instant is a moment, ZonedDateTime a moment in a zone, PlainDate a calendar date. A birthday is the same date wherever you are, so storing it as an instant recreates the shift-by-a-day bug. In Node 24 it needs --harmony-temporal or a polyfill (unflagged from Node 26), so most code you inherit still uses Date plus a library.",
+      "tags": ["dates", "time-zones", "version-support"],
+      "level": 2,
+      "asked": "It checks you know why date libraries exist and what the platform replacement looks like, without claiming it is usable everywhere today."
+    },
+    {
+      "id": "jsm-021",
+      "q": "In Node 24, what does this print?",
+      "code": "const a = new Set([1, 2, 3]);\nconst b = new Set([2, 3, 4]);\nconsole.log([...a.intersection(b)], [...a.difference(b)]);",
+      "lang": "js",
+      "choices": [
+        "[ 2, 3 ] [ 1, 4 ]",
+        "[ 2, 3 ] [ 1 ]",
+        "[ 1, 2, 3, 4 ] [ 1 ]",
+        "TypeError: not a function"
+      ],
+      "answer": 1,
+      "why": "Set methods (ES2025, Node 22+) add `union`, `intersection`, `difference`, `symmetricDifference` and subset checks, each returning a new `Set`. `difference` is one-directional (in `a` but not in `b`), so it is just 1; [1, 4] is `symmetricDifference`. The TypeError is what Node 20 gives.",
+      "tags": ["builtins", "version-support"],
+      "level": 2,
+      "asked": "Comparing permission sets or selected ids is common, and it shows whether you still hand-roll `filter` plus `has` for it."
+    },
+    {
+      "id": "jsm-022",
+      "q": "A WebSocket client must resolve a pending request's promise when a reply with its id arrives later. What does `Promise.withResolvers()` give you here?",
+      "choices": [
+        "A promise whose `resolve` can be called repeatedly to push each reply",
+        "A promise-returning version of a callback API, like `util.promisify`",
+        "A promise that settles once every registered resolver has been called",
+        "A `{ promise, resolve, reject }` object you can store in a map by id"
+      ],
+      "answer": 3,
+      "why": "`Promise.withResolvers()` (ES2024, Node 22+) returns the promise together with its settle functions, replacing the pattern of hoisting `let resolve` out of the executor. A promise still settles only once, so repeated `resolve` calls are ignored; for a stream of replies you want an async iterator, not one promise.",
+      "tags": ["builtins", "promises"],
+      "level": 2,
+      "asked": "Request/response matching over sockets or workers is a real pattern, and interviewers look for the 'settles once' caveat."
+    },
+    {
+      "id": "jsm-023",
+      "q": "In Node 24, what does this ES module print?",
+      "code": "async function* pages() { yield [1, 2]; yield [3]; }\nconst a = await Array.fromAsync(pages());\nconst b = Array.from(pages());\nconsole.log(a, b);",
+      "lang": "js",
+      "choices": [
+        "[ [ 1, 2 ], [ 3 ] ] []",
+        "[ 1, 2, 3 ] []",
+        "[ [ 1, 2 ], [ 3 ] ] [ [ 1, 2 ], [ 3 ] ]",
+        "[ 1, 2, 3 ] [ Promise, Promise ]"
+      ],
+      "answer": 0,
+      "why": "Array.fromAsync (ES2026; shipped in Node 22+ and Chrome 121+) awaits each value of an async iterable and collects them, so you get one entry per page, not a flattened list. Array.from looks only for a sync iterator or a length, and an async generator has neither, so it silently returns an empty array rather than throwing.",
+      "tags": ["builtins", "generators", "promises"],
+      "level": 3,
+      "asked": "Collecting paged API results is common, and the silent empty array from `Array.from` is the bug a strong candidate has actually hit."
+    },
+    {
+      "id": "jsm-024",
+      "q": "What does this error-wrapping code print in Node 24?",
+      "code": "try {\n  try { JSON.parse('{bad'); }\n  catch (err) { throw new Error('Could not load config', { cause: err }); }\n} catch (e) {\n  console.log(e.message, '|', e.cause instanceof SyntaxError);\n}",
+      "lang": "js",
+      "choices": [
+        "Could not load config | false",
+        "Expected property name | true",
+        "Could not load config | true",
+        "SyntaxError: {bad | undefined"
+      ],
+      "answer": 2,
+      "why": "The `cause` option (ES2022, Node 16.9+) attaches the original error to the new one, so the message is yours and `e.cause` is the `SyntaxError` from `JSON.parse`. Before it, people concatenated messages and lost the original stack; Node's inspector prints the cause chain when you log the error.",
+      "tags": ["builtins"],
+      "level": 2,
+      "asked": "Wrapping errors with context without losing the root cause is a production-debugging habit interviewers look for."
+    }
+  ]
+}

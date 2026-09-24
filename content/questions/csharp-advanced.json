@@ -1,0 +1,434 @@
+{
+  "id": "csharp-advanced",
+  "topic": "C#+",
+  "title": "C#, the deeper parts",
+  "blurb": "Async internals, LINQ semantics, generics variance, records and the memory types: the C# questions after 'what's a value type'.",
+  "questions": [
+    {
+      "id": "csa-001",
+      "q": "In ASP.NET Core application code (not a library), what does adding `ConfigureAwait(false)` to an await change?",
+      "choices": [
+        "Very little: there is no SynchronizationContext, so continuations already resume on the thread pool",
+        "It moves the awaited call onto a background thread so the request thread stays free for other work",
+        "It prevents the deadlock that calling `.Result` in a controller action would otherwise cause",
+        "It stops the ExecutionContext flowing, so AsyncLocal values and the current culture are lost"
+      ],
+      "answer": 0,
+      "why": "ASP.NET Core has no SynchronizationContext, so there is nothing to capture and nothing to skip. Libraries still use `ConfigureAwait(false)` because they may be called from WPF, WinForms or legacy ASP.NET, where it avoids a context hop. It never moves work to another thread, and ExecutionContext (AsyncLocal) flows either way.",
+      "tags": ["async"],
+      "level": 2,
+      "asked": "Filters cargo-cult answers; a strong candidate says why libraries still use it and app code can drop it."
+    },
+    {
+      "id": "csa-002",
+      "q": "What is wrong with this code?",
+      "code": "ValueTask<int> pending = cache.GetCountAsync(key);\nint first = await pending;\nint second = await pending;",
+      "lang": "cs",
+      "choices": [
+        "Nothing: awaiting a completed ValueTask again returns the stored result, exactly as Task does",
+        "It does not compile: a ValueTask<T> must be awaited inline and cannot be stored in a local variable",
+        "The second await blocks forever, because a ValueTask signals its completion to one awaiter only",
+        "A ValueTask may be awaited only once; it can wrap a pooled source that is reused after the first await"
+      ],
+      "answer": 3,
+      "why": "A ValueTask can be backed by a pooled IValueTaskSource that is recycled once consumed, so a second await (or awaiting it concurrently, or calling `.Result` before completion) is undefined behaviour. It may happen to work in a test. If you need to await twice, call `.AsTask()` once and keep the Task. Storing it in a local is legal; the rule is about consuming it.",
+      "tags": ["async"],
+      "level": 3,
+      "asked": "A \"have you read the ValueTask guidance\" question; the follow-up is when ValueTask is worth it at all (hot paths that usually complete synchronously)."
+    },
+    {
+      "id": "csa-003",
+      "q": "What does this print?",
+      "code": "static async Task Fail(string m) { await Task.Yield(); throw new InvalidOperationException(m); }\n\ntry { await Task.WhenAll(Fail(\"a\"), Fail(\"b\")); }\ncatch (Exception ex) { Console.WriteLine(ex.Message); }",
+      "lang": "cs",
+      "choices": [
+        "b",
+        "a",
+        "One or more errors occurred. (a) (b)",
+        "a and then b, on two separate lines"
+      ],
+      "answer": 1,
+      "why": "Both tasks fault, and the task from `WhenAll` holds an AggregateException with both. `await` unwraps it and rethrows only the first inner exception, in argument order, so you see \"a\". The AggregateException message is what `.Wait()` or `.Result` would surface. To log every failure, keep the WhenAll task and read `task.Exception.InnerExceptions` in the catch.",
+      "tags": ["async"],
+      "level": 2,
+      "asked": "Catches people who log the caught exception and believe they have seen every failure in a batch."
+    },
+    {
+      "id": "csa-004",
+      "q": "What does `await foreach` give you here that returning `Task<List<int>>` would not?",
+      "code": "async IAsyncEnumerable<int> Numbers()\n{\n    for (var i = 1; i <= 3; i++) { await Task.Delay(100); yield return i; }\n}\nawait foreach (var n in Numbers()) Console.WriteLine(n);",
+      "lang": "cs",
+      "choices": [
+        "The three delays run in parallel, so the whole loop completes in about 100 ms instead of 300",
+        "Each number is handled on its own thread-pool thread, so the loop bodies run concurrently",
+        "Each number is printed as soon as it is produced, about 100 ms apart, not all at the end",
+        "Nothing at runtime: the compiler buffers the sequence into a List before the loop starts"
+      ],
+      "answer": 2,
+      "why": "An async iterator streams: the consumer gets each item as soon as the producer yields it, and the producer awaits between items without blocking a thread. The loop is still sequential, one item at a time, so nothing runs in parallel. That makes it a good fit for paging through an API or streaming rows from a database without loading everything into memory first.",
+      "tags": ["async"],
+      "level": 2,
+      "asked": "Asked when the job involves streaming or paging; a strong answer names a real use such as EF Core `AsAsyncEnumerable()`."
+    },
+    {
+      "id": "csa-005",
+      "q": "What does the semaphore achieve here?",
+      "code": "var gate = new SemaphoreSlim(4);\nvar tasks = urls.Select(async url =>\n{\n    await gate.WaitAsync();\n    try { return await http.GetStringAsync(url); }\n    finally { gate.Release(); }\n});\nvar pages = await Task.WhenAll(tasks);",
+      "lang": "cs",
+      "choices": [
+        "Requests run in batches of four, and each batch waits for the slowest request of the previous batch",
+        "Only four threads are used, and the remaining requests queue on the thread pool until one is free",
+        "The first four URLs are fetched, and later calls are skipped once the semaphore count reaches zero",
+        "At most four requests are in flight at once, and the others wait asynchronously without blocking"
+      ],
+      "answer": 3,
+      "why": "The semaphore is a sliding window: whenever one request finishes and releases, the next waiting one starts, so there are no batches. `WaitAsync` waits without holding a thread, which is the whole point versus `Wait()`. It is the standard way to be polite to a downstream API. `Parallel.ForEachAsync` with `MaxDegreeOfParallelism` does the same job.",
+      "tags": ["async"],
+      "level": 2,
+      "asked": "Tests whether you can control concurrency, not only start it; the follow-up is \"what if one URL hangs?\" (timeouts, cancellation)."
+    },
+    {
+      "id": "csa-006",
+      "q": "What is the most serious bug in this minimal API endpoint?",
+      "code": "app.MapPost(\"/orders\", async (Order o, AppDb db) =>\n{\n    db.Orders.Add(o);\n    await db.SaveChangesAsync();\n    _ = Task.Run(() => SendConfirmationAsync(o, db));\n    return Results.Accepted();\n});",
+      "lang": "cs",
+      "choices": [
+        "The discard `_ =` tells the compiler to drop the call, so the confirmation is never sent at all",
+        "Task.Run blocks the request thread until SendConfirmationAsync completes, removing any benefit",
+        "The background work uses the request-scoped DbContext, which is disposed when the request ends",
+        "Results.Accepted() needs a location URI for the new order, so the endpoint returns a 500 error"
+      ],
+      "answer": 2,
+      "why": "The DbContext is scoped to the request, so the fire-and-forget task races its disposal and fails with ObjectDisposedException, or worse, shares a non-thread-safe context. Its exceptions are also unobserved and the work is lost on shutdown. The discard only silences the \"not awaited\" warning. The fix is a queue drained by a BackgroundService that creates its own scope.",
+      "tags": ["async"],
+      "level": 3,
+      "asked": "Real production bug; a strong answer names both the lifetime problem and the lost-on-restart problem."
+    },
+    {
+      "id": "csa-007",
+      "q": "In .NET 9, in what order does this print the results?",
+      "code": "var tasks = ids.Select(id => FetchAsync(id)).ToList();\nawait foreach (var t in Task.WhenEach(tasks))\n    Console.WriteLine(await t);",
+      "lang": "cs",
+      "choices": [
+        "In the order of `ids`, because WhenEach keeps the input order exactly as Task.WhenAll does",
+        "All at once, after the slowest task finishes, because WhenEach waits for every task first",
+        "In completion order, but faulted tasks are skipped so the loop only sees successful ones",
+        "In completion order: each task is yielded as soon as it finishes, whether it succeeded or not"
+      ],
+      "answer": 3,
+      "why": "`Task.WhenEach` (new in .NET 9) returns an IAsyncEnumerable of the tasks in the order they complete. It hands you the task itself, so a faulted one is yielded like any other and `await t` rethrows its exception. Before .NET 9 the same pattern was a `Task.WhenAny` loop, which is O(n²) and easy to get wrong.",
+      "tags": ["async"],
+      "level": 2,
+      "asked": "A currency check on recent .NET; the follow-up is what people wrote before it existed."
+    },
+    {
+      "id": "csa-008",
+      "q": "What does this print?",
+      "code": "var calls = 0;\nvar squares = new[] { 2, 4, 6 }.Select(x => { calls++; return x * x; });\nvar total = squares.Sum();\nvar max = squares.Max();\nConsole.WriteLine(calls);",
+      "lang": "cs",
+      "choices": [
+        "3",
+        "6",
+        "9",
+        "It throws: a LINQ query can be enumerated only once"
+      ],
+      "answer": 1,
+      "why": "`squares` is a query, not a result. `Sum` and `Max` each enumerate it, so the selector runs once per element on each call, six in total. Against a database or an expensive projection that means doing the work twice, which is what analysers flag as \"possible multiple enumeration\". Materialise once with `ToList()` when you need the results more than once.",
+      "tags": ["linq"],
+      "level": 2,
+      "asked": "Checks that you understand deferred execution well enough to spot its cost, not only recite its definition."
+    },
+    {
+      "id": "csa-009",
+      "q": "You look up a user by email. Emails must be unique, and a missing user is a normal outcome. Which call fits?",
+      "choices": [
+        "`FirstOrDefault`: it returns null when nothing matches and throws when two users match",
+        "`Single`: it returns null when nothing matches and throws when two users match",
+        "`SingleOrDefault`: it returns null when nothing matches and throws when two users match",
+        "`First`: it returns the default value when nothing matches and ignores any duplicates"
+      ],
+      "answer": 2,
+      "why": "`SingleOrDefault` encodes both rules: none is fine, more than one is a data bug you want to hear about. `FirstOrDefault` never complains about duplicates, and `Single` and `First` throw when nothing matches. In EF Core, `Single*` asks the database for two rows so it can detect the duplicate, which costs almost nothing.",
+      "tags": ["linq"],
+      "level": 1,
+      "asked": "Simple, but the reasoning shows whether you let the API encode your invariants."
+    },
+    {
+      "id": "csa-010",
+      "q": "On a plain `IEnumerable<T>` returned by a LINQ query, why prefer `Any()` to `Count() > 0`?",
+      "choices": [
+        "`Count()` copies the sequence into a List first, so it allocates on every call",
+        "`Any()` caches its answer after the first call, while `Count()` re-runs each time",
+        "`Any()` stops at the first element, while `Count()` has to walk the whole sequence",
+        "`Count() > 0` throws on an empty sequence, while `Any()` simply returns false"
+      ],
+      "answer": 2,
+      "why": "Existence needs one element, and counting needs all of them. For a filtered sequence of a million items that is the difference between one step and a million. For an `ICollection<T>` such as a List, `Count()` reads the stored count, so both are cheap there. Nothing is cached and nothing is copied.",
+      "tags": ["linq"],
+      "level": 1,
+      "asked": "A quick signal of whether you think about what your LINQ calls actually do."
+    },
+    {
+      "id": "csa-011",
+      "q": "What does this print?",
+      "code": "var min = 10;\nvar big = new List<int> { 5, 15, 25 }.Where(x => x > min);\nmin = 20;\nConsole.WriteLine(big.Count());",
+      "lang": "cs",
+      "choices": [
+        "2",
+        "3",
+        "1",
+        "0"
+      ],
+      "answer": 2,
+      "why": "The lambda captures the variable `min`, not its value at the time `Where` was called. The query runs when `Count()` enumerates it, by which point `min` is 20, so only 25 passes. The same capture causes bugs when a query is built in a loop and the loop variable changes before enumeration. Materialise the query, or copy the value into a local, to pin it.",
+      "tags": ["linq"],
+      "level": 2,
+      "asked": "Combines closures with deferred execution; a strong answer mentions the loop-variable variant."
+    },
+    {
+      "id": "csa-012",
+      "q": "Against EF Core, what SQL does this run?",
+      "code": "IQueryable<Order> orders = db.Orders;\nFunc<Order, bool> isLarge = o => o.Total > 1000;\nvar large = orders.Where(isLarge).ToList();",
+      "lang": "cs",
+      "choices": [
+        "A SELECT with WHERE Total > 1000, because EF Core decompiles the delegate into SQL",
+        "A SELECT of every order with no WHERE clause; the filter then runs in memory",
+        "None: EF Core 3+ throws because the predicate would have to be evaluated on the client",
+        "A SELECT with WHERE Total > 1000, because Where on an IQueryable always becomes SQL"
+      ],
+      "answer": 1,
+      "why": "`Queryable.Where` takes an `Expression<Func<T, bool>>`, which EF can translate. A `Func` variable cannot convert to an expression tree, so overload resolution picks `Enumerable.Where`, and the query is enumerated as a plain IEnumerable: the whole table streams into memory. There is no exception, because EF never sees the predicate. Declare it as `Expression<Func<Order, bool>>` instead.",
+      "tags": ["linq", "ef-core"],
+      "level": 3,
+      "asked": "Shows up when someone \"refactors a predicate into a variable\" and the page gets slow; it separates people who know how LINQ providers work."
+    },
+    {
+      "id": "csa-013",
+      "q": "Which of these lines compile?",
+      "code": "IEnumerable<string> names = new List<string> { \"a\" };\nIEnumerable<object> objs = names;        // line A\nList<object> list = new List<string>();  // line B",
+      "lang": "cs",
+      "choices": [
+        "Line A only: `IEnumerable<out T>` is covariant, while `List<T>` is invariant",
+        "Both: string converts to object, so any generic of string converts as well",
+        "Line B only: `List<T>` implements `IEnumerable<T>`, so it inherits covariance",
+        "Neither: a generic type never converts between different type arguments"
+      ],
+      "answer": 0,
+      "why": "`IEnumerable<T>` is declared `out T` because it only hands values out, so a sequence of strings is safely a sequence of objects. `List<T>` also accepts values in (`Add`), and allowing line B would let you add an int to a list of strings, so classes are always invariant. Only interfaces and delegates can declare variance.",
+      "tags": ["generics"],
+      "level": 2,
+      "asked": "Variance comes up when designing repository or handler interfaces; knowing why List is invariant is the real test."
+    },
+    {
+      "id": "csa-014",
+      "q": "What does the `notnull` constraint give you on `class Cache<TKey, TValue> where TKey : notnull`?",
+      "choices": [
+        "A runtime ArgumentNullException whenever a caller passes a null key",
+        "A compile error for every reference-type key, since references can be null",
+        "A nullable warning when someone uses `string?` or `int?` as the key type",
+        "It restricts TKey to value types only, exactly like `where TKey : struct`"
+      ],
+      "answer": 2,
+      "why": "`notnull` is part of nullable reference types: it allows both value and reference types but warns when a nullable type argument is used. Like the rest of NRT it is a compile-time check with no runtime effect. `Dictionary<TKey, TValue>` declares its key the same way, because a null key has no hash code.",
+      "tags": ["generics"],
+      "level": 2,
+      "asked": "Tells the interviewer whether you have written generic library code under nullable reference types."
+    },
+    {
+      "id": "csa-015",
+      "q": "What do static abstract interface members (C# 11) make possible?",
+      "choices": [
+        "Calling a static method directly on the interface, without naming any implementing type",
+        "Generic code that calls a static method or operator on T, such as `T.Parse` or `a + b`",
+        "Overriding a base class static method and dispatching to it at runtime through a base reference",
+        "Giving every implementing class one shared static field that the interface itself owns"
+      ],
+      "answer": 1,
+      "why": "A constraint such as `where T : INumber<T>` lets a generic method write `T.Zero` or `a + b`, resolved per type argument at compile time. That is what generic math and `IParsable<T>` are built on. You still cannot call an abstract static on the interface itself, and there is no runtime dispatch through a base reference.",
+      "tags": ["generics"],
+      "level": 3,
+      "asked": "Awareness question; a good answer mentions `IParsable<T>` or generic math rather than inventing a use."
+    },
+    {
+      "id": "csa-016",
+      "q": "What does this print?",
+      "code": "var a = new Order(1, new List<string> { \"x\" });\nvar b = new Order(1, new List<string> { \"x\" });\nConsole.WriteLine(a == b);\n\nrecord Order(int Id, List<string> Lines);",
+      "lang": "cs",
+      "choices": [
+        "False",
+        "True",
+        "True for `==`, but False for `a.Equals(b)`",
+        "It does not compile: records need an explicit `==`"
+      ],
+      "answer": 0,
+      "why": "Record equality compares each member with its own `Equals`. For `List<string>` that is reference equality, and the two lists are different objects, so the records are not equal even though the contents match. `==` and `Equals` always agree on records. Use an immutable collection with value semantics, or override `Equals`, if a collection must take part.",
+      "tags": ["records"],
+      "level": 2,
+      "asked": "The classic record gotcha; it shows you know \"value equality\" is only as deep as each member."
+    },
+    {
+      "id": "csa-017",
+      "q": "What does `public record Point(int X, int Y);` generate?",
+      "choices": [
+        "Public mutable fields X and Y, a constructor, and reference equality inherited from object",
+        "Private fields X and Y, a constructor, and an Equals method that you must implement",
+        "Settable properties X and Y, a parameterless constructor, and value-based equality",
+        "Init-only properties X and Y, a constructor, Deconstruct, and value-based equality"
+      ],
+      "answer": 3,
+      "why": "Positional parameters on a `record` (class) become public `init` properties, plus a primary constructor, `Deconstruct`, value equality, `ToString` and `with` support. On a `record struct` the properties are settable unless you write `readonly record struct`, which is the usual surprise.",
+      "tags": ["records"],
+      "level": 1,
+      "asked": "A quick check that you know what the one-liner saves you from writing, and the record struct difference."
+    },
+    {
+      "id": "csa-018",
+      "q": "What happens with this code (C# 11 or later)?",
+      "code": "var u = new CreateUser { Name = \"Ann\" };\n\npublic class CreateUser\n{\n    public required string Email { get; init; }\n    public string? Name { get; init; }\n}",
+      "lang": "cs",
+      "choices": [
+        "It compiles; Email is null and the first read of it throws a NullReferenceException",
+        "It compiles with only a nullable warning, because `required` is advisory",
+        "It throws an ArgumentException at runtime from the generated constructor",
+        "Compile error: Email is required but the object initialiser does not set it"
+      ],
+      "answer": 3,
+      "why": "`required` is enforced by the compiler at every construction site: an initialiser that omits the member is error CS9035, not a warning. `init` then stops it being reassigned after construction. System.Text.Json (.NET 7+) also honours `required` and rejects a payload without the property, which makes it useful on request DTOs.",
+      "tags": ["records"],
+      "level": 1,
+      "asked": "Shows whether you use the modern alternatives to constructor-only DTOs."
+    },
+    {
+      "id": "csa-019",
+      "q": "What does this print (C# 12)?",
+      "code": "var c = new Counter(5);\nc.Next(); c.Next();\nConsole.WriteLine($\"{c.Start} {c.Next()}\");\n\npublic class Counter(int start)\n{\n    public int Start { get; } = start;\n    public int Next() => ++start;\n}",
+      "lang": "cs",
+      "choices": [
+        "7 8",
+        "5 8",
+        "5 6",
+        "8 8"
+      ],
+      "answer": 1,
+      "why": "A primary constructor parameter used inside a member is captured as a hidden mutable field. `Start` copied the value 5 once at construction, while `Next` keeps incrementing the captured parameter: 6, 7, then 8. The compiler warns (CS9124) that the parameter is stored twice. Primary constructor parameters are not properties and are not readonly.",
+      "tags": ["records"],
+      "level": 3,
+      "asked": "Checks whether you have really used C# 12 primary constructors on classes, where they behave differently from records."
+    },
+    {
+      "id": "csa-020",
+      "q": "What does the slice on the second line cost?",
+      "code": "string line = \"2026-09-23,ORDER,42\";\nReadOnlySpan<char> date = line.AsSpan(0, 10);\nConsole.WriteLine(date.Length);",
+      "lang": "cs",
+      "choices": [
+        "One new 10-character string on the heap, the same cost as Substring",
+        "Nothing, because the compiler turns AsSpan into a string literal at build time",
+        "A new char array of 10 elements, copied from the string on the stack",
+        "Nothing new on the heap: it is a view over the original string memory"
+      ],
+      "answer": 3,
+      "why": "A span is a pointer plus a length over memory that already exists, so slicing allocates nothing. That is why parsers use spans to avoid a Substring per field. The price is the ref struct rules: a span cannot live on the heap, so it cannot be a class field, be boxed, or be held across an await. Use `Memory<T>` when you need that.",
+      "tags": ["memory"],
+      "level": 1,
+      "asked": "Spans are the entry point to allocation-conscious .NET; the follow-up is why you cannot store one in a field."
+    },
+    {
+      "id": "csa-021",
+      "q": "Why can a `Span<T>` not be stored in a field of a class?",
+      "choices": [
+        "It is a ref struct that may point at stack memory, so it must never live on the heap",
+        "It is a class, and holding one in a field would keep the whole source array alive",
+        "It is immutable, and fields must be assignable after the constructor has run",
+        "It would be boxed on assignment, and boxing a span copies all of its elements"
+      ],
+      "answer": 0,
+      "why": "A span can point at a `stackalloc` buffer. A heap object that outlived the stack frame would then point at freed memory, so the compiler forbids spans anywhere that could reach the heap: class fields, boxing, lambdas that capture them, and locals that cross an await. `Memory<T>` is the heap-safe counterpart that you convert to a span when you use it.",
+      "tags": ["memory"],
+      "level": 2,
+      "asked": "Tests understanding of why the restrictions exist, not only that they do."
+    },
+    {
+      "id": "csa-022",
+      "q": "What does this print?",
+      "code": "var h = new Holder();\nh.Bump();\nConsole.WriteLine(h.C.N);\n\nstruct Counter { public int N; public void Inc() => N++; }\nclass Holder { public readonly Counter C; public void Bump() => C.Inc(); }",
+      "lang": "cs",
+      "choices": [
+        "1",
+        "It does not compile: you cannot call a method on a readonly field",
+        "0",
+        "It throws at runtime because the readonly field is modified"
+      ],
+      "answer": 2,
+      "why": "Calling a method on a `readonly` struct field makes the compiler pass a defensive copy, since it cannot prove `Inc` will not mutate the field. The copy is incremented and thrown away. Declaring the struct `readonly struct` (or the method `readonly`) removes the copies and makes the mutation a compile error instead of a silent no-op.",
+      "tags": ["memory"],
+      "level": 3,
+      "asked": "A deep one that separates people who have profiled struct-heavy code from those who have only read about value types."
+    },
+    {
+      "id": "csa-023",
+      "q": "In .NET 9, what changes when the field you `lock` on is a `System.Threading.Lock` instead of an `object`?",
+      "choices": [
+        "The lock becomes async-aware, so you can now `await` inside the lock block",
+        "The lock compiles to `Lock.EnterScope()`, a dedicated and faster primitive than Monitor",
+        "The lock is released automatically when the thread awaits inside the lock block",
+        "The lock is shared by every process on the machine, like a named system mutex"
+      ],
+      "answer": 1,
+      "why": "C# 13 recognises the new `Lock` type and emits `EnterScope()` with a `using`, avoiding Monitor and the object header. Behaviour is otherwise the same: it is still a thread-affine, in-process lock and you still cannot await inside it. For async code the tool remains `SemaphoreSlim` with `WaitAsync`.",
+      "tags": ["features", "async"],
+      "level": 3,
+      "asked": "A currency question; the strong answer adds that async critical sections still need SemaphoreSlim."
+    },
+    {
+      "id": "csa-024",
+      "q": "What does this print (C# 12)?",
+      "code": "int[] a = [1, 2];\nint[] b = [..a, ..a, 3];\nConsole.WriteLine(b.Length);",
+      "lang": "cs",
+      "choices": [
+        "3",
+        "4",
+        "5",
+        "It does not compile: `..a` is range syntax, not a spread"
+      ],
+      "answer": 2,
+      "why": "Collection expressions build any target collection type from literal elements, and `..a` spreads the elements of `a` in place, like `...a` in JavaScript. So `b` holds 1, 2, 1, 2, 3; reading `..a` as one nested element gives the tempting 3. The target type decides what gets built, which is why the same `[..]` syntax works for arrays, lists and spans.",
+      "tags": ["features"],
+      "level": 1,
+      "asked": "An easy currency check for C# 12, and the JavaScript spread analogy helps full-stack candidates."
+    },
+    {
+      "id": "csa-025",
+      "q": "What does this print?",
+      "code": "string Describe(int[] xs) => xs switch\n{\n    [] => \"empty\",\n    [var only] => $\"one: {only}\",\n    [var first, .., var last] => $\"{first}..{last}\",\n};\nConsole.WriteLine(Describe([4, 5, 6]));",
+      "lang": "cs",
+      "choices": [
+        "one: 4",
+        "4..6",
+        "4..5",
+        "It does not compile: `..` is valid only in a range"
+      ],
+      "answer": 1,
+      "why": "List patterns (C# 11) match on shape: `[]` is empty, `[var only]` is exactly one element, and `[var first, .., var last]` is two or more, where `..` is a slice pattern matching any number of middle elements. Three elements hit the last arm and bind 4 and 6. The switch arms are tried in order.",
+      "tags": ["features", "pattern-matching"],
+      "level": 1,
+      "asked": "Tests whether you know modern pattern matching beyond type checks."
+    },
+    {
+      "id": "csa-026",
+      "q": "What does `[NotNullWhen(true)]` change for the caller?",
+      "code": "using System.Diagnostics.CodeAnalysis;\nstatic bool TryFind(int id, [NotNullWhen(true)] out string? name)\n{\n    name = id == 1 ? \"Ann\" : null;\n    return name is not null;\n}\nif (TryFind(1, out var n)) Console.WriteLine(n.Length);",
+      "lang": "cs",
+      "choices": [
+        "The compiler treats `n` as non-null inside the if, so `n.Length` raises no warning",
+        "It throws an ArgumentNullException if the method returns true while name is still null",
+        "The compiler demands an explicit null check on `n` before every use inside the if",
+        "It changes the out type to `string`, so no caller can ever receive a null value"
+      ],
+      "answer": 0,
+      "why": "Nullable flow attributes tell the compiler how nullability depends on the return value; `Dictionary.TryGetValue` uses exactly this. Without the attribute, `n` stays `string?` in the if and `n.Length` warns. Like all NRT annotations it has no runtime effect, so it checks nothing if the method lies.",
+      "tags": ["features", "nullability"],
+      "level": 2,
+      "asked": "Shows you write APIs that work with the nullable analysis instead of sprinkling `!` at call sites."
+    }
+  ]
+}

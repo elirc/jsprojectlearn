@@ -152,22 +152,30 @@ journey. This catches configuration and connectivity failures, which are the
 ones no pre-deploy test can find because they only exist in the target
 environment.
 
+## The tools, by name
+
+The ideas above are tool-agnostic; interviewers will still ask what you use.
+
+| Job | JS/TS | .NET |
+|---|---|---|
+| Unit test runner | Vitest, Jest, or the built-in `node --test` | xUnit (v3), NUnit, MSTest |
+| Test doubles | `vi.fn()` / `jest.fn()`, MSW for HTTP | NSubstitute, Moq |
+| Component tests | Testing Library | bUnit (Blazor) |
+| API integration | Supertest against the app | `WebApplicationFactory<Program>` |
+| Real database in tests | Testcontainers | Testcontainers |
+| End to end | Playwright | Playwright |
+
+Whatever the tool, structure each test as **Arrange, Act, Assert**: set up the
+inputs, do the one thing under test, check the outcome. A test with two Acts is
+two tests. [Testing .NET APIs](dotnet-testing.md) covers the .NET column in
+depth.
+
 ## Frontend testing specifically
 
-Query the way a user would — by role, label and text, not by CSS class or
-component internals:
-
-```
-// Brittle
-wrapper.find('.btn-primary').simulate('click');
-
-// Resilient, and checks accessibility as a side effect
-await user.click(screen.getByRole('button', { name: 'Save order' }));
-expect(await screen.findByText('Order saved')).toBeVisible();
-```
-
-Do not test React itself. Test that *your* component shows the right thing and
-responds to the right interactions.
+Component tests query the way a user would (by role, label and text, never by
+CSS class), mock the network with MSW rather than `fetch`, and use Playwright
+for the journeys that need a real browser. The tools, the query priority and
+the flakiness table are in [Testing React apps](frontend-testing.md).
 
 ## The 90-second answer
 

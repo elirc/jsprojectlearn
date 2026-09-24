@@ -1,0 +1,353 @@
+{
+  "id": "cloud-basics",
+  "topic": "Cloud",
+  "title": "Cloud basics, provider-agnostic",
+  "blurb": "Load balancers, object storage, managed databases, CDNs, DNS, TLS and containers: what they are and why a CRUD app uses them, in any provider's vocabulary.",
+  "questions": [
+    {
+      "id": "cb-001",
+      "q": "What is the difference between a DNS A record and a CNAME record?",
+      "choices": [
+        "An A record is only for the root domain; a CNAME is for every subdomain beneath it",
+        "An A record points at a server; a CNAME points at one port on that server for a service",
+        "An A record is cached by browsers; a CNAME is never cached, so changes apply at once",
+        "An A record maps a name to an IPv4 address; a CNAME maps a name to another name"
+      ],
+      "answer": 3,
+      "why": "A CNAME says \"resolve that other name instead\", which is how you point `www` at a provider hostname that may change IP. It cannot sit at the zone apex alongside other records, which is why providers offer ALIAS/ANAME records. AAAA is the IPv6 equivalent of A.",
+      "tags": ["networking"],
+      "level": 1,
+      "asked": "Comes up whenever you connect a domain to a hosted service; the apex limitation is the follow-up."
+    },
+    {
+      "id": "cb-002",
+      "q": "You will move your domain to a new load balancer's IP next week. What should you do with the record's TTL beforehand?",
+      "choices": [
+        "Raise it to a week, so resolvers keep the old address until the move is complete",
+        "Lower it a day or more in advance, so cached answers expire soon after you switch",
+        "Leave it alone, since resolvers always re-check the authoritative server on a change",
+        "Set it to zero after switching, which pushes the new address out to every resolver"
+      ],
+      "answer": 1,
+      "why": "Resolvers cache the record for the TTL they last saw, so the lower TTL must be in place for at least one old TTL before the switch. Changing it afterwards does nothing for answers already cached. Keep the old endpoint running for stragglers.",
+      "tags": ["networking"],
+      "level": 3,
+      "asked": "A migration-experience question; people who have done one talk about lowering TTL days ahead."
+    },
+    {
+      "id": "cb-003",
+      "q": "Your load balancer is configured to terminate TLS. What does that mean?",
+      "choices": [
+        "It closes any connection that has not finished its TLS handshake within a time limit",
+        "It passes the encrypted traffic straight through, so only the app holds the certificate",
+        "It holds the certificate, decrypts HTTPS, and forwards the requests on to the app",
+        "It stops accepting TLS versions older than 1.2 and rejects clients that still use them"
+      ],
+      "answer": 2,
+      "why": "Terminating at the load balancer centralises certificates and lets it route on paths and headers, since it can read the request. Passing encrypted traffic through is TLS passthrough, the opposite. The app then learns the original scheme from `X-Forwarded-Proto`.",
+      "tags": ["networking", "security"],
+      "level": 2,
+      "asked": "Checks that you know where HTTPS actually ends in a typical deployment."
+    },
+    {
+      "id": "cb-004",
+      "q": "What can a layer 7 load balancer do that a layer 4 one cannot?",
+      "choices": [
+        "Route by URL path, host or header, because it reads the HTTP request itself",
+        "Balance TCP connections across instances, which a layer 4 balancer cannot do",
+        "Handle UDP traffic, such as DNS or streaming video, alongside ordinary web traffic",
+        "Keep working when an instance fails, since layer 4 has no health checks at all"
+      ],
+      "answer": 0,
+      "why": "A layer 4 balancer forwards TCP or UDP connections without looking inside, so it is fast and protocol-agnostic, and it does health checks too. A layer 7 balancer understands HTTP, so it can send `/api` to one pool and `/` to another, or add headers such as `X-Forwarded-For` for the app.",
+      "tags": ["networking"],
+      "level": 2,
+      "asked": "A common \"do you know your infrastructure\" question; path-based routing is the example to give."
+    },
+    {
+      "id": "cb-005",
+      "q": "An instance behind a load balancer starts failing its health check. What does the load balancer do?",
+      "choices": [
+        "Restarts the instance, then sends it traffic again once it has booted cleanly",
+        "Stops sending it new requests until the check passes again",
+        "Returns a 503 to every client until the failing instance recovers",
+        "Removes it permanently and launches a replacement from the latest image"
+      ],
+      "answer": 1,
+      "why": "A load balancer only decides where traffic goes: it takes the instance out of rotation and puts it back when checks pass. Restarting or replacing instances is the job of an orchestrator or autoscaling group. The other instances keep serving, so clients do not see 503s.",
+      "tags": ["networking", "reliability"],
+      "level": 1,
+      "asked": "Separates the load balancer's job from the orchestrator's, which candidates often blur."
+    },
+    {
+      "id": "cb-006",
+      "q": "What does a CDN do for a web app?",
+      "choices": [
+        "Hosts the app's database in several regions, so queries are answered locally",
+        "Compresses the app's JavaScript at build time, so the bundle is smaller",
+        "Replaces the load balancer, spreading requests across the app's instances",
+        "Caches content at edge locations near users, so requests travel less far"
+      ],
+      "answer": 3,
+      "why": "A CDN serves cacheable responses from points of presence close to users and only goes back to your origin on a miss. That cuts latency and origin load. Build-time compression is your bundler's job; a CDN may compress on the fly, but it does not build.",
+      "tags": ["networking"],
+      "level": 1,
+      "asked": "A junior infrastructure check; the follow-up is what you must never let it cache."
+    },
+    {
+      "id": "cb-007",
+      "q": "Compared with running your API on a VM you manage, what does a PaaS (a managed app platform) take off your hands?",
+      "choices": [
+        "OS patching, the runtime install, and the deploy and scaling mechanics",
+        "Database schema design, since the platform generates tables from your models",
+        "Application bugs, since the platform restarts and patches your code for you",
+        "All security concerns, since the provider is responsible for the whole stack"
+      ],
+      "answer": 0,
+      "why": "Under the shared responsibility model the platform owns the machine, OS and runtime; you still own your code, its dependencies, configuration and data. Restarting a crashed process is not fixing it, and your app's security holes remain yours.",
+      "tags": ["compute"],
+      "level": 1,
+      "asked": "Tests whether you know what you are still responsible for on a managed platform."
+    },
+    {
+      "id": "cb-008",
+      "q": "Which workload suits serverless functions best?",
+      "choices": [
+        "A WebSocket server holding thousands of long-lived connections open all day",
+        "A two-hour nightly batch job that keeps the CPU fully busy the whole time",
+        "Resizing images on upload, with traffic that arrives in unpredictable bursts",
+        "An API that keeps session data in process memory between separate requests"
+      ],
+      "answer": 2,
+      "why": "Functions are short-lived, event-driven and billed per invocation, so bursty event work fits and idle time costs nothing. They have execution time limits, instances come and go (so no in-memory state), and long-lived connections are a poor match.",
+      "tags": ["compute"],
+      "level": 2,
+      "asked": "Checks whether you pick serverless for a reason, not because it is fashionable."
+    },
+    {
+      "id": "cb-009",
+      "q": "What is a cold start on a serverless or scale-to-zero platform?",
+      "choices": [
+        "The first deploy of a function, which must be approved before it can take traffic",
+        "A function failing because its database has not started yet after an outage",
+        "The delay while a new instance is created and your code loads before it can respond",
+        "The extra fee charged for the first request after a function has been idle for a while"
+      ],
+      "answer": 2,
+      "why": "With no warm instance, the platform must start one and load your runtime and dependencies first, adding latency to that request. Smaller bundles, lighter start-up and a minimum instance count reduce it.",
+      "tags": ["compute"],
+      "level": 2,
+      "asked": "The follow-up is how you would reduce it; startup work and minimum instances are the usual answers."
+    },
+    {
+      "id": "cb-010",
+      "q": "What is the difference between horizontal and vertical scaling?",
+      "choices": [
+        "Horizontal splits the database by table; vertical splits it by rows across servers",
+        "Horizontal scales the frontend; vertical scales the backend and the database",
+        "Horizontal happens automatically; vertical always needs a manual restart",
+        "Horizontal adds more instances; vertical gives one instance more CPU and memory"
+      ],
+      "answer": 3,
+      "why": "Vertical is simple but has a ceiling and usually a restart; horizontal needs a stateless app and a load balancer but also adds redundancy. Either can be automated. Splitting data is partitioning or sharding, a different topic.",
+      "tags": ["compute", "scaling"],
+      "level": 1,
+      "asked": "A vocabulary check before any scaling discussion."
+    },
+    {
+      "id": "cb-011",
+      "q": "Your autoscaler adds instances when CPU passes 70%, yet a sudden spike still causes errors for a few minutes. Why?",
+      "choices": [
+        "Autoscalers only act on memory, so the CPU threshold is silently ignored",
+        "New instances take minutes to boot and pass health checks, so capacity arrives late",
+        "The load balancer sends traffic only to the original instances until a redeploy",
+        "CPU at 70% means the database is the bottleneck, so extra app instances do nothing"
+      ],
+      "answer": 1,
+      "why": "Scaling is reactive: the metric must breach, the instance must boot, the app must start and pass health checks. Keep headroom with a higher minimum count, scale earlier or on request rate, schedule known peaks, and make start-up fast.",
+      "tags": ["compute", "scaling"],
+      "level": 3,
+      "asked": "A production-experience signal; \"autoscaling is not instant\" is the insight."
+    },
+    {
+      "id": "cb-012",
+      "q": "What is the difference between object storage and block storage?",
+      "choices": [
+        "Object storage holds whole files by key over HTTP; block storage is a raw attached disk",
+        "Object storage is for structured rows; block storage is for unstructured files",
+        "Object storage is always slower, so it suits archives; block storage is for the app",
+        "Object storage lives in a single data centre; block storage is replicated across regions"
+      ],
+      "answer": 0,
+      "why": "Object storage (S3, Blob Storage, GCS) stores and retrieves whole objects through an API and scales without limit; block storage is a volume your server formats and mounts like a local disk. User uploads go in object storage; a self-hosted database sits on block storage.",
+      "tags": ["storage"],
+      "level": 1,
+      "asked": "Leads into where uploads should live; knowing the access model is the point."
+    },
+    {
+      "id": "cb-013",
+      "q": "What does a managed database service (such as RDS, Cloud SQL or Azure SQL) typically handle for you?",
+      "choices": [
+        "Index design, since it adds an index for every slow query automatically",
+        "Schema migrations, which it applies whenever your application models change",
+        "Query tuning, since it rewrites inefficient SQL before running it for you",
+        "Automated backups, engine patching, and failover to a standby replica"
+      ],
+      "answer": 3,
+      "why": "You pay for operations: backups, point-in-time restore, patching, monitoring and failover. Schema, indexes, migrations and query quality remain yours; some services suggest indexes, but none will design your data model.",
+      "tags": ["storage", "database"],
+      "level": 1,
+      "asked": "Tests whether you know the line between the provider's job and yours."
+    },
+    {
+      "id": "cb-014",
+      "q": "Someone runs a `DELETE` without a `WHERE` on the primary database. Why does the read replica not save you?",
+      "choices": [
+        "Replicas store only indexes, not rows, so there is nothing to restore from them",
+        "Replicas copy every change, so the delete reached the replica within seconds too",
+        "Replicas are wiped whenever the primary restarts, which a large delete triggers",
+        "Replicas lag by a day, so they hold yesterday's data rather than the lost rows"
+      ],
+      "answer": 1,
+      "why": "A replica faithfully copies mistakes as well as good writes. Replicas are for read scaling and availability; recovering from bad writes needs backups or point-in-time restore. \"We have replicas\" is not a backup strategy.",
+      "tags": ["storage", "database"],
+      "level": 2,
+      "asked": "A classic trap: candidates who treat replicas as backups get this wrong."
+    },
+    {
+      "id": "cb-015",
+      "q": "What does point-in-time recovery on a managed database let you do?",
+      "choices": [
+        "Pause the database at a chosen time each night, so no writes happen during backups",
+        "Replay one table's changes into another table to undo a single bad transaction",
+        "Schedule a failover to the standby at a set time, for planned maintenance windows",
+        "Restore to any moment in the retention window, such as just before a bad migration"
+      ],
+      "answer": 3,
+      "why": "The service keeps base backups plus the transaction log, so it can rebuild the database as it was at any second in the window, usually into a new instance you then copy data from. It restores the whole database, not one table.",
+      "tags": ["storage", "database"],
+      "level": 2,
+      "asked": "Checks that you know how you would recover from a bad migration before you need to."
+    },
+    {
+      "id": "cb-016",
+      "q": "Your managed database fails over to its standby in another availability zone. What does the app typically experience?",
+      "choices": [
+        "Nothing at all; open connections move to the standby without any interruption",
+        "Dropped connections and errors for a short while, until it reconnects to the same endpoint",
+        "Permanent errors until someone edits the connection string to point at the standby's address",
+        "Loss of the last hour of data, because the standby is only refreshed from hourly backups"
+      ],
+      "answer": 1,
+      "why": "The service repoints its DNS endpoint at the standby, which was kept in sync, so no committed data is lost. Existing connections break, though, so the app needs retries and a pool that discards dead connections.",
+      "tags": ["storage", "reliability"],
+      "level": 3,
+      "asked": "Tests whether your app code is ready for the failover the provider promises."
+    },
+    {
+      "id": "cb-017",
+      "q": "What is the difference between an image, a container and a registry?",
+      "choices": [
+        "An image is a running app, a container is its saved snapshot, and a registry runs containers",
+        "An image is a VM disk, a container is the VM running it, and a registry is the hypervisor",
+        "An image holds only the configuration, a container holds the code, and a registry merges them",
+        "An image is a read-only template, a container is a running instance, a registry stores images"
+      ],
+      "answer": 3,
+      "why": "You build an image once, push it to a registry, and every server pulls it and runs containers from it. Many containers can run from one image, each with its own writable layer that disappears when the container is removed.",
+      "tags": ["containers"],
+      "level": 1,
+      "asked": "Vocabulary that every deployment discussion assumes."
+    },
+    {
+      "id": "cb-018",
+      "q": "What does a container orchestrator such as Kubernetes or ECS do for you?",
+      "choices": [
+        "Builds your images from source and pushes them to the registry on each commit",
+        "Replaces your database with containers, so its data is replicated across nodes",
+        "Places containers on machines, restarts failed ones, and rolls out new versions",
+        "Writes a Dockerfile for each service from the language and framework it detects"
+      ],
+      "answer": 2,
+      "why": "You declare the desired state (this image, three replicas, these resources) and the orchestrator keeps it true: scheduling, self-healing, rolling updates and service discovery. Building images is CI's job.",
+      "tags": ["containers"],
+      "level": 2,
+      "asked": "A mid-level awareness question; \"desired state\" is the phrase that shows you get it."
+    },
+    {
+      "id": "cb-019",
+      "q": "Your app on a cloud VM needs to read from an object storage bucket. What is the recommended way to grant access?",
+      "choices": [
+        "Create an access key for a service user and put it in the app's environment variables",
+        "Attach an IAM role or managed identity to the VM, which supplies short-lived credentials",
+        "Commit an access key inside an encrypted config file that the app decrypts at start",
+        "Make the bucket publicly readable, and rely on long random object names for privacy"
+      ],
+      "answer": 1,
+      "why": "With a role or managed identity the SDK fetches temporary credentials from the platform and they rotate automatically, so there is no long-lived key to leak or rotate. Grant only the actions and bucket the app needs.",
+      "tags": ["security"],
+      "level": 2,
+      "asked": "Tests whether your default is identities rather than keys, which is the modern baseline."
+    },
+    {
+      "id": "cb-020",
+      "q": "What does a cloud secret manager add over putting secrets directly in the deploy configuration?",
+      "choices": [
+        "Central storage with access control, an audit trail of reads, and managed rotation",
+        "Faster app start-up, because secrets are cached inside the container image at build",
+        "Encryption in transit, which environment variables set at deploy time do not have",
+        "Automatic detection of weak passwords, which it then replaces with stronger ones"
+      ],
+      "answer": 0,
+      "why": "Secrets live in one place with per-app permissions, every read is logged, and database passwords can rotate without a redeploy. Baking secrets into an image is the thing to avoid: anyone who can pull the image can read them.",
+      "tags": ["security"],
+      "level": 2,
+      "asked": "The follow-up is how your app picks up a rotated secret without downtime."
+    },
+    {
+      "id": "cb-021",
+      "q": "Why is the production database usually placed in a private subnet?",
+      "choices": [
+        "Private subnets have faster disks, which databases need more than app servers do",
+        "Traffic inside a private subnet is free, while public subnets are billed per query",
+        "It has no route from the internet, so only resources inside the network can reach it",
+        "Managed databases refuse to start in a public subnet unless encryption is disabled"
+      ],
+      "answer": 2,
+      "why": "Defence in depth: even with a leaked password, an attacker on the internet cannot connect. The app tier reaches it inside the network, and security groups or firewall rules narrow that to the app only.",
+      "tags": ["security", "networking"],
+      "level": 2,
+      "asked": "A network-basics question; the strong answer adds a security group allowing only the app tier."
+    },
+    {
+      "id": "cb-022",
+      "q": "What is the difference between a region and an availability zone?",
+      "choices": [
+        "A region is one data centre; an availability zone is a group of regions on one continent",
+        "A region is where you deploy; an availability zone is only where your backups are kept",
+        "A region is a geographic area; an availability zone is an isolated data centre within it",
+        "A region is billed per hour; an availability zone is a free replica of it for failover"
+      ],
+      "answer": 2,
+      "why": "Spreading across zones in one region protects against a data-centre failure at low latency and modest cost (cross-zone traffic is billed). Multiple regions protect against a regional outage but bring data replication and much higher complexity.",
+      "tags": ["reliability", "networking"],
+      "level": 1,
+      "asked": "Leads into \"how available does this need to be?\", which is the real design question."
+    },
+    {
+      "id": "cb-023",
+      "q": "Background workers consume a queue whose backlog grows every afternoon. Which metric should the worker autoscaler act on?",
+      "choices": [
+        "Average worker CPU, since more messages in flight always show up as higher CPU on the workers",
+        "Queue depth or the age of the oldest message, since that is the backlog users are waiting on",
+        "Requests per second on the web tier, since every web request eventually produces one message",
+        "Memory use on the workers, since a growing backlog is held in each worker's memory until processed"
+      ],
+      "answer": 1,
+      "why": "The goal is to drain the backlog within a target time, so scale on the backlog itself: messages waiting, or better, how old the oldest one is. I/O-bound workers can sit at low CPU while thousands of messages wait, and memory says nothing because the backlog lives in the broker, not the worker. Web request rate is a proxy that ignores retries, bursts and slow consumers.",
+      "tags": ["compute", "scaling"],
+      "level": 2,
+      "asked": "Shows you pick the signal that measures the user-facing problem; 'age of the oldest message' is the answer that marks real experience."
+    }
+  ]
+}

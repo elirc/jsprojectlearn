@@ -17,3 +17,7 @@ app/public/content/
 app/public/docs/
 app/dist/
 *.tsbuildinfo
+
+# half-finished doc swaps left by an interrupted content build
+app/public/docs.staging-*
+app/public/docs.old-*

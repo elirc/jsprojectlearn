@@ -11,7 +11,7 @@
       "tagline": "Make the computer do something",
       "goal": "Write, run and debug a small JavaScript program without copying it from anywhere.",
       "outcome": "You can read a short program and predict what it prints.",
-      "hours": 18,
+      "hours": 14,
       "modules": [
         {
           "id": "m-values",
@@ -48,7 +48,7 @@
         {
           "id": "m-functions",
           "title": "Functions, scope, and closures",
-          "why": "Closures are the single most-asked JavaScript interview topic, and they are also the thing that makes React hooks make sense later. Learn them here and Stage 5 gets much easier.",
+          "why": "Closures are the single most-asked JavaScript interview topic, and they are also the thing that makes React hooks make sense later. Learn them here and the React stage gets much easier.",
           "interviewFocus": [
             "What a closure is, in one sentence, with an example",
             "Hoisting: function declarations vs let/const in the temporal dead zone",
@@ -109,14 +109,15 @@
           "title": "Data-driven code and plug-in shapes",
           "why": "When adding a feature means adding a row to a table instead of an `else if` to a growing chain, you have designed well. Interviewers probe this with 'how would you add a new payment provider'.",
           "interviewFocus": [
-            "Replacing a switch with a lookup table, and when not to",
-            "Programming to an interface in a language without interfaces",
-            "The rule of three: when to generalise"
+            "Strategy pattern vs a switch — show both and say when each wins",
+            "Open/closed in one concrete example",
+            "Pub/sub vs direct calls: what you gain and what gets harder to debug"
           ],
           "steps": [
             { "kind": "build", "project": "js/13-cipher-suite", "title": "Cipher suite — every plug-in has the same shape", "minutes": 60 },
             { "kind": "build", "project": "js/40-state-machine", "title": "State machine — states as data, not booleans", "minutes": 60 },
-            { "kind": "build", "project": "js/38-event-emitter", "title": "Event emitter — decoupling with a pub/sub seam", "minutes": 50 }
+            { "kind": "build", "project": "js/38-event-emitter", "title": "Event emitter — decoupling with a pub/sub seam", "minutes": 50 },
+            { "kind": "drill", "deck": "js-arrays-objects", "count": 10, "title": "Data-driven code drill" }
           ]
         },
         {
@@ -126,12 +127,14 @@
           "interviewFocus": [
             "Options object vs positional parameters",
             "Sensible defaults and how to express 'not provided'",
-            "Why a function that returns data beats one that prints it"
+            "Why 0.1 + 0.2 breaks money, and the two correct representations",
+            "Date traps: zero-indexed months, local vs UTC, what Temporal fixes"
           ],
           "steps": [
             { "kind": "build", "project": "js/11-password-generator", "title": "Password generator — options objects vs flag soup", "minutes": 45 },
             { "kind": "build", "project": "js/33-date-utils", "title": "Date utils — the worst API in the standard library", "minutes": 50 },
-            { "kind": "build", "project": "js/32-money-cart", "title": "Money and carts — never store money in a float", "minutes": 50 }
+            { "kind": "build", "project": "js/32-money-cart", "title": "Money and carts — never store money in a float", "minutes": 50 },
+            { "kind": "drill", "deck": "js-modern", "count": 8, "title": "Modern JavaScript APIs drill" }
           ]
         },
         {
@@ -175,7 +178,7 @@
       "tagline": "Learn what React is doing for you before you let it",
       "goal": "Build an interactive page with plain JavaScript, holding state in data rather than in the DOM.",
       "outcome": "You can explain what React actually buys you, because you have done it by hand.",
-      "hours": 20,
+      "hours": 24,
       "modules": [
         {
           "id": "m-dom-state",
@@ -194,6 +197,24 @@
           ]
         },
         {
+          "id": "m-html-forms",
+          "title": "HTML, forms and accessibility — the platform under every framework",
+          "why": "Every CRUD screen is a form and a table. Native HTML gives you keyboard support, validation, autofill and screen-reader output for free, and most 'React form bugs' are really HTML bugs. Accessibility is also a legal requirement on most contracts now, so you are expected to know the basics.",
+          "interviewFocus": [
+            "Why a clickable <div> is a bug — name three things a <button> gives you",
+            "What happens when you press Enter in a form, and the accidental-submit bug",
+            "Why a placeholder is not a label",
+            "What aria-label does, and when it is the wrong fix",
+            "Focus management when a modal opens and closes"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "html-semantics-and-forms", "title": "Guide — HTML that does the work for you", "minutes": 40 },
+            { "kind": "guide", "guide": "accessibility-fundamentals", "title": "Guide — accessibility you are accountable for", "minutes": 45 },
+            { "kind": "drill", "deck": "html-css", "count": 10, "title": "HTML and forms drill" },
+            { "kind": "drill", "deck": "accessibility", "count": 12, "title": "Accessibility drill" }
+          ]
+        },
+        {
           "id": "m-events-ui",
           "title": "Events, timing, and responsive interfaces",
           "why": "Debounce and throttle are asked about constantly, usually via 'the search box fires a request on every keystroke — fix it'.",
@@ -205,7 +226,24 @@
           "steps": [
             { "kind": "build", "project": "js/28-debounce-throttle", "title": "Debounce and throttle — write both from scratch", "minutes": 50 },
             { "kind": "build", "project": "js/54-search-as-you-type", "title": "Search as you type — debounce plus request cancellation", "minutes": 60 },
-            { "kind": "build", "project": "js/46-stopwatch", "title": "Stopwatch — why setInterval drifts", "minutes": 40 }
+            { "kind": "build", "project": "js/46-stopwatch", "title": "Stopwatch — why setInterval drifts", "minutes": 40 },
+            { "kind": "drill", "deck": "js-browser", "count": 10, "title": "Events and timing drill" }
+          ]
+        },
+        {
+          "id": "m-css-layout",
+          "title": "CSS layout and responsive design",
+          "why": "You will own your screens. Centring things, a z-index that does nothing, and a table that has to work on a phone are daily tasks — and a common screening question for anyone calling themselves full-stack.",
+          "interviewFocus": [
+            "Flexbox vs grid — pick one for a given layout and say why",
+            "Specificity and the cascade: why doesn't my style apply?",
+            "Stacking contexts: why z-index: 9999 does nothing",
+            "Media queries vs container queries",
+            "rem vs em vs px"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "css-layout-and-responsive", "title": "Guide — layout and responsive design", "minutes": 45 },
+            { "kind": "drill", "deck": "html-css", "count": 15, "title": "CSS layout drill" }
           ]
         },
         {
@@ -221,7 +259,26 @@
             { "kind": "guide", "guide": "package-managers-and-builds", "title": "Guide — npm, lockfiles, bundlers and the build step", "minutes": 35 },
             { "kind": "read", "doc": "HANDBOOK.md", "anchor": "#9-modules-esm", "title": "Handbook §9 — modules", "minutes": 15 },
             { "kind": "build", "project": "js/62-markdown-previewer", "title": "Markdown previewer — a real multi-module app", "minutes": 60 },
-            { "kind": "drill", "deck": "git-tooling-devops", "count": 10, "title": "Tooling drill" }
+            { "kind": "drill", "deck": "js-modern", "count": 10, "title": "Modules and tooling drill" }
+          ]
+        },
+        {
+          "id": "m-browser-apps",
+          "title": "Small apps, no framework",
+          "why": "Before React hides the plumbing, build real CRUD-shaped apps by hand: persistence, drag and drop, the URL as state, and importing a file a user hands you. Afterwards you will know exactly what the framework is doing for you.",
+          "interviewFocus": [
+            "Where state lives when an app has three views",
+            "Persisting to localStorage: quota, schema changes, and corrupt data",
+            "Drag and drop without using the DOM as your database — and its keyboard alternative",
+            "Why filters belong in the URL",
+            "Why split(',') cannot parse a real CSV file"
+          ],
+          "steps": [
+            { "kind": "build", "project": "js/63-expense-tracker", "title": "Expense tracker — a complete CRUD app with persistence", "minutes": 75 },
+            { "kind": "build", "project": "js/64-kanban", "title": "Kanban — drag and drop driven by state", "minutes": 75 },
+            { "kind": "build", "project": "js/60-router", "title": "Client-side router — the URL as state", "minutes": 60 },
+            { "kind": "build", "project": "js/34-csv-parser", "title": "CSV parser — why split(',') can't parse", "minutes": 50 },
+            { "kind": "drill", "deck": "js-modern", "count": 10, "title": "Modern JavaScript drill" }
           ]
         }
       ]
@@ -233,7 +290,7 @@
       "tagline": "Where beginners' code quietly breaks",
       "goal": "Fetch data correctly: sequenced, cancelled, retried, rate-limited, and with errors handled.",
       "outcome": "You can explain the event loop and debug a race condition on purpose rather than by shuffling awaits.",
-      "hours": 24,
+      "hours": 17,
       "modules": [
         {
           "id": "m-event-loop",
@@ -279,7 +336,9 @@
             { "kind": "build", "project": "js/43-retry-timeout", "title": "Retry and timeout — backoff done properly", "minutes": 60 },
             { "kind": "build", "project": "js/44-paginated-api", "title": "Paginated API — async iterators over pages", "minutes": 60 },
             { "kind": "build", "project": "js/50-weather-cli", "title": "Weather CLI — a real network client end to end", "minutes": 50 },
-            { "kind": "build", "project": "js/76-rate-limiter", "title": "Rate limiter — token bucket, from scratch", "minutes": 55 }
+            { "kind": "build", "project": "js/76-rate-limiter", "title": "Rate limiter — token bucket, from scratch", "minutes": 55 },
+            { "kind": "build", "project": "js/56-async-emitter", "title": "Async emitter — cancellation with AbortSignal", "minutes": 50 },
+            { "kind": "drill", "deck": "http-rest", "count": 10, "title": "Consuming APIs drill" }
           ]
         }
       ]
@@ -291,7 +350,7 @@
       "tagline": "Make wrong programs fail to compile",
       "goal": "Model your domain in types well enough that whole categories of bug become impossible.",
       "outcome": "You can type an API boundary, narrow a union exhaustively, and write a generic that isn't `any` in disguise.",
-      "hours": 28,
+      "hours": 39,
       "modules": [
         {
           "id": "m-ts-why",
@@ -322,7 +381,10 @@
             { "kind": "build", "project": "ts/03-shared-interfaces", "title": "Shared interfaces — one source of truth", "minutes": 40 },
             { "kind": "build", "project": "ts/04-optional-fields", "title": "Optional fields, honestly", "minutes": 35 },
             { "kind": "build", "project": "ts/05-null-safety", "title": "Null safety", "minutes": 40 },
-            { "kind": "build", "project": "ts/14-satisfies-vs-as", "title": "satisfies vs as", "minutes": 35 }
+            { "kind": "build", "project": "ts/14-satisfies-vs-as", "title": "satisfies vs as", "minutes": 35 },
+            { "kind": "build", "project": "ts/07-enums-vs-unions", "title": "Enums vs unions — the question every TS interview asks", "minutes": 35 },
+            { "kind": "build", "project": "ts/31-as-const", "title": "as const and widening", "minutes": 30 },
+            { "kind": "drill", "deck": "typescript", "count": 10, "title": "Modelling data drill" }
           ]
         },
         {
@@ -339,7 +401,8 @@
             { "kind": "build", "project": "ts/10-discriminated-unions", "title": "Discriminated unions", "minutes": 50 },
             { "kind": "build", "project": "ts/12-exhaustive-switch", "title": "Exhaustive switch with never", "minutes": 40 },
             { "kind": "build", "project": "ts/30-impossible-states", "title": "Make impossible states unrepresentable", "minutes": 55 },
-            { "kind": "drill", "deck": "typescript", "count": 16, "title": "Unions and narrowing drill" }
+            { "kind": "drill", "deck": "typescript", "count": 16, "title": "Unions and narrowing drill" },
+            { "kind": "build", "project": "ts/11-type-guards", "title": "Type guards and `is` predicates", "minutes": 40 }
           ]
         },
         {
@@ -349,14 +412,15 @@
           "interviewFocus": [
             "When a generic is genuinely needed vs when it's noise",
             "Constraints with `extends`, and `keyof`",
-            "Why `Array<T>` methods lose type information if you're careless"
+            "Why filter() doesn't narrow without a type predicate — and TS 5.5's inferred predicates"
           ],
           "steps": [
             { "kind": "build", "project": "ts/16-generics-intro", "title": "Generics, gently", "minutes": 40 },
             { "kind": "build", "project": "ts/17-generic-constraints", "title": "Generic constraints", "minutes": 40 },
             { "kind": "build", "project": "ts/18-keyof-lookup", "title": "keyof and lookup types", "minutes": 40 },
             { "kind": "build", "project": "ts/41-generic-lru", "title": "A generic LRU cache", "minutes": 55 },
-            { "kind": "build", "project": "ts/24-utility-types", "title": "Utility types — Pick, Omit, Partial, Record", "minutes": 40 }
+            { "kind": "build", "project": "ts/24-utility-types", "title": "Utility types — Pick, Omit, Partial, Record", "minutes": 40 },
+            { "kind": "drill", "deck": "typescript-advanced", "count": 10, "title": "Generics drill" }
           ]
         },
         {
@@ -373,7 +437,25 @@
             { "kind": "build", "project": "ts/34-api-boundary", "title": "Typing an API boundary", "minutes": 55 },
             { "kind": "build", "project": "ts/49-typed-fetch-wrapper", "title": "A typed fetch wrapper", "minutes": 55 },
             { "kind": "build", "project": "ts/36-result-type", "title": "A Result type", "minutes": 45 },
-            { "kind": "drill", "deck": "typescript", "count": 14, "title": "Boundary and generics drill" }
+            { "kind": "drill", "deck": "typescript", "count": 14, "title": "Boundary and generics drill" },
+            { "kind": "build", "project": "ts/43-schema-infer", "title": "One schema, two worlds — how Zod-style inference works", "minutes": 50 },
+            { "kind": "build", "project": "ts/35-typed-errors", "title": "Typed errors and the unknown catch", "minutes": 40 }
+          ]
+        },
+        {
+          "id": "m-ts-library-types",
+          "title": "Reading library types",
+          "why": "You will rarely write a conditional type in application code, but you will read them in every library's .d.ts, and 'implement Partial yourself' is a real interview question. This module makes library types legible.",
+          "interviewFocus": [
+            "Implement Partial<T> and Readonly<T> with a mapped type",
+            "What `infer` does, with ReturnType as the example",
+            "Distributive conditional types, and the [T] trick to stop it",
+            "When type-level cleverness is the wrong call in app code"
+          ],
+          "steps": [
+            { "kind": "build", "project": "ts/25-mapped-types", "title": "Mapped types — write your own Partial", "minutes": 45 },
+            { "kind": "build", "project": "ts/27-conditional-types", "title": "Conditional types and infer", "minutes": 45 },
+            { "kind": "drill", "deck": "typescript-advanced", "count": 12, "title": "Type-level TypeScript drill" }
           ]
         }
       ]
@@ -385,7 +467,7 @@
       "tagline": "The frontend half of a CRUD app",
       "goal": "Build the screens a CRUD product needs: lists, forms, detail views, optimistic updates, routing.",
       "outcome": "You can defend every render your component does, and your effects have no races and no leaks.",
-      "hours": 45,
+      "hours": 81,
       "modules": [
         {
           "id": "m-react-components",
@@ -401,7 +483,9 @@
             { "kind": "build", "project": "react/02-list-from-data", "title": "Lists from data", "minutes": 35 },
             { "kind": "build", "project": "react/03-key-prop", "title": "The key prop, properly", "minutes": 45 },
             { "kind": "build", "project": "react/05-props-design", "title": "Designing a component's props", "minutes": 45 },
-            { "kind": "drill", "deck": "react-core", "count": 15, "title": "React fundamentals drill" }
+            { "kind": "drill", "deck": "react-core", "count": 15, "title": "React fundamentals drill" },
+            { "kind": "build", "project": "react/04-conditional-render", "title": "Conditional rendering — the stray 0", "minutes": 35 },
+            { "kind": "build", "project": "react/14-event-handlers", "title": "Event handlers — onClick={fn()} and friends", "minutes": 30 }
           ]
         },
         {
@@ -419,7 +503,9 @@
             { "kind": "build", "project": "react/09-derived-state", "title": "Derived state is not state", "minutes": 40 },
             { "kind": "build", "project": "react/10-state-mutation", "title": "The mutation bug", "minutes": 40 },
             { "kind": "build", "project": "react/13-usereducer-todo", "title": "useReducer for related state", "minutes": 55 },
-            { "kind": "drill", "deck": "react-core", "count": 15, "title": "State management drill" }
+            { "kind": "drill", "deck": "react-core", "count": 15, "title": "State management drill" },
+            { "kind": "build", "project": "react/31-key-reset", "title": "Resetting state with key", "minutes": 40 },
+            { "kind": "build", "project": "react/32-preserve-state", "title": "State lives at a position in the tree", "minutes": 40 }
           ]
         },
         {
@@ -456,7 +542,8 @@
             { "kind": "build", "project": "react/23-usepersistentstate", "title": "usePersistentState", "minutes": 45 },
             { "kind": "build", "project": "react/24-usedebouncedvalue", "title": "useDebouncedValue", "minutes": 40 },
             { "kind": "build", "project": "react/26-refs-for-values", "title": "Refs for values, not just DOM", "minutes": 40 },
-            { "kind": "build", "project": "react/50-build-your-own-hooks", "title": "Build your own hooks", "minutes": 60 }
+            { "kind": "build", "project": "react/50-build-your-own-hooks", "title": "Build your own hooks", "minutes": 60 },
+            { "kind": "drill", "deck": "react-hooks", "count": 10, "title": "Custom hooks drill" }
           ]
         },
         {
@@ -472,7 +559,9 @@
             { "kind": "build", "project": "react/12-form-state", "title": "Form state", "minutes": 50 },
             { "kind": "build", "project": "react/43-form-validation", "title": "Form validation", "minutes": 60 },
             { "kind": "build", "project": "react/44-async-submit", "title": "Async submit", "minutes": 50 },
-            { "kind": "build", "project": "react/39-optimistic-updates", "title": "Optimistic updates and rollback", "minutes": 60 }
+            { "kind": "build", "project": "react/39-optimistic-updates", "title": "Optimistic updates and rollback", "minutes": 60 },
+            { "kind": "build", "project": "react/16-wizard-phases", "title": "Multi-step forms as a phase machine", "minutes": 50 },
+            { "kind": "drill", "deck": "react-patterns", "count": 8, "title": "Forms drill" }
           ]
         },
         {
@@ -488,7 +577,8 @@
             { "kind": "build", "project": "react/45-searchable-table", "title": "Searchable, sortable table", "minutes": 70 },
             { "kind": "build", "project": "react/46-shopping-cart", "title": "Shopping cart", "minutes": 70 },
             { "kind": "build", "project": "react/42-hash-router", "title": "Build a router", "minutes": 60 },
-            { "kind": "build", "project": "react/55-infinite-scroll", "title": "Infinite scroll", "minutes": 55 }
+            { "kind": "build", "project": "react/55-infinite-scroll", "title": "Infinite scroll", "minutes": 55 },
+            { "kind": "drill", "deck": "react-patterns", "count": 10, "title": "CRUD screens drill" }
           ]
         },
         {
@@ -506,7 +596,8 @@
             { "kind": "build", "project": "react/35-compound-tabs", "title": "Compound components", "minutes": 50 },
             { "kind": "build", "project": "react/36-controlled-component-api", "title": "A controlled component API", "minutes": 45 },
             { "kind": "build", "project": "react/37-error-boundary", "title": "Error boundaries", "minutes": 40 },
-            { "kind": "drill", "deck": "react-patterns", "count": 18, "title": "React patterns drill" }
+            { "kind": "drill", "deck": "react-patterns", "count": 18, "title": "React patterns drill" },
+            { "kind": "build", "project": "react/38-portal-modal", "title": "Portals — escaping the stacking context", "minutes": 40 }
           ]
         },
         {
@@ -522,7 +613,9 @@
             { "kind": "build", "project": "react/27-usememo", "title": "useMemo, when it matters", "minutes": 45 },
             { "kind": "build", "project": "react/28-memo-usecallback", "title": "memo and useCallback", "minutes": 50 },
             { "kind": "build", "project": "react/29-state-colocation", "title": "Colocation beats memoisation", "minutes": 45 },
-            { "kind": "build", "project": "react/54-list-virtualization", "title": "List virtualization", "minutes": 55 }
+            { "kind": "build", "project": "react/54-list-virtualization", "title": "List virtualization", "minutes": 55 },
+            { "kind": "build", "project": "react/30-stable-props", "title": "Stable props — why memo silently fails", "minutes": 40 },
+            { "kind": "drill", "deck": "web-performance", "count": 12, "title": "Rendering performance drill" }
           ]
         },
         {
@@ -538,19 +631,163 @@
             { "kind": "build", "project": "react/52-accessible-modal-focus", "title": "An accessible modal", "minutes": 55 },
             { "kind": "build", "project": "react/53-keyboard-nav-menu", "title": "Keyboard navigation", "minutes": 50 },
             { "kind": "build", "project": "react/60-testable-components", "title": "Testable components", "minutes": 55 },
-            { "kind": "build", "project": "react/49-todo-capstone", "title": "Capstone — the whole thing at once", "minutes": 120 }
+            { "kind": "build", "project": "react/49-todo-capstone", "title": "Capstone — the whole thing at once", "minutes": 120 },
+            { "kind": "drill", "deck": "accessibility", "count": 8, "title": "Accessible components drill" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s5b-react-production",
+      "level": 6,
+      "title": "React in a real codebase",
+      "tagline": "The libraries and habits every React job assumes",
+      "goal": "Work productively in a typed React 19 codebase that uses a data-fetching library, a real test suite and modern form handling.",
+      "outcome": "You can explain what TanStack Query, React 19 actions and Testing Library each replace, and when you would not reach for them.",
+      "hours": 17,
+      "modules": [
+        {
+          "id": "m-react-ts",
+          "title": "TypeScript in React",
+          "why": "Almost every React job is a TypeScript job. Typing props, events, refs, reducers and generic components is asked in nearly every React interview, and it is where TS knowledge either transfers or does not.",
+          "interviewFocus": [
+            "Type a component that accepts every <button> prop plus one of its own",
+            "Type a reducer so each action's payload is checked",
+            "Write a generic Table<Row> component — and say when generics are overkill",
+            "Where runtime validation meets static types (z.infer)"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "typescript-in-react", "title": "Guide — TypeScript in a React codebase", "minutes": 40 },
+            { "kind": "build", "project": "ts/32-typed-actions", "title": "Typed reducer actions", "minutes": 45 },
+            { "kind": "build", "project": "ts/37-typed-storage", "title": "A typed storage hook", "minutes": 40 },
+            { "kind": "drill", "deck": "typescript-advanced", "count": 10, "title": "TypeScript + React drill" }
+          ]
+        },
+        {
+          "id": "m-react-modern",
+          "title": "React 19: actions, use, and the Compiler",
+          "why": "The React you learned in the previous stage is the foundation, but current codebases use actions, useOptimistic and the React Compiler, and interviewers ask what Server Components are. Knowing only the 2022 answers makes you sound dated.",
+          "interviewFocus": [
+            "What useActionState and form actions replace",
+            "useOptimistic vs a hand-rolled optimistic update",
+            "With the React Compiler, do you still write useMemo?",
+            "Server Components vs client components, in two sentences",
+            "Why your effect runs twice in development"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "modern-react", "title": "Guide — React 19 in practice", "minutes": 45 },
+            { "kind": "build", "project": "react/51-use-sync-external-store", "title": "useSyncExternalStore — subscriptions that don't tear", "minutes": 50 },
+            { "kind": "drill", "deck": "react-ecosystem", "count": 12, "title": "Modern React drill" }
+          ]
+        },
+        {
+          "id": "m-react-data",
+          "title": "Server state, client state, and the libraries",
+          "why": "Most 'global state' in a CRUD app is really a cache of server data. Separating the two, and knowing what a query library does for you, is the modern answer to 'Redux or Context?'. The module ends with a drag-and-drop board: the project to talk about when asked 'show me something hard you built in React'.",
+          "interviewFocus": [
+            "Server state vs client state — why the distinction matters",
+            "After creating an order, how does the list update? (invalidation vs cache update)",
+            "Walk through an optimistic update with rollback",
+            "Redux Toolkit, Zustand, or Context for this app — defend it",
+            "How does a keyboard-only user move a card on your board?"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "server-and-client-state", "title": "Guide — server state, client state, and choosing a library", "minutes": 45 },
+            { "kind": "build", "project": "js/59-state-store", "title": "A reactive store — Redux in 100 lines", "minutes": 60 },
+            { "kind": "build", "project": "react/41-mini-store", "title": "useReducer + Context as a store", "minutes": 50 },
+            { "kind": "build", "project": "react/59-offline-first-notes", "title": "Offline-first notes — a sync queue", "minutes": 70 },
+            { "kind": "build", "project": "react/56-drag-drop-kanban", "title": "Drag-and-drop kanban — who owns which state", "minutes": 90 },
+            { "kind": "drill", "deck": "react-ecosystem", "count": 12, "title": "State and data-fetching drill" }
+          ]
+        },
+        {
+          "id": "m-react-testing",
+          "title": "Testing React the way users use it",
+          "why": "'How would you test this component?' is a standard question, and the answer is tool-specific: Testing Library queries, MSW for the network, Playwright for journeys.",
+          "interviewFocus": [
+            "getByRole vs getByTestId, and why",
+            "Why mock the network with MSW instead of mocking fetch",
+            "What Playwright catches that component tests cannot",
+            "Debugging a flaky end-to-end test"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "frontend-testing", "title": "Guide — Testing Library, MSW and Playwright", "minutes": 45 },
+            { "kind": "drill", "deck": "testing-frontend", "count": 12, "title": "Frontend testing drill" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "s6-backend-concepts",
+      "level": 7,
+      "title": "The backend, in concepts",
+      "tagline": "Everything a backend interview asks that does not depend on the language",
+      "goal": "Design a REST API, write the SQL behind it, and secure it — before choosing a stack to build it in.",
+      "outcome": "You can defend an endpoint design, write the JOIN it needs, and explain how its login works, in either stack.",
+      "hours": 9,
+      "modules": [
+        {
+          "id": "m-rest-api",
+          "title": "REST design",
+          "why": "This is the centre of gravity of the whole path. Resource naming, status codes, validation, and a consistent error shape.",
+          "interviewFocus": [
+            "How you'd design endpoints for a resource with a sub-resource",
+            "Where to return 400 vs 404 vs 409 vs 422",
+            "Why PUT should be idempotent and PATCH usually isn't",
+            "Versioning an API without breaking clients"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "rest-api-design", "title": "Guide — REST API design that survives review", "minutes": 45 },
+            { "kind": "guide", "guide": "api-pagination-filtering", "title": "Guide — pagination, filtering, sorting", "minutes": 30 },
+            { "kind": "drill", "deck": "http-rest", "count": 18, "title": "REST design drill" }
+          ]
+        },
+        {
+          "id": "m-sql",
+          "title": "SQL and data modelling",
+          "why": "The biggest hole in self-taught developers' knowledge, and the one interviewers probe hardest for CRUD roles. You will be asked to write a JOIN. The project runs real SQL on the SQLite engine built into Node, so there is nothing to install.",
+          "interviewFocus": [
+            "INNER vs LEFT JOIN, with a case where the difference matters",
+            "What an index does, and why adding one to every column is wrong",
+            "Transactions and what ACID means in practice",
+            "The N+1 query problem — how you'd spot and fix it",
+            "Normalisation, and a defensible reason to denormalise"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "sql-fundamentals", "title": "Guide — SQL you will be asked to write", "minutes": 60 },
+            { "kind": "guide", "guide": "relational-data-modeling", "title": "Guide — modelling data, keys and relationships", "minutes": 45 },
+            { "kind": "build", "project": "js/86-sqlite-orders", "title": "SQL for real — a tiny orders database (runs on Node, no framework needed)", "minutes": 90 },
+            { "kind": "drill", "deck": "sql-data", "count": 22, "title": "SQL and data modelling drill" },
+            { "kind": "drill", "deck": "sql-advanced", "count": 12, "title": "Advanced SQL drill" }
+          ]
+        },
+        {
+          "id": "m-auth",
+          "title": "Auth and security",
+          "why": "Every CRUD app has a login. Getting it wrong is the most consequential mistake a junior can ship, so interviewers ask carefully.",
+          "interviewFocus": [
+            "Sessions vs JWT — the real trade-off, including logout",
+            "Why you hash passwords with bcrypt/argon2 and not SHA-256",
+            "Where a token should live in the browser, and the XSS/CSRF trade-off",
+            "Authentication vs authorization, with an example of each failing"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "auth-sessions-jwt", "title": "Guide — auth, sessions, tokens and cookies", "minutes": 50 },
+            { "kind": "guide", "guide": "web-security-basics", "title": "Guide — the security basics you're expected to know", "minutes": 40 },
+            { "kind": "drill", "deck": "auth-security", "count": 20, "title": "Auth and security drill" },
+            { "kind": "drill", "deck": "api-design-security", "count": 10, "title": "API security drill" }
           ]
         }
       ]
     },
     {
       "id": "s6-node-backend",
-      "level": 6,
+      "level": 8,
       "title": "The backend, in Node",
-      "tagline": "Where the data actually lives",
+      "tagline": "The backend, in Node — skip this stage if you are going .NET-first",
       "goal": "Build a REST API with authentication, a database, validation, and a sane error contract.",
       "outcome": "You can design and defend the API a frontend team would have to consume.",
-      "hours": 42,
+      "hours": 25,
       "modules": [
         {
           "id": "m-node-runtime",
@@ -570,61 +807,30 @@
           ]
         },
         {
-          "id": "m-rest-api",
-          "title": "Designing and building a REST API",
-          "why": "This is the centre of gravity of the whole path. Resource naming, status codes, validation, and a consistent error shape.",
+          "id": "m-node-crud",
+          "title": "A CRUD API in Node, then the frameworks",
+          "why": "Build the REST API, its storage layer and its login by hand, then map what you built onto Express, Fastify, NestJS and the ORMs the job postings name. Jobs ask which framework you've used and how you structure it; knowing what the framework does for you is what makes the answer credible.",
           "interviewFocus": [
-            "How you'd design endpoints for a resource with a sub-resource",
-            "Where to return 400 vs 404 vs 409 vs 422",
-            "Why PUT should be idempotent and PATCH usually isn't",
-            "Versioning an API without breaking clients"
+            "How Express middleware works, and why order matters",
+            "How errors in async handlers reach your error handler — Express 4 vs 5",
+            "Prisma vs Drizzle vs raw SQL: the trade-offs",
+            "Structuring an Express app so it stays testable",
+            "Why a template engine must escape by default"
           ],
           "steps": [
-            { "kind": "guide", "guide": "rest-api-design", "title": "Guide — REST API design that survives review", "minutes": 45 },
             { "kind": "build", "project": "js/65-rest-api", "title": "Build the REST API", "minutes": 100 },
-            { "kind": "guide", "guide": "api-pagination-filtering", "title": "Guide — pagination, filtering, sorting", "minutes": 30 },
-            { "kind": "drill", "deck": "http-rest", "count": 18, "title": "REST design drill" }
-          ]
-        },
-        {
-          "id": "m-sql",
-          "title": "SQL and relational data",
-          "why": "The biggest hole in self-taught developers' knowledge, and the one interviewers probe hardest for CRUD roles. You will be asked to write a JOIN.",
-          "interviewFocus": [
-            "INNER vs LEFT JOIN, with a case where the difference matters",
-            "What an index does, and why adding one to every column is wrong",
-            "Transactions and what ACID means in practice",
-            "The N+1 query problem — how you'd spot and fix it",
-            "Normalisation, and a defensible reason to denormalise"
-          ],
-          "steps": [
-            { "kind": "guide", "guide": "sql-fundamentals", "title": "Guide — SQL you will be asked to write", "minutes": 60 },
-            { "kind": "guide", "guide": "relational-data-modeling", "title": "Guide — modelling data, keys and relationships", "minutes": 45 },
             { "kind": "build", "project": "js/55-json-db", "title": "A tiny database — build the storage layer yourself", "minutes": 70 },
-            { "kind": "drill", "deck": "sql-data", "count": 22, "title": "SQL and data modelling drill" }
-          ]
-        },
-        {
-          "id": "m-auth",
-          "title": "Authentication and authorization",
-          "why": "Every CRUD app has a login. Getting it wrong is the most consequential mistake a junior can ship, so interviewers ask carefully.",
-          "interviewFocus": [
-            "Sessions vs JWT — the real trade-off, including logout",
-            "Why you hash passwords with bcrypt/argon2 and not SHA-256",
-            "Where a token should live in the browser, and the XSS/CSRF trade-off",
-            "Authentication vs authorization, with an example of each failing"
-          ],
-          "steps": [
-            { "kind": "guide", "guide": "auth-sessions-jwt", "title": "Guide — auth, sessions, tokens and cookies", "minutes": 50 },
             { "kind": "build", "project": "js/66-auth", "title": "Build authentication", "minutes": 90 },
-            { "kind": "guide", "guide": "web-security-basics", "title": "Guide — the security basics you're expected to know", "minutes": 40 },
-            { "kind": "drill", "deck": "auth-security", "count": 20, "title": "Auth and security drill" }
+            { "kind": "build", "project": "js/35-template-engine", "title": "Template engine — escape by default, XSS by construction", "minutes": 45 },
+            { "kind": "guide", "guide": "node-api-frameworks", "title": "Guide — Express, Fastify, NestJS and the data layer", "minutes": 40 },
+            { "kind": "guide", "guide": "dependency-injection-explained", "title": "Guide — dependency injection, in both stacks", "minutes": 40 },
+            { "kind": "drill", "deck": "node-advanced", "count": 12, "title": "Node frameworks drill" }
           ]
         },
         {
           "id": "m-node-realtime",
           "title": "Realtime and the fullstack join",
-          "why": "WebSockets show up in enough job specs to be worth a day, and building a collaborative feature forces you to think about state on two machines at once.",
+          "why": "WebSockets show up in enough job specs to be worth a day, and building a collaborative feature forces you to think about state on two machines at once. Polling is fine for a badge that updates every minute, server-sent events suit one-way feeds, and WebSockets earn their cost only when both sides talk.",
           "interviewFocus": [
             "WebSockets vs polling vs server-sent events",
             "What happens to your app when the connection drops",
@@ -633,19 +839,20 @@
           "steps": [
             { "kind": "build", "project": "js/67-websocket-chat", "title": "WebSocket chat", "minutes": 70 },
             { "kind": "build", "project": "js/68-collab-todo", "title": "Collaborative to-do — the fullstack capstone", "minutes": 120 },
-            { "kind": "build", "project": "js/83-event-sourcing-bank", "title": "Event sourcing — the audit-log architecture", "minutes": 70 }
+            { "kind": "build", "project": "js/83-event-sourcing-bank", "title": "Event sourcing — the audit-log architecture", "minutes": 70 },
+            { "kind": "drill", "deck": "node-advanced", "count": 8, "title": "Realtime drill" }
           ]
         }
       ]
     },
     {
       "id": "s7-dotnet",
-      "level": 7,
+      "level": 9,
       "title": "C# and ASP.NET Core",
-      "tagline": "The same job, in the enterprise stack",
+      "tagline": "The same backend, in .NET",
       "goal": "Rebuild what you did in Node, in .NET — because half the CRUD jobs on the market are .NET jobs.",
       "outcome": "You can hold a conversation about DI lifetimes, the middleware pipeline, and EF Core without bluffing.",
-      "hours": 45,
+      "hours": 76,
       "modules": [
         {
           "id": "m-cs-basics",
@@ -661,7 +868,8 @@
             { "kind": "build", "project": "csharp/02-value-vs-reference", "title": "Value vs reference", "minutes": 50 },
             { "kind": "build", "project": "csharp/03-collections-choice", "title": "Choosing a collection", "minutes": 45 },
             { "kind": "build", "project": "csharp/05-null-safety-csharp", "title": "Null safety in C#", "minutes": 45 },
-            { "kind": "drill", "deck": "csharp-lang", "count": 16, "title": "C# language drill" }
+            { "kind": "drill", "deck": "csharp-lang", "count": 16, "title": "C# language drill" },
+            { "kind": "build", "project": "csharp/06-enums-and-switch", "title": "Enums and switch expressions", "minutes": 40 }
           ]
         },
         {
@@ -678,43 +886,80 @@
             { "kind": "build", "project": "csharp/29-linq-deep-dive", "title": "LINQ deep dive", "minutes": 60 },
             { "kind": "build", "project": "csharp/07-records-immutability", "title": "Records and immutability", "minutes": 45 },
             { "kind": "build", "project": "csharp/31-pattern-matching-rules", "title": "Pattern matching", "minutes": 45 },
-            { "kind": "build", "project": "csharp/30-iterators-yield", "title": "Iterators and yield", "minutes": 45 }
+            { "kind": "build", "project": "csharp/30-iterators-yield", "title": "Iterators and yield", "minutes": 45 },
+            { "kind": "build", "project": "csharp/13-extension-linq-utils", "title": "Extension methods and fluent chains", "minutes": 40 },
+            { "kind": "drill", "deck": "csharp-advanced", "count": 10, "title": "LINQ and records, deeper drill" }
           ]
         },
         {
           "id": "m-cs-oop",
-          "title": "Interfaces, generics, and async",
-          "why": "Interfaces are how .NET does dependency injection, which is how .NET does everything. And `async` in C# has traps JavaScript doesn't.",
+          "title": "Interfaces, generics, and delegates",
+          "why": "Interfaces are how .NET does dependency injection, which is how .NET does everything. Delegates and events are how it does callbacks — the C# answer to JavaScript's first-class functions.",
           "interviewFocus": [
             "Interface vs abstract class — a real reason to pick each",
-            "Task vs Task<T> vs void async — and why `async void` is dangerous",
-            "ConfigureAwait, and whether you still need it"
+            "Func, Action and a custom delegate — when to use each",
+            "Events vs plain delegates, and the leak an unsubscribed handler causes",
+            "Exceptions vs a Result type for expected failures"
           ],
           "steps": [
             { "kind": "build", "project": "csharp/09-encapsulation-bank", "title": "Encapsulation", "minutes": 45 },
             { "kind": "build", "project": "csharp/10-interfaces-plugins", "title": "Interfaces as plug-ins", "minutes": 50 },
             { "kind": "build", "project": "csharp/11-generics-lru", "title": "Generics", "minutes": 50 },
+            { "kind": "build", "project": "csharp/08-exceptions-vs-result", "title": "Exceptions vs Result", "minutes": 45 },
+            { "kind": "build", "project": "csharp/12-events-delegates", "title": "Delegates, Func/Action and events", "minutes": 45 },
+            { "kind": "drill", "deck": "csharp-lang", "count": 10, "title": "Interfaces, generics and delegates drill" }
+          ]
+        },
+        {
+          "id": "m-cs-async",
+          "title": "async/await, past the basics",
+          "why": "Async misuse is the most common source of production bugs in .NET — deadlocks, async void crashes, thread-pool starvation — and JavaScript instincts mislead you, because C# continuations really do run in parallel.",
+          "interviewFocus": [
+            "Why async void is dangerous",
+            "Do you need ConfigureAwait(false) in ASP.NET Core?",
+            "What happens to exceptions in Task.WhenAll",
+            "Cancelling work when the client disconnects",
+            "Why .Result can hang"
+          ],
+          "steps": [
             { "kind": "build", "project": "csharp/14-async-await-basics", "title": "async/await in C#", "minutes": 55 },
-            { "kind": "build", "project": "csharp/08-exceptions-vs-result", "title": "Exceptions vs Result", "minutes": 45 }
+            { "kind": "guide", "guide": "csharp-async-deep-dive", "title": "Guide — async/await in C#, past the basics", "minutes": 45 },
+            { "kind": "drill", "deck": "csharp-advanced", "count": 12, "title": "C# async drill" }
+          ]
+        },
+        {
+          "id": "m-dotnet-di",
+          "title": "Dependency injection, properly",
+          "why": "Lifetimes and the captive-dependency bug are the most-asked ASP.NET Core topic. Understanding the container before the pipeline makes the next module read as design rather than magic.",
+          "interviewFocus": [
+            "Singleton vs scoped vs transient — a real use for each",
+            "What a captive dependency is, and how ValidateScopes catches it",
+            "Using a scoped DbContext from a BackgroundService",
+            "Keyed services and factory registrations"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "dependency-injection-explained", "title": "Guide — dependency injection, in both stacks", "minutes": 40 },
+            { "kind": "build", "project": "csharp/18-dependency-injection", "title": "Dependency injection", "minutes": 60 },
+            { "kind": "drill", "deck": "dotnet-aspnet", "count": 8, "title": "DI drill" }
           ]
         },
         {
           "id": "m-aspnet",
-          "title": "ASP.NET Core: the pipeline and DI",
-          "why": "'Explain the middleware pipeline' and 'what's the difference between scoped and transient' are the two most reliably asked .NET interview questions in existence.",
+          "title": "ASP.NET Core: the request pipeline",
+          "why": "'Explain the middleware pipeline' is one of the two most reliably asked .NET interview questions; DI lifetimes, from the module before, is the other. This is where a request becomes a response, and where your API meets the browser.",
           "interviewFocus": [
             "The middleware pipeline — order matters, and what happens if you get it wrong",
-            "Singleton vs scoped vs transient, and the captive-dependency bug",
             "Model binding and where validation runs",
-            "ProblemDetails and a consistent error contract"
+            "ProblemDetails and a consistent error contract",
+            "CORS: why the browser blocks your SPA, and the fix that isn't AllowAnyOrigin"
           ],
           "steps": [
             { "kind": "build", "project": "csharp/15-minimal-api-todo", "title": "A minimal API", "minutes": 60 },
             { "kind": "build", "project": "csharp/16-rest-conventions", "title": "REST conventions in .NET", "minutes": 50 },
             { "kind": "build", "project": "csharp/17-model-binding-validation", "title": "Model binding and validation", "minutes": 55 },
-            { "kind": "build", "project": "csharp/18-dependency-injection", "title": "Dependency injection", "minutes": 60 },
             { "kind": "build", "project": "csharp/19-middleware-pipeline", "title": "The middleware pipeline", "minutes": 55 },
             { "kind": "build", "project": "csharp/20-error-handling-problemdetails", "title": "Error handling with ProblemDetails", "minutes": 50 },
+            { "kind": "build", "project": "csharp/24-cors-and-static-files", "title": "CORS and static files — the SPA meets the API", "minutes": 45 },
             { "kind": "drill", "deck": "dotnet-aspnet", "count": 22, "title": "ASP.NET Core drill" }
           ]
         },
@@ -733,24 +978,53 @@
             { "kind": "build", "project": "csharp/21-json-file-repository", "title": "The repository seam", "minutes": 55 },
             { "kind": "build", "project": "csharp/34-pagination-filtering", "title": "Pagination and filtering", "minutes": 50 },
             { "kind": "build", "project": "csharp/33-caching-memory", "title": "Caching", "minutes": 45 },
-            { "kind": "drill", "deck": "sql-data", "count": 14, "title": "ORM and query drill" }
+            { "kind": "drill", "deck": "dotnet-data", "count": 14, "title": "EF Core drill" },
+            { "kind": "drill", "deck": "sql-advanced", "count": 10, "title": "Query performance drill" }
           ]
         },
         {
           "id": "m-dotnet-prod",
-          "title": "Config, auth, background work, and tests",
-          "why": "The parts of a .NET app that aren't endpoints. Configuration and hosted services come up whenever an interviewer wants to know if you've shipped.",
+          "title": "Configuration, auth, and hosting",
+          "why": "The parts of a .NET app that aren't endpoints. Configuration, secrets and password handling come up whenever an interviewer wants to know if you've shipped.",
           "interviewFocus": [
             "IOptions and where configuration comes from, in order",
             "Where secrets live in development vs production",
-            "Background work: hosted services vs a real queue",
-            "Integration tests with WebApplicationFactory"
+            "Hashing passwords in .NET — and why you never roll your own",
+            "Cookie auth vs JWT bearer in ASP.NET Core, and which fits a SPA on the same domain"
           ],
           "steps": [
             { "kind": "build", "project": "csharp/22-config-and-options", "title": "Configuration and options", "minutes": 50 },
             { "kind": "build", "project": "csharp/23-auth-password-hashing", "title": "Auth and password hashing", "minutes": 60 },
-            { "kind": "build", "project": "csharp/32-background-work-queue", "title": "Background work", "minutes": 50 },
-            { "kind": "build", "project": "csharp/35-integration-testing", "title": "Integration testing", "minutes": 60 }
+            { "kind": "drill", "deck": "dotnet-aspnet", "count": 10, "title": "Config, auth and hosting drill" }
+          ]
+        },
+        {
+          "id": "m-dotnet-testing",
+          "title": "Testing .NET APIs",
+          "why": "'How do you integration-test an API?' is a standard .NET question. The answer is WebApplicationFactory against a real database in a container — and knowing why the EF InMemory provider lies.",
+          "interviewFocus": [
+            "Integration-testing a minimal API endpoint that hits a database",
+            "Why not the EF Core InMemory provider",
+            "Testing code that depends on the current time",
+            "Mocks vs fakes — which, and when"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "dotnet-testing", "title": "Guide — xUnit, WebApplicationFactory and Testcontainers", "minutes": 45 },
+            { "kind": "build", "project": "csharp/35-integration-testing", "title": "Integration testing", "minutes": 60 },
+            { "kind": "drill", "deck": "testing-dotnet", "count": 11, "title": ".NET testing drill" }
+          ]
+        },
+        {
+          "id": "m-dotnet-realtime",
+          "title": "Realtime in ASP.NET Core",
+          "why": "The .NET side of the realtime story: raw WebSockets in ASP.NET Core, and the reasons teams usually reach for SignalR instead. If you skipped the Node stage, the same questions apply — when you need a socket at all, and what happens when it drops.",
+          "interviewFocus": [
+            "Raw WebSockets vs SignalR — what SignalR adds",
+            "Scaling SignalR across instances (backplane or managed service)",
+            "Handling disconnects and cleanup server-side"
+          ],
+          "steps": [
+            { "kind": "build", "project": "csharp/27-websocket-chat-dotnet", "title": "WebSocket chat in ASP.NET Core", "minutes": 60 }
           ]
         },
         {
@@ -758,9 +1032,9 @@
           "title": "Fullstack .NET capstones",
           "why": "Two complete applications, front to back. These are your portfolio pieces and the thing you'll actually talk about in an interview.",
           "interviewFocus": [
-            "Walk me through your project's architecture",
-            "What would you do differently if it had 100x the traffic",
-            "What was the hardest bug and how did you find it"
+            "How the SPA and the API share an origin in dev and prod — proxy or CORS",
+            "Where validation runs on each side and how errors reach the form",
+            "How you would add per-user authorization to this API without rewriting it"
           ],
           "steps": [
             { "kind": "build", "project": "csharp/25-fullstack-todo", "title": "Fullstack to-do", "minutes": 120 },
@@ -772,26 +1046,101 @@
       ]
     },
     {
+      "id": "s7b-backend-systems",
+      "level": 10,
+      "title": "Backend systems, either stack",
+      "tagline": "The features every CRUD product grows, and designing the whole thing",
+      "goal": "Handle background work and third-party APIs safely, and walk an interviewer through the design of a small system.",
+      "outcome": "You can design a CRUD system end to end on a whiteboard, including what you would deliberately not build yet.",
+      "hours": 5,
+      "modules": [
+        {
+          "id": "m-background-work",
+          "title": "Background jobs and queues",
+          "why": "Every app sends email and runs nightly jobs, and 'what if the send fails after the order commits?' is a standard mid-level question. At-least-once delivery and idempotent consumers are the core ideas.",
+          "interviewFocus": [
+            "Guaranteeing the confirmation email is sent if the app crashes after commit (the outbox)",
+            "What an idempotent consumer is, and why you need one",
+            "What happens to a message that fails five times",
+            "Stopping a cron job from running on every replica"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "background-jobs-and-queues", "title": "Guide — background jobs, queues and email", "minutes": 45 },
+            { "kind": "build", "project": "csharp/32-background-work-queue", "title": "Background work", "minutes": 50 },
+            { "kind": "drill", "deck": "system-design-lite", "count": 10, "title": "Background work drill" }
+          ]
+        },
+        {
+          "id": "m-integrations",
+          "title": "Third-party APIs, webhooks and payments",
+          "why": "Every product integrates a payment provider, an email service or a CRM, and the mistakes are predictable: no timeout, a client-sent price, an unverified webhook. Interviewers test for exactly those.",
+          "interviewFocus": [
+            "Making sure a customer is never charged twice",
+            "Verifying that a webhook really came from the provider",
+            "The provider times out — what your API returns and what happens next",
+            "Why new HttpClient() per request is a problem"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "third-party-integrations", "title": "Guide — SDKs, webhooks and payments", "minutes": 40 },
+            { "kind": "drill", "deck": "api-design-security", "count": 8, "title": "Integrations drill" }
+          ]
+        },
+        {
+          "id": "m-architecture",
+          "title": "Structuring an application",
+          "why": "'Clean Architecture — yes or no?', 'would you use MediatR?' and 'when would you split the monolith?' come up in most .NET interviews and many Node ones. Having an opinion with trade-offs is the mid-level signal.",
+          "interviewFocus": [
+            "Clean Architecture: what it buys and what it costs",
+            "Service layer vs vertical slices",
+            "When splitting a monolith pays for itself",
+            "What goes in an architecture decision record"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "application-architecture", "title": "Guide — layers, slices and Clean Architecture", "minutes": 45 },
+            { "kind": "drill", "deck": "system-design-lite", "count": 10, "title": "Architecture drill" }
+          ]
+        },
+        {
+          "id": "m-system-design",
+          "title": "The system design round",
+          "why": "At mid-level the design round is a CRUD system with a twist, not Netflix. A clear structure plus the handful of scaling moves that are actually expected is enough to do well.",
+          "interviewFocus": [
+            "Design an appointment booking system — and stop double booking",
+            "The database is the bottleneck: your first three moves",
+            "Read replicas and read-your-writes",
+            "What you would deliberately not build yet"
+          ],
+          "steps": [
+            { "kind": "guide", "guide": "system-design-for-crud", "title": "Guide — system design, mid-level edition", "minutes": 60 },
+            { "kind": "drill", "deck": "system-design-lite", "count": 15, "title": "System design drill" }
+          ]
+        }
+      ]
+    },
+    {
       "id": "s8-shipping",
-      "level": 8,
+      "level": 11,
       "title": "Shipping and being interviewed",
       "tagline": "The half of the job that isn't writing code",
       "goal": "Deploy something, observe it, debug it in production, and talk about all of it convincingly.",
       "outcome": "You are mid-level: you can be handed a broken system you didn't write and make progress.",
-      "hours": 30,
+      "hours": 13,
       "modules": [
         {
           "id": "m-git",
-          "title": "Git, branches, and code review",
-          "why": "Everyone claims to know Git. Interviewers test it with 'you committed to the wrong branch, now what' and 'what does rebase do that merge doesn't'.",
+          "title": "Git, code review and working in a team",
+          "why": "Everyone claims to know Git. Interviewers test it with 'you committed to the wrong branch, now what' and 'what does rebase do that merge doesn't'. The same rounds ask how you review a pull request, estimate a ticket and handle a slipped deadline — practisable skills, not personality traits.",
           "interviewFocus": [
             "merge vs rebase, and when rebasing is dangerous",
             "How you'd undo: a bad commit, a bad push, a bad merge",
-            "What makes a pull request easy to review"
+            "What makes a pull request easy to review",
+            "What you look for in a code review — in order",
+            "How you estimate something you've never built"
           ],
           "steps": [
             { "kind": "guide", "guide": "git-workflow", "title": "Guide — Git as it's actually used on a team", "minutes": 45 },
-            { "kind": "drill", "deck": "git-tooling-devops", "count": 18, "title": "Git and workflow drill" }
+            { "kind": "drill", "deck": "git-tooling-devops", "count": 18, "title": "Git and workflow drill" },
+            { "kind": "drill", "deck": "agile-process", "count": 11, "title": "Working-in-a-team drill" }
           ]
         },
         {
@@ -816,13 +1165,16 @@
           "interviewFocus": [
             "The layers you could cache at, from browser to database",
             "Cache invalidation strategies and their failure modes",
-            "How you'd find the bottleneck before optimising anything"
+            "How you'd find the bottleneck before optimising anything",
+            "Vary and per-user cache keys — how a CDN leaks data",
+            "CPU-bound work in Node: why it hurts every request, and the three fixes"
           ],
           "steps": [
             { "kind": "guide", "guide": "caching-strategies", "title": "Guide — caching, from the browser to the database", "minutes": 40 },
             { "kind": "build", "project": "js/41-lru-cache", "title": "Build an LRU cache", "minutes": 55 },
             { "kind": "build", "project": "js/27-memoize", "title": "Memoize", "minutes": 40 },
-            { "kind": "build", "project": "js/84-worker-pool", "title": "Worker pool — using more than one core", "minutes": 60 }
+            { "kind": "build", "project": "js/84-worker-pool", "title": "Worker pool — using more than one core", "minutes": 60 },
+            { "kind": "drill", "deck": "web-performance", "count": 10, "title": "Performance and caching drill" }
           ]
         },
         {
@@ -840,7 +1192,8 @@
             { "kind": "guide", "guide": "docker-basics", "title": "Guide — Docker, enough to be useful", "minutes": 40 },
             { "kind": "guide", "guide": "ci-cd-pipelines", "title": "Guide — CI/CD pipelines", "minutes": 35 },
             { "kind": "guide", "guide": "deployment-and-hosting", "title": "Guide — getting it onto the internet", "minutes": 35 },
-            { "kind": "drill", "deck": "git-tooling-devops", "count": 16, "title": "Deployment drill" }
+            { "kind": "drill", "deck": "git-tooling-devops", "count": 16, "title": "Deployment drill" },
+            { "kind": "drill", "deck": "cloud-basics", "count": 12, "title": "Cloud basics drill" }
           ]
         },
         {
@@ -854,6 +1207,7 @@
           ],
           "steps": [
             { "kind": "guide", "guide": "interview-playbook", "title": "Guide — the mid-level interview playbook", "minutes": 45 },
+            { "kind": "drill", "deck": "behavioral", "count": 11, "title": "Behavioural answers drill" },
             { "kind": "drill", "deck": "mixed", "count": 40, "title": "Full mixed mock — every topic, timed" }
           ]
         }

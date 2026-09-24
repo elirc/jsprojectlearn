@@ -56,6 +56,15 @@ A workflow that works well: rebase your *own* feature branch onto main to stay
 current, then merge the branch into main (or squash-merge). You get a linear
 feature history and a clear merge point.
 
+After rebasing a branch you have already pushed, use `git push
+--force-with-lease`, never plain `--force`: it refuses to overwrite the remote
+if someone else has pushed to it since you last fetched.
+
+**Squash-merge** turns the whole branch into one commit on main. History is
+tidy and every commit on main is a reviewed unit, but the branch's individual
+commits are gone from main, so `git bisect` can only narrow a bug down to "this
+PR", not to the commit inside it. Small PRs make that a fair trade.
+
 ## Undoing things
 
 | Situation | Command |

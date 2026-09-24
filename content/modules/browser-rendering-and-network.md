@@ -38,7 +38,7 @@ The parser builds the DOM as bytes arrive. Two things interrupt it:
 <script src="app.js"></script>          <!-- blocks the parser -->
 <script src="app.js" defer></script>    <!-- parallel fetch, runs after parse, in order -->
 <script src="app.js" async></script>    <!-- parallel fetch, runs on arrival, order not guaranteed -->
-<script type="module" src="app.js">     <!-- deferred by default -->
+<script type="module" src="app.js"></script>  <!-- deferred by default -->
 ```
 
 Use `defer` (or a module) for app code. `async` is for independent things like

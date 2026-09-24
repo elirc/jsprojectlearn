@@ -10,7 +10,9 @@
 
   --ink: #e6ecf5;
   --ink-dim: #9aa8bd;
-  --ink-faint: #66748c;
+  --ink-faint: #7a879d;
+  /* Borders of controls (checkboxes, inputs) need 3:1 against the panel. */
+  --line-strong: #5d6a83;
 
   --accent: #5ea9ff;
   --accent-ink: #06121f;
@@ -43,7 +45,8 @@
   --line-soft: #eaeef4;
   --ink: #16202e;
   --ink-dim: #56637a;
-  --ink-faint: #8895a9;
+  --ink-faint: #636e82;
+  --line-strong: #7f8b9e;
   --accent: #1e6fdb;
   --accent-ink: #ffffff;
   --good: #15803d;
@@ -406,6 +409,7 @@ h3 {
 }
 
 .bar {
+  display: block;
   height: 6px;
   border-radius: 999px;
   background: var(--bg-inset);
@@ -457,9 +461,6 @@ textarea {
   align-items: center;
   padding: 18px 20px;
   width: 100%;
-  background: none;
-  border: 0;
-  text-align: left;
   cursor: pointer;
 }
 .stage-head:hover {
@@ -546,7 +547,7 @@ textarea {
   width: 20px;
   height: 20px;
   border-radius: 6px;
-  border: 1.5px solid var(--line);
+  border: 1.5px solid var(--line-strong);
   background: var(--bg-inset);
   cursor: pointer;
   display: grid;
@@ -1001,6 +1002,485 @@ pre {
   font-size: 14px;
 }
 
+/* --------------------------------------------------------------- utilities */
+
+.mt-1 {
+  margin-top: 6px;
+}
+.mt-2 {
+  margin-top: 10px;
+}
+.mt-3 {
+  margin-top: 14px;
+}
+.mb-2 {
+  margin-bottom: 8px;
+}
+.mb-3 {
+  margin-bottom: 12px;
+}
+.ml-2 {
+  margin-left: 8px;
+}
+.m-0 {
+  margin-bottom: 0;
+}
+p.m-0 {
+  margin-top: 0;
+}
+.min-w-0 {
+  min-width: 0;
+}
+.flex-1 {
+  flex: 1;
+}
+.ta-right {
+  text-align: right;
+}
+.gap-2 {
+  gap: 8px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.page.narrow {
+  max-width: 720px;
+}
+.empty.boot {
+  padding-top: 25vh;
+}
+.persist-warning {
+  margin: 14px 32px 0;
+}
+
+/* ------------------------------------------------------------ stage heads */
+
+.stage-head {
+  position: relative;
+}
+.stage-head h2 {
+  font-size: 19px;
+}
+.stage-toggle {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+/* Stretch the toggle over the whole head so the click target is the card. */
+.stage-toggle::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.stage-toggle:focus-visible {
+  outline: none;
+}
+.stage-head:has(.stage-toggle:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-lg);
+}
+.stage-bar {
+  display: block;
+  margin-top: 9px;
+  max-width: 320px;
+}
+.stage-goal {
+  margin: 6px 0 10px;
+  font-size: 14.5px;
+}
+
+/* ------------------------------------------------------------ drill extras */
+
+.question code,
+.choice code,
+.verdict code,
+.review-card code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+  background: var(--bg-inset);
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.review-pick {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+.review-pick.wrong > span:first-child {
+  color: var(--bad);
+  font-weight: 700;
+}
+.review-pick.right > span:first-child {
+  color: var(--good);
+  font-weight: 700;
+}
+
+/* ----------------------------------------------------------------- project */
+
+.run-it .cmd {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.cmd-label {
+  color: var(--ink-dim);
+  min-width: 150px;
+}
+.cmd code {
+  overflow-wrap: anywhere;
+}
+
+/* ----------------------------------------------------------------- stepbar */
+
+.stepbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  background: color-mix(in srgb, var(--accent) 7%, var(--panel));
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+.stepbar.done {
+  border-color: color-mix(in srgb, var(--good) 40%, var(--line));
+  background: color-mix(in srgb, var(--good) 7%, var(--panel));
+}
+.stepbar + .split {
+  margin-top: 18px;
+}
+.stepbar-context {
+  font-size: 14px;
+  color: var(--ink-dim);
+  margin-top: 2px;
+}
+.stepbar-next {
+  color: var(--ink-dim);
+  font-size: 14px;
+}
+.good-text {
+  color: var(--good);
+}
+.doc-end {
+  text-align: center;
+  border-top: 1px solid var(--line);
+  padding: 28px 0;
+  margin-top: 40px;
+}
+.row.center {
+  justify-content: center;
+}
+
+/* ------------------------------------------------------------- drill modes */
+
+.drill-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.drill-title h2 {
+  font-size: 18px;
+  margin: 0 6px 0 0;
+}
+.choice.picked {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+}
+.saved-list summary {
+  cursor: pointer;
+  color: var(--ink-dim);
+}
+.saved-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+}
+.saved-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line-soft);
+  font-size: 14px;
+}
+.saved-list code {
+  font-family: var(--mono);
+  font-size: 0.88em;
+}
+
+/* --------------------------------------------------------------- layout aids */
+
+.grid.cols-300 {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.grid.cols-320 {
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+.grid.fit-300 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+.spread.align-start {
+  align-items: flex-start;
+}
+.card.link {
+  color: inherit;
+  display: block;
+}
+.card.link:hover {
+  text-decoration: none;
+}
+.topic-row.session-row {
+  grid-template-columns: 1fr 120px 62px;
+}
+.filter-tabs {
+  border: 0;
+  flex: 1 1 260px;
+}
+.filter-input {
+  max-width: 240px;
+}
+
+/* ------------------------------------------------------------------- today */
+
+.card.plan {
+  padding: 0;
+}
+.plan-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 18px;
+}
+.plan-row + .plan-row {
+  border-top: 1px solid var(--line-soft);
+}
+.plan-row.done {
+  color: var(--ink-dim);
+}
+.plan-row.done .plan-num {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 45%, var(--line));
+}
+.plan-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.plan-title {
+  font-weight: 600;
+}
+.plan-meta {
+  color: var(--ink-faint);
+  margin-top: 2px;
+  font-size: 14px;
+}
+.focus-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--ink-dim);
+  font-size: 14.5px;
+}
+.mr-2 {
+  margin-right: 8px;
+}
+
+/* ------------------------------------------------------------------ search */
+
+.cmd-trigger {
+  width: 100%;
+  background: none;
+  border: 1px solid var(--line);
+  font: inherit;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.cmd-trigger .kbd {
+  margin-left: auto;
+}
+@media (pointer: coarse) {
+  .cmd-trigger .kbd {
+    display: none;
+  }
+}
+.cmd-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.45);
+  z-index: 50;
+  display: grid;
+  place-items: start center;
+  padding-top: 12vh;
+}
+.cmd-panel {
+  width: min(620px, 92vw);
+  padding: 10px;
+}
+.cmd-list {
+  margin-top: 8px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+.cmd-hint {
+  padding: 10px 12px;
+  margin: 0;
+}
+.search-group {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding: 10px 12px 4px;
+}
+.search-hit {
+  cursor: pointer;
+}
+.search-hit strong {
+  font-size: 14px;
+}
+.search-hit[aria-selected='true'] {
+  border-color: var(--accent);
+  background: var(--bg-inset);
+}
+
+/* --------------------------------------------------------------- heatmap */
+
+.heatmap {
+  margin: 12px 0 0;
+}
+.heatmap > svg {
+  width: 100%;
+  max-width: 300px;
+  display: block;
+}
+.heatmap rect {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+.hm-0 {
+  fill: var(--bg-inset);
+}
+.hm-1 {
+  fill: color-mix(in srgb, var(--accent) 25%, var(--bg-inset));
+}
+.hm-2 {
+  fill: color-mix(in srgb, var(--accent) 50%, var(--bg-inset));
+}
+.hm-3 {
+  fill: color-mix(in srgb, var(--accent) 75%, var(--bg-inset));
+}
+.hm-4 {
+  fill: var(--accent);
+}
+.heatmap rect.hm-today {
+  stroke: var(--ink-dim);
+}
+.hm-label {
+  font-size: 9px;
+  fill: var(--ink-faint);
+}
+.chart-caption {
+  color: var(--ink-faint);
+  font-size: 13px;
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.hm-legend {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+/* ------------------------------------------------------------------- a11y */
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 100;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 8px 14px;
+}
+.skip-link:focus {
+  top: 12px;
+}
+.nav-list {
+  display: contents;
+}
+/* Focus lands on <main> after navigation for screen readers; a ring round
+   the whole page would only confuse sighted keyboard users. */
+.main:focus {
+  outline: none;
+}
+
+/* ------------------------------------------------------------------ motion */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 860px) {
+  .plan-row {
+    grid-template-columns: 24px 1fr;
+  }
+  .cmd-trigger {
+    width: auto;
+    margin-bottom: 0;
+  }
+  .cmd-trigger .kbd {
+    display: none;
+  }
+  .plan-row > .btn {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    text-align: center;
+  }
+  .stepbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 @media (max-width: 860px) {
   .shell {
     grid-template-columns: 1fr;
@@ -1014,15 +1494,25 @@ pre {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
+  /* The handbooks stay reachable from Guides; Settings and the theme toggle
+     have nowhere else to live, so the foot stays visible. */
   .nav-group,
-  .sidebar-foot {
+  .nav-item.ref {
     display: none;
+  }
+  .sidebar-foot {
+    margin-top: 0;
+    padding-top: 0;
+    margin-left: auto;
   }
   .brand {
     padding: 0 8px 0 0;
   }
   .page {
     padding: 22px 18px 72px;
+  }
+  .persist-warning {
+    margin: 12px 18px 0;
   }
   .split {
     grid-template-columns: 1fr;

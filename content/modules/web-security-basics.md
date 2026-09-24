@@ -66,15 +66,18 @@ they only need the side effect.
 
 Defences:
 
-1. **`SameSite=Lax`** on session cookies — blocks cross-site POSTs. Modern
-   browsers default to this, and it handles most cases.
+1. **`SameSite=Lax`** on session cookies — blocks cross-site POSTs, and
+   handles most cases. Set it explicitly: only Chromium-based browsers default
+   to `Lax`; Firefox and Safari do not.
 2. **Anti-forgery token** — a random value in a form field or header that the
    attacker cannot read, because the same-origin policy stops them reading your
    page.
 3. **Verify the `Origin` header** on state-changing requests.
 
 Auth via an `Authorization` header is not CSRF-vulnerable, because the browser
-does not attach it for you.
+does not attach it for you. That is a real point in favour of the header
+approach; weigh it against the XSS exposure of a token JavaScript can read (see
+[the auth guide](auth-sessions-jwt.md)).
 
 ## Broken access control
 

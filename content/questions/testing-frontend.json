@@ -1,0 +1,424 @@
+{
+  "id": "testing-frontend",
+  "topic": "Frontend testing",
+  "title": "Testing frontend code",
+  "blurb": "Testing Library queries, user events, async UI, mocking the network and knowing what belongs in an end-to-end test. Examples use Vitest, React Testing Library and user-event v14.",
+  "questions": [
+    {
+      "id": "tf-001",
+      "q": "Which query does Testing Library guidance rank highest for finding this button?",
+      "code": "<button className=\"btn-primary\" data-testid=\"submit\">\n  Create account\n</button>",
+      "lang": "jsx",
+      "choices": [
+        "screen.getByText('Create account', { selector: 'button' })",
+        "screen.getByTestId('submit', { exact: true })",
+        "screen.getByRole('button', { name: 'Create account' })",
+        "container.querySelector('button.btn-primary')"
+      ],
+      "answer": 2,
+      "why": "The priority is role (with accessible name), then label, placeholder and text, then test id as a last resort. `getByText` with a `button` selector also finds it, but it checks tag and text rather than what assistive technology announces, so an unlabelled or hidden control could still pass.",
+      "tags": [
+        "queries",
+        "accessibility"
+      ],
+      "level": 1,
+      "asked": "A quick check that you query the way users and assistive technology perceive the page, not by class names."
+    },
+    {
+      "id": "tf-002",
+      "q": "Which query makes this assertion work when no error is rendered?",
+      "code": "render(<SignupForm />);\n// no error should show before the user submits\nexpect(screen.___('alert')).not.toBeInTheDocument();",
+      "lang": "jsx",
+      "choices": [
+        "queryByRole",
+        "getByRole",
+        "findByRole",
+        "getAllByRole"
+      ],
+      "answer": 0,
+      "why": "`queryBy*` returns `null` when nothing matches, so the negative assertion can run. `getBy*` and `getAllBy*` throw before `expect` ever sees a value, and `findBy*` returns a Promise that rejects after its timeout.",
+      "tags": [
+        "queries"
+      ],
+      "level": 1,
+      "asked": "Asserting absence is where juniors reach for `getBy` and get a confusing error, so interviewers use it to test the query variants."
+    },
+    {
+      "id": "tf-003",
+      "q": "A list renders one Delete button per user. What does this query do?",
+      "code": "render(<UserList users={[ada, alan, grace]} />);\nscreen.getByRole('button', { name: 'Delete' });",
+      "lang": "jsx",
+      "choices": [
+        "Returns the first matching button in document order",
+        "Returns an array of all three matching buttons",
+        "Returns null, because the match is ambiguous",
+        "Throws an error saying it found multiple elements"
+      ],
+      "answer": 3,
+      "why": "`getBy*` expects exactly one match and throws on zero or several, listing the matches. Returning the first match would hide an ambiguous test; use `getAllBy*` for a list, or scope the query to one row with `within`.",
+      "tags": [
+        "queries"
+      ],
+      "level": 2,
+      "asked": "Checks that you know the single-match contract of `getBy`, which is what forces tests to say which element they mean."
+    },
+    {
+      "id": "tf-004",
+      "q": "Each table row holds a user's name and a Delete button. Which query targets Ada's Delete button most robustly?",
+      "choices": [
+        "within(screen.getByRole('row', { name: /ada/i })).getByRole('button', { name: 'Delete' })",
+        "screen.getAllByRole('button', { name: 'Delete' })[0], since Ada is sorted first in the fixture",
+        "screen.getByText('Ada').closest('button'), walking up from the name cell to the button",
+        "screen.getByTestId('delete-button') after adding the same test id to every row's button"
+      ],
+      "answer": 0,
+      "why": "`within` scopes queries to one container, so the test says which row it means in user terms. Indexing into `getAllBy*` ties the test to sort order, `closest` fails because the button is a sibling, not an ancestor, and a shared test id matches every row.",
+      "tags": [
+        "queries"
+      ],
+      "level": 2,
+      "asked": "Tables and lists are in every CRUD screen; a strong answer reaches for `within` rather than indexes or test ids."
+    },
+    {
+      "id": "tf-005",
+      "q": "What happens when this runs?",
+      "code": "render(\n  <div style={{ display: 'none' }}>\n    <button>Save</button>\n  </div>\n);\nscreen.getByRole('button', { name: 'Save' });",
+      "lang": "jsx",
+      "choices": [
+        "It returns the button, because role queries read the DOM and ignore CSS",
+        "It throws, because role queries skip elements hidden from the accessibility tree",
+        "It returns null, because hidden elements make getBy behave like queryBy",
+        "It returns the button, and only a later toBeVisible assertion would fail"
+      ],
+      "answer": 1,
+      "why": "`*ByRole` excludes inaccessible elements (`display: none`, `visibility: hidden`, `hidden`, `aria-hidden`) unless you pass `hidden: true`, so no match means `getBy` throws. `getByText('Save')` would still find it, which is one reason role queries catch bugs that text queries miss.",
+      "tags": [
+        "queries",
+        "accessibility"
+      ],
+      "level": 3,
+      "asked": "Separates people who have debugged a failing role query from those who have only read the priority list."
+    },
+    {
+      "id": "tf-006",
+      "q": "Why does this assertion fail even though the name does appear?",
+      "code": "render(<Profile userId=\"1\" />);\nexpect(screen.findByText('Ada Lovelace')).toBeInTheDocument();",
+      "lang": "jsx",
+      "choices": [
+        "findByText throws at once because the text is not rendered on the first pass",
+        "findByText returns a Promise, so the matcher receives a Promise, not an element",
+        "toBeInTheDocument cannot retry, so it must be wrapped in a waitFor callback",
+        "findBy queries only work inside act(), which this test does not call directly"
+      ],
+      "answer": 1,
+      "why": "`findBy*` is `getBy*` retried inside `waitFor` (default timeout 1000 ms) and returns a Promise, so it needs `await`. Throwing at once is what `getBy*` does; wrapping in `waitFor` is redundant once you await `findBy*`.",
+      "tags": [
+        "async",
+        "queries"
+      ],
+      "level": 1,
+      "asked": "The most common async bug in React tests; interviewers want to hear that `findBy` is `waitFor` plus `getBy`."
+    },
+    {
+      "id": "tf-007",
+      "q": "After the click, `onSave` is called once async validation finishes. Which line waits for it correctly?",
+      "code": "const onSave = vi.fn();\nrender(<EditForm onSave={onSave} />);\nawait user.click(screen.getByRole('button', { name: 'Save' }));\n// wait for onSave here",
+      "lang": "jsx",
+      "choices": [
+        "await Promise.resolve(); expect(onSave).toHaveBeenCalledWith({ name: \"Ada\" });",
+        "await waitFor(() => user.click(save)); expect(onSave).toHaveBeenCalled();",
+        "setTimeout(() => expect(onSave).toHaveBeenCalledWith({ name: \"Ada\" }), 0);",
+        "await waitFor(() => expect(onSave).toHaveBeenCalledWith({ name: \"Ada\" }));"
+      ],
+      "answer": 3,
+      "why": "`waitFor` retries its callback until it stops throwing or times out, which suits assertions that are not element queries. One microtask may not be enough, an assertion in `setTimeout` runs after the test has finished, and putting a side effect like a click inside `waitFor` can repeat it.",
+      "tags": [
+        "async"
+      ],
+      "level": 2,
+      "asked": "Checks that you know when `waitFor` is the right tool over `findBy`, and that its callback holds assertions only."
+    },
+    {
+      "id": "tf-008",
+      "q": "A passing test prints \"An update to UserList inside a test was not wrapped in act(...)\". What does it usually mean?",
+      "choices": [
+        "The component set state during render, which React refuses to do in a test environment",
+        "The test must wrap render() in act() itself, because Testing Library does not do it",
+        "State changed after the test stopped waiting, so it never asserted on the final UI",
+        "A list item is missing a key prop, so React re-rendered it outside the act() scope"
+      ],
+      "answer": 2,
+      "why": "`render`, user-event and `findBy`/`waitFor` already run inside `act`; the warning means an update (often a resolved fetch) landed after the test moved on. The fix is usually to await the final UI with `findBy*`, not to wrap more code in `act` by hand.",
+      "tags": [
+        "async",
+        "act"
+      ],
+      "level": 2,
+      "asked": "Everyone has seen this warning; the signal is whether you treat it as a missing wait rather than silencing it."
+    },
+    {
+      "id": "tf-009",
+      "q": "With fake timers on, this test hangs until the test timeout. What is the fix?",
+      "code": "vi.useFakeTimers();\nconst user = userEvent.setup();\nrender(<SearchBox />);\nawait user.type(screen.getByRole('searchbox'), 'ada');",
+      "lang": "jsx",
+      "choices": [
+        "Wrap each user.type call in act() so React flushes the pending timers itself",
+        "Call vi.runAllTimers() on the line after the await, once typing has finished",
+        "Pass advanceTimers: vi.advanceTimersByTime to userEvent.setup() so delays advance",
+        "Switch to the direct userEvent.type() API, which skips the setup() delay logic"
+      ],
+      "answer": 2,
+      "why": "user-event waits between actions with `setTimeout` (default `delay: 0`); under fake timers that timeout never fires unless `advanceTimers` moves the clock. Running timers after the `await` is too late because the await never resolves; `delay: null` also avoids the hang but then you advance the debounce yourself.",
+      "tags": [
+        "async",
+        "fake-timers"
+      ],
+      "level": 3,
+      "asked": "Debounced inputs plus fake timers is a classic hang; knowing the `advanceTimers` option shows real user-event v14 experience."
+    },
+    {
+      "id": "tf-010",
+      "q": "Why prefer `user.type(input, 'ada')` over `fireEvent.change(input, { target: { value: 'ada' } })`?",
+      "choices": [
+        "It focuses the field and fires key and input events per character, like a user",
+        "fireEvent.change never triggers React onChange handlers in a jsdom test",
+        "user.type drives a real browser engine, while fireEvent only works in jsdom",
+        "fireEvent writes the value past React state, so the input shows it but state stays empty"
+      ],
+      "answer": 0,
+      "why": "user-event simulates the whole interaction (focus, keydown, input, keyup per character), so handlers that depend on those events run. `fireEvent.change` does trigger React's `onChange`; it just dispatches one synthetic event and skips everything a real user would cause.",
+      "tags": [
+        "interaction"
+      ],
+      "level": 1,
+      "asked": "A quick filter for whether you have written React tests since user-event became the default recommendation."
+    },
+    {
+      "id": "tf-011",
+      "q": "In user-event v14, why does this assertion fail?",
+      "code": "const user = userEvent.setup();\nrender(<Counter />);\nuser.click(screen.getByRole('button', { name: 'Add' }));\nexpect(screen.getByText('Count: 1')).toBeInTheDocument();",
+      "lang": "jsx",
+      "choices": [
+        "userEvent.setup() must be called after render, or it binds to an empty document",
+        "The button needs a data-testid, since click targets cannot be found by role and name",
+        "React batches the state update, so getByText must become findByText after any click",
+        "user.click returns a Promise, so the click has not been dispatched when getByText runs"
+      ],
+      "answer": 3,
+      "why": "Every v14 API is async and waits between pointer actions, so without `await` the next line runs first. Calling `setup()` before render is the documented pattern, and once the click is awaited the update is already flushed, so `getByText` is enough.",
+      "tags": [
+        "interaction",
+        "async"
+      ],
+      "level": 2,
+      "asked": "Upgrading from v13 left many codebases with missing awaits; interviewers probe whether you know the API became async."
+    },
+    {
+      "id": "tf-012",
+      "q": "In a component test running in Node, what does MSW (Mock Service Worker) intercept?",
+      "choices": [
+        "Calls to your api module, swapping its exports the way vi.mock('./api') does",
+        "Outgoing HTTP requests, so the real fetch or axios client code still runs",
+        "Only requests made from a real browser tab with a registered service worker",
+        "React state updates caused by a fetch, feeding fixture data into the hooks"
+      ],
+      "answer": 1,
+      "why": "MSW intercepts at the request level (a service worker in the browser, request interception in Node), so URL building, headers and JSON parsing in your client are exercised. A module mock replaces that code entirely, which is exactly what it stops testing.",
+      "tags": [
+        "mocking",
+        "msw"
+      ],
+      "level": 1,
+      "asked": "Network-level mocking is now the default advice; the follow-up is what a module mock would have hidden."
+    },
+    {
+      "id": "tf-013",
+      "q": "The component shows its error state instead of the users. Why?",
+      "code": "vi.spyOn(globalThis, 'fetch').mockResolvedValue({\n  json: async () => [{ id: 1, name: 'Ada' }],\n});\n// api.js\nconst res = await fetch(url);\nif (!res.ok) throw new Error(`HTTP ${res.status}`);\nreturn res.json();",
+      "lang": "js",
+      "choices": [
+        "mockResolvedValue returns the object synchronously, so await gets undefined",
+        "vi.spyOn cannot replace a global, so the real fetch runs and the request fails",
+        "The fake has no ok property, so !res.ok is true and the client throws \"HTTP undefined\"",
+        "json() must return a string, so parsing the array fails and throws in the client"
+      ],
+      "answer": 2,
+      "why": "A hand-written object only has the fields you remembered; `res.ok` is `undefined`, so the error branch runs. Returning a real `new Response(JSON.stringify(data))`, or mocking at the network level, keeps the fake faithful to what `fetch` returns.",
+      "tags": [
+        "mocking"
+      ],
+      "level": 3,
+      "asked": "Shows whether you have been bitten by hand-rolled fetch mocks drifting from the real `Response` shape."
+    },
+    {
+      "id": "tf-014",
+      "q": "After the \"shows error\" test, a later test expecting the user list sees the error too. What is missing?",
+      "code": "beforeAll(() => server.listen());\nafterAll(() => server.close());\ntest('shows error', async () => {\n  server.use(http.get('/api/users', () =>\n    new HttpResponse(null, { status: 500 })));\n  // ...\n});",
+      "lang": "js",
+      "choices": [
+        "An afterEach that calls server.resetHandlers(), since server.use overrides persist",
+        "A server.close() at the end of the error test, so the next test starts a fresh server",
+        "A second server.listen() in beforeEach, which rebuilds the handler list per test",
+        "An await before server.use, because registering a handler is an async operation"
+      ],
+      "answer": 0,
+      "why": "`server.use` prepends runtime handlers that stay active until `resetHandlers()` restores the initial ones, so the 500 leaks into every later test. Closing the server mid-file stops interception entirely rather than resetting it, and `server.use` is synchronous.",
+      "tags": [
+        "mocking",
+        "msw"
+      ],
+      "level": 2,
+      "asked": "Per-test overrides for error paths are how MSW is used day to day; forgetting the reset is the usual first bug."
+    },
+    {
+      "id": "tf-015",
+      "q": "Which of these is the best candidate for an end-to-end test?",
+      "choices": [
+        "Every validation message on the sign-up form, one test per rule",
+        "Each visual variant of the shared Button component",
+        "The date formatting helper across every supported locale",
+        "Signing in and completing checkout against the real app and API"
+      ],
+      "answer": 3,
+      "why": "End-to-end tests are slow and costly to keep green, so they cover a few critical journeys that cross the real frontend, API and database. Validation rules, helpers and component variants are cheaper and more precise as unit or component tests.",
+      "tags": [
+        "e2e"
+      ],
+      "level": 1,
+      "asked": "Filters for people who would put the whole test pyramid into a browser suite that takes an hour to run."
+    },
+    {
+      "id": "tf-016",
+      "q": "This Playwright test is flaky on CI. What is the fix?",
+      "code": "await page.getByRole('button', { name: 'Save' }).click();\nexpect(await page.getByRole('status').textContent())\n  .toBe('Saved');",
+      "lang": "ts",
+      "choices": [
+        "Add await page.waitForTimeout(500) after the click so the save can finish",
+        "Use await expect(page.getByRole('status')).toHaveText('Saved'), which retries",
+        "Replace click() with dispatchEvent('click'), which waits for the network to idle",
+        "Call page.reload() before reading the status so the page shows the saved state"
+      ],
+      "answer": 1,
+      "why": "`textContent()` reads the text once, so it races the save; web-first assertions like `toHaveText` retry until they pass or time out. A fixed sleep only moves the race, and `click()` already auto-waits for the button to be actionable.",
+      "tags": [
+        "e2e",
+        "async"
+      ],
+      "level": 2,
+      "asked": "Auto-waiting assertions are the core idea of modern e2e tools; sleeps in a test are a red flag in review."
+    },
+    {
+      "id": "tf-017",
+      "q": "Component tests mock `/api/orders` with MSW and pass. In production the page is blank because the API renamed `total` to `totalAmount`. Which test would have caught it?",
+      "choices": [
+        "An e2e or contract test that checks the page against the real API response",
+        "A snapshot test of the orders page, rendered with the existing MSW handlers",
+        "More component tests with MSW handlers for every error status the API returns",
+        "A unit test of the orders reducer, fed with typed fixtures from the test folder"
+      ],
+      "answer": 0,
+      "why": "The MSW handler encodes the old response shape, so every test that uses it agrees with the stale contract. Only a test that talks to the real API, or verifies the handler against its schema, notices the rename; a snapshot just records the same mocked output.",
+      "tags": [
+        "e2e",
+        "msw"
+      ],
+      "level": 3,
+      "asked": "Probes whether you know what mocks cannot tell you, and how you would split work between component and e2e tests."
+    },
+    {
+      "id": "tf-018",
+      "q": "The dialog unmounts after a 200 ms exit animation, so this assertion fails. What is the best fix?",
+      "code": "await user.click(screen.getByRole('button', { name: 'Close' }));\nexpect(screen.queryByRole('dialog')).not.toBeInTheDocument();",
+      "lang": "jsx",
+      "choices": [
+        "Sleep 200 ms with await new Promise(r => setTimeout(r, 200)) before asserting",
+        "Wrap the click in act() so React finishes the exit animation before it returns",
+        "Await waitForElementToBeRemoved(() => screen.queryByRole('dialog')) instead",
+        "Replace queryByRole with getByRole so the query waits for the dialog to leave"
+      ],
+      "answer": 2,
+      "why": "`waitForElementToBeRemoved` polls until the element is gone, so it tracks the real animation time; disabling animations in the test environment also works. A sleep equal to the duration races the timer on a slow runner, and `act` does not wait for timers.",
+      "tags": [
+        "flakiness",
+        "async"
+      ],
+      "level": 2,
+      "asked": "Animations are the most common frontend-only source of flaky tests, and fixed sleeps are what interviewers hope you avoid."
+    },
+    {
+      "id": "tf-019",
+      "q": "A toast hides itself after 5 s. The test awaits its removal with real timers, adding 5 s per run and sometimes timing out on CI. What is the best fix?",
+      "choices": [
+        "Raise the test timeout to 10 s so the removal has room on slow runners",
+        "Poll every 100 ms in a while loop until the toast element has left the DOM",
+        "Retry the test up to three times in CI so a slow run no longer fails the build",
+        "Switch to fake timers and advance the clock 5 s inside act() in the test"
+      ],
+      "answer": 3,
+      "why": "With fake timers the test controls time, so the 5 s pass instantly and deterministically; advancing inside `act` flushes the resulting state update. A bigger timeout keeps the slow run and still races a loaded runner, and retries hide flakiness rather than remove it.",
+      "tags": [
+        "flakiness",
+        "fake-timers"
+      ],
+      "level": 2,
+      "asked": "Real timers in UI tests make suites slow and flaky; the follow-up is how fake timers interact with user-event."
+    },
+    {
+      "id": "tf-020",
+      "q": "The search is debounced by 300 ms. Why does the last line fail?",
+      "code": "await user.type(screen.getByRole('searchbox'), 'ali');\nawait waitFor(() =>\n  expect(screen.queryByText(/loading/i)).not.toBeInTheDocument());\nexpect(screen.getByText('Alice')).toBeInTheDocument();",
+      "lang": "jsx",
+      "choices": [
+        "waitFor passes at once, since loading has not started yet, so nothing was awaited",
+        "queryByText with a regex matches the searchbox label, so the waitFor never passes",
+        "user.type resolves before React renders any keystroke, so the input is still empty",
+        "getByText cannot see content rendered after a debounce without fake timers enabled"
+      ],
+      "answer": 0,
+      "why": "A negative `waitFor` succeeds as soon as its condition holds, and before the debounce fires there is no loading text at all. Wait for the positive end state instead, for example `await screen.findByText('Alice')`; `user.type` itself is awaited and flushed, so the input is not empty.",
+      "tags": [
+        "flakiness",
+        "async"
+      ],
+      "level": 3,
+      "asked": "Vacuous negative waits are a subtle source of flaky UI tests; spotting one shows real debugging experience."
+    },
+    {
+      "id": "tf-021",
+      "q": "Why does this `renderHook` test fail with \"expected 0 to be 1\"?",
+      "code": "const { result } = renderHook(() => useCounter());\nconst { count, increment } = result.current;\nact(() => increment());\nexpect(count).toBe(1);",
+      "lang": "jsx",
+      "choices": [
+        "renderHook renders once only, so the hook never re-renders after increment",
+        "act() is asynchronous here, so the update lands after the expect line runs",
+        "count was read from the first render; read result.current.count after act",
+        "increment is recreated each render, so the old one updates a discarded state"
+      ],
+      "answer": 2,
+      "why": "`result.current` is replaced on every render, but the destructured `count` is a snapshot of the first one. The hook does re-render inside `act`, and the old `increment` still updates the same state through its setter.",
+      "tags": [
+        "hooks",
+        "act"
+      ],
+      "level": 2,
+      "asked": "Tests understanding of render snapshots, and whether you would test a hook through a real component instead."
+    },
+    {
+      "id": "tf-022",
+      "q": "What is the main weakness of a large snapshot test of a whole page?",
+      "choices": [
+        "It can only run in a real browser, so it is too slow to run on every commit",
+        "It reruns every effect on the page, so it cannot use mocked network responses",
+        "It compares only element structure and ignores the text shown to the user",
+        "Any markup change fails it, so people update it with -u without reading the diff"
+      ],
+      "answer": 3,
+      "why": "A big snapshot asserts everything, so it breaks on harmless changes and reviewers learn to accept updates blindly; it also says nothing about behaviour. Snapshots run fine in jsdom and include text; small, targeted snapshots of stable output are the useful kind.",
+      "tags": [
+        "snapshots"
+      ],
+      "level": 1,
+      "asked": "A common interview opinion question; the strong answer says what to assert instead."
+    }
+  ]
+}

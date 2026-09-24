@@ -87,6 +87,10 @@ project reads worse than a small, complete, well-tested one.
 - **Handle the boring things.** Validation, error responses, an empty state, a
   loading state. That is the difference between a demo and software.
 - **Commit incrementally**, with real messages. They will look at the history.
+- **Ask what AI assistance is allowed.** Many take-homes now assume you will use
+  a coding assistant; many live rounds forbid it. Ask rather than guess, and
+  either way be ready to explain every line you submit. "The assistant wrote
+  that part" is not an answer to "why is this here?".
 
 ## API and system design
 
@@ -105,7 +109,9 @@ Structure that works:
 
 The clarifying questions in step 1 matter more than steps 2–4. Someone who
 starts drawing tables before asking anything is showing you how they will behave
-on the job.
+on the job. For the fuller "design X" round, with rough numbers, scaling moves
+and a 45-minute script, see [System design, mid-level
+edition](system-design-for-crud.md).
 
 ## Behavioural questions
 

@@ -61,6 +61,7 @@ export function highlight(code: string, rawLang = ''): string {
   if (lang === 'sh' || lang === 'txt' || lang === '') return escapeHtml(code);
 
   if (lang === 'html') return highlightMarkup(code);
+  if (lang === 'css') return highlightCss(code);
 
   const keywords = KEYWORDS[lang] ?? KEYWORDS.js ?? [];
   const rules: Rule[] = [...COMMON];
@@ -72,8 +73,7 @@ export function highlight(code: string, rawLang = ''): string {
     rules.push({ kind: 'type', re: String.raw`\b[A-Z][A-Za-z0-9_]*\b` });
   }
   if (keywords.length) {
-    const flags = lang === 'sql' ? '' : '';
-    rules.unshift({ kind: 'kw', re: `\\b(?:${keywords.join('|')})\\b${flags}` });
+    rules.unshift({ kind: 'kw', re: `\\b(?:${keywords.join('|')})\\b` });
   }
   rules.push({ kind: 'fn', re: String.raw`\b[a-zA-Z_$][\w$]*(?=\s*\()` });
 
@@ -97,16 +97,64 @@ export function highlight(code: string, rawLang = ''): string {
   return out;
 }
 
+/**
+ * HTML gets its own single pass over the RAW source: comments, tag names and
+ * attribute/value pairs. Matching against already-escaped (or already
+ * highlighted) text is how the old version ended up wrapping its own
+ * `class="tok-kw"` attributes in spans.
+ */
+const MARKUP = /(?<comment><!--[\s\S]*?-->)|(?<open><\/?)(?<tag>[a-zA-Z][\w-]*)|(?<attr>[a-zA-Z_:][\w:.-]*)=(?<value>"[^"]*"|'[^']*')/g;
+
 function highlightMarkup(code: string): string {
-  return escapeHtml(code)
-    .replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="tok-comment">$1</span>')
-    .replace(
-      /(&lt;\/?)([a-zA-Z][\w-]*)/g,
-      (_, open: string, tag: string) => `${open}<span class="tok-kw">${tag}</span>`,
-    )
-    .replace(
-      /([a-zA-Z-]+)=(&quot;|")((?:[^"&]|&(?!quot;))*)(&quot;|")/g,
-      (_, attr: string, q1: string, val: string, q2: string) =>
-        `<span class="tok-fn">${attr}</span>=<span class="tok-str">${q1}${val}${q2}</span>`,
-    );
+  let out = '';
+  let last = 0;
+  for (const match of code.matchAll(MARKUP)) {
+    const index = match.index ?? 0;
+    const g = match.groups ?? {};
+    out += escapeHtml(code.slice(last, index));
+    if (g['comment'] !== undefined) {
+      out += `<span class="tok-comment">${escapeHtml(g['comment'])}</span>`;
+    } else if (g['tag'] !== undefined) {
+      out += `${escapeHtml(g['open'] ?? '')}<span class="tok-kw">${escapeHtml(g['tag'])}</span>`;
+    } else {
+      out +=
+        `<span class="tok-fn">${escapeHtml(g['attr'] ?? '')}</span>=` +
+        `<span class="tok-str">${escapeHtml(g['value'] ?? '')}</span>`;
+    }
+    last = index + match[0].length;
+  }
+  return out + escapeHtml(code.slice(last));
+}
+
+/**
+ * CSS: comments, at-rules, selectors (text before a `{`), property names (a
+ * word followed by `:` and a value that ends in `;` or `}` — which is what
+ * tells `color: red;` apart from `a:hover {`), strings, colours and numbers
+ * with units. Selectors are "type", properties "fn", values "num".
+ */
+const CSS_RULES: Rule[] = [
+  { kind: 'comment', re: String.raw`\/\*[\s\S]*?\*\/` },
+  { kind: 'str', re: String.raw`"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'` },
+  { kind: 'kw', re: String.raw`@[a-zA-Z-]+|!important` },
+  { kind: 'type', re: String.raw`[^{};\s(@\/][^{};\/]*?(?=\s*\{)` },
+  { kind: 'fn', re: String.raw`-{0,2}[a-zA-Z][\w-]*(?=\s*:[^{};]*[;}])` },
+  {
+    kind: 'num',
+    re: String.raw`#[0-9a-fA-F]{3,8}\b|-?\b\d*\.?\d+(?:px|r?em|%|vh|vw|vmin|vmax|ch|fr|ms|s|deg)?`,
+  },
+];
+const CSS = new RegExp(CSS_RULES.map((r, i) => `(?<g${i}>${r.re})`).join('|'), 'g');
+
+function highlightCss(code: string): string {
+  let out = '';
+  let last = 0;
+  for (const match of code.matchAll(CSS)) {
+    const index = match.index ?? 0;
+    const groups = match.groups ?? {};
+    const hit = CSS_RULES.findIndex((_, i) => groups[`g${i}`] !== undefined);
+    out += escapeHtml(code.slice(last, index));
+    out += `<span class="tok-${CSS_RULES[hit]?.kind ?? 'txt'}">${escapeHtml(match[0])}</span>`;
+    last = index + match[0].length;
+  }
+  return out + escapeHtml(code.slice(last));
 }

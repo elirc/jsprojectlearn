@@ -1,0 +1,521 @@
+{
+  "id": "html-css",
+  "topic": "HTML & CSS",
+  "title": "HTML and CSS for app developers",
+  "blurb": "Semantics, forms, the box model, specificity, flexbox, grid and responsive layout: the CSS questions every frontend screen includes, and the layout bugs every CRUD screen hits.",
+  "questions": [
+    {
+      "id": "hc-001",
+      "q": "An app shell has a top bar, a side nav, the routed page and a footer. Which element should wrap the routed page?",
+      "choices": ["`<section>`", "`<article>`", "`<main>`", "`<aside>`"],
+      "answer": 2,
+      "why": "`<main>` marks the one primary-content region of the page, alongside `<header>`, `<nav>` and `<footer>`, and there should be only one visible at a time. `<section>` is a thematic group inside content and `<article>` is a self-contained item such as a post or card, so neither describes the page body itself.",
+      "tags": ["semantics"],
+      "level": 1,
+      "asked": "A quick check that you structure a layout with landmarks rather than a stack of anonymous `div`s."
+    },
+    {
+      "id": "hc-002",
+      "q": "Inside a `<section>` whose heading is `<h2>`, a card needs a title that looks small. Which element should the title use?",
+      "choices": [
+        "`<h3>`, sized down with CSS, since the level reflects nesting",
+        "`<h6>`, since the heading level exists to set its visual size",
+        "`<h1>`, since each `<section>` restarts the heading outline",
+        "`<h2>`, since a card is a sibling of its section heading"
+      ],
+      "answer": 0,
+      "why": "Heading levels describe the document outline, so a title nested under an `<h2>` is an `<h3>`, and CSS decides how big it looks. The \"sections restart at `<h1>`\" idea came from the HTML5 outline algorithm, which no browser implemented and the spec removed in 2022.",
+      "tags": ["semantics"],
+      "level": 2,
+      "asked": "Interviewers look for the split between structure and styling; picking a level by font size is the junior tell."
+    },
+    {
+      "id": "hc-003",
+      "q": "A table row has a Delete control that calls an API and does not change the URL. Which element fits best?",
+      "choices": [
+        "`<a href=\"#\">` with a click handler, so it is focusable and styled as a link",
+        "`<div onclick>` with a pointer cursor, styled to look like a button",
+        "`<a>` without an `href`, so it cannot navigate when it is clicked",
+        "`<button type=\"button\">`, which is focusable and fires on Enter and Space"
+      ],
+      "answer": 3,
+      "why": "Actions are buttons and navigation is links. A `<button>` gets focus, keyboard activation and disabled state for free. `href=\"#\"` is a link that changes the URL hash and misleads, a `<div>` needs all of that behaviour rebuilt, and an `<a>` without `href` is not even focusable.",
+      "tags": ["semantics"],
+      "level": 1,
+      "asked": "The follow-up is usually \"and when is it a link?\", so be ready to say: when it goes somewhere you could open in a new tab."
+    },
+    {
+      "id": "hc-004",
+      "q": "You list orders with id, date, customer and total, and users sort by any column. Which markup fits?",
+      "choices": [
+        "A CSS grid of `<div>`s, since a `<table>` can never be made responsive",
+        "A `<table>` with `<th>` headers in a `<thead>` and one `<tr>` per order",
+        "A `<ul>` of orders, each `<li>` holding the four values as `<span>`s",
+        "A `<dl>` with each order id as a `<dt>` and its fields as `<dd>`s"
+      ],
+      "answer": 1,
+      "why": "Rows and columns of related values are tabular data, and `<table>` gives each cell a header relationship that tools and assistive tech rely on. Tables can be styled responsively (stacked rows, horizontal scroll), so dropping to `div`s loses the structure for no gain; lists and description lists do not model columns.",
+      "tags": ["semantics"],
+      "level": 1,
+      "asked": "Checks that you did not absorb \"tables are bad\" from the table-layout era and apply it to actual data."
+    },
+    {
+      "id": "hc-005",
+      "q": "What happens when the user clicks the words \"Remember me\"?",
+      "code": "<label>\n  <input type=\"checkbox\" name=\"remember\">\n  Remember me\n</label>",
+      "lang": "html",
+      "choices": [
+        "Nothing, since a label needs a `for` attribute to be associated",
+        "The checkbox gets focus but stays unchecked until clicked directly",
+        "The checkbox toggles, since a wrapping label is associated with it",
+        "The text is selected, since label text is not an activation target"
+      ],
+      "answer": 2,
+      "why": "A `<label>` is associated with the control either by `for`/`id` or by wrapping it, and clicking an associated label activates the control, so the checkbox toggles. That is why labelled checkboxes have a much bigger hit area than the tiny box itself.",
+      "tags": ["semantics", "labels", "forms"],
+      "level": 1,
+      "asked": "A cheap question that exposes whether you have ever built a usable checkbox."
+    },
+    {
+      "id": "hc-006",
+      "q": "This component renders once for each of three cart lines. What happens when a user clicks the label on the third line?",
+      "code": "<!-- CartLine: rendered once per line -->\n<label for=\"qty\">Quantity</label>\n<input id=\"qty\" name=\"qty\" type=\"number\">",
+      "lang": "html",
+      "choices": [
+        "The third line's input gets focus, since a label pairs with the nearest input",
+        "The first line's input gets focus, since `for` resolves to the first matching `id`",
+        "No input gets focus, since a duplicated `id` disables every label pointing at it",
+        "Every input with that `id` gets focus in turn, starting with the third"
+      ],
+      "answer": 1,
+      "why": "`for` is resolved like `getElementById`, which returns the first element in document order, so every label focuses line one. Proximity plays no part. Fix it with unique ids per instance (React `useId`, or the line id in the attribute), or by wrapping the input inside the label so no id is needed.",
+      "tags": ["forms", "labels"],
+      "level": 2,
+      "asked": "This is a real bug in every component library that hard-codes ids, and naming `useId` or wrapping as the fix scores well."
+    },
+    {
+      "id": "hc-007",
+      "q": "Which markup suits a phone number field, giving a phone keypad on mobile without number-input behaviour?",
+      "choices": [
+        "`type=\"number\"`, which shows a digit keypad and validates the digits",
+        "`type=\"text\"` with `autocomplete=\"tel\"`, which switches the keypad",
+        "`type=\"text\"` with `maxlength=\"15\"`, which mobile shows as digits",
+        "`type=\"tel\"`, which shows a phone keypad and keeps the value as text"
+      ],
+      "answer": 3,
+      "why": "`type=\"tel\"` brings up the phone keypad but imposes no format, so \"+44\", spaces and leading zeros survive. `type=\"number\"` is for quantities: it accepts `e` and decimals, sanitises \"+44 20 7946 0000\" to an empty value, and adds spinners and scroll-wheel changes. `autocomplete` helps autofill but does not choose the keyboard.",
+      "tags": ["forms"],
+      "level": 2,
+      "asked": "Tests whether you think about mobile users filling in forms, and whether you know `type=\"number\"` is not \"any digits\"."
+    },
+    {
+      "id": "hc-008",
+      "q": "The user clicks Sign up with the email field empty. What happens?",
+      "code": "<form novalidate>\n  <input name=\"email\" type=\"email\" required>\n  <button>Sign up</button>\n</form>",
+      "lang": "html",
+      "choices": [
+        "The form submits, because `novalidate` skips the browser check on submit",
+        "The browser blocks the submit and shows its bubble, since `required` wins",
+        "The submit is blocked silently, with no message shown to the user at all",
+        "The form submits, and the browser strips the `required` attribute first"
+      ],
+      "answer": 0,
+      "why": "`novalidate` turns off constraint validation at submit time only. The rules still exist: `input.validity`, `form.checkValidity()` and the `:invalid` pseudo-class keep working, which is exactly why teams use it: keep native rules, render their own messages. Nothing removes the attribute.",
+      "tags": ["forms"],
+      "level": 2,
+      "asked": "A strong answer explains the pattern: native attributes as the rule source, `novalidate` plus the validity API for custom error UI."
+    },
+    {
+      "id": "hc-009",
+      "q": "What request body does this form submit?",
+      "code": "<form method=\"post\">\n  <input id=\"email\" value=\"a@b.co\">\n  <input name=\"code\" value=\"X1\" readonly>\n  <fieldset disabled><input name=\"plan\" value=\"pro\"></fieldset>\n  <input type=\"checkbox\" name=\"terms\">\n  <input name=\"note\" value=\"hi\">\n</form>",
+      "lang": "html",
+      "choices": ["`note=hi`", "`code=X1&plan=pro&note=hi`", "`code=X1&terms=&note=hi`", "`code=X1&note=hi`"],
+      "answer": 3,
+      "why": "Only named, enabled controls are submitted. The email input has no `name`, the input inside a disabled `<fieldset>` is disabled, and an unchecked checkbox sends nothing at all. `readonly` differs from `disabled`: the user cannot edit it, but its value is still submitted.",
+      "tags": ["forms"],
+      "level": 3,
+      "asked": "Explains a whole class of \"the server never got the field\" bugs; `readonly` versus `disabled` is the usual follow-up."
+    },
+    {
+      "id": "hc-010",
+      "q": "With no other CSS applied, how much horizontal space does `.card` take up, excluding margin?",
+      "code": ".card {\n  width: 300px;\n  padding: 20px;\n  border: 2px solid #ccc;\n}",
+      "lang": "css",
+      "choices": ["300px", "344px", "340px", "322px"],
+      "answer": 1,
+      "why": "The default `box-sizing: content-box` applies `width` to the content only, so padding and border are added: 300 + 2×20 + 2×2 = 344. With `box-sizing: border-box` the card would be 300px with a 256px content area, which is why most resets set it globally.",
+      "tags": ["box-model", "sizing"],
+      "level": 1,
+      "asked": "Checks that you know why the universal `border-box` reset exists, not just that you paste it."
+    },
+    {
+      "id": "hc-011",
+      "q": "The 24px gap appears above the grey card, outside its background, instead of inside it. Why?",
+      "code": ".card { background: #eee; }  /* no padding, no border */\n.card h2 { margin-top: 24px; } /* first child */",
+      "lang": "css",
+      "choices": [
+        "Headings are inline by default, so their vertical margins push outward",
+        "The card has `height: auto`, which moves child margins outside its box",
+        "A first child's `margin-top` is always applied to its parent instead",
+        "The heading's top margin collapses through the card, since nothing separates them"
+      ],
+      "answer": 3,
+      "why": "Vertical margins of a block parent and its first child collapse when no padding, border or new formatting context separates them, so the margin ends up outside the card. It does not happen in every case: padding, a border, `display: flow-root`, or a flex or grid parent all stop it.",
+      "tags": ["box-model", "spacing"],
+      "level": 2,
+      "asked": "A classic layout bug; strong candidates name the collapse and give a fix such as padding or `flow-root`."
+    },
+    {
+      "id": "hc-012",
+      "q": "You set `width: 120px` and `margin-top: 12px` on a `<span>`, and neither has a visible effect. Why?",
+      "choices": [
+        "A span is inline: `width` is ignored and vertical margins do not move lines",
+        "A span only accepts sizes in `em`, so a `px` width is silently dropped",
+        "`width` needs a `height` set too, and the margin needs `position: relative`",
+        "Browser defaults reset margins on inline text elements to zero pixels"
+      ],
+      "answer": 0,
+      "why": "Inline boxes flow as text: `width` and `height` do not apply, and vertical margins do not affect line layout. `display: inline-block` keeps it in the line while honouring width and margins; `display: block` puts it on its own line.",
+      "tags": ["box-model"],
+      "level": 1,
+      "asked": "Checks that you know inline, block and inline-block as layout modes rather than trial and error."
+    },
+    {
+      "id": "hc-013",
+      "q": "What is the computed `padding-top` of `.media`, a child of `.box`?",
+      "code": ".box   { width: 400px; height: 100px; }\n.media { padding-top: 50%; }",
+      "lang": "css",
+      "choices": [
+        "50px, half the height of the containing block",
+        "0px, because `.media` itself has no height set",
+        "200px, half the width of the containing block",
+        "Half the viewport height, the same as `50vh`"
+      ],
+      "answer": 2,
+      "why": "Percentage padding and margin resolve against the containing block's width, even on the top and bottom, so this is 50% of 400px. That quirk powered the old \"padding-top: 56.25%\" 16:9 trick, which `aspect-ratio` now replaces.",
+      "tags": ["box-model", "units"],
+      "level": 3,
+      "asked": "An edge case that tells the interviewer you have met legacy responsive-embed code and know the modern replacement."
+    },
+    {
+      "id": "hc-014",
+      "q": "The link is `<a class=\"link active\">` inside `<nav id=\"main\" class=\"nav\">`. What colour is it?",
+      "code": "#main a { color: blue; }\n.nav .link.active { color: red; }",
+      "lang": "css",
+      "choices": [
+        "Red: three classes add up to more than one id",
+        "Blue: one id outweighs any number of classes",
+        "Red: equal weight, so the later rule wins",
+        "Red: the selector with more parts always wins"
+      ],
+      "answer": 1,
+      "why": "Specificity compares ids, then classes, then elements as separate columns: `#main a` is (1,0,1) and `.nav .link.active` is (0,3,0), so the id column decides and no number of classes carries over. Source order only breaks exact ties.",
+      "tags": ["specificity", "cascade"],
+      "level": 1,
+      "asked": "The foundation for every \"why is my style not applying\" question that follows."
+    },
+    {
+      "id": "hc-015",
+      "q": "A vendor stylesheet sets `.btn { color: white !important; }`. Which change in your own stylesheet makes your button text black?",
+      "choices": [
+        "`#app #app .btn { color: black; }`, a normal rule with far higher specificity",
+        "An inline `style=\"color: black\"` attribute on the button element itself",
+        "`#app .btn { color: black !important; }`, an important rule with more specificity",
+        "Loading your stylesheet after the vendor one so your normal rule is later"
+      ],
+      "answer": 2,
+      "why": "Important declarations form their own tier above all normal ones, including inline styles, so only another `!important` can beat it; within that tier specificity and order apply again. That escalation is why `!important` in shared CSS is a smell, and why `@layer` is the cleaner tool for taming vendor styles.",
+      "tags": ["specificity", "cascade"],
+      "level": 2,
+      "asked": "Interviewers want to hear that `!important` is a separate tier, and ideally a better alternative than piling on more of it."
+    },
+    {
+      "id": "hc-016",
+      "q": "A `.title` sits inside `.card` inside `#app`. What colour is it, and what happens if `:where` becomes `:is`?",
+      "code": ".card .title { color: blue; }\n:where(#app) .title { color: red; }",
+      "lang": "css",
+      "choices": [
+        "Red; with `:is(#app)` it would stay red",
+        "Blue; with `:is(#app)` it would stay blue",
+        "Red; with `:is(#app)` it would become blue",
+        "Blue; with `:is(#app)` it would become red"
+      ],
+      "answer": 3,
+      "why": "`:where()` always adds zero specificity, so the second rule is (0,1,0) and loses to (0,2,0) despite coming later. `:is()` takes the specificity of its most specific argument, so `:is(#app) .title` becomes (1,1,0) and wins. That is why libraries wrap their defaults in `:where()`: they stay easy to override.",
+      "tags": ["specificity"],
+      "level": 2,
+      "asked": "Shows you know the modern selectors and why design systems ship zero-specificity defaults."
+    },
+    {
+      "id": "hc-017",
+      "q": "What colour is a `.btn` inside `#app`?",
+      "code": "@layer base, components;\n@layer components { .btn { color: blue; } }\n@layer base { #app .btn { color: red; } }\n.btn { color: green; }",
+      "lang": "css",
+      "choices": [
+        "Green: unlayered styles beat every layer for normal rules",
+        "Red: `#app .btn` has the highest specificity of the three",
+        "Blue: `components` comes last in the declared layer order",
+        "Red: `base` is declared first, so it takes the priority"
+      ],
+      "answer": 0,
+      "why": "Layer order is checked before specificity. For normal declarations, later layers beat earlier ones and unlayered styles beat all layers, so green wins and `#app .btn` loses despite its id. Blue would win if the last rule were removed. Important declarations reverse the layer order.",
+      "tags": ["specificity", "cascade"],
+      "level": 3,
+      "asked": "Cascade layers are the modern answer to specificity wars, and knowing unlayered styles win is the detail that trips people up."
+    },
+    {
+      "id": "hc-018",
+      "q": "The close button lands in the top-right corner of the page, not of the card. Which change fixes it?",
+      "code": ".card  { padding: 16px; }  /* the button's parent */\n.close { position: absolute; top: 8px; right: 8px; }",
+      "lang": "css",
+      "choices": [
+        "Change `.close` to `position: relative`",
+        "Add `position: relative` to `.card`",
+        "Add `overflow: hidden` to `.card`",
+        "Add `display: block` to `.card`"
+      ],
+      "answer": 1,
+      "why": "An absolutely positioned element is placed against its nearest positioned ancestor; with none, it uses the initial containing block, which is the page. `position: relative` on the card makes it that ancestor without moving it. Making the button relative would offset it from its normal spot instead.",
+      "tags": ["positioning", "containing-block"],
+      "level": 1,
+      "asked": "The most common positioning bug, and the explanation of containing blocks is what separates understanding from habit."
+    },
+    {
+      "id": "hc-019",
+      "q": "A `position: sticky; top: 0` list header scrolls away with the content instead of sticking. What is the most likely cause?",
+      "choices": [
+        "The header has no `z-index`, so sticky positioning never activates",
+        "Its parent lacks `position: relative`, which sticky uses as an anchor",
+        "An ancestor between it and the page scroller has `overflow: hidden`",
+        "Sticky only works on block `div`s, not on `thead` or `th` elements"
+      ],
+      "answer": 2,
+      "why": "Sticky sticks within its nearest scrolling ancestor, and any `overflow` other than `visible` creates one; if that element does not itself scroll, the header never sticks. It also stays inside its parent, so a parent no taller than the header gives it no room. `z-index` only affects painting, and sticky table headers work in current browsers.",
+      "tags": ["positioning", "overflow"],
+      "level": 2,
+      "asked": "A daily CRUD-table bug; naming the overflow ancestor quickly signals real debugging experience."
+    },
+    {
+      "id": "hc-020",
+      "q": "A `position: fixed` overlay is confined to a card's box instead of covering the viewport. Which property on the card causes this?",
+      "choices": ["`position: relative`", "`overflow: hidden`", "`display: flex`", "`transform: scale(1)`"],
+      "answer": 3,
+      "why": "`transform` (also `filter`, `perspective`, `contain: paint` and `will-change: transform`) makes an element the containing block for fixed descendants, so \"fixed\" becomes relative to the card. `position: relative` and `overflow: hidden` only affect absolute children. The usual fix is to render the modal in a portal at the end of `body`.",
+      "tags": ["positioning", "containing-block"],
+      "level": 3,
+      "asked": "This bug shows up when a modal lives inside an animated card, and it explains why modal libraries use portals."
+    },
+    {
+      "id": "hc-021",
+      "q": "The open menu renders behind `.content` despite `z-index: 9999`. Why?",
+      "code": ".header  { position: relative; z-index: 1; }\n.menu    { position: absolute; z-index: 9999; } /* in .header */\n.content { position: relative; z-index: 2; }    /* after .header */",
+      "lang": "css",
+      "choices": [
+        "`.menu` stacks inside `.header`'s context, which sits below `.content`'s 2",
+        "Browsers clamp `z-index` values above 999, so 9999 is treated as 999",
+        "An absolute element ignores `z-index` unless its parent is `static`",
+        "`.content` comes later in the DOM, and that beats any `z-index` on `.menu`"
+      ],
+      "answer": 0,
+      "why": "`.header` with a position and a `z-index` creates a stacking context, so everything inside it, menu included, is painted as one layer at level 1. That layer sits below `.content` at level 2, whatever the child values. Fix it by raising `.header` above `.content`, or by rendering the menu outside the header.",
+      "tags": ["positioning"],
+      "level": 2,
+      "asked": "The \"z-index 9999 does not work\" bug; interviewers want the words stacking context and a fix that does not escalate the number."
+    },
+    {
+      "id": "hc-022",
+      "q": "In a container with `flex-direction: column` and a fixed height, what does `justify-content: center` do?",
+      "choices": [
+        "Centres the items horizontally, since justify always means horizontal",
+        "Centres the items vertically, as the main axis now runs top to bottom",
+        "Nothing, since `justify-content` only applies to row flex containers",
+        "Centres the text inside each item rather than the items themselves"
+      ],
+      "answer": 1,
+      "why": "`justify-content` works along the main axis and `align-items` along the cross axis, and `flex-direction` decides which is which. In a column the main axis is vertical, so the roles swap compared with a row.",
+      "tags": ["flexbox"],
+      "level": 1,
+      "asked": "Checks for the axis model rather than memorised \"justify is horizontal\", which breaks the first time a column is used."
+    },
+    {
+      "id": "hc-023",
+      "q": "What does the shorthand `flex: 1` expand to?",
+      "choices": [
+        "`flex: 1 1 auto`, so items share leftover space after their content",
+        "`flex: 1 0 auto`, so items grow to fill space but never shrink",
+        "`flex: 1 1 0%`, so items split space equally regardless of content",
+        "`flex: 1 0 0%`, so items grow equally but can never shrink"
+      ],
+      "answer": 2,
+      "why": "A single number sets `flex-grow` and implies `flex-shrink: 1` and `flex-basis: 0%`, so columns with `flex: 1` come out equal whatever their content. `flex: auto` is the `1 1 auto` version, where longer content ends up with a wider column.",
+      "tags": ["flexbox", "sizing"],
+      "level": 2,
+      "asked": "Explains the \"why are my equal columns not equal\" question, which is the likely follow-up."
+    },
+    {
+      "id": "hc-024",
+      "q": "Long titles push the row wider than its container instead of truncating with an ellipsis. Which change fixes it?",
+      "code": ".row   { display: flex; }\n.main  { flex: 1; }            /* contains .title */\n.title { white-space: nowrap; overflow: hidden;\n         text-overflow: ellipsis; }",
+      "lang": "css",
+      "choices": [
+        "Add `min-width: 0` to `.title`",
+        "Add `flex-shrink: 1` to `.main`",
+        "Add `width: 100%` to `.title`",
+        "Add `min-width: 0` to `.main`"
+      ],
+      "answer": 3,
+      "why": "Flex items default to `min-width: auto`, which stops them shrinking below their content's minimum width, and nowrap text makes that the full title. `min-width: 0` on the flex item lets it shrink so the child can clip. `.title` is not a flex item, and `flex: 1` already sets shrink to 1.",
+      "tags": ["flexbox", "overflow"],
+      "level": 3,
+      "asked": "Probably the most common flexbox bug in real apps; knowing `min-width: auto` is the cause is a strong experience signal."
+    },
+    {
+      "id": "hc-025",
+      "q": "Why is `gap` usually better than margins on flex items for spacing them?",
+      "choices": [
+        "It adds space only between items, so no stray space at ends or wrapped rows",
+        "It is faster, because margins on flex items make the browser recalculate layout",
+        "It adds equal space around every item, including the container's edges",
+        "It spaces grid tracks only; in flexbox it just sets the default margin"
+      ],
+      "answer": 0,
+      "why": "`gap` puts space between adjacent items and between wrapped lines, never on the outer edges, so there is no `:last-child { margin: 0 }` or negative-margin wrapper. Flexbox `gap` has been supported in every evergreen browser since 2021, and it has no performance edge over margins.",
+      "tags": ["flexbox", "spacing"],
+      "level": 2,
+      "asked": "Shows whether your CSS knowledge is current; the negative-margin wrapper is the pre-2021 answer."
+    },
+    {
+      "id": "hc-026",
+      "q": "How wide is each column, with no gap?",
+      "code": ".layout {\n  display: grid;\n  width: 800px;\n  grid-template-columns: 200px 1fr 2fr;\n}",
+      "lang": "css",
+      "choices": [
+        "200px, 267px and 533px",
+        "160px, 213px and 427px",
+        "200px, 200px and 400px",
+        "200px, 300px and 300px"
+      ],
+      "answer": 2,
+      "why": "`fr` shares out the space left after fixed tracks: 800 − 200 = 600, split 1:2 into 200 and 400. It is not a fraction of the whole container, which is where 267/533 comes from.",
+      "tags": ["grid", "sizing"],
+      "level": 1,
+      "asked": "A quick check that you can predict a grid layout on paper before opening DevTools."
+    },
+    {
+      "id": "hc-027",
+      "q": "The grid holds only two cards. How wide is each, and what changes with `auto-fill`?",
+      "code": ".cards {\n  display: grid;\n  width: 1000px;\n  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));\n}",
+      "lang": "css",
+      "choices": [
+        "200px each; with `auto-fill` they stretch to 500px each",
+        "500px each; with `auto-fill` they stay 200px beside empty tracks",
+        "200px each in both cases, since five tracks always fit",
+        "500px each in both cases, since `1fr` absorbs free space"
+      ],
+      "answer": 1,
+      "why": "Both create as many 200px-minimum tracks as fit (five). `auto-fit` then collapses the empty ones, so the two cards share the full 1000px; `auto-fill` keeps the empty tracks, so each card stays one fifth wide. Pick `auto-fill` when a lone card should not stretch across the page.",
+      "tags": ["grid", "responsive"],
+      "level": 2,
+      "asked": "The follow-up is usually \"which one for a product grid\", and the answer depends on whether a lone card should stretch."
+    },
+    {
+      "id": "hc-028",
+      "q": "Which layout job is grid a clearly better fit for than flexbox?",
+      "choices": [
+        "A form whose labels and inputs line up in columns across every row",
+        "A toolbar of buttons whose widths depend on the length of their text",
+        "A single row of items that pushes the last one to the far right edge",
+        "A tag list that wraps chips of different widths onto following lines"
+      ],
+      "answer": 0,
+      "why": "Grid is two-dimensional: tracks align across rows and columns at once, which a form of label/input pairs needs. Flexbox is one-dimensional and content-sized, so toolbars, `margin-left: auto` pushes and wrapping chip lists are its natural jobs; grid would force chips into equal columns.",
+      "tags": ["grid", "flexbox"],
+      "level": 2,
+      "asked": "Interviewers want a rule of thumb (one axis versus two, content-sized versus track-sized), not \"I use grid for everything\"."
+    },
+    {
+      "id": "hc-029",
+      "q": "A page has media queries for narrow screens but no viewport meta tag. What does a phone browser do with it?",
+      "choices": [
+        "Uses the phone's real width anyway, since the tag only controls zooming",
+        "Ignores every media query until the tag is added to the document head",
+        "Uses the real width but scales all body text up to at least 16px",
+        "Lays it out about 980px wide and zooms out, so narrow queries never match"
+      ],
+      "answer": 3,
+      "why": "Without `<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">`, mobile browsers assume a desktop page, lay it out on a virtual viewport of about 980px and shrink it to fit, so `max-width: 600px` queries never fire. Media queries still run, just against the wrong width.",
+      "tags": ["responsive"],
+      "level": 1,
+      "asked": "The first thing to check when \"the mobile styles do not work\", so it is a common screening question."
+    },
+    {
+      "id": "hc-030",
+      "q": "On a 1400px-wide screen, how many columns does `.grid` have?",
+      "code": ".grid { display: grid; grid-template-columns: 1fr; }\n@media (min-width: 1200px) {\n  .grid { grid-template-columns: repeat(3, 1fr); }\n}\n@media (min-width: 768px) {\n  .grid { grid-template-columns: 1fr 1fr; }\n}",
+      "lang": "css",
+      "choices": [
+        "Three: the larger `min-width` query takes priority",
+        "Two: both queries match, and the later rule wins",
+        "One: base rules outside a query always win",
+        "It varies by browser, as overlapping queries are undefined"
+      ],
+      "answer": 1,
+      "why": "Media queries add no specificity. At 1400px both match, the selectors tie, and source order decides, so the 768px rule wins. Mobile-first CSS works only when `min-width` queries go in ascending order, each overriding the one before.",
+      "tags": ["responsive"],
+      "level": 2,
+      "asked": "A real ordering bug; the strong answer states the ascending `min-width` convention."
+    },
+    {
+      "id": "hc-031",
+      "q": "What padding does the paragraph get?",
+      "code": "html    { font-size: 16px; }\n.card   { font-size: 20px; }\n.card p { padding: 2em 2rem; }",
+      "lang": "css",
+      "choices": [
+        "32px on all four sides of the paragraph",
+        "40px on all four sides of the paragraph",
+        "40px top and bottom, 32px left and right",
+        "32px top and bottom, 40px left and right"
+      ],
+      "answer": 2,
+      "why": "`em` is relative to the element's own font size, which the paragraph inherits as 20px, so 2em is 40px. `rem` is relative to the root font size, 16px, so 2rem is 32px. Use `rem` for consistent spacing and type scales, and `em` when a value should scale with its component's text.",
+      "tags": ["responsive", "units"],
+      "level": 2,
+      "asked": "Tests the unit choice behind accessible, zoom-friendly layouts, and the reason nested `em` values compound."
+    },
+    {
+      "id": "hc-032",
+      "q": "On a 1440px-wide laptop with a device pixel ratio of 2 and an empty cache, which file will the browser most likely fetch?",
+      "code": "<img src=\"card-800.jpg\" alt=\"\"\n  srcset=\"card-400.jpg 400w, card-800.jpg 800w, card-1600.jpg 1600w\"\n  sizes=\"(min-width: 1024px) 400px, 100vw\">",
+      "lang": "html",
+      "choices": [
+        "`card-400.jpg`: the `sizes` value names a 400px slot, which it matches",
+        "`card-1600.jpg`: the widest candidate is used above the 1024px breakpoint",
+        "`card-1600.jpg`: the 1440px viewport needs the next size up from 800",
+        "`card-800.jpg`: the slot is 400px and each CSS pixel needs 2 image pixels"
+      ],
+      "answer": 3,
+      "why": "`sizes` tells the browser how wide the image will display (400px here, since the query matches), and it multiplies by the pixel ratio to get 800 needed pixels, then picks the closest `w` candidate. Without `sizes` it would assume `100vw` and fetch the 1600px file for a 400px slot.",
+      "tags": ["responsive"],
+      "level": 3,
+      "asked": "Responsive images are a common gap; explaining `sizes` as the missing half of `srcset` stands out."
+    },
+    {
+      "id": "hc-033",
+      "q": "The root font size is 16px and the viewport is 600px wide. What font size does the heading get?",
+      "code": "h1 {\n  font-size: clamp(1.5rem, 2vw + 0.5rem, 3rem);\n}",
+      "lang": "css",
+      "choices": [
+        "24px, since the preferred value is below the minimum and the minimum wins",
+        "48px, since the maximum is the fallback whenever the preferred value is out of range",
+        "12.5px, since 2vw + 0.5rem is 12px plus half a pixel",
+        "20px, since the preferred value 2vw + 0.5rem resolves to 12px plus 8px"
+      ],
+      "answer": 0,
+      "why": "`clamp(min, preferred, max)` resolves the preferred value first: 2vw at 600px is 12px, plus 0.5rem (8px) gives 20px, which is under the 1.5rem (24px) minimum, so the minimum wins. The heading only starts growing once the viewport passes 800px and stops at 3rem. Nothing about it is 12.5px, because `0.5rem` is 8px, not half a pixel; and the max is a ceiling, not a fallback. A rem term in the preferred value also keeps fluid type scaling when the user zooms text.",
+      "tags": ["responsive", "units"],
+      "level": 2,
+      "asked": "Fluid typography with `clamp()` replaced a stack of media queries; interviewers want you to evaluate one on paper, including the rem term that keeps it zoomable."
+    }
+  ]
+}

@@ -9,5 +9,5 @@ export default defineConfig({
   base: './',
   plugins: [react()],
   server: { port: 5173, open: true },
-  build: { outDir: 'dist', chunkSizeWarningLimit: 900 },
+  build: { outDir: 'dist' },
 });

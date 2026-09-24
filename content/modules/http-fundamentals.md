@@ -7,7 +7,8 @@ fullstack interviews, and unlike framework trivia it does not go out of date.
 
 ## What a request actually is
 
-Plain text over a TCP connection (encrypted, if HTTPS):
+HTTP/1.1 is plain text over TCP (encrypted, if HTTPS); HTTP/2 and HTTP/3 carry
+the same four parts in binary frames. The HTTP/1.1 form is the one to picture:
 
 ```
 POST /api/orders HTTP/1.1
@@ -66,8 +67,9 @@ The families:
 
 - **2xx — it worked.** 200 OK, 201 Created (send a `Location` header), 204 No
   Content (nothing to return, common for DELETE and PUT).
-- **3xx — go somewhere else.** 301 permanent, 302/307 temporary, **304 Not
-  Modified** (the caching one — see below).
+- **3xx — go somewhere else.** 301/308 permanent, 302/307 temporary, **304 Not
+  Modified** (the caching one — see below). 307/308 preserve the method; 301/302
+  may not (browsers turn a redirected POST into a GET).
 - **4xx — you, the client, got it wrong.** Retrying identically will not help.
 - **5xx — we, the server, got it wrong.** Retrying might help.
 
@@ -80,7 +82,7 @@ The 4xx ones you will be asked to distinguish:
 | **403** Forbidden | We know who you are and you may not do this. *Authorization* failed. |
 | **404** Not Found | No such resource. Also used deliberately instead of 403 to avoid confirming a resource exists. |
 | **409** Conflict | Clashes with current state — duplicate unique field, or a concurrent-edit collision |
-| **422** Unprocessable | Well-formed but semantically invalid. Optional; 400 is fine if you prefer. |
+| **422** Unprocessable Content | Well-formed but semantically invalid. Optional; 400 is fine if you prefer. |
 | **429** Too Many Requests | Rate limited. **Always** include `Retry-After`. |
 
 The 401 vs 403 distinction is asked constantly and is easy to get right:
@@ -162,9 +164,11 @@ Access-Control-Allow-Credentials: true
 
 Three things that will save you hours:
 
-1. **The request usually reaches your server and runs.** The browser withholds
+1. **The request often reaches your server and runs.** The browser withholds
    the *response* from your JavaScript. So a "CORS error" on a POST may already
-   have created the record.
+   have created the record — for simple requests, or when the preflight passed
+   but the real response lacks the header. A JSON POST whose preflight fails
+   never reaches your handler.
 2. **For anything non-simple, the browser sends an `OPTIONS` preflight first.**
    Non-simple means a method other than GET/HEAD/POST, a custom header, or a
    `Content-Type` of `application/json` — which is every API you will write. If
@@ -199,6 +203,12 @@ your JavaScript into one bundle, sharding assets across `static1.` and
 `static2.` domains — were working around the six-connections-per-host limit in
 HTTP/1.1 and now matter much less. Many small cacheable files can beat one big
 one.
+
+HTTP/3 keeps HTTP/2's model but runs over QUIC on UDP instead of TCP. A lost
+packet in HTTP/2 stalls every stream on the connection (TCP head-of-line
+blocking); in QUIC it stalls only the stream it belonged to. QUIC also folds the
+transport and TLS 1.3 handshakes into one round trip (zero on resumption), and
+it is on by default in every major browser and CDN.
 
 ## What actually happens when you type a URL
 

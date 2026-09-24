@@ -1,0 +1,362 @@
+{
+  "id": "node-advanced",
+  "topic": "Node+",
+  "title": "Node beyond Express",
+  "blurb": "Streams, events, the thread pool, security and diagnostics: the Node runtime questions for backend-leaning fullstack roles.",
+  "questions": [
+    {
+      "id": "na-001",
+      "q": "In Node 24, `missing.csv` does not exist. What happens when this runs?",
+      "code": "import { createReadStream, createWriteStream } from 'node:fs';\ncreateReadStream('missing.csv')\n  .pipe(createWriteStream('out.csv'));",
+      "lang": "js",
+      "choices": [
+        "pipe() forwards the error to the write stream, which closes out.csv cleanly",
+        "The read stream's 'error' has no listener, so the process crashes with ENOENT",
+        "pipe() retries opening the file a few times, then ends the write stream empty",
+        "The error is swallowed silently and out.csv is left behind as an empty file"
+      ],
+      "answer": 1,
+      "why": "`.pipe()` does not forward errors or clean up the other stream, and an `error` event with no listener throws. `pipeline()` from `node:stream/promises` propagates the first error, destroys every stream in the chain and rejects, so one try/catch handles it. out.csv is created empty either way.",
+      "tags": ["streams", "errors"],
+      "level": 2,
+      "asked": "Checks you have been bitten by .pipe() and know pipeline() is the production default."
+    },
+    {
+      "id": "na-002",
+      "q": "What does this log in Node 24?",
+      "code": "import { Readable } from 'node:stream';\nconst s = Readable.from(['a', 'b', 'c']);\nfor await (const chunk of s) console.log(chunk);",
+      "lang": "js",
+      "choices": [
+        "abc on one line, as a single chunk",
+        "<Buffer 61>, <Buffer 62>, <Buffer 63>",
+        "a, b and c on three separate lines",
+        "Nothing: streams are not iterable"
+      ],
+      "answer": 2,
+      "why": "`Readable.from` turns any iterable or async iterable into an object-mode stream, so each array element arrives as its own chunk, unchanged. Readable streams are async iterable, which makes `for await` the simplest way to consume one.",
+      "tags": ["streams"],
+      "level": 1,
+      "asked": "A quick check that you know the modern stream API rather than only on(\"data\")."
+    },
+    {
+      "id": "na-003",
+      "q": "Why is `for await (const chunk of stream)` often safer than handling `data` and `error` events by hand?",
+      "choices": [
+        "It reads the whole stream into memory first, so no chunk can ever be lost",
+        "It runs each loop iteration on a worker thread, so slow work cannot block",
+        "It retries a failed chunk automatically before surfacing the error at all",
+        "It pulls one chunk at a time and turns stream errors into catchable throws"
+      ],
+      "answer": 3,
+      "why": "The loop asks for the next chunk only after the body finishes, so an awaited database write paces the read. A stream error rejects the iteration, landing in the surrounding try/catch, and breaking out of the loop destroys the stream. Event handlers need all of that wired by hand.",
+      "tags": ["streams", "errors"],
+      "level": 2,
+      "asked": "Checks you can process a large import line by line without memory or error-handling bugs."
+    },
+    {
+      "id": "na-004",
+      "q": "Piping a large file through this Transform stops after the first chunk. Why?",
+      "code": "import { Transform } from 'node:stream';\nconst upper = new Transform({\n  transform(chunk, enc, cb) {\n    this.push(chunk.toString().toUpperCase());\n  },\n});",
+      "lang": "js",
+      "choices": [
+        "transform() must return the new chunk; push() only works in Readable streams",
+        "transform() never calls cb(), so the stream never asks for another chunk",
+        "toUpperCase() on a Buffer chunk throws, and the Transform swallows the error",
+        "Transforms that emit strings need objectMode: true, or they stop after one"
+      ],
+      "answer": 1,
+      "why": "The callback signals \"done with this chunk\"; until it is called, the Transform does not accept the next one, so the pipeline stalls without an error. Call `cb()` after pushing, or `cb(null, output)` to push and finish in one step. `chunk.toString()` converts the Buffer first, so nothing throws.",
+      "tags": ["streams"],
+      "level": 3,
+      "asked": "A silent hang is harder to debug than a crash; checks you know the Transform contract."
+    },
+    {
+      "id": "na-005",
+      "q": "What does this log?",
+      "code": "import { EventEmitter } from 'node:events';\nconst e = new EventEmitter();\ne.on('ping', () => console.log('handler'));\nconsole.log('before');\ne.emit('ping');\nconsole.log('after');",
+      "lang": "js",
+      "choices": [
+        "before, after, handler",
+        "before, handler, after",
+        "handler, before, after",
+        "before, after (no handler)"
+      ],
+      "answer": 1,
+      "why": "`emit()` calls every listener synchronously, in registration order, before it returns. That surprises people who assume events are asynchronous like DOM tasks, and it means a slow or throwing listener runs inside the emitter's call stack.",
+      "tags": ["events"],
+      "level": 1,
+      "asked": "Checks your mental model of EventEmitter, which underlies streams, servers and sockets."
+    },
+    {
+      "id": "na-006",
+      "q": "What happens when this runs?",
+      "code": "import { EventEmitter } from 'node:events';\nconst e = new EventEmitter();\ne.emit('error', new Error('boom'));\nconsole.log('still running');",
+      "lang": "js",
+      "choices": [
+        "emit() returns false as nobody listens, and 'still running' is logged",
+        "Node prints a warning for the error, then logs 'still running'",
+        "emit() throws the Error, so 'still running' is never logged",
+        "The error is queued until a listener is added, then delivered"
+      ],
+      "answer": 2,
+      "why": "`error` is special: with no listener, `emit` throws the error, and uncaught it crashes the process. For any other event name, `emit` with no listeners just returns false, which is the tempting answer. Always attach an `error` listener to streams, sockets and custom emitters.",
+      "tags": ["events", "errors"],
+      "level": 2,
+      "asked": "Explains a whole class of \"one bad connection crashed the server\" incidents."
+    },
+    {
+      "id": "na-007",
+      "q": "Logs show 'MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 listeners added'. What usually causes it?",
+      "choices": [
+        "An emitter firing more than ten events a second, faster than listeners run",
+        "Eleven separate emitters subscribing to the same event name in one process",
+        "Adding a listener per request to a long-lived emitter and never removing it",
+        "Raising setMaxListeners above ten, which Node flags as a risky setting"
+      ],
+      "answer": 2,
+      "why": "Ten listeners for one event on one emitter is the warning threshold. The usual cause is code like `db.on('change', ...)` inside a request handler: every request adds a closure that is never removed, so memory and work grow. Remove listeners, or use `once`. Raising the limit hides the leak.",
+      "tags": ["events", "diagnostics"],
+      "level": 2,
+      "asked": "A real warning from real logs; checks you read it as a leak, not noise."
+    },
+    {
+      "id": "na-008",
+      "q": "What distinguishes `worker_threads` from `cluster` and `child_process`?",
+      "choices": [
+        "Workers are threads in one process that can share memory; the others start processes",
+        "Workers are separate processes sharing one port; cluster runs threads in one process",
+        "Workers run only native C++ addons; cluster and child_process run JavaScript",
+        "Workers share the main thread's event loop; the other two each get their own"
+      ],
+      "answer": 0,
+      "why": "Each worker has its own V8 isolate and event loop inside the same process, and can share or transfer memory (SharedArrayBuffer, transferable ArrayBuffers). cluster forks processes that share a listening port; child_process runs any program. Workers suit CPU-heavy JavaScript; cluster suits scaling HTTP.",
+      "tags": ["concurrency"],
+      "level": 1,
+      "asked": "The follow-up is \"so which would you use for image resizing?\""
+    },
+    {
+      "id": "na-009",
+      "q": "On an 8-core machine with default settings, why do these eight calls not all finish at about the same time?",
+      "code": "import { pbkdf2 } from 'node:crypto';\nconst start = Date.now();\nfor (let i = 0; i < 8; i++) {\n  pbkdf2('pw', 'salt', 300000, 64, 'sha512', () =>\n    console.log(i, Date.now() - start));\n}",
+      "lang": "js",
+      "choices": [
+        "pbkdf2 runs on the main thread, so the eight calls execute one at a time",
+        "Node pins all crypto work in a process to one core, whatever the pool size",
+        "Only four run at once: libuv's thread pool defaults to four threads",
+        "The callbacks queue as microtasks, and only one is drained per loop tick"
+      ],
+      "answer": 2,
+      "why": "Async crypto, fs, zlib and `dns.lookup` share libuv's pool, which has four threads unless `UV_THREADPOOL_SIZE` (set before the pool starts, up to 1024) says otherwise. The rest queue behind them, so results arrive in waves. The main thread stays free throughout.",
+      "tags": ["concurrency", "performance"],
+      "level": 3,
+      "asked": "Separates people who know \"Node is single-threaded\" from people who know where the threads actually are."
+    },
+    {
+      "id": "na-010",
+      "q": "Which of these work items run on libuv's thread pool rather than on the OS's async networking?",
+      "choices": [
+        "Every TCP socket read and write, with one pool thread per connection",
+        "All JavaScript callbacks, spread across the four threads in the pool",
+        "fs operations, dns.lookup, async crypto such as pbkdf2, and zlib",
+        "Outgoing fetch() calls, with one pool thread held for each request"
+      ],
+      "answer": 2,
+      "why": "Sockets use the OS's non-blocking I/O (epoll, kqueue, IOCP) and need no pool threads, which is why Node handles thousands of connections. Work with no async OS API goes to the pool. Your JavaScript callbacks always run on the main thread.",
+      "tags": ["concurrency"],
+      "level": 2,
+      "asked": "Checks you can say what \"non-blocking\" means in Node at the OS level."
+    },
+    {
+      "id": "na-011",
+      "q": "A service calls many different external hostnames and also reads many files. File reads get slow under load while CPU is idle. What is a likely cause?",
+      "choices": [
+        "Each fetch uses a pool thread for its whole duration, starving the event loop",
+        "dns.lookup for each new hostname occupies the four pool threads, queuing fs work",
+        "File reads fall back to the main thread whenever the network is busy",
+        "The OS caps each process at four open files, so the extra reads wait"
+      ],
+      "answer": 1,
+      "why": "Name resolution through `dns.lookup` (what fetch and http use by default) calls getaddrinfo on the pool, and a slow DNS server holds those threads. File operations queue behind them. Fixes: cache DNS, raise `UV_THREADPOOL_SIZE`, or resolve with `dns.resolve*`, which uses the network instead.",
+      "tags": ["concurrency", "diagnostics"],
+      "level": 3,
+      "asked": "A production-experience question: this one has taken down real services."
+    },
+    {
+      "id": "na-012",
+      "q": "What does this log?",
+      "code": "function merge(target, src) {\n  for (const k in src) {\n    if (typeof src[k] === 'object') merge(target[k] ??= {}, src[k]);\n    else target[k] = src[k];\n  }\n}\nmerge({}, JSON.parse('{\"__proto__\": {\"isAdmin\": true}}'));\nconsole.log({}.isAdmin);",
+      "lang": "js",
+      "choices": [
+        "undefined",
+        "false",
+        "A TypeError at __proto__",
+        "true"
+      ],
+      "answer": 3,
+      "why": "JSON.parse creates an own key named `__proto__`; reading `target.__proto__` returns Object.prototype, so the merge writes `isAdmin` onto the prototype of every object. That is prototype pollution. Skip `__proto__`, `constructor` and `prototype` keys, or merge into `Object.create(null)` or a Map.",
+      "tags": ["security"],
+      "level": 2,
+      "asked": "Deep-merge of request bodies is common; checks you can spot the vulnerability in review."
+    },
+    {
+      "id": "na-013",
+      "q": "A validation regex `/^(a+)+$/` is tested against 30 a's followed by '!'. What happens in Node?",
+      "choices": [
+        "V8 detects the nested quantifier and throws a SyntaxError at compile time",
+        "It returns false at once, as the '!' fails the $ anchor on the first pass",
+        "Matching takes exponential time and blocks the event loop for every user",
+        "It returns true, since + skips any characters it is unable to match"
+      ],
+      "answer": 2,
+      "why": "Nested quantifiers let the engine try every way of splitting the a's before giving up; each extra character doubles the work, so 30 of them block the only thread for a very long time. That is ReDoS. Avoid nested or overlapping quantifiers, cap input length, and lint regexes.",
+      "tags": ["security", "event-loop"],
+      "level": 2,
+      "asked": "Ties security to the event loop: one request can freeze the whole service."
+    },
+    {
+      "id": "na-014",
+      "q": "A 'preview this URL' feature rejects hostnames like `localhost` or `10.x` before calling fetch(). Why is it still exploitable?",
+      "choices": [
+        "fetch ignores the URL hostname and connects to whatever the Host header says",
+        "A public name can resolve to a private IP, and redirects can go anywhere later",
+        "The check runs before TLS, so the attacker can rewrite the URL in transit",
+        "fetch caches DNS for the life of the process, so the first answer always wins"
+      ],
+      "answer": 1,
+      "why": "The string check says nothing about where the connection goes: `evil.example` can resolve to 169.254.169.254 (cloud metadata) or flip between lookups, and fetch follows redirects by default. Resolve first, check the resolved IP, connect to that IP, and set `redirect: 'manual'`, or route egress through an allow-listing proxy.",
+      "tags": ["security", "ssrf"],
+      "level": 3,
+      "asked": "SSRF is in the OWASP top 10; checks you know why a hostname allow-list is not enough."
+    },
+    {
+      "id": "na-015",
+      "q": "What is wrong with this route, and what is the fix?",
+      "code": "import { exec } from 'node:child_process';\napp.get('/ping', (req, res) => {\n  exec(`ping -c 1 ${req.query.host}`, (err, out) => res.send(out));\n});",
+      "lang": "js",
+      "choices": [
+        "It blocks the event loop; switch to execSync inside a worker thread",
+        "Path traversal in host; resolve it with path.resolve before use",
+        "Command injection via ; or &&; use execFile with an argument array",
+        "Pings can hang forever; pass a timeout option to exec and keep it"
+      ],
+      "answer": 2,
+      "why": "`exec` hands the string to a shell, so `host=8.8.8.8; cat /etc/passwd` runs both commands. `execFile('ping', ['-c', '1', host])` passes arguments directly with no shell. Validate the host too. `exec` is asynchronous, so it does not block; a timeout is good hygiene but not the vulnerability.",
+      "tags": ["security"],
+      "level": 2,
+      "asked": "Checks you know which child_process call involves a shell."
+    },
+    {
+      "id": "na-016",
+      "q": "What does starting Node with `--permission` (stable since 22.13 and 23.5) do?",
+      "choices": [
+        "Runs the app as an unprivileged OS user, the way a container would",
+        "Sandboxes each npm dependency so it can only touch its own files",
+        "Prompts the operator at run time before each file or network access",
+        "Denies file, child process and worker access unless flags grant it"
+      ],
+      "answer": 3,
+      "why": "Access is then granted per flag, such as `--allow-fs-read=/app` or `--allow-child-process`, and anything else throws ERR_ACCESS_DENIED. It is process-wide, not per package, and Node describes it as a seat belt for trusted code, not a sandbox for malicious code.",
+      "tags": ["security", "runtime"],
+      "level": 1,
+      "asked": "Awareness only: checks you know it exists and what it does not promise."
+    },
+    {
+      "id": "na-017",
+      "q": "How do you step through a running Node process in Chrome DevTools?",
+      "choices": [
+        "Set NODE_DEBUG=chrome, then reload the browser tab that calls the API",
+        "Start it with --inspect, then attach from chrome://inspect or VS Code",
+        "Run node --prof, which opens DevTools automatically when it exits",
+        "Add console.trace() calls, since Node has no debugger protocol"
+      ],
+      "answer": 1,
+      "why": "`--inspect` opens the inspector protocol on port 9229 (use `--inspect-brk` to pause on the first line). Never expose that port publicly: it allows arbitrary code execution. `--prof` writes a V8 CPU log for offline analysis.",
+      "tags": ["diagnostics"],
+      "level": 1,
+      "asked": "A surprising number of candidates debug only with console.log; this checks for a real debugger habit."
+    },
+    {
+      "id": "na-018",
+      "q": "Memory grows until the container is OOM-killed. What do two heap snapshots, taken minutes apart, tell you?",
+      "choices": [
+        "Which object types grew in between, and what keeps them alive",
+        "Which functions used the most CPU time between the two moments",
+        "How many requests were in flight at each of the two moments",
+        "Which npm packages were loaded, and how large each file was"
+      ],
+      "answer": 0,
+      "why": "Compare the snapshots in DevTools' Memory tab: sort by growth, then follow the retainers to the cache, listener array or closure holding them. Take them with `v8.writeHeapSnapshot()` or the inspector, or `--heapsnapshot-near-heap-limit`. CPU time is a profile's job.",
+      "tags": ["diagnostics", "memory"],
+      "level": 2,
+      "asked": "Checks you can go from \"memory grows\" to a specific retainer instead of guessing."
+    },
+    {
+      "id": "na-019",
+      "q": "This metric climbs to 800 during an incident. What does that mean?",
+      "code": "import { monitorEventLoopDelay } from 'node:perf_hooks';\nconst h = monitorEventLoopDelay({ resolution: 20 });\nh.enable();\nsetInterval(() => console.log(h.percentile(99) / 1e6), 5000);",
+      "lang": "js",
+      "choices": [
+        "Database calls took 800 ms at p99, as timed by the driver",
+        "The heap reached 800 MB at the 99th percentile of samples",
+        "Some callbacks waited about 800 ms for a busy event loop",
+        "There were 800 timers queued and waiting to fire at p99"
+      ],
+      "answer": 2,
+      "why": "The histogram records how late the loop was to service a timer, in nanoseconds (hence `/ 1e6` for ms). 800 ms at p99 means something synchronous (a big JSON.parse, a regex, a sync call) is holding the thread, and every request waits. Slow database calls do not delay the loop.",
+      "tags": ["diagnostics", "event-loop"],
+      "level": 2,
+      "asked": "Event-loop lag is the Node-specific health metric; checks you know what it measures."
+    },
+    {
+      "id": "na-020",
+      "q": "What does this give you that a module-level `let currentRequestId` would not?",
+      "code": "import { AsyncLocalStorage } from 'node:async_hooks';\nconst als = new AsyncLocalStorage();\napp.use((req, res, next) => als.run({ id: crypto.randomUUID() }, next));\nfunction log(msg) { console.log(als.getStore()?.id, msg); }",
+      "lang": "js",
+      "choices": [
+        "The id is shared with the other processes in the cluster automatically",
+        "Each request's id follows its own awaits, never leaking into concurrent ones",
+        "The id is written to a cookie, so it survives across a user's requests",
+        "It is faster, since module-level variables are copied on every await"
+      ],
+      "answer": 1,
+      "why": "A module variable is shared by every in-flight request, so after an `await` it holds whichever request wrote last. AsyncLocalStorage keys the store to the async context started by `run()`, so `log()` deep in any call stack gets the right id with no parameter threading.",
+      "tags": ["diagnostics", "logging"],
+      "level": 2,
+      "asked": "Checks you can build request correlation for logs, a core observability skill."
+    },
+    {
+      "id": "na-021",
+      "q": "What must you install to run this test file in Node 24?",
+      "code": "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\ntest('adds', () => {\n  assert.equal(1 + 1, 2);\n});",
+      "lang": "js",
+      "choices": [
+        "Jest, since node:test only defines the API and has no runner",
+        "Nothing: node --test finds and runs it with the built-in runner",
+        "The @types/node package, or the node:test import fails at runtime",
+        "A Babel preset, because test files need their imports transpiled"
+      ],
+      "answer": 1,
+      "why": "Node has shipped a stable test runner since 20, with mocking, fake timers (`mock.timers`), coverage and watch mode. `node --test` discovers `*.test.js` files and similar patterns. `@types/node` only helps the TypeScript compiler; it has no runtime effect.",
+      "tags": ["runtime", "testing"],
+      "level": 1,
+      "asked": "Checks your tooling knowledge is current: many teams now drop a test framework dependency entirely."
+    },
+    {
+      "id": "na-022",
+      "q": "In Node 24, what happens when `app.cjs` runs?",
+      "code": "// config.mjs\nexport const cfg = await loadConfig();\n\n// app.cjs\nconst { cfg } = require('./config.mjs');",
+      "lang": "js",
+      "choices": [
+        "require waits for the top-level await to settle, then returns cfg",
+        "cfg is a pending Promise that resolves once loadConfig has finished",
+        "require throws ERR_REQUIRE_ASYNC_MODULE because of the top-level await",
+        "require throws ERR_REQUIRE_ESM, since it can never load an ES module"
+      ],
+      "answer": 2,
+      "why": "`require()` of an ES module works unflagged since 22.12 (and 20.19), returning its namespace object, but it is synchronous, so a graph containing top-level await cannot be required. Use `await import()` there, or remove the top-level await. ERR_REQUIRE_ESM was the pre-22.12 behaviour.",
+      "tags": ["runtime", "modules"],
+      "level": 3,
+      "asked": "Checks your module-interop knowledge is current, and that you know its one remaining limit."
+    }
+  ]
+}

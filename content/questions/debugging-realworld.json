@@ -6,228 +6,240 @@
   "questions": [
     {
       "id": "db-001",
-      "q": "Your API works locally but returns 401 in production immediately after deploy. What do you check first?",
+      "q": "Right after a deploy, your API returns 401 for every request. The logs show the Authorization header arriving and the error 'signature validation failed'. Most likely cause?",
       "choices": [
-        "Environment configuration — the signing key, issuer or audience differ between environments",
-        "The database connection",
-        "Whether the frontend is on the right version",
-        "Server CPU usage"
+        "The server clock is a few minutes behind, so every incoming token looks as if it has expired",
+        "A reverse proxy is stripping the Authorization header before it reaches the app",
+        "The signing key or issuer configured in production differs from the one issuing tokens",
+        "A CORS preflight is failing, so the browser sends the request without its credentials"
       ],
-      "answer": 0,
-      "why": "A 401 means the token was rejected, not that the service is broken. Different secret, wrong issuer, or a clock skew making tokens look expired. 'What is different about that environment' is almost always the right first question.",
-      "tags": ["auth", "config"],
-      "level": 2
+      "answer": 2,
+      "why": "A signature failure means the token arrived but was checked against a different key, which points at environment configuration. Clock skew produces a lifetime error instead, and the logs already rule out a stripped header. 'What differs about this environment?' is almost always the right first question.",
+      "tags": ["config", "http"],
+      "level": 2,
+      "asked": "Tests whether you read the evidence in the logs before guessing; the strong answer names the error text as the clue."
     },
     {
       "id": "db-002",
-      "q": "A page loads in 200ms locally and 8 seconds in production with the same code. Most likely cause?",
+      "q": "A page loads in 200 ms locally and 8 seconds in production with the same code. Most likely cause?",
       "choices": [
-        "Data volume — a query that scans fine over 50 local rows scans 5 million in production",
-        "Slower production hardware",
-        "A missing CDN",
-        "The bundle is unminified"
+        "Production hardware is slower, so the same code needs a larger instance size",
+        "Data volume: a query that is fine over 50 local rows scans millions in production",
+        "The production bundle was shipped unminified, so the browser spends seconds parsing it",
+        "The CDN in front of production is missing, so every asset crosses the ocean"
       ],
-      "answer": 0,
-      "why": "Local databases are tiny and warm. Turn on query logging, run EXPLAIN on the slow one, and look for a sequential scan or an N+1. Seed a realistic amount of data locally and the problem shows up before release.",
+      "answer": 1,
+      "why": "Local databases are tiny and warm. Turn on query logging, run EXPLAIN on the slow query and look for a sequential scan or an N+1. Hardware differences explain tens of percent, not a 40-fold slowdown.",
       "tags": ["performance", "database"],
       "level": 2,
-      "asked": "One of the best scenario questions there is — it separates guessers from people who instrument."
+      "asked": "One of the best scenario questions there is: it separates guessers from people who instrument."
     },
     {
       "id": "db-003",
-      "q": "Users report 'sometimes my changes don't save', but you cannot reproduce it. What is a likely explanation?",
+      "q": "Users report 'sometimes my changes don't save', and you cannot reproduce it. What is a likely explanation?",
       "choices": [
-        "A race — two requests, a lost update, or a client-side state overwrite after a slow response",
-        "The database is dropping writes",
-        "Users are mistaken",
-        "The save button is too small"
+        "The database silently drops writes while its connection pool is briefly exhausted",
+        "The browser caches the POST responses, so some of the saves never reach the server at all",
+        "A race: overlapping requests cause a lost update, or a slow response overwrites newer state",
+        "The ORM batches writes and flushes them only when the connection pool recycles"
       ],
-      "answer": 0,
-      "why": "Intermittent means timing. Look for a missing await, a fetch race, a lost update with no version check, or an optimistic update that never reconciled. Add a correlation id and log the write path.",
-      "tags": ["race", "concurrency"],
-      "level": 2
+      "answer": 2,
+      "why": "Intermittent means timing. Look for a missing await, a fetch race, an update with no version check, or an optimistic update that never reconciled. An exhausted pool throws an error; it does not drop writes silently. Add a correlation id and log the write path.",
+      "tags": ["concurrency", "method"],
+      "level": 2,
+      "asked": "Checks whether \"intermittent\" makes you think of concurrency before blaming the database or the user."
     },
     {
       "id": "db-004",
       "q": "Memory grows steadily until the service is killed and restarted. Where do you look?",
       "choices": [
-        "Unbounded caches, listeners never removed, or accumulating references in a long-lived object",
-        "Garbage collector configuration",
-        "The number of requests",
-        "The size of the Docker image"
+        "Unbounded caches, listeners never removed, or references piling up in a long-lived object",
+        "The garbage collector is misconfigured and needs a larger heap limit to keep up",
+        "Request volume: memory rises with traffic and is released only when traffic drops",
+        "The Docker image is too large, and all of its layers are loaded into the process memory"
       ],
       "answer": 0,
-      "why": "A cache with no eviction is the classic — it is a memory leak with a nice name. Take two heap snapshots under load and compare what grew.",
-      "tags": ["memory", "operations"],
-      "level": 3
+      "why": "A cache with no eviction is the classic: a memory leak with a nice name. A bigger heap only delays the kill. Take two heap snapshots under load and compare what grew between them.",
+      "tags": ["operations", "performance"],
+      "level": 3,
+      "asked": "A production-experience question; naming heap snapshots and a concrete leak pattern is what separates a real answer."
     },
     {
       "id": "db-005",
       "q": "The frontend gets a CORS error calling your API. Where is the fix?",
       "choices": [
-        "On the server — it must send the right Access-Control-Allow-* headers and answer the OPTIONS preflight",
-        "In the browser, by disabling security",
-        "In the frontend fetch options",
-        "In the DNS configuration"
+        "In the fetch call: set `mode: 'no-cors'` so the browser lets the response through",
+        "On the API: return the right Access-Control-Allow-* headers, including on OPTIONS",
+        "In the fetch call: add an Access-Control-Allow-Origin header to the outgoing request",
+        "In DNS: point the API and frontend at the same IP address so they share an origin"
       ],
-      "answer": 0,
-      "why": "Nothing the client does can grant itself permission. Check that OPTIONS is routed (not 404), that the origin is listed exactly, and that CORS middleware runs before anything that short-circuits.",
-      "tags": ["cors"],
+      "answer": 1,
+      "why": "Only the server can grant the browser permission. `no-cors` gives you an opaque response you cannot read, and Allow-* headers on the request are ignored. An origin is scheme, host and port, not an IP. Check that OPTIONS is routed and the origin is listed exactly.",
+      "tags": ["http", "frontend"],
       "level": 1,
-      "asked": "The most common frontend/backend integration failure, and the wrong answer — 'mode: no-cors' — is very common."
+      "asked": "The most common frontend/backend integration failure, and the wrong answer, 'mode: no-cors', is very common."
     },
     {
       "id": "db-006",
       "q": "A request hangs forever instead of returning an error. What is the usual cause?",
       "choices": [
-        "A promise that never settles or rejects — a missing await, an unhandled rejection, or no timeout on an upstream call",
-        "The server is out of memory",
-        "The client cancelled it",
-        "A CORS failure"
+        "The server ran out of memory, so the request is parked until memory frees up",
+        "The client cancelled it, and the server holds the socket open until a restart",
+        "A CORS failure, which leaves the request pending instead of returning an error",
+        "A promise that never settles, or an upstream call made with no timeout at all"
       ],
-      "answer": 0,
-      "why": "Every outbound call needs a timeout. Without one, one slow dependency ties up your connections until the whole service appears down — the failure spreads instead of being contained.",
-      "tags": ["async", "reliability"],
-      "level": 2
+      "answer": 3,
+      "why": "Every outbound call needs a timeout. Without one, a slow dependency ties up connections until the whole service looks down. Out-of-memory crashes the process, and CORS failures reject immediately; neither hangs.",
+      "tags": ["reliability", "concurrency"],
+      "level": 2,
+      "asked": "The follow-up is \"where would you put timeouts?\"; the strong answer says on every outbound call."
     },
     {
       "id": "db-007",
-      "q": "You changed nothing and the build started failing. What is the most likely reason?",
+      "q": "Re-running CI on a commit that passed last week now fails, and nothing in the repository changed. Most likely reason?",
       "choices": [
-        "A dependency resolved to a new version because the range was not pinned or the lockfile was not used",
-        "A GitHub outage",
-        "Someone deleted a file",
-        "The compiler updated itself"
+        "The CI cache expired, and a build cannot pass until the cache is warm again",
+        "A dependency, base image or CI action resolved to a newer version because nothing pinned it",
+        "Git re-hashed the commit after a force-push to another branch, so CI now checks out different code",
+        "The pipeline file is read from main rather than the commit, so any main change breaks it"
       ],
-      "answer": 0,
-      "why": "'Nothing changed' usually means nothing *you* changed. Check whether CI runs `npm ci`, whether a base Docker image tag moved, or whether a GitHub Action was pinned to a floating tag.",
+      "answer": 1,
+      "why": "'Nothing changed' usually means nothing you changed. Check whether CI runs `npm ci`, whether a base image tag moved, or whether an action is pinned to a floating tag. A commit's hash is its content, so it cannot be re-hashed.",
       "tags": ["ci", "dependencies"],
-      "level": 2
+      "level": 2,
+      "asked": "Tests whether you know every place a build pulls in something that is not in the commit."
     },
     {
       "id": "db-008",
-      "q": "A React list shows the wrong data in the wrong rows after deleting an item. What is it?",
+      "q": "A React list uses `item.id` as the key, but after an import two items share an id. What symptom do you expect?",
       "choices": [
-        "Index used as key, so component state stayed attached to positions rather than items",
-        "A stale cache",
-        "A missing await",
-        "The API returned the wrong order"
+        "A render error that unmounts the list until the duplicate item is removed from state",
+        "Nothing visible; React falls back to index keys for the two items that collide",
+        "A duplicate-key warning, and rows that get duplicated or dropped when the list updates",
+        "Each of the two rows shows the first item's data, while updates to either still apply correctly"
       ],
-      "answer": 0,
-      "why": "Classic. React matched by position, so row 3's local state (an open editor, a checkbox) now belongs to a different item. Use a stable id.",
-      "tags": ["react", "keys"],
-      "level": 2
+      "answer": 2,
+      "why": "React logs \"Encountered two children with the same key\" and then its reconciliation is undefined for those children, so rows can be duplicated or omitted after an update. It does not throw and does not fall back to indices. Fix the data, not the key.",
+      "tags": ["frontend"],
+      "level": 2,
+      "asked": "Checks that you connect a console warning to a data problem rather than silencing it."
     },
     {
       "id": "db-009",
       "q": "An endpoint is slow only for one large customer. What do you suspect?",
       "choices": [
-        "An unbounded query with no pagination, or a missing index on the tenant column",
-        "That customer's network",
-        "Rate limiting",
-        "Their browser version"
+        "That customer's network is slow, which the server records as long response times",
+        "An unbounded query with no pagination, or no index covering the tenant column",
+        "Rate limiting is throttling them, because their many users share one API key",
+        "Their browser renders large tables slowly, which inflates the reported timings"
       ],
-      "answer": 0,
-      "why": "Behaviour that scales with one tenant's data volume points at the data access. Multi-tenant systems need the tenant column in the index and hard limits on result size.",
+      "answer": 1,
+      "why": "Slowness that scales with one tenant's data volume points at data access. Rate limiting returns 429 rather than slowing responses, and browser rendering does not show up in server timings. Put the tenant column in the index and cap result sizes.",
       "tags": ["performance", "database"],
-      "level": 2
+      "level": 2,
+      "asked": "A multi-tenant classic; the strong answer asks for the query plan with that tenant's id."
     },
     {
       "id": "db-010",
       "q": "Logs show the error but not which user or request it belongs to. What is missing?",
       "choices": [
-        "A correlation id attached to every log line for a request, propagated to downstream calls",
-        "A higher log level",
-        "More log statements",
-        "Structured logging alone"
+        "A higher log level, such as Debug, so every function call is recorded as well",
+        "More log statements around the failing code, each with the full request body",
+        "A log shipper that sends everything to one searchable place instead of local files",
+        "A correlation id on every log line for a request, passed on to downstream calls"
       ],
-      "answer": 0,
-      "why": "Without it you cannot reconstruct one request's path through concurrent traffic. Generate an id at the edge, put it in the logging context, and return it in error responses so a user report maps to a log query.",
+      "answer": 3,
+      "why": "Without it you cannot pick one request's lines out of concurrent traffic. Centralising logs makes them searchable but does not link them. Generate the id at the edge, put it in the logging context, and return it in error responses so a user report maps to a query.",
       "tags": ["logging", "observability"],
       "level": 2,
-      "asked": "The strong answer mentions propagating it to downstream services."
+      "asked": "The strong answer mentions propagating the id to downstream services."
     },
     {
       "id": "db-011",
-      "q": "A deploy succeeded but users see a blank page with a console error about a missing chunk. What happened?",
+      "q": "A deploy succeeded, but some users see a blank page with a console error about a missing chunk. What happened?",
       "choices": [
-        "Their browser holds the old HTML referencing hashed bundles the new deploy removed",
-        "The CDN is down",
-        "A CORS misconfiguration",
-        "The build did not run"
+        "The CDN serves new HTML but old JavaScript, because its edge cache was never purged",
+        "The build skipped code splitting, so lazy routes were never emitted as files",
+        "Open tabs hold the old HTML, which references hashed bundles the deploy deleted",
+        "A CORS rule on the asset bucket blocks chunks loaded through dynamic import"
       ],
-      "answer": 0,
-      "why": "A classic SPA deploy failure. Fixes: keep old assets around for a grace period, cache the HTML shell short and the hashed assets long, and handle a chunk load error by reloading the page.",
+      "answer": 2,
+      "why": "Only users with the app already open are hit: their old page asks for old chunk names that no longer exist. A skipped split or a CORS rule would break everyone, every time. Keep old assets for a grace period and reload the page on a chunk-load error.",
       "tags": ["deployment", "frontend"],
-      "level": 3
+      "level": 3,
+      "asked": "A classic SPA deploy failure; people who have hit it mention keeping old assets around."
     },
     {
       "id": "db-012",
-      "q": "A background job runs three times per night instead of once. Why?",
+      "q": "A nightly background job has started running three times a night instead of once. Why?",
       "choices": [
-        "Three instances are running and each has its own scheduler — it needs a distributed lock or a single scheduler",
-        "The cron expression is wrong",
-        "The job is retrying",
-        "Time zone handling"
+        "The cron expression fires hourly for three hours, because the hour field is a range",
+        "The job fails silently and the scheduler retries it twice before marking it done",
+        "Daylight saving makes the scheduler fire once for each offset it has seen",
+        "The app now runs three instances, and each has its own in-process scheduler"
       ],
-      "answer": 0,
-      "why": "An in-process scheduler scales with your replicas. Either elect a leader, take a distributed lock, or move scheduling to infrastructure that runs it once.",
-      "tags": ["background-work", "scaling"],
-      "level": 3
+      "answer": 3,
+      "why": "An in-process scheduler scales with your replicas. Elect a leader, take a distributed lock, or move scheduling to something that runs the job once. A retry or a cron mistake would not line up with a change in instance count.",
+      "tags": ["operations", "concurrency"],
+      "level": 3,
+      "asked": "Tests whether you think about what happens to in-process state when you scale out."
     },
     {
       "id": "db-013",
-      "q": "The same data appears twice after a user double-clicked Submit. What prevents it properly?",
+      "q": "The same order appears twice after a user double-clicked Submit. What prevents it even for retries and direct API calls?",
       "choices": [
-        "Server-side idempotency — a unique constraint or an idempotency key — not just a disabled button",
-        "Debouncing the click handler",
-        "A loading spinner",
-        "Client-side deduplication"
+        "Debouncing the click handler so a second click within 300 ms is ignored",
+        "An idempotency key or unique constraint, so the server accepts it only once",
+        "Disabling the button while the request is in flight, so it cannot be clicked",
+        "Checking in the handler for an identical order before inserting the new one"
       ],
-      "answer": 0,
-      "why": "The UI fix helps, but a retry, a flaky connection or a direct API call bypasses it. Only the server can guarantee 'this happens once'.",
-      "tags": ["idempotency", "reliability"],
-      "level": 2
+      "answer": 1,
+      "why": "Client fixes help but a network retry or a direct API call bypasses them. A check-then-insert in the handler races with itself; only a constraint or a stored idempotency key makes 'this happens once' true on the server.",
+      "tags": ["reliability", "database"],
+      "level": 2,
+      "asked": "Checks whether you know which side of the wire can actually guarantee \"once\"."
     },
     {
       "id": "db-014",
-      "q": "Dates are one day off for some users. What is the cause?",
+      "q": "Dates are one day off for some users. What is the likely cause?",
       "choices": [
-        "Timezone handling — a UTC timestamp rendered in local time, or a date-only value treated as midnight UTC",
-        "A leap year bug",
-        "The database is in the wrong region",
-        "A serialisation error"
+        "A leap-year bug in the date library that shifts dates after 29 February by one day",
+        "Time zones: a UTC instant shown in local time, or a date-only value read as UTC midnight",
+        "The database server sits in another region and stores dates in its own local zone",
+        "JSON cannot represent dates, so they can lose a day when serialised to text and parsed back"
       ],
-      "answer": 0,
-      "why": "`new Date('2026-03-01')` is parsed as UTC midnight, which is the previous day west of Greenwich. Store instants in UTC and calendar dates as plain dates — they are genuinely different types.",
+      "answer": 1,
+      "why": "`new Date('2026-03-01')` is parsed as UTC midnight, which is the previous evening west of Greenwich. Store instants in UTC and calendar dates as plain dates; they are genuinely different types. 'Some users' is the clue that points at location.",
       "tags": ["dates"],
-      "level": 2
+      "level": 2,
+      "asked": "Everyone has shipped this bug; the strong answer separates instants from calendar dates."
     },
     {
       "id": "db-015",
       "q": "You get a 502 from your API behind a load balancer. What does that usually mean?",
       "choices": [
-        "The upstream app did not respond acceptably — it crashed, is not listening, or exceeded the proxy timeout",
-        "The client sent a bad request",
-        "The DNS record is wrong",
-        "TLS negotiation failed"
+        "The client sent a malformed request that the load balancer could not route",
+        "The DNS record for the API points at an old address with no server behind it",
+        "The TLS certificate on the load balancer expired, so the browser refused to connect to it",
+        "The app behind the proxy did not answer properly: crashed, not listening, or a bad reply"
       ],
-      "answer": 0,
-      "why": "Check the app's own logs and health endpoint first — the proxy is reporting a symptom. Common causes: the container crashed on startup, it bound to localhost instead of 0.0.0.0, or a request exceeded the proxy's timeout.",
+      "answer": 3,
+      "why": "502 is the proxy saying its upstream failed. Check the app's logs and health first: common causes are a crash on startup, binding to localhost instead of 0.0.0.0, or a response the proxy could not parse; an upstream that is merely slow usually shows as 504 instead. A malformed request is a 400, and a bad certificate never reaches HTTP at all.",
       "tags": ["operations", "http"],
-      "level": 2
+      "level": 2,
+      "asked": "Tests whether you read a status code as \"which hop failed\", which is how you debug through proxies."
     },
     {
       "id": "db-016",
       "q": "How do you approach a bug you cannot reproduce?",
       "choices": [
-        "Narrow the conditions with logs and data, form a hypothesis, and add instrumentation to confirm or kill it",
-        "Rewrite the affected component",
-        "Add try/catch until it stops erroring",
-        "Wait for another report"
+        "Find what the failing cases share, form a hypothesis, and add logging to test it",
+        "Rewrite the affected component cleanly, since the bug is likely in the messy parts",
+        "Wrap the suspect code in try/catch and log a warning so users stop seeing errors",
+        "Ask QA to try every browser until someone finds the steps that trigger the bug"
       ],
       "answer": 0,
-      "why": "The method matters more than the answer: what is different about the failing cases — user, tenant, browser, time, data shape? Bisect the difference rather than guessing at fixes.",
+      "why": "Ask what is different about the failing cases: user, tenant, browser, time, data shape. Then instrument to confirm or kill a hypothesis. Rewriting or swallowing the error changes the symptom without explaining it.",
       "tags": ["method"],
       "level": 2,
       "asked": "An open question where the interviewer is listening for a systematic process."
@@ -236,86 +248,318 @@
       "id": "db-017",
       "q": "A test suite passes but the same code fails in production. What is the most useful reflection?",
       "choices": [
-        "The tests did not cover the boundary — real data, real config, real concurrency, or a real dependency",
-        "Tests are not worth writing",
-        "Coverage was too low",
-        "The tests were flaky"
+        "Coverage was too low; raising the threshold to 90% would have caught the case",
+        "The tests stopped at a boundary: real data, config, concurrency or a dependency",
+        "The tests were flaky, so a failing run was probably retried until it passed",
+        "Unit tests cannot catch production bugs, so the team should add manual QA"
       ],
-      "answer": 0,
-      "why": "Heavily mocked tests verify your assumptions, not reality. When a bug escapes, the useful question is 'what kind of test would have caught this?' — and often the answer is an integration test.",
-      "tags": ["testing", "method"],
-      "level": 2
+      "answer": 1,
+      "why": "Heavily mocked tests verify your assumptions, not reality. Ask \"what kind of test would have caught this?\"; the answer is often an integration test. Coverage measures executed lines, so a higher number would not have covered a boundary you mocked away.",
+      "tags": ["method"],
+      "level": 2,
+      "asked": "Tests whether you learn from an escaped bug or only fix it."
     },
     {
       "id": "db-018",
       "q": "Your service degrades under load: response times climb until requests time out. First hypothesis?",
       "choices": [
-        "A bounded resource is exhausted — connection pool, thread pool, or an upstream limit — and requests are queueing",
-        "The CPU is too slow",
-        "The database needs more RAM",
-        "Too many users"
+        "A bounded resource is exhausted, such as a connection or thread pool, and requests queue",
+        "The CPU is too slow for the workload, so each request takes longer as users arrive",
+        "The database needs more RAM, because each new user adds rows it holds in memory",
+        "The garbage collector runs more often under load, which on its own doubles every response time"
       ],
       "answer": 0,
-      "why": "Latency climbing while throughput plateaus is a queueing signature. Find what is saturated: pool metrics, upstream latency, GC pauses. Adding instances without fixing the bottleneck often makes it worse by adding more contention.",
+      "why": "Latency climbing while throughput flattens is a queueing signature. Find what is saturated: pool metrics, upstream latency, GC pauses. Adding instances without fixing the bottleneck can make it worse by adding contention on the same database.",
       "tags": ["performance", "operations"],
-      "level": 3
+      "level": 3,
+      "asked": "A production-experience signal; the strong answer mentions pool metrics before hardware."
     },
     {
       "id": "db-019",
       "q": "A user says 'the site is broken' with no other detail. What do you ask for?",
       "choices": [
-        "What they did, what they expected, what happened, when, and any id or error text on screen",
-        "Their password so you can reproduce it",
-        "Whether they tried a different browser",
-        "For them to file a formal ticket"
+        "Whether they tried another browser, and to clear their cache before reporting",
+        "What they did, expected and saw, when it happened, and any error id on screen",
+        "A screen recording, since written descriptions from users are rarely usable",
+        "A formal ticket, so the report can be triaged in the next sprint planning"
       ],
-      "answer": 0,
-      "why": "Reproduction steps and a timestamp let you find the request in the logs. This is also why a user-visible correlation id on error pages is worth the small effort.",
+      "answer": 1,
+      "why": "Steps, expectation, outcome and a timestamp let you find the request in the logs. That is also why a visible correlation id on error pages is worth the small effort. A recording helps sometimes, but it still lacks the time and id you need to search.",
       "tags": ["method", "process"],
-      "level": 1
+      "level": 1,
+      "asked": "Checks whether you can turn a vague report into something searchable."
     },
     {
       "id": "db-020",
-      "q": "You find the cause of an outage. What comes after the fix?",
+      "q": "You have found and fixed the cause of an outage. What comes next?",
       "choices": [
-        "A blameless write-up: what happened, why, and what change stops the whole class of problem recurring",
-        "Nothing, once it works",
-        "Identifying who caused it",
-        "Adding a monitoring alert only"
+        "A meeting to agree who caused it and what training that person now needs",
+        "A new alert for this exact error, so the same failure pages someone next time",
+        "A blameless write-up: what happened, why, and what change stops the whole class",
+        "Closing the incident once the fix is live, since the cause is now understood"
       ],
-      "answer": 0,
-      "why": "The valuable output is the systemic change — a test, a guardrail, an alert, a process — not the individual patch. Interviewers ask about this to see whether you think past the immediate fire.",
+      "answer": 2,
+      "why": "The valuable output is the systemic change (a test, a guardrail, an alert, a process), not the individual patch. An alert for the exact error helps but does not stop the class recurring, and blame makes people hide the next incident.",
       "tags": ["process"],
-      "level": 2,
+      "level": 1,
       "asked": "A maturity question. 'Blameless' is the word worth using."
     },
     {
       "id": "db-021",
-      "q": "The browser shows stale data after an update, but the API returns the new value in curl. Why?",
+      "q": "The browser shows stale data after an update, but `curl` against the API returns the new value. Why?",
       "choices": [
-        "A caching layer is serving the old response — browser cache, service worker, CDN, or client-side query cache",
-        "The database replicated slowly",
-        "The user needs to log out",
-        "A CORS issue"
+        "The user's session holds a snapshot of the data taken when they logged in",
+        "A cache is serving the old response: browser, service worker, CDN or query cache",
+        "The browser speaks HTTP/1.1 while curl uses HTTP/2, which always fetches newer data",
+        "A CORS rule blocks the fresh response, so the browser falls back to an old one"
       ],
-      "answer": 0,
-      "why": "Work outward from the client: devtools with cache disabled, then check Cache-Control headers, the CDN, and whether the frontend cache was invalidated after the mutation.",
-      "tags": ["caching"],
-      "level": 2
+      "answer": 1,
+      "why": "Work outward from the client: devtools with cache disabled, then Cache-Control headers, the CDN, and whether the frontend query cache was invalidated after the mutation. Protocol version does not change which data a server returns.",
+      "tags": ["http", "frontend"],
+      "level": 2,
+      "asked": "Tests whether you know how many caches sit between a user and your database."
     },
     {
       "id": "db-022",
-      "q": "What is the first thing to do when production is broken?",
+      "q": "Production is down for all users. What is the first thing to do?",
       "choices": [
-        "Restore service — roll back or mitigate — then investigate the cause",
-        "Find the root cause before touching anything",
-        "Push a fix forward immediately",
-        "Notify every stakeholder before acting"
+        "Find the root cause before touching anything, so the evidence is not destroyed",
+        "Restore service by rolling back or mitigating, then investigate the cause",
+        "Write a failing test that reproduces the outage, then fix forward against it",
+        "Email every stakeholder with an impact estimate before anyone changes anything"
+      ],
+      "answer": 1,
+      "why": "Recovery and diagnosis are separate goals. Rolling back to a known-good version stops the damage and buys time to investigate properly. The regression test belongs to the fix that follows, once users are served again.",
+      "tags": ["operations", "process"],
+      "level": 2,
+      "asked": "Checks whether you put users before curiosity; the strong answer also mentions keeping logs for the investigation."
+    },
+    {
+      "id": "db-023",
+      "q": "A build works on your laptop but fails in CI with a syntax error inside a dependency. What do you check first?",
+      "choices": [
+        "Whether your laptop has a newer Git that checks files out with other line endings",
+        "Whether CI runs a different Node or .NET version, and pin it in `.nvmrc` or `global.json`",
+        "Whether the CI runner has less memory, since the parser reports syntax errors when it runs out",
+        "Whether the dependency came from a mirror that serves corrupted package archives"
+      ],
+      "answer": 1,
+      "why": "A syntax error in someone else's code usually means that code targets a newer runtime than the one executing it. Pin the version in the repo (`.nvmrc`, `engines`, `global.json`) and have CI read it. Low memory crashes the process; it does not produce a syntax error.",
+      "tags": ["ci", "dependencies"],
+      "level": 1,
+      "asked": "A junior check that you treat the runtime version as part of the code."
+    },
+    {
+      "id": "db-024",
+      "q": "A production error's stack trace points at `main.4f9a1c.js:1:48213`. What turns it into a readable file and line?",
+      "choices": [
+        "Rebuilding the app locally in development mode and matching the column number",
+        "Turning off minification in production so that future stack traces are readable",
+        "Running the bundle through a code formatter, which restores the original names",
+        "The source map from that exact build, uploaded to your error tracker or kept private"
+      ],
+      "answer": 3,
+      "why": "A source map maps minified positions back to original files and names, but only for the build that produced it, so store maps per release. A formatter adds line breaks but cannot recover renamed variables, and a fresh local build has different offsets.",
+      "tags": ["frontend", "observability"],
+      "level": 1,
+      "asked": "Checks whether you have debugged a real production frontend rather than only a dev server."
+    },
+    {
+      "id": "db-025",
+      "q": "A checkout request takes 3 s and calls four internal services. What shows you which hop is slow?",
+      "choices": [
+        "Each service's CPU graph, since the slow one will show the highest CPU usage",
+        "A load test of each service alone, since the slowest in isolation is the culprit",
+        "Distributed tracing: one trace id, with a timed span for every service call",
+        "The load balancer's access log, which records time spent inside each service"
+      ],
+      "answer": 2,
+      "why": "A trace follows one request across services and shows each span's duration, including time spent waiting on another call. A slow hop is often waiting on I/O with low CPU, and a service that is fast in isolation can still be slow under the real call pattern.",
+      "tags": ["observability", "performance"],
+      "level": 2,
+      "asked": "Leads into OpenTelemetry and context propagation; people who have used traces describe spans, not just logs."
+    },
+    {
+      "id": "db-026",
+      "q": "For a request-serving API, what do the RED metrics track?",
+      "choices": [
+        "Reads, Egress bytes and Disk usage for each host behind the API",
+        "Rate of requests, Errors, and Duration of those requests",
+        "Retries, Exceptions and Dependency calls made for each request",
+        "Requests per user, Error budget left, and Deployment frequency"
+      ],
+      "answer": 1,
+      "why": "RED describes a service from its callers' view: how much traffic, how much fails, how slow. Its sibling USE (utilisation, saturation, errors) describes resources such as CPU, disks and pools. Together they tell you whether users hurt and which resource is to blame.",
+      "tags": ["observability"],
+      "level": 2,
+      "asked": "Tests whether you would know what to put on a service dashboard on day one."
+    },
+    {
+      "id": "db-027",
+      "q": "Your team ignores alerts because most fire on CPU spikes users never notice. Which change best cuts the noise without missing real outages?",
+      "choices": [
+        "Raise every CPU threshold from 80% to 95%, so only extreme spikes page anyone",
+        "Page on SLO burn rate, such as errors eating the monthly budget too quickly",
+        "Send all alerts to a shared channel instead of paging, and review it each morning",
+        "Alert on every error log line, so no failure goes unseen by the on-call engineer"
+      ],
+      "answer": 1,
+      "why": "Alert on symptoms users feel, measured against an objective, and keep cause metrics such as CPU for dashboards. A higher CPU threshold still pages on spikes nobody feels and can miss an outage with low CPU; a morning review is not paging at all.",
+      "tags": ["observability", "operations"],
+      "level": 3,
+      "asked": "An on-call maturity question; the strong answer distinguishes symptom alerts from cause dashboards."
+    },
+    {
+      "id": "db-028",
+      "q": "Overnight, every browser shows a security warning for your site, though nothing was deployed. Most likely cause?",
+      "choices": [
+        "A browser update dropped support for HTTP/1.1, which your server still speaks",
+        "The DNS provider rotated your IP address, so the domain now points elsewhere",
+        "The server's clock drifted, so it now rejects every client's encryption keys",
+        "The TLS certificate expired because its renewal did not run or quietly failed"
+      ],
+      "answer": 3,
+      "why": "Certificates expire on a fixed date whether or not you deploy, and automated renewal fails silently more often than people expect. Monitor expiry dates and alert weeks ahead. Browsers still support HTTP/1.1, and a moved IP gives a connection error, not a certificate warning.",
+      "tags": ["operations", "http"],
+      "level": 1,
+      "asked": "Almost every team has had this outage once; the strong answer adds expiry monitoring."
+    },
+    {
+      "id": "db-029",
+      "q": "A service that ran fine for months now fails every write with 'No space left on device'. What is the classic cause?",
+      "choices": [
+        "Log files growing with no rotation or retention until they filled the disk",
+        "The database reached its maximum row count and reports it as a full disk",
+        "Memory ran out, and the operating system reports swap exhaustion as a disk error",
+        "Too many open connections, each of which reserves a block of disk space"
       ],
       "answer": 0,
-      "why": "Recovery and diagnosis are separate goals. Rolling back to a known-good version stops the damage and buys you time to investigate properly — which is why fast, safe rollback is worth engineering for.",
-      "tags": ["operations", "process"],
-      "level": 2
+      "why": "Months of steady growth that suddenly bites is the signature of unrotated logs (or temp files). Configure rotation and retention, ship logs off the box, and alert on disk usage before it reaches 100%.",
+      "tags": ["operations", "logging"],
+      "level": 1,
+      "asked": "A junior operations check; the follow-up is \"how would you have seen it coming?\"."
+    },
+    {
+      "id": "db-030",
+      "q": "Uploads under 1 MB work, but larger ones fail immediately with HTTP 413. What is happening?",
+      "choices": [
+        "The upload timed out on a slow connection, and servers report timeouts as 413",
+        "The file type is not allowed, and 413 is the status for unsupported media",
+        "A request-body size limit in the proxy or the app rejects it before your code runs",
+        "The user's storage quota is full, so the server refuses anything over the rest"
+      ],
+      "answer": 2,
+      "why": "413 Content Too Large means some layer refused the body by size. Nginx, for example, defaults `client_max_body_size` to 1 MB, and frameworks have their own limits, so check every hop. Unsupported media is 415 and a timeout is 408 or 504.",
+      "tags": ["http", "config"],
+      "level": 1,
+      "asked": "Tests whether you read a status code precisely and think about every layer between browser and handler."
+    },
+    {
+      "id": "db-031",
+      "q": "Under load, a few writes fail with SQL Server error 1205, 'chosen as the deadlock victim'. What does it mean for the failed request?",
+      "choices": [
+        "The database ran out of connections and will refuse all writes until restarted",
+        "Its transaction was killed and rolled back to break a lock cycle, and is safe to retry",
+        "The transaction partly committed before failing, so the rows it touched must be repaired by hand",
+        "The query timed out waiting on a slow scan, so adding an index resolves it"
+      ],
+      "answer": 1,
+      "why": "The engine detected two transactions waiting on each other and rolled one back entirely, so retrying it is safe. Capture the deadlock graph (or Postgres's \"deadlock detected\" log detail) to see which statements collided. Nothing is left half-written.",
+      "tags": ["database", "concurrency"],
+      "level": 2,
+      "asked": "Tests whether you know deadlocks are a normal event to retry and log, not data corruption."
+    },
+    {
+      "id": "db-032",
+      "q": "In this docker-compose setup the API cannot connect to the database. Why?",
+      "code": "services:\n  api:\n    build: .\n    environment:\n      DB_HOST: localhost\n  db:\n    image: postgres:17\n    environment: { POSTGRES_PASSWORD: dev }",
+      "lang": "yaml",
+      "choices": [
+        "Compose puts each service on its own network unless you declare a shared one",
+        "Inside the api container, `localhost` is that container; use the service name `db`",
+        "Postgres listens on 5432 only when a `ports:` mapping publishes it to the host",
+        "The postgres image only accepts connections when `DB_HOST` is set to `0.0.0.0`"
+      ],
+      "answer": 1,
+      "why": "Each container has its own network namespace, so `localhost` means the api container. Compose puts all services on one default network with DNS by service name, so `DB_HOST: db` works. `ports:` only matters for reaching the container from the host.",
+      "tags": ["docker", "config"],
+      "level": 1,
+      "asked": "The first thing everyone hits with Compose; explaining why shows you understand container networking."
+    },
+    {
+      "id": "db-033",
+      "q": "Production quietly used a default value because an environment variable name had a typo. What prevents this class of bug?",
+      "choices": [
+        "Give every setting a sensible default so the app always starts, even if misnamed",
+        "Log each config value at debug level so the wrong one can be traced afterwards",
+        "Validate required config at startup and refuse to boot when a value is missing",
+        "Keep all settings in one committed JSON file instead of environment variables"
+      ],
+      "answer": 2,
+      "why": "Fail fast: a missing required setting should stop the deploy, where it is cheap, not surface weeks later as odd behaviour. Defaults for required production values are exactly what hid the typo. Schema validation of config at boot (for example zod, or .NET `ValidateOnStart`) does this.",
+      "tags": ["config"],
+      "level": 1,
+      "asked": "Checks whether you prefer loud failures to silent ones, which is most of production hygiene."
+    },
+    {
+      "id": "db-034",
+      "q": "You roll back a bad release, but errors continue. The release had run a migration that dropped a column. Why did rolling back not help?",
+      "choices": [
+        "The rollback also reverted the database, losing every row written since the release",
+        "The migration only goes forward, so the old code now runs against a schema missing its column",
+        "Caches still hold the new version's responses, and they expire only at the next deploy",
+        "Rollbacks swap images node by node, so errors carry on until every last node has been restarted"
+      ],
+      "answer": 1,
+      "why": "Rolling back code does not roll back schema, and a dropped column cannot come back by redeploying. That is why destructive migrations ship in a later release than the code that stops using the column, so rollback always stays possible.",
+      "tags": ["deployment", "database"],
+      "level": 2,
+      "asked": "Connects deployment to migrations; people who have been bitten describe expand/contract unprompted."
+    },
+    {
+      "id": "db-035",
+      "q": "In a Node or ASP.NET Core service, a bug disappears when you add logging around it and returns when you remove the logging. What does that point to?",
+      "choices": [
+        "A compiler optimisation that the logging call disables by marking a variable as used",
+        "A memory leak; the logging allocates enough to trigger a collection that hides it",
+        "A caching bug; reading the value for the log line refreshes a stale cache entry",
+        "A timing-dependent race; the logging's delay changes the order things run in"
+      ],
+      "answer": 3,
+      "why": "Logging adds I/O and delay, which reorders concurrent work, so the race stops showing. Look for shared state touched by overlapping async operations. Neither V8 nor the .NET JIT changes program meaning because a variable is logged.",
+      "tags": ["concurrency", "method"],
+      "level": 3,
+      "asked": "A \"have you really debugged concurrency?\" question; naming the observer effect is the signal."
+    },
+    {
+      "id": "db-036",
+      "q": "A service sits at 100% CPU under normal traffic while its memory stays flat. What do you capture first?",
+      "choices": [
+        "A CPU profile or flame graph under load, to see which functions burn the time",
+        "Two heap snapshots a while apart, to see which objects are accumulating",
+        "A network capture, to see whether responses are slow to leave the host",
+        "A GC trace, since full CPU in a managed runtime is almost always the collector"
+      ],
+      "answer": 0,
+      "why": "Match the tool to the symptom: CPU saturation calls for a CPU profile, growing memory for heap snapshots. With memory flat, garbage collection is unlikely to be the main cost, and a network capture says nothing about where CPU goes.",
+      "tags": ["performance", "method"],
+      "level": 3,
+      "asked": "Tests whether you pick a profiler from the symptom rather than reaching for the one tool you know."
+    },
+    {
+      "id": "db-037",
+      "q": "A nightly cleanup job stopped running two months ago and nobody noticed until the disk filled. Which monitoring change catches this class of failure?",
+      "choices": [
+        "Raise the log level of the job to Debug so that each step it takes is written out in full for later reading",
+        "Alert whenever the job logs an error, since a job that has stopped will keep producing error lines",
+        "Add a retry so that a job that fails at 02:00 runs again at 03:00 and 04:00 before it finally gives up",
+        "Alert when the job's success signal is missing past its schedule, not only when it reports a failure"
+      ],
+      "answer": 3,
+      "why": "A job that never starts logs nothing, so error alerts and retries stay silent; only the absence of a heartbeat (a dead man's switch, or an alert on the age of the last success) turns 'it did not run' into a page. More log detail helps once someone is looking, but nobody was. Retries help a job that runs and fails; this one was never scheduled, perhaps because the instance that owned the cron was replaced.",
+      "tags": ["observability", "operations"],
+      "level": 2,
+      "asked": "An on-call classic that separates alerting on errors from alerting on missing expected events; 'dead man's switch' is the phrase interviewers hope for."
     }
   ]
 }

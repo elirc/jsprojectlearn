@@ -1,0 +1,367 @@
+{
+  "id": "web-performance",
+  "topic": "Web performance",
+  "title": "Web performance",
+  "blurb": "Core Web Vitals, loading, images, JavaScript cost and measuring what users actually feel, rather than guessing.",
+  "questions": [
+    {
+      "id": "wp-001",
+      "q": "What does Largest Contentful Paint (LCP) measure?",
+      "choices": [
+        "When the browser receives the first byte of the HTML document",
+        "When every image, font and script on the page has finished loading",
+        "When the largest image or text block in the viewport is rendered",
+        "When the first pixel of any text or image is painted on screen"
+      ],
+      "answer": 2,
+      "why": "LCP marks the render time of the largest image or text block visible in the viewport, a proxy for \"the main content is there\". The first byte is TTFB, the first paint of anything is FCP, and \"everything loaded\" is the `load` event, which users do not perceive directly.",
+      "tags": ["vitals", "lcp"],
+      "level": 1,
+      "asked": "A screening question; the follow-up is usually \"what is the LCP element on your app's home page, and what delays it?\""
+    },
+    {
+      "id": "wp-002",
+      "q": "Which metric replaced First Input Delay (FID) as a Core Web Vital in March 2024?",
+      "choices": [
+        "INP, which reports roughly the slowest interaction across the whole visit",
+        "TBT, which sums the blocking time of long tasks while the page loads",
+        "TTI, which marks when the main thread first stays idle for five seconds",
+        "FCP, which records when the first text or image is painted on screen"
+      ],
+      "answer": 0,
+      "why": "Interaction to Next Paint became a Core Web Vital in March 2024. FID only timed the input delay of the first interaction; INP covers delay, handler time and the next paint for every click, tap and key press, and reports close to the worst one. TBT is a lab proxy for it, not a Core Web Vital.",
+      "tags": ["vitals", "inp"],
+      "level": 1,
+      "asked": "Checks whether your performance knowledge is current; candidates still quoting FID have not looked since 2023."
+    },
+    {
+      "id": "wp-003",
+      "q": "What are the \"good\" Core Web Vitals thresholds, assessed at the 75th percentile of page visits?",
+      "choices": [
+        "LCP within 4 s, INP within 500 ms, CLS at most 0.25",
+        "LCP within 1 s, INP within 100 ms, CLS at most 0.05",
+        "LCP within 2.5 s, INP within 100 ms, CLS at zero",
+        "LCP within 2.5 s, INP within 200 ms, CLS at most 0.1"
+      ],
+      "answer": 3,
+      "why": "Good is LCP at most 2.5 s, INP at most 200 ms and CLS at most 0.1, and a page passes when 75% of visits meet each one. The 4 s / 500 ms / 0.25 figures are the boundaries of \"poor\"; 100 ms was the old FID threshold.",
+      "tags": ["vitals"],
+      "level": 1,
+      "asked": "Knowing the numbers and the 75th percentile shows you have read a real report rather than just heard the acronyms."
+    },
+    {
+      "id": "wp-004",
+      "q": "Which of these layout shifts is excluded from Cumulative Layout Shift (CLS)?",
+      "choices": [
+        "Text reflowing when a web font swaps in after the fallback font painted",
+        "Content moving within 500 ms of a click that expands an accordion panel",
+        "Content pushed down when an ad slot fills three seconds after load",
+        "Text pushed down when a hero image without dimensions finishes loading"
+      ],
+      "answer": 1,
+      "why": "Shifts within 500 ms of a discrete user input (click, tap, key press) are flagged `hadRecentInput` and left out, because the user expects the page to change. The font swap, the late ad and the undimensioned image all move content the user did not ask to move, so they all count.",
+      "tags": ["vitals", "cls"],
+      "level": 3,
+      "asked": "Separates people who know CLS is about unexpected movement from those who think any animation or expansion is penalised."
+    },
+    {
+      "id": "wp-005",
+      "q": "Why can a standard Lighthouse page-load run NOT report INP?",
+      "choices": [
+        "Lighthouse throttles the CPU, which makes interaction timings unreliable",
+        "INP is only collected on Android Chrome, not in desktop browsers",
+        "INP needs real interactions, and a page-load run never clicks or types",
+        "INP is taken from CrUX, which Lighthouse cannot query while offline"
+      ],
+      "answer": 2,
+      "why": "INP is measured from user input, and a navigation audit only loads the page. Lab tools substitute Total Blocking Time as a proxy, or you script interactions with a timespan run. Throttling makes timings pessimistic, not impossible, and INP is measured by the browser itself, not fetched from CrUX.",
+      "tags": ["vitals", "inp", "lighthouse"],
+      "level": 2,
+      "asked": "Tests whether you understand why field data exists at all, which is the root of most \"Lighthouse is green but users complain\" confusion."
+    },
+    {
+      "id": "wp-006",
+      "q": "Why does a `<link rel=\"stylesheet\">` in the `<head>` delay the first paint?",
+      "choices": [
+        "The browser will not render until the CSSOM is built, to avoid unstyled content",
+        "The HTML parser stops reading the document until the stylesheet has downloaded",
+        "The browser requests stylesheets one at a time before any images are requested",
+        "The CSS has to be parsed on the main thread after all scripts have finished"
+      ],
+      "answer": 0,
+      "why": "CSS is render-blocking: layout needs the CSSOM, so nothing paints until the stylesheets in the head arrive and parse. It is not parser-blocking; the preload scanner keeps discovering images and scripts meanwhile. That is why critical CSS is inlined and non-critical CSS is loaded later.",
+      "tags": ["loading"],
+      "level": 1,
+      "asked": "The critical rendering path in one question; a strong answer mentions the render-blocking versus parser-blocking distinction."
+    },
+    {
+      "id": "wp-007",
+      "q": "Your web font is referenced only from a stylesheet, so it is discovered late. Which resource hint fixes that?",
+      "choices": [
+        "`prefetch`, which fetches the file early for the current page at high priority",
+        "`preconnect`, which downloads the font as soon as the head has been parsed",
+        "`dns-prefetch`, which resolves and then downloads the font file in the background",
+        "`preload` with `as=\"font\"`, which fetches a file the current page needs, early"
+      ],
+      "answer": 3,
+      "why": "`preload` fetches a resource this page will need before the parser would find it; fonts also need `crossorigin`. `prefetch` is a low-priority fetch for a likely next navigation, and `preconnect` / `dns-prefetch` only warm up the connection or DNS lookup without downloading anything.",
+      "tags": ["loading", "fonts"],
+      "level": 2,
+      "asked": "Candidates often use the three hints interchangeably; the interviewer wants the \"this page vs next page vs connection only\" split."
+    },
+    {
+      "id": "wp-008",
+      "q": "What does `font-display: swap` do here?",
+      "code": "@font-face {\n  font-family: \"Brand\";\n  src: url(\"/fonts/brand.woff2\") format(\"woff2\");\n  font-display: swap;\n}",
+      "lang": "css",
+      "choices": [
+        "Hides text for up to three seconds, then shows the fallback font",
+        "Shows fallback text at once, then swaps in Brand when it loads",
+        "Uses Brand only if it is cached already, else keeps the fallback",
+        "Downloads Brand at higher priority than the rest of the stylesheet"
+      ],
+      "answer": 1,
+      "why": "`swap` gives an almost zero block period, so text is readable immediately in the fallback and is re-rendered when the font arrives. Hiding text for about three seconds is the `block`/`auto` behaviour, and \"use it only if already available\" describes `optional`. The trade-off of `swap` is a possible layout shift when the metrics differ.",
+      "tags": ["loading", "fonts", "cls"],
+      "level": 1,
+      "asked": "Invisible text during font load is a common real bug; the follow-up is how to reduce the shift with `size-adjust` or a metric-matched fallback."
+    },
+    {
+      "id": "wp-009",
+      "q": "This is the hero image at the top of the page. What does `loading=\"lazy\"` do to LCP?",
+      "code": "<img src=\"/img/hero.avif\" alt=\"Spring sale\"\n     width=\"1200\" height=\"600\" loading=\"lazy\">",
+      "lang": "html",
+      "choices": [
+        "Delays it, because the fetch waits until layout shows the image is in view",
+        "Nothing, because browsers ignore `lazy` on images in the initial viewport",
+        "Improves it, because lazy frees bandwidth for the hero image to load sooner",
+        "Removes it, because lazily loaded images are not eligible as LCP elements"
+      ],
+      "answer": 0,
+      "why": "A lazy image cannot be fetched by the preload scanner; the browser waits until layout confirms it is near the viewport, so the LCP image starts downloading late. Browsers do not ignore the attribute above the fold; they honour it, just later than you would like. Use `lazy` only for below-the-fold images.",
+      "tags": ["loading", "lcp", "images"],
+      "level": 2,
+      "asked": "A frequent self-inflicted LCP regression when someone adds `lazy` to every `<img>` in a component library."
+    },
+    {
+      "id": "wp-010",
+      "q": "Why add `fetchpriority=\"high\"` to the page's LCP image?",
+      "code": "<img src=\"/img/hero.jpg\" alt=\"Product photo\"\n     width=\"1200\" height=\"600\" fetchpriority=\"high\">",
+      "lang": "html",
+      "choices": [
+        "It makes the browser decode the image off the main thread before paint",
+        "It tells the CDN edge to send this file ahead of other queued responses",
+        "Images start at low priority; this lets it compete with CSS and scripts",
+        "It forces the image to load even when the user has Data Saver turned on"
+      ],
+      "answer": 2,
+      "why": "Browsers fetch images at low (or at best medium) priority until layout proves they are visible, so the hero can queue behind scripts. `fetchpriority=\"high\"` raises it from the start. Off-thread decoding is what `decoding=\"async\"` hints at, and the attribute says nothing to the CDN, which only sees an ordinary request.",
+      "tags": ["loading", "lcp", "images"],
+      "level": 2,
+      "asked": "Shows you know the browser's own priority rules, not just that \"hints make things faster\"."
+    },
+    {
+      "id": "wp-011",
+      "q": "A browser supports WebP but not AVIF. What does it download for this markup?",
+      "code": "<picture>\n  <source srcset=\"hero.avif\" type=\"image/avif\">\n  <source srcset=\"hero.webp\" type=\"image/webp\">\n  <img src=\"hero.jpg\" alt=\"Hero\" width=\"1200\" height=\"600\">\n</picture>",
+      "lang": "html",
+      "choices": [
+        "`hero.avif` first, then `hero.webp` after the AVIF decode fails",
+        "`hero.jpg`, because the `img` src is always fetched as the fallback",
+        "`hero.webp` and `hero.jpg` together, then paints whichever lands first",
+        "Only `hero.webp`, the first source whose type it supports"
+      ],
+      "answer": 3,
+      "why": "The browser walks the `source` elements in order and uses the first whose `type` it supports, so the AVIF is never requested and the JPEG is only a fallback for browsers that match nothing. AVIF and WebP usually give the same visual quality as JPEG in far fewer bytes, which is why the list starts with them.",
+      "tags": ["assets", "images"],
+      "level": 1,
+      "asked": "Checks that you can ship modern formats without breaking older browsers or paying for two downloads."
+    },
+    {
+      "id": "wp-012",
+      "q": "Your server compresses every response with brotli. Where does that actually save bytes?",
+      "choices": [
+        "Mostly on JPEG and PNG, since images are the largest files on a page",
+        "On text such as HTML, CSS, JS and JSON; JPEG and AVIF are compressed already",
+        "Only on JavaScript, since browsers decompress no other content type",
+        "Only on responses over 1 MB; smaller ones cost more to decompress"
+      ],
+      "answer": 1,
+      "why": "Brotli and gzip exploit repetition in text, so minified JS and CSS typically shrink by 70% or more, with brotli usually beating gzip by another 15-20%. Image and video formats are already compressed, so recompressing them wastes CPU for almost no gain. Browsers decompress any `Content-Encoding`, whatever the type.",
+      "tags": ["assets"],
+      "level": 1,
+      "asked": "A quick check that you know what compression is for, and a lead into \"why is our image not getting smaller?\"."
+    },
+    {
+      "id": "wp-013",
+      "q": "Your build emits `app.3f9a1c.js`. Why serve it with `Cache-Control: public, max-age=31536000, immutable`?",
+      "choices": [
+        "The hash changes whenever the content does, so this URL can be reused for a year unchecked",
+        "The browser re-downloads the file only when the ETag the server sends for it has changed",
+        "`immutable` stops CDNs and proxies from recompressing or altering the file while in transit",
+        "It lets the service worker refresh the file in the background on every visit to the site"
+      ],
+      "answer": 0,
+      "why": "A content hash in the name means a new version gets a new URL, so the old URL can be cached for a year and `immutable` tells the browser not to revalidate it even on reload. ETags are for revalidation, which `immutable` skips, and \"do not alter in transit\" is `no-transform`. The HTML that references the file must NOT be cached like this.",
+      "tags": ["assets"],
+      "level": 2,
+      "asked": "The interviewer usually follows up with \"so how do users get the new version?\", which tests whether you know the HTML stays short-lived."
+    },
+    {
+      "id": "wp-014",
+      "q": "Why is 300 KB of JavaScript more costly to a phone than a 300 KB JPEG?",
+      "choices": [
+        "Scripts cannot be compressed, so they always travel at their full size",
+        "Scripts are never cached, so the bytes are paid again on every visit",
+        "The script must also be parsed, compiled and run on the main thread",
+        "Browsers download scripts one at a time but download images in parallel"
+      ],
+      "answer": 2,
+      "why": "An image mostly decodes off the main thread, but every byte of script is parsed, compiled and executed on it, which on a mid-range phone can take several times longer than on a laptop. Scripts compress well and cache normally, so the transfer size is not the problem; the CPU cost is.",
+      "tags": ["javascript"],
+      "level": 2,
+      "asked": "The core argument for shipping less JavaScript; a strong answer mentions testing on a mid-range device, not a MacBook."
+    },
+    {
+      "id": "wp-015",
+      "q": "The project's package.json sets `\"sideEffects\": false`. After a production build, the polyfill never runs. Why?",
+      "code": "// main.js\nimport \"./polyfills.js\";\nimport { start } from \"./app.js\";\nstart();",
+      "lang": "js",
+      "choices": [
+        "Bare imports with no binding are hoisted and only run after `start()` returns",
+        "Production builds only run polyfills in browsers that report missing features",
+        "Minifiers strip files that only modify globals such as `Array.prototype`",
+        "The bundler was told no module has side effects, so it dropped the bare import"
+      ],
+      "answer": 3,
+      "why": "`sideEffects: false` promises the bundler that importing a module does nothing beyond its exports, so a bare import whose exports are unused is tree-shaken away. List the exceptions instead, for example `[\"./src/polyfills.js\", \"*.css\"]`. Imports are not deferred: they are evaluated in order before `start()` runs.",
+      "tags": ["javascript", "bundling"],
+      "level": 3,
+      "asked": "A real production bug (also common with CSS imports) that shows whether you know what the flag promises, not just that it \"enables tree shaking\"."
+    },
+    {
+      "id": "wp-016",
+      "q": "Marketing adds six third-party tags through a tag manager, all loaded `async`. What is the most likely cost to users?",
+      "choices": [
+        "Only load time grows; once loaded, third-party code runs on its own thread",
+        "Their scripts compete for the main thread, so interactions and INP get worse",
+        "Nothing measurable, since each third-party origin has its own connection pool",
+        "Only the first visit, since later ones reuse a cross-site cache of those files"
+      ],
+      "answer": 1,
+      "why": "`async` only stops the download from blocking the parser; the code still runs on your main thread, adding long tasks and listeners that slow every interaction. Browsers have partitioned the HTTP cache by top-level site since about 2020, so a shared cross-site cache of popular scripts no longer exists.",
+      "tags": ["javascript", "inp"],
+      "level": 2,
+      "asked": "Third-party scripts are often the biggest real-world cost, and the interviewer wants to hear that you would measure them and push back with data."
+    },
+    {
+      "id": "wp-017",
+      "q": "Your main bundle grew from 180 KB to 420 KB in one release. What is the most direct way to find which dependency caused it?",
+      "choices": [
+        "Run a bundle analyser treemap over the build and see which modules grew",
+        "Read the Lighthouse unused-JavaScript audit, which lists every package",
+        "Turn on production minification, which strips out code that was just added",
+        "Compare the gzip and brotli sizes to find the part that does not compress"
+      ],
+      "answer": 0,
+      "why": "A bundle analyser (from source maps or the bundler's stats) shows each module's share of the output and who imports it, so a newly pulled-in date or icon library stands out at once. Lighthouse reports unused bytes per script file, not per package, and minification shrinks code without removing whole dependencies.",
+      "tags": ["javascript", "bundling"],
+      "level": 2,
+      "asked": "A practical question; the follow-up is usually how you would stop the regression happening again, which leads to budgets in CI."
+    },
+    {
+      "id": "wp-018",
+      "q": "A click handler rebuilds a 5,000-row table and INP is 900 ms. Which line at the marked spot lets the browser paint the spinner first?",
+      "code": "button.addEventListener(\"click\", async () => {\n  showSpinner();\n  // <- insert here\n  rebuildTable(rows); // about 800 ms of work\n});",
+      "lang": "js",
+      "choices": [
+        "`await Promise.resolve();` so the rebuild continues asynchronously",
+        "`await new Promise(queueMicrotask);` so the rebuild waits a microtask",
+        "`await scheduler.yield();` so the task ends and the browser can paint",
+        "No line: an `async` listener already lets the browser paint before it"
+      ],
+      "answer": 2,
+      "why": "The next paint cannot happen until the current task ends. scheduler.yield() (Chrome 129+, Firefox 142+, not Safari, so feature-detect and fall back to await new Promise(r => setTimeout(r, 0))) ends the task and resumes the rest with priority, so the spinner paints first. Awaiting a resolved promise or a microtask resumes before rendering, so the page stays frozen for the whole rebuild; async alone changes nothing.",
+      "tags": ["runtime", "inp"],
+      "level": 3,
+      "asked": "Shows whether you understand the event loop well enough to fix INP, rather than sprinkling `async` and hoping."
+    },
+    {
+      "id": "wp-019",
+      "q": "Why does this image make the text below it jump?",
+      "code": "<img src=\"/img/banner.jpg\" alt=\"Summer sale\">\n<p>Free delivery on all orders this week.</p>",
+      "lang": "html",
+      "choices": [
+        "It lacks `loading=\"lazy\"`, so it loads before the text next to it",
+        "JPEGs decode progressively, and each pass changes their height",
+        "Without `decoding=\"async\"`, the image paint moves the other text",
+        "It has no `width` and `height`, so no space is reserved for it"
+      ],
+      "answer": 3,
+      "why": "With no dimensions the browser lays the image out at zero height, then pushes everything down when the file arrives. `width` and `height` give it an aspect ratio to reserve space even under responsive CSS. The same fix applies to late-injected banners and ad slots: reserve their space up front.",
+      "tags": ["runtime", "cls", "images"],
+      "level": 1,
+      "asked": "The most common CLS cause; interviewers expect the one-line fix and a mention of reserving space for injected content."
+    },
+    {
+      "id": "wp-020",
+      "q": "Lighthouse gives the page an LCP of 1.6 s, but CrUX reports 3.8 s at the 75th percentile. Which reflects users, and why?",
+      "choices": [
+        "Lighthouse, because CrUX includes crawler traffic that drags the percentile up",
+        "CrUX, because it aggregates real devices and networks, not one simulated run",
+        "Lighthouse, because CrUX is a 28-day window that lags behind the latest deploy",
+        "Neither, because the gap means the LCP element differs from one run to the next"
+      ],
+      "answer": 1,
+      "why": "CrUX is field data from real Chrome users on their own phones, networks and cache states; Lighthouse is a single lab run with fixed throttling. The 28-day window does lag a deploy, but it is still what users felt. Use lab tools to debug and field data to decide.",
+      "tags": ["measuring", "lighthouse"],
+      "level": 2,
+      "asked": "The lab-versus-field gap is where most performance arguments at work start, so interviewers want you to know which number to trust."
+    },
+    {
+      "id": "wp-021",
+      "q": "In the Chrome DevTools Performance panel, a click shows a 400 ms interaction. Where do you look to find the cause?",
+      "choices": [
+        "The main-thread flame chart under that interaction, to see which functions ran",
+        "The Network waterfall, to find the request the click was waiting on to finish",
+        "The Lighthouse report, which names the slowest event handler on the page",
+        "A Memory panel heap snapshot, to see how much the click handler allocated"
+      ],
+      "answer": 0,
+      "why": "The interaction track shows input delay, processing and presentation; the main-thread flame chart below it shows exactly which handlers, renders or layouts filled that time. A network request does not block the next paint unless the handler waits synchronously, and Lighthouse does not attribute time to individual handlers.",
+      "tags": ["measuring", "inp"],
+      "level": 2,
+      "asked": "Separates people who have actually profiled a slow interaction from those who only run Lighthouse."
+    },
+    {
+      "id": "wp-022",
+      "q": "You add a performance budget to CI. Which set-up catches regressions without failing builds on noise?",
+      "choices": [
+        "Fail the build whenever the Lighthouse performance score drops by a point",
+        "Fail on the field INP from CrUX, so the budget reflects real users directly",
+        "Gate on bundle bytes, and check lab timings as medians of several runs",
+        "Run Lighthouse once per pull request and fail on any increase in LCP"
+      ],
+      "answer": 2,
+      "why": "Byte sizes are deterministic, so they make a reliable hard gate; lab timings vary run to run on shared CI machines, so take the median of several runs and set thresholds with headroom. CrUX is a 28-day aggregate of production traffic, so it cannot judge a pull request that has not shipped.",
+      "tags": ["measuring", "bundling", "lighthouse"],
+      "level": 3,
+      "asked": "A budget that flakes gets switched off within a month; interviewers want to hear how you would make one that the team keeps."
+    },
+    {
+      "id": "wp-023",
+      "q": "Your hashed JS and CSS are cached for a year. Which header should `index.html` get so users see a new deploy on their next visit without refetching it on every navigation?",
+      "choices": [
+        "Cache-Control: no-store, so the browser never keeps a copy and always downloads fresh HTML in full",
+        "Cache-Control: max-age=31536000, immutable, matching the assets it references",
+        "Cache-Control: no-cache plus an ETag, so each visit revalidates and gets a 304 if unchanged",
+        "No Cache-Control at all, since browsers never cache HTML documents"
+      ],
+      "answer": 2,
+      "why": "`no-cache` means 'store it, but revalidate before use': with an ETag or Last-Modified the browser sends a conditional request and gets a cheap 304 until you deploy, at which point the new HTML points at new hashed file names. `no-store` forces a full download every time and disables back/forward restore; a year-long `max-age` on the HTML would pin users to the old asset names. Browsers do cache HTML heuristically when no header is sent, which is the worst of both.",
+      "tags": ["assets", "caching"],
+      "level": 2,
+      "asked": "It is the second half of the immutable-assets pattern, and confusing `no-cache` with `no-store` is one of the most common HTTP caching mistakes."
+    }
+  ]
+}

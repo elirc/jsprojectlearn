@@ -1,0 +1,395 @@
+{
+  "id": "api-design-security",
+  "topic": "API security",
+  "title": "API design and security",
+  "blurb": "The OWASP API Top 10, rate limiting, idempotency and webhook security, built rather than recited.",
+  "questions": [
+    {
+      "id": "ads-001",
+      "q": "In code review you see this Express handler behind a working login middleware. Which change closes its authorization hole?",
+      "code": "app.get('/invoices/:id', requireLogin, async (req, res) => {\n  const invoice = await db.invoices.findById(req.params.id);\n  if (!invoice) return res.sendStatus(404);\n  res.json(invoice);\n});",
+      "lang": "js",
+      "choices": [
+        "Switch invoice ids to random UUIDs so that nobody can guess another invoice",
+        "Validate that `req.params.id` is a positive integer before querying the table",
+        "Look the invoice up by id and the caller's account id, returning 404 if absent",
+        "Rate-limit the route so a user cannot walk through thousands of ids per minute"
+      ],
+      "answer": 2,
+      "why": "Any logged-in user can read any invoice by changing the id: the handler checks who you are, never whether the record is yours. Scope the query to the owner (or check ownership after loading) on every object access. UUIDs and rate limits only slow enumeration; a leaked or shared id still opens the record.",
+      "tags": ["owasp", "authorization"],
+      "level": 2,
+      "asked": "The top API risk as a code-review exercise; strong candidates also say where the ownership check should live so it is not forgotten per route."
+    },
+    {
+      "id": "ads-002",
+      "q": "This profile-update endpoint lets users edit their name and bio. What can an attacker do with it?",
+      "code": "app.patch('/me', requireLogin, async (req, res) => {\n  const user = await db.users.update(req.user.id, req.body);\n  res.json(user);\n});",
+      "lang": "js",
+      "choices": [
+        "Send `\"role\": \"admin\"` or `\"emailVerified\": true` and have it saved as well",
+        "Update another user's profile by putting a different id in the request body",
+        "Nothing serious, since the update is already scoped to the caller's own row",
+        "Crash the server by sending a JSON body that nests objects very deeply"
+      ],
+      "answer": 0,
+      "why": "Passing `req.body` straight to the update is mass assignment (over-posting): every column the ORM knows about is writable, including ones the form never shows. Map the body onto an allow-listed DTO of editable fields. The row is scoped to the caller, so the attack is privilege escalation on their own account, not editing someone else's.",
+      "tags": ["owasp", "authorization", "hardening"],
+      "level": 1,
+      "asked": "Mass assignment is a common real finding; interviewers want to hear 'DTO allow-list', not 'strip the role field'."
+    },
+    {
+      "id": "ads-003",
+      "q": "`GET /users/42` returns the full user row, including `passwordHash` and `resetToken`, and the React app only displays the name. What is the flaw?",
+      "choices": [
+        "The API exposes properties the caller may not see; the server must shape it",
+        "The response should be gzipped so the sensitive fields are harder to read",
+        "None in practice, because the UI never renders the hash or the reset token",
+        "The fields should be base64-encoded so they are not readable in DevTools"
+      ],
+      "answer": 0,
+      "why": "Anything in the response is readable in DevTools or with curl, whatever the UI renders. OWASP groups this with mass assignment as broken object property level authorization: the server decides which properties each caller may read or write, usually with a response DTO. Compression and base64 are encodings, not access control.",
+      "tags": ["owasp", "authorization"],
+      "level": 1,
+      "asked": "Checks that you treat the client as untrusted in both directions, not only for input."
+    },
+    {
+      "id": "ads-004",
+      "q": "The UI shows the 'Delete user' button only to admins, but `DELETE /api/users/:id` checks only that the caller is logged in. Which OWASP API risk is this?",
+      "choices": [
+        "Broken object-level authorization, since the target user record is not checked",
+        "Security misconfiguration, since the route should have been disabled in production",
+        "Broken function-level authorization: a privileged operation lacks a role check",
+        "Broken authentication, since the login middleware should have rejected the call"
+      ],
+      "answer": 2,
+      "why": "Function-level authorization asks whether this caller may perform this operation at all, and hiding a button is not a control, because anyone can send the request. BOLA is about which record; here no user record would be safe from a non-admin. Put role or permission checks on the route or in a policy, and deny admin routes by default.",
+      "tags": ["owasp", "authorization"],
+      "level": 1,
+      "asked": "Separates BOLA from BFLA, which many candidates blur; a strong answer mentions deny-by-default admin routes."
+    },
+    {
+      "id": "ads-005",
+      "q": "A list endpoint passes `limit` from the query string straight to the database. What is the main risk, and the usual fix?",
+      "code": "const limit = Number(req.query.limit ?? 20);\nconst rows = await db.orders.findMany({ take: limit, skip: offset });",
+      "lang": "js",
+      "choices": [
+        "SQL injection through `limit`; fix it by escaping the value before the query",
+        "`?limit=5000000` exhausts memory and the DB; clamp it to a maximum such as 100",
+        "Clients can skip pages; fix it by making `limit` a fixed value on the server",
+        "Negative values reveal deleted rows; fix it by rejecting any `limit` below 1"
+      ],
+      "answer": 1,
+      "why": "OWASP calls this unrestricted resource consumption: one request can load millions of rows, hold a connection and spike memory. Clamp page size (and validate it is a positive integer) server-side, and cap body size, upload size and query cost the same way. `Number()` plus an ORM parameter is not an injection vector here.",
+      "tags": ["owasp", "resource-limits"],
+      "level": 2,
+      "asked": "A cheap, very common gap; interviewers like hearing that every client-controlled size has a server-side ceiling."
+    },
+    {
+      "id": "ads-006",
+      "q": "Customers can register a webhook URL that your backend POSTs to on events. Which attack does that feature open up?",
+      "choices": [
+        "Cross-site scripting, since the URL is later rendered in the customer's dashboard",
+        "Clickjacking, since the target page can be framed inside your settings screen",
+        "Cross-site request forgery, since the POST carries your server's session cookies",
+        "Server-side request forgery: your server can be aimed at internal-only addresses"
+      ],
+      "answer": 3,
+      "why": "Any feature where the server fetches a URL the user supplied lets the user choose what your server talks to: `http://169.254.169.254/` (cloud metadata), an admin service on the private network, or localhost. Validate the resolved address against private ranges, disable redirects or re-check them, and ideally send through an egress proxy. CSRF needs a victim's browser, not your server.",
+      "tags": ["owasp", "ssrf", "webhooks"],
+      "level": 2,
+      "asked": "SSRF hides in features like webhooks, imports and link previews; interviewers look for spotting it in a product feature, not only by name."
+    },
+    {
+      "id": "ads-007",
+      "q": "Your API enriches orders with data from a partner's shipping API. What does OWASP's 'unsafe consumption of APIs' warn you to do?",
+      "choices": [
+        "Validate its responses, set timeouts, and avoid blindly following its redirects",
+        "Trust its responses fully, since the partner is contractually vetted and signed",
+        "Call it only from the browser, so that its failures never touch your own server",
+        "Cache every response forever, so that a compromise of the partner cannot reach you"
+      ],
+      "answer": 0,
+      "why": "Developers often validate user input but trust third-party responses, so a compromised or buggy partner becomes an injection or SSRF path into your system. Treat its data as untrusted input (schema-validate, encode on output), use TLS, bound timeouts and response sizes, and do not follow redirects blindly. A contract does not stop a breach on their side.",
+      "tags": ["owasp", "validation"],
+      "level": 2,
+      "asked": "Shows whether trust boundaries in your head include your own dependencies, not just the public internet."
+    },
+    {
+      "id": "ads-008",
+      "q": "A partner's nightly batch job must call your API with no user present. Why pick OAuth client credentials over a static API key?",
+      "choices": [
+        "Client credentials let the partner log in as each of your end users in turn",
+        "Its tokens are short-lived and scoped, so a leaked token expires on its own",
+        "API keys cannot be sent over HTTPS, while bearer tokens are always encrypted",
+        "Client credentials need no secret at all, so there is nothing that can leak"
+      ],
+      "answer": 1,
+      "why": "The partner swaps its client secret for an access token that expires in minutes and carries only the scopes granted, and your API validates it like any other token. A static key is valid until someone rotates it by hand. The client secret still exists, and there is no user: this flow is machine-to-machine only.",
+      "tags": ["api-auth", "api-keys"],
+      "level": 2,
+      "asked": "Machine-to-machine auth comes up for any integration role; a strong answer still says API keys are fine for simple, low-risk cases."
+    },
+    {
+      "id": "ads-009",
+      "q": "You store API keys as SHA-256 hashes and show each key once at creation. Why is a fast hash acceptable here, when it is wrong for passwords?",
+      "choices": [
+        "SHA-256 is only unsafe for short inputs, and API keys are always long strings",
+        "API keys are never stolen from databases, because they are rarely used by people",
+        "A slow hash would break the constant-time comparison that the API relies on",
+        "Keys are long random strings, so there is no guessable space to brute-force"
+      ],
+      "answer": 3,
+      "why": "Slow hashes exist to make guessing human-chosen passwords expensive. A 32-byte random key has 256 bits of entropy, so even billions of SHA-256 guesses per second get nowhere, and a fast hash keeps per-request lookup cheap. Add a visible prefix (such as `sk_live_`) so leaked keys are easy to scan for.",
+      "tags": ["api-auth", "api-keys"],
+      "level": 3,
+      "asked": "Tests whether you know why password hashing is slow, rather than applying bcrypt to every secret by rule."
+    },
+    {
+      "id": "ads-010",
+      "q": "An access token carries the scope `invoices:read`. What does the scope tell your API?",
+      "choices": [
+        "Which invoices this user owns, so the API can skip its own ownership check",
+        "Which operations the client was granted; object ownership is checked separately",
+        "Which database tables the token is allowed to query directly without the API",
+        "Which API version the client was built against, for routing to older handlers"
+      ],
+      "answer": 1,
+      "why": "A scope limits what a client (and the user who consented) may do: read invoices, not write them. It says nothing about which invoice, so a token with `invoices:read` must still be refused someone else's invoice. Check scope per route, then ownership per object.",
+      "tags": ["api-auth", "authorization"],
+      "level": 1,
+      "asked": "Candidates often treat scopes as full authorization; the follow-up is usually 'so where does BOLA get checked?'"
+    },
+    {
+      "id": "ads-011",
+      "q": "Your API receives a bearer JWT from your identity provider. Which checks are the minimum before trusting its claims?",
+      "choices": [
+        "Signature only, since a valid signature proves every claim inside is acceptable",
+        "That it decodes to JSON containing `sub` and `iat`, then load the user by `sub`",
+        "`exp` and `sub` alone, since the payload cannot be edited without breaking it",
+        "Signature with a pinned algorithm, then `iss`, `aud` and `exp` with a small skew"
+      ],
+      "answer": 3,
+      "why": "The signature proves who minted the token, not that it was minted for you or is still valid: check the issuer, that the audience is this API, and expiry (allowing a minute or so of clock skew), with algorithms pinned. Decoding without verifying accepts forged tokens, and signature-only accepts tokens issued for another API by the same provider.",
+      "tags": ["api-auth", "jwt"],
+      "level": 2,
+      "asked": "The JWT validation checklist is a standard backend screen; listing the claims beats saying 'the library handles it'."
+    },
+    {
+      "id": "ads-012",
+      "q": "Your identity provider rotates its signing keys every 90 days and publishes them at a JWKS URL. How does your API keep verifying tokens across a rotation without a redeploy?",
+      "choices": [
+        "Fetch the JWKS once at startup, since a key rotation invalidates every token issued before it anyway",
+        "Cache the JWKS, pick the key by the token's `kid` header, and refetch when an unknown `kid` arrives",
+        "Trust the `x5c` certificate in the token's own header, since it carries the public key that signed it",
+        "Fall back to the token's `alg` value when no key matches, so verification cannot fail during a rotation"
+      ],
+      "answer": 1,
+      "why": "`kid` is a label, not a secret: it names which of the provider's published keys signed this token. A cached JWKS with a refetch on unknown `kid` (rate-limited, so attackers cannot force fetches with random ids) verifies old tokens with the old key and new ones with the new key during the overlap. Trusting a key the token carries lets an attacker ship their own; the token's `alg` is never consulted.",
+      "tags": ["api-auth", "jwt"],
+      "level": 3,
+      "asked": "Key rotation is where JWT setups break in production; a strong answer names the `kid` lookup, the bounded refetch and why the header can never be the source of the key."
+    },
+    {
+      "id": "ads-013",
+      "q": "A fixed-window limiter allows 100 requests per calendar minute. What can a client do that a sliding window or token bucket would stop?",
+      "choices": [
+        "Send 200 requests in about two seconds, straddling the minute boundary",
+        "Avoid the limit completely by opening a new TCP connection per request",
+        "Get 100 requests per second, since the window resets on every new second",
+        "Consume the quota of other clients, since fixed windows share one counter"
+      ],
+      "answer": 0,
+      "why": "The counter resets at :00, so 100 requests at 12:00:59 and 100 more at 12:01:00 all pass. A sliding window counts the last 60 seconds from now; a token bucket refills gradually, allowing bursts only up to its capacity. Fixed windows are still fine when a short double burst is harmless, because they are the cheapest to run.",
+      "tags": ["rate-limiting"],
+      "level": 2,
+      "asked": "A design question with a concrete flaw to find; follow-ups ask which algorithm you would pick for a login or search endpoint."
+    },
+    {
+      "id": "ads-014",
+      "q": "Your B2B API is used by companies whose staff share one office IP. What should the rate-limit key be for authenticated calls?",
+      "choices": [
+        "The client IP address, since it cannot be changed without real effort",
+        "One global counter, so that a single limit protects the whole service",
+        "The `User-Agent` header, since it identifies which client app is calling",
+        "The API key or user id, keeping IP limits for unauthenticated routes"
+      ],
+      "answer": 3,
+      "why": "Per-IP limits punish everyone behind one NAT or proxy while one attacker with many IPs walks past them. Once a caller is authenticated, limit on their identity (and possibly per tenant); keep per-IP limits for login, signup and other anonymous routes. `User-Agent` is set by the client, and a global counter lets one tenant starve the rest.",
+      "tags": ["rate-limiting"],
+      "level": 2,
+      "asked": "Tests whether you think about who the limit hurts, not just the algorithm."
+    },
+    {
+      "id": "ads-015",
+      "q": "Four API instances each run an in-memory limiter set to 100 requests per minute per user. What limit does a user actually get?",
+      "choices": [
+        "Exactly 100, because the load balancer routes each user to one instance",
+        "Exactly 25, because the limit is divided between the four instances",
+        "Up to about 400, since each instance counts only what it saw itself",
+        "Zero after the first minute, since the four counters conflict and lock"
+      ],
+      "answer": 2,
+      "why": "Each process keeps its own counter, so round-robin spreads a user's calls across four independent limits. Use a shared store such as Redis, incrementing and setting expiry atomically (INCR plus EXPIRE in one script, or a library that does it), or enforce limits at the gateway. Sticky sessions are not a reliable way to route every request of a user.",
+      "tags": ["rate-limiting", "concurrency"],
+      "level": 2,
+      "asked": "A scaling bug that appears only after you add instances; the fix and its atomicity show real experience."
+    },
+    {
+      "id": "ads-016",
+      "q": "A POST with `Idempotency-Key: 7f3a…` succeeded, but the client timed out and resends it with the same key and body. What should the server do?",
+      "choices": [
+        "Return the stored response of the first attempt without running the logic again",
+        "Process the request again, since the client clearly never saw the first result",
+        "Return 409 Conflict, since that key has already been used by an earlier request",
+        "Return 204 No Content, since there is nothing new for the server to process now"
+      ],
+      "answer": 0,
+      "why": "The server saves the key with the status and body of the first result, and a retry gets that same response, so the client learns the outcome without a second charge. A 409 or 204 leaves the client unsure whether the first attempt worked. Keys are kept for a bounded period, often 24 hours.",
+      "tags": ["idempotency"],
+      "level": 1,
+      "asked": "Goes past the definition to the implementation; payment-adjacent roles ask this almost every time."
+    },
+    {
+      "id": "ads-017",
+      "q": "A client reuses an idempotency key from a payment it made an hour ago, but with a different amount. How should the server respond?",
+      "choices": [
+        "Process it as new, since the body differs, which makes it a new request",
+        "Return the stored response from the first payment, ignoring the new body",
+        "Reject it with an error, since one key must always mean the same request",
+        "Update yesterday's payment to the new amount, since the key identifies it"
+      ],
+      "answer": 2,
+      "why": "Store a hash of the request with the key; a mismatch means a client bug, and silently replaying the old response or charging again both hide it (Stripe, for example, returns an error). Keys are also scoped per account, so two customers generating the same key never collide.",
+      "tags": ["idempotency"],
+      "level": 2,
+      "asked": "Edge cases are where idempotency implementations go wrong; this one checks you store more than the key."
+    },
+    {
+      "id": "ads-018",
+      "q": "Two requests with the same idempotency key arrive within milliseconds, before either has finished. How do you stop both from executing?",
+      "choices": [
+        "Check whether a stored response exists for the key before starting the work",
+        "Rely on the client, since well-behaved clients never retry until they time out",
+        "Compare the two request timestamps and keep only the earlier of the pair",
+        "Claim the key first with a unique insert; the loser gets a 409 or waits"
+      ],
+      "answer": 3,
+      "why": "Check-then-act is a race: both requests see no stored response and both proceed. Insert the key in an 'in progress' state under a unique constraint (or take a lock) before doing the work, so exactly one wins; the other gets 409 and retries later, or waits for the result. Then fill in the response when done.",
+      "tags": ["idempotency", "concurrency"],
+      "level": 3,
+      "asked": "The concurrency case is what separates a toy idempotency layer from a real one."
+    },
+    {
+      "id": "ads-019",
+      "q": "This Express webhook handler rejects some genuine provider events as having a bad signature. Why?",
+      "code": "app.post('/webhooks', express.json(), (req, res) => {\n  const expected = hmacSha256(SECRET, JSON.stringify(req.body));\n  if (expected !== req.get('X-Signature')) return res.sendStatus(401);\n  handle(req.body);\n  res.sendStatus(200);\n});",
+      "lang": "js",
+      "choices": [
+        "HMAC-SHA256 output differs between Node versions, so it must be pinned",
+        "The signature covers the raw bytes, and re-serialised JSON can differ",
+        "Express lowercases header values, so the signature no longer matches",
+        "`express.json()` strips unknown fields that were part of the signature"
+      ],
+      "answer": 1,
+      "why": "The provider signed the exact bytes it sent. Parsing and `JSON.stringify` change whitespace, key escaping and numbers (`1.0` becomes `1`), so the hash differs. Capture the raw body for this route (`express.raw({ type: 'application/json' })`), verify over it, then parse. Express does not alter header values or drop fields.",
+      "tags": ["webhooks", "signatures"],
+      "level": 2,
+      "asked": "A real integration bug; the fix shows you know what an HMAC actually covers."
+    },
+    {
+      "id": "ads-020",
+      "q": "Your webhook endpoint verifies an HMAC signature. What stops an attacker who captured one genuine request from replaying it tomorrow?",
+      "choices": [
+        "Nothing is needed, since a valid HMAC can only be produced by the provider",
+        "Requiring HTTPS, since TLS rejects the same request being sent twice",
+        "Rotating the shared secret after every event that the endpoint receives",
+        "A signed timestamp checked against a window, plus remembering event ids"
+      ],
+      "answer": 3,
+      "why": "A replayed request carries a perfectly valid signature. Providers include a timestamp in the signed payload, so you reject anything older than a few minutes, and storing processed event ids makes the handler idempotent against replays and duplicate deliveries inside the window. TLS protects the channel, not against resending captured contents.",
+      "tags": ["webhooks", "signatures"],
+      "level": 2,
+      "asked": "A signature alone is the common answer; interviewers want the timestamp window and dedupe."
+    },
+    {
+      "id": "ads-021",
+      "q": "In Node 24, what is wrong with comparing a webhook signature this way, and what replaces it?",
+      "code": "if (req.get('X-Signature') === expectedHex) {\n  handle(req.body);\n}",
+      "lang": "js",
+      "choices": [
+        "It leaks timing; compare equal-length buffers with `crypto.timingSafeEqual`",
+        "`===` coerces types; use `Object.is` so the strings compare strictly",
+        "Hex is case-sensitive; lowercase both strings, and then `===` is safe",
+        "It is correct, as string comparison in V8 always takes a constant time"
+      ],
+      "answer": 0,
+      "why": "String equality returns at the first differing character, so response times can leak how many leading bytes of a guess were right. `crypto.timingSafeEqual` takes the same time for any input, but throws `ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH` if the buffers differ in length, so check lengths first. `Object.is` short-circuits just the same.",
+      "tags": ["webhooks", "signatures"],
+      "level": 3,
+      "asked": "A small detail that signals security care; the length-check follow-up catches people who have only read about it."
+    },
+    {
+      "id": "ads-022",
+      "q": "Why does an API cap request body size, typically at 100 KB to a few MB for JSON routes?",
+      "choices": [
+        "Because HTTP/1.1 itself forbids bodies larger than a few megabytes",
+        "So that one client cannot exhaust memory and CPU with a huge payload",
+        "Because JSON parsers are only able to handle files up to about 1 MB",
+        "So that the browser can compress bodies before they reach the server"
+      ],
+      "answer": 1,
+      "why": "A body parser buffers and parses the whole payload before your code runs, so an unbounded body is a cheap denial of service: memory, CPU and event-loop time for one request. HTTP sets no such limit. Raise the cap only on routes that need it, such as uploads, which should stream to storage instead.",
+      "tags": ["hardening", "resource-limits"],
+      "level": 1,
+      "asked": "Asks for the reason behind a default everyone copies; strong answers mention per-route limits for uploads."
+    },
+    {
+      "id": "ads-023",
+      "q": "Where should an API validate the shape of incoming JSON, such as types, required fields and lengths?",
+      "choices": [
+        "In the database only, since constraints there are the final line of defence",
+        "In the frontend form, since that is where users type the values in the end",
+        "At the boundary, with a schema, before the data reaches any business logic",
+        "Deep in each service method, right before a field is first actually used"
+      ],
+      "answer": 2,
+      "why": "Validate once at the edge (a schema library such as zod, or model validation in ASP.NET Core) and reject bad input with a 400, so everything inside can rely on typed, bounded data. Frontend checks are for UX and can be bypassed; database constraints are a backstop that returns poor errors; scattered checks get forgotten.",
+      "tags": ["hardening", "validation"],
+      "level": 1,
+      "asked": "A fundamentals check; strong candidates add that unknown fields should be rejected or stripped."
+    },
+    {
+      "id": "ads-024",
+      "q": "An API that uses cookie sessions sets these CORS headers on every response. What is the risk?",
+      "code": "res.set('Access-Control-Allow-Origin', req.get('Origin'));\nres.set('Access-Control-Allow-Credentials', 'true');",
+      "lang": "js",
+      "choices": [
+        "None, since echoing the Origin is how CORS is meant to allow a caller",
+        "Browsers reject it, because Origin must be `*` whenever credentials are sent",
+        "Any website can call the API with the user's cookies and read the reply",
+        "Only same-site pages can now call it, which breaks the partner integrations"
+      ],
+      "answer": 2,
+      "why": "Reflecting whatever Origin arrives, together with credentials, tells the browser that every site is trusted, so evil.example can fetch the victim's data with their cookies and read it. Check the Origin against an explicit allowlist. The browser does refuse `*` with credentials, which is exactly why people reflect the Origin to get around it. Chrome's SameSite=Lax default only blunts this when the session cookie is not `SameSite=None`, and a cross-site SPA needs None anyway; Firefox and Safari do not default to Lax.",
+      "tags": ["cors", "hardening"],
+      "level": 3,
+      "asked": "CORS misconfiguration is a common pentest finding; this checks you see CORS as an access-control surface, not a nuisance to silence."
+    },
+    {
+      "id": "ads-025",
+      "q": "Besides answering 429 when a client is over its limit, why do APIs send `RateLimit-Remaining` and `RateLimit-Reset` (or the older `X-RateLimit-*` forms) on every successful response?",
+      "choices": [
+        "So a well-behaved client can pace itself and stop before it is rejected, instead of learning the limit only from 429s",
+        "So the browser can throttle `fetch` automatically, since it reads those headers and queues requests that would exceed the quota",
+        "So CDNs can cache the response for exactly the reset interval, which replaces `Cache-Control` on rate-limited routes",
+        "So the server can skip its own counter on the next request, since the client echoes the remaining value back in a header"
+      ],
+      "answer": 0,
+      "why": "The headers are advisory: a client that reads `RateLimit-Remaining` can spread a batch across the window rather than hammering until a 429, and its rejected retries stop counting against it. Browsers and CDNs do nothing with them, and the server never trusts a client-reported count. The names are still an IETF draft, so document which form you send and serve them from the same shared counter on every instance.",
+      "tags": ["rate-limiting"],
+      "level": 2,
+      "asked": "Shows you treat a rate limit as a contract with the client rather than a wall, and that you know the headers are advisory."
+    }
+  ]
+}

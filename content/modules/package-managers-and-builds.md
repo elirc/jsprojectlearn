@@ -137,6 +137,21 @@ errors if package.json disagrees, so a surprise dependency upgrade is a build
 failure rather than a silent event. "I changed nothing and the build broke" is
 almost always a floating version somewhere.
 
+## npm is not the only package manager
+
+| Tool | What it does differently | When you meet it |
+|---|---|---|
+| **npm** | Ships with Node; flat `node_modules` | The default; every tutorial |
+| **pnpm** | One content-addressed store, symlinked; a strict `node_modules` where you can only import what you declared | Monorepos, and teams tired of phantom dependencies |
+| **Yarn** (Berry) | Plug'n'Play mode with no `node_modules` at all; workspaces | Older monorepos; Yarn 1 still lingers |
+| **Bun** | A runtime with a very fast installer built in | Newer projects; `bun install` works on npm projects |
+
+A **phantom dependency** is a package your code imports that you never listed,
+which only works because something else pulled it in; npm's flat layout allows
+it, pnpm's does not. The `packageManager` field in package.json pins which tool
+and version a repo expects. Corepack, the shim that enforced it, is no longer
+bundled from Node 25, so install pnpm or Yarn yourself.
+
 ## Monorepos and workspaces
 
 ```json
@@ -151,11 +166,18 @@ tools like Turborepo and Nx come in.
 ## Which tool, in 2026
 
 - **Vite** — the default for new frontend apps. Fast, sensible, minimal config.
-- **esbuild / SWC** — the fast transpilers underneath most modern tooling.
+- **esbuild / SWC** — the fast transpilers underneath most modern tooling. They
+  **strip types without checking them**, which is why `tsc --noEmit` (or
+  `tsc -b`) runs as a separate step in CI: the build can be green while the
+  types are wrong.
 - **webpack** — still everywhere in existing codebases. Worth being able to read
   a config.
-- **Rollup** — what Vite uses for production builds; good for libraries.
-- **Next.js / Remix / Astro** — frameworks that own the build entirely.
+- **Rollup** — what Vite has used for production builds; good for libraries.
+  Rolldown, its Rust rewrite, is replacing it in newer Vite versions.
+- **Next.js / React Router (framework mode) / Astro** — frameworks that own the
+  build entirely. Remix merged into React Router v7.
+- **Create React App** — deprecated in February 2025. If a tutorial starts with
+  `npx create-react-app`, it is out of date; use Vite.
 
 ## What you should be able to answer
 

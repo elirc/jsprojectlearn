@@ -148,14 +148,10 @@ Because a browser attaches cookies automatically, a form on `evil.com` can make
 an authenticated request to your API. The attacker never sees the response —
 they only need the side effect.
 
-Defences, in order of usefulness:
-
-1. **`SameSite=Lax`** on the session cookie. Blocks cross-site POSTs. This is
-   the default in modern browsers and covers most cases.
-2. **Anti-forgery token** — a random value in a form field or header that the
-   attacker cannot read (because the same-origin policy stops them reading your
-   page).
-3. **Check the `Origin` header** on state-changing requests.
+The defences (`SameSite` set explicitly, an anti-forgery token, checking
+`Origin`) live in one place: [the web security guide's CSRF
+section](web-security-basics.md). Set `SameSite` explicitly on the cookie;
+only Chromium-based browsers default to `Lax`.
 
 Token-in-Authorization-header auth is not CSRF-vulnerable, because the browser
 does not attach it for you. That is a real point in favour of the header

@@ -44,7 +44,8 @@ to typed options classes rather than reading strings everywhere:
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
 ```
 
-`IOptions<T>` is read once at startup; `IOptionsSnapshot<T>` re-reads per
+`IOptions<T>` is a singleton, bound lazily on first use and never reloaded;
+`IOptionsSnapshot<T>` re-reads per
 request; `IOptionsMonitor<T>` notifies on change. If a config change must take
 effect without a restart, `IOptions` will not do it.
 

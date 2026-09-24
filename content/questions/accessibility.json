@@ -1,0 +1,401 @@
+{
+  "id": "accessibility",
+  "topic": "Accessibility",
+  "title": "Accessibility (a11y)",
+  "blurb": "Semantic HTML first, ARIA second, keyboard always. What WCAG actually asks of a CRUD app, and the accessibility bugs interviewers expect a mid-level developer to catch in review.",
+  "questions": [
+    {
+      "id": "a11y-001",
+      "q": "WCAG groups its success criteria under four principles, known as POUR. What do the letters stand for?",
+      "choices": [
+        "Presentable, Operable, Usable, Readable",
+        "Perceivable, Organised, Usable, Responsive",
+        "Perceivable, Operable, Understandable, Robust",
+        "Predictable, Operable, Understandable, Reliable"
+      ],
+      "answer": 2,
+      "why": "Perceivable (you can sense it: alt text, captions, contrast), Operable (you can use it: keyboard, enough time), Understandable (clear labels and errors) and Robust (works with assistive technology through valid semantics). \"Predictable\" is a guideline inside Understandable, not a principle.",
+      "tags": ["wcag"],
+      "level": 1,
+      "asked": "A warm-up; a strong candidate maps each letter to a concrete bug they have fixed, such as a missing label under Perceivable or a mouse-only control under Operable."
+    },
+    {
+      "id": "a11y-002",
+      "q": "Which WCAG conformance level do most accessibility laws and procurement standards require?",
+      "choices": [
+        "Level AA, which also includes every Level A criterion",
+        "Level A only, because AA and AAA are optional extras",
+        "Level AAA, because anything lower counts as failing",
+        "Level AA for text content and Level A for form controls"
+      ],
+      "answer": 0,
+      "why": "Levels are cumulative: AA conformance means meeting all A and AA criteria. Section 508, EN 301 549 (used by the European Accessibility Act) and the 2024 ADA Title II rule all point at AA. AAA is not expected for whole sites, because some of its criteria cannot be met for all content.",
+      "tags": ["wcag"],
+      "level": 1,
+      "asked": "Checks you know the realistic target for a CRUD app, and a good answer adds who benefits: keyboard users, screen reader users, low-vision users and people with cognitive disabilities."
+    },
+    {
+      "id": "a11y-003",
+      "q": "What is the first rule of ARIA use?",
+      "choices": [
+        "Add a `role` to every interactive element so assistive technology can always identify it",
+        "If a native element has the semantics and behaviour you need, use it instead of ARIA",
+        "Prefer ARIA roles to native elements, because roles are announced more consistently",
+        "Only put ARIA attributes on content that is hidden from sighted users"
+      ],
+      "answer": 1,
+      "why": "A native `<button>`, `<a href>` or `<select>` brings its role, focusability, keyboard handling and state for free; ARIA only changes what is announced. Adding `role=\"button\"` to a real `<button>` is redundant, and adding it to a `<div>` promises behaviour you now have to build by hand.",
+      "tags": ["semantics", "aria"],
+      "level": 1,
+      "asked": "Interviewers use it to see whether you reach for ARIA as a patch or understand that no ARIA is better than bad ARIA."
+    },
+    {
+      "id": "a11y-004",
+      "q": "In code review you see this \"button\". What happens for a keyboard-only user?",
+      "code": "<div class=\"btn\" onclick=\"saveInvoice()\">\n  Save\n</div>",
+      "lang": "html",
+      "choices": [
+        "Tab reaches it, but Enter does nothing until you add a keydown handler",
+        "It works with Enter, but screen readers announce it as plain text",
+        "It works for everyone except screen reader users, who hear no role",
+        "Tab never reaches it, so they cannot focus or activate it at all"
+      ],
+      "answer": 3,
+      "why": "A `<div>` is not focusable and has no role, so it is skipped by Tab and Enter or Space can never fire its click. The tempting answer assumes it is at least reachable; it is not. Use `<button type=\"button\">`, which is focusable and activates on Enter and Space for free.",
+      "tags": ["semantics", "keyboard"],
+      "level": 2,
+      "asked": "The most common accessibility bug in real codebases; spotting it in a diff is a baseline expectation for a mid-level reviewer."
+    },
+    {
+      "id": "a11y-005",
+      "q": "Why does a screen reader user care whether you use `<main>`, `<nav>` and real `<h2>` headings rather than styled divs?",
+      "choices": [
+        "Screen readers read the page in heading order rather than in source order",
+        "Tab stops on every landmark and heading, which gives keyboard users an outline",
+        "They pull up lists of landmarks and headings to jump around and skim the page",
+        "Only search engines benefit; screen readers treat divs and headings the same"
+      ],
+      "answer": 2,
+      "why": "Screen readers offer shortcuts (for example H for next heading, or a landmarks menu), and surveys consistently show headings are the main way users find content. Headings and landmarks are not focusable, so Tab does not stop on them; the benefit comes through the screen reader's own navigation, not the Tab key.",
+      "tags": ["semantics", "wcag"],
+      "level": 2,
+      "asked": "Separates people who think semantics is SEO trivia from those who know how screen reader users actually move through a page."
+    },
+    {
+      "id": "a11y-006",
+      "q": "What accessible name and description does this dialog get?",
+      "code": "<div role=\"dialog\" aria-label=\"Confirm\"\n     aria-labelledby=\"t\" aria-describedby=\"d\">\n  <h2 id=\"t\">Delete invoice?</h2>\n  <p id=\"d\">This cannot be undone.</p>\n</div>",
+      "lang": "html",
+      "choices": [
+        "Name \"Delete invoice?\", description \"This cannot be undone.\"; `aria-label` is ignored",
+        "Name \"Confirm\", because `aria-label` overrides every other labelling source",
+        "Name \"Confirm Delete invoice?\", because both labelling attributes are joined",
+        "Name \"Delete invoice?\", with the paragraph read as part of that same name"
+      ],
+      "answer": 0,
+      "why": "In accessible name computation `aria-labelledby` wins over `aria-label`, which wins over native labels and content. `aria-describedby` never contributes to the name; it supplies a separate description read after the name and role. Use `aria-label` only when there is no visible text to point at.",
+      "tags": ["aria"],
+      "level": 3,
+      "asked": "A precision question: getting the precedence right shows you have debugged names in the accessibility tree rather than guessing."
+    },
+    {
+      "id": "a11y-007",
+      "q": "An autosave shows \"Draft saved\" every 30 seconds. How should that status text reach screen reader users?",
+      "choices": [
+        "Through `role=\"alert\"`, because every status change should interrupt the user",
+        "Through `aria-live=\"assertive\"`, so they hear the save straight away",
+        "By moving focus to the message, so the screen reader reads it out",
+        "Through a polite live region such as `role=\"status\"`, read at the next pause"
+      ],
+      "answer": 3,
+      "why": "A polite region queues the message until the user pauses, which suits routine confirmations. Assertive regions and `role=\"alert\"` interrupt whatever is being read, which is right for a failed payment but hostile every 30 seconds. Moving focus yanks the user out of the field they are typing in.",
+      "tags": ["aria", "live-regions"],
+      "level": 2,
+      "asked": "The follow-up is usually \"when would you use assertive?\", and the good answer is: rarely, for time-critical errors only."
+    },
+    {
+      "id": "a11y-008",
+      "q": "Your click handler removes `hidden` from the panel. What else must it do?",
+      "code": "<button aria-expanded=\"false\" aria-controls=\"filters\">\n  Filters\n</button>\n<div id=\"filters\" hidden>...</div>",
+      "lang": "html",
+      "choices": [
+        "Nothing, because `aria-controls` makes the browser keep `aria-expanded` in sync",
+        "Set `aria-expanded=\"true\"` on the button; the browser never updates it for you",
+        "Move `aria-expanded` onto the panel, because the panel is the part that expands",
+        "Add `role=\"dialog\"` to the panel so screen readers announce that it has opened"
+      ],
+      "answer": 1,
+      "why": "ARIA states are static attributes: nothing updates `aria-expanded` except your code, so a stale \"collapsed\" is announced after opening. `aria-controls` only records a relationship and is poorly supported, so it drives nothing. The state belongs on the control the user operates, not on the panel.",
+      "tags": ["aria"],
+      "level": 2,
+      "asked": "Tests whether you treat ARIA as state you own and keep in sync, which is where most real ARIA bugs come from."
+    },
+    {
+      "id": "a11y-009",
+      "q": "What is wrong with this toast?",
+      "code": "<div class=\"toast\" aria-hidden=\"true\">\n  Invoice deleted. <button>Undo</button>\n</div>",
+      "lang": "html",
+      "choices": [
+        "`aria-hidden` also hides it visually, so sighted users never see the toast",
+        "`aria-hidden` removes Undo from the Tab order too, so nobody can reach it with a keyboard",
+        "Undo stays focusable, so keyboard users land on a control screen readers cannot announce",
+        "Nothing, because `aria-hidden` applies only to text, not to interactive children"
+      ],
+      "answer": 2,
+      "why": "`aria-hidden=\"true\"` removes the subtree from the accessibility tree but changes neither rendering nor focus, so Tab still lands on Undo and a screen reader announces nothing useful. Never put focusable content inside `aria-hidden`; if the content really is inactive, use the `inert` attribute, which removes it from focus as well.",
+      "tags": ["aria", "focus"],
+      "level": 3,
+      "asked": "Automated tools flag this one, so the interviewer wants the mechanism: aria-hidden affects the tree, not focus or rendering."
+    },
+    {
+      "id": "a11y-010",
+      "q": "What does this element still lack compared with a native `<button>`?",
+      "code": "<div role=\"button\" tabindex=\"0\" onclick=\"save()\">\n  Save\n</div>",
+      "lang": "html",
+      "choices": [
+        "Keyboard activation: Enter and Space do nothing until you handle key events",
+        "Nothing, because `role=\"button\"` makes the browser fire click on Enter and Space",
+        "Focusability, because `tabindex=\"0\"` only takes effect on form controls, not divs",
+        "An accessible name, because text inside a div is never used as the button's name"
+      ],
+      "answer": 0,
+      "why": "`role` changes only what assistive technology announces; it adds no behaviour. `tabindex=\"0\"` does make the div focusable, and a button role does take its name from content, but browsers only synthesise click from Enter and Space for real buttons. You would also need disabled handling and form behaviour, which is why `<button>` is the fix.",
+      "tags": ["aria", "semantics", "keyboard"],
+      "level": 3,
+      "asked": "Shows whether you know role is a promise to assistive technology that you must then keep in code."
+    },
+    {
+      "id": "a11y-011",
+      "q": "The markup order is Save, Delete, Cancel. In what order does Tab visit the buttons?",
+      "code": ".toolbar {\n  display: flex;\n  flex-direction: row-reverse;\n}",
+      "lang": "css",
+      "choices": [
+        "Cancel, Delete, Save, because browsers follow the visual flex order",
+        "Cancel, Delete, Save, because row-reverse also reverses the tab indices",
+        "Save, Delete, Cancel on the first pass, then the visual order on every pass after that",
+        "Save, Delete, Cancel, which is DOM order and now runs right to left on screen"
+      ],
+      "answer": 3,
+      "why": "Sequential focus order follows the DOM; `flex-direction`, `order`, grid placement and absolute positioning change only what you see. Focus then jumps right to left, which fails WCAG 2.4.3 Focus Order when it confuses meaning. Fix the source order rather than reordering with CSS.",
+      "tags": ["keyboard", "focus"],
+      "level": 2,
+      "asked": "Checks that you know CSS reordering is a keyboard bug, not just a styling choice."
+    },
+    {
+      "id": "a11y-012",
+      "q": "What does `tabindex=\"-1\"` do on a heading?",
+      "choices": [
+        "Removes it from the accessibility tree, so screen readers skip over the heading entirely",
+        "Makes it focusable from script with `.focus()`, but leaves it out of the Tab order",
+        "Puts it last in the Tab order, after elements with zero or positive values",
+        "Blocks focus entirely, so later `.focus()` calls on it are silently ignored"
+      ],
+      "answer": 1,
+      "why": "-1 means focusable programmatically but not reachable with Tab, which is how you move focus to a heading after a route change. 0 puts an element in the natural DOM order. Positive values jump ahead of everything else and should be avoided, because they break the order for the whole page.",
+      "tags": ["keyboard", "focus"],
+      "level": 1,
+      "asked": "The follow-up is \"why never use a positive tabindex?\", and the answer is that it rewrites the order for every other element."
+    },
+    {
+      "id": "a11y-013",
+      "q": "Design wants no focus ring after mouse clicks, so someone wrote this. What should replace it?",
+      "code": "button:focus {\n  outline: none;\n}",
+      "lang": "css",
+      "choices": [
+        "A visible indicator on `:focus-visible`, which typically matches keyboard focus only",
+        "Hover styles only, because keyboard users see the hover state as they Tab through the page",
+        "Nothing, because screen readers announce focus, so a visible ring is only cosmetic",
+        "An outline on `:active` only, because the ring matters only while a key is held down"
+      ],
+      "answer": 0,
+      "why": "Removing the outline leaves keyboard users with no idea where they are, which fails WCAG 2.4.7 Focus Visible (AA). `:focus-visible` matches when the browser judges an indicator is needed, such as keyboard focus. Screen reader announcements do not help sighted keyboard users.",
+      "tags": ["keyboard", "focus", "visual"],
+      "level": 2,
+      "asked": "A code-review classic: the interviewer wants you to reject `outline: none` and offer the fix that keeps design happy."
+    },
+    {
+      "id": "a11y-014",
+      "q": "What is a \"Skip to main content\" link for, and where does it go?",
+      "choices": [
+        "It sits in the footer and lets keyboard users jump back up to the page top",
+        "It is hidden from all users and read only by screen readers as a page summary",
+        "It is the first focusable element and moves focus past repeated nav to `<main>`",
+        "It is a button that collapses the navigation so that Tab reaches content sooner"
+      ],
+      "answer": 2,
+      "why": "Without it a keyboard user tabs through every header and nav link on every page. It is usually visually hidden until focused, then shown. It meets WCAG 2.4.1 Bypass Blocks (Level A); landmarks help screen reader users, but sighted keyboard users still need the link.",
+      "tags": ["keyboard"],
+      "level": 1,
+      "asked": "Cheap to build and often missing; mentioning that it should become visible on focus is the detail interviewers look for."
+    },
+    {
+      "id": "a11y-015",
+      "q": "Each list row has a Delete button. After deleting row 3, the row is removed from the DOM. Where should focus go?",
+      "choices": [
+        "Nowhere; the browser moves focus to the next focusable element on its own",
+        "To the page top, so the user restarts from the skip link with fresh context",
+        "Leave it; screen readers re-read the updated list, which gives enough context",
+        "To a sensible neighbour, such as the next row's Delete button, via `.focus()`"
+      ],
+      "answer": 3,
+      "why": "When the focused element is removed, `document.activeElement` falls back to `<body>` and screen reader users lose their place. Nothing moves focus for you, so send it to the next row, the previous one, or the list heading when the list is empty. The same applies after an SPA route change: focus the new page's `<h1>`.",
+      "tags": ["keyboard", "focus"],
+      "level": 3,
+      "asked": "A production-experience signal: people who have tested their own CRUD screens with a keyboard know this bug."
+    },
+    {
+      "id": "a11y-016",
+      "q": "When should a required email field get `aria-invalid=\"true\"`?",
+      "choices": [
+        "On first render, because an empty required field is already invalid",
+        "After validation fails on blur or submit, removed once the value is valid",
+        "Never, because `required` already tells screen readers the field is invalid",
+        "On the submit button only, so it announces that the form contains errors"
+      ],
+      "answer": 1,
+      "why": "Marking untouched fields invalid means users hear \"invalid entry\" before typing anything. `required` exposes the field as required, not invalid; `aria-invalid` reports a failed check, so set it when you show the error and pair it with `aria-describedby` pointing at the message.",
+      "tags": ["forms", "aria"],
+      "level": 2,
+      "asked": "Tests whether you think about what is announced over time, not just which attributes exist."
+    },
+    {
+      "id": "a11y-017",
+      "q": "Screen readers often say nothing when this error appears. Why?",
+      "code": "{error && (\n  <p aria-live=\"polite\">{error}</p>\n)}",
+      "lang": "jsx",
+      "choices": [
+        "The region is inserted along with its text; it must exist before the text changes",
+        "A polite region waits for typing to stop, then drops the message after a delay",
+        "`aria-live` only takes effect on `role=\"alert\"` elements, not on a plain `<p>`",
+        "Live regions announce only `textContent` writes, not DOM nodes that React inserts"
+      ],
+      "answer": 0,
+      "why": "Screen readers watch existing live regions for changes; a region that arrives already containing its text is often not announced. Render the region empty from the start and change only its text. `role=\"alert\"` is special-cased by most screen readers when inserted, which is why it seems to work where this does not.",
+      "tags": ["forms", "live-regions"],
+      "level": 3,
+      "asked": "A real debugging story: candidates who have tested with a screen reader know live regions must be mounted before they are used."
+    },
+    {
+      "id": "a11y-018",
+      "q": "A long checkout form fails validation with three errors. What does the error summary pattern add?",
+      "choices": [
+        "An assertive live region that reads every error aloud while focus stays on the Submit button",
+        "A `title` tooltip on each invalid field that repeats its own error text on hover",
+        "A list of the errors at the top, focused on submit, with each linking to its field",
+        "A single `alert()` dialog that lists every error and blocks until it is dismissed"
+      ],
+      "answer": 2,
+      "why": "Focusing the summary gets it read in full, tells the user how many problems there are, and each link jumps to the field, whose own message is tied to it with `aria-describedby`. An assertive region reads the list once and leaves the user to hunt; `title` tooltips are unavailable to keyboard and touch users.",
+      "tags": ["forms"],
+      "level": 2,
+      "asked": "Shows you have built forms for real users; the GOV.UK design system is the reference most interviewers have in mind."
+    },
+    {
+      "id": "a11y-019",
+      "q": "Why is placeholder text not a replacement for a visible `<label>`?",
+      "choices": [
+        "Screen readers never read placeholders, so the field is left with no accessible name",
+        "Browsers ignore placeholders for autofill, so saved values are not suggested",
+        "Placeholders are dropped at 200% zoom, so low-vision users no longer see them",
+        "It vanishes once the user types, and default placeholder colour fails contrast"
+      ],
+      "answer": 3,
+      "why": "Once the field has a value the prompt is gone, which hurts anyone who needs to check what a field wanted, especially users with memory or cognitive disabilities. Browsers do use a placeholder as a fallback accessible name, so \"never read\" is wrong; the problems are that it disappears and is faint.",
+      "tags": ["forms"],
+      "level": 1,
+      "asked": "Designers ask for placeholder-only forms constantly, so interviewers want to hear you can explain the cost."
+    },
+    {
+      "id": "a11y-020",
+      "q": "What contrast ratios does WCAG 2.2 AA require for normal body text and for large text?",
+      "choices": [
+        "3:1 for normal body text and 4.5:1 for large text",
+        "4.5:1 for normal body text and 3:1 for large text",
+        "7:1 for normal body text and 4.5:1 for large text",
+        "4.5:1 for all text, whatever its size or weight"
+      ],
+      "answer": 1,
+      "why": "Criterion 1.4.3 asks 4.5:1 for normal text and 3:1 for large text (24px, or about 18.7px bold). 7:1 is the AAA level. Separately, 1.4.11 asks 3:1 for UI component boundaries and focus indicators against their surroundings.",
+      "tags": ["visual", "wcag"],
+      "level": 1,
+      "asked": "Knowing the numbers without looking them up signals you have actually checked a design, and the good answer mentions 3:1 for controls too."
+    },
+    {
+      "id": "a11y-021",
+      "q": "An orders table shows status only as a green or red dot. Which fix meets WCAG AA?",
+      "choices": [
+        "Add a text label such as \"Paid\" or \"Overdue\" beside or inside each dot",
+        "Darken the red and green until each reaches 4.5:1 against the background",
+        "Add one legend above the table that explains what each colour means",
+        "Nothing, because avoiding colour-only status is an AAA requirement"
+      ],
+      "answer": 0,
+      "why": "WCAG 1.4.1 Use of Colour (Level A) forbids colour as the only way to convey information. Contrast does not help a user who cannot tell red from green, and a legend still requires distinguishing the colours. Text, or an icon with an accessible name, fixes it for everyone.",
+      "tags": ["visual", "wcag"],
+      "level": 2,
+      "asked": "A design-review staple; around 1 in 12 men has some colour vision deficiency, so this bug is never theoretical."
+    },
+    {
+      "id": "a11y-022",
+      "q": "When does the second rule apply?",
+      "code": ".toast { animation: slide-in 400ms ease-out; }\n@media (prefers-reduced-motion: reduce) {\n  .toast { animation: none; }\n}",
+      "lang": "css",
+      "choices": [
+        "When the device reports low battery or has power-saving mode turned on",
+        "When a screen reader is running, since animation distracts from speech",
+        "When the browser detects that the device cannot keep up a smooth frame rate",
+        "When the user has turned on a reduce-motion setting in the OS or browser"
+      ],
+      "answer": 3,
+      "why": "The media feature reflects a user preference, often set by people with vestibular disorders for whom sliding and parallax motion cause nausea. It says nothing about battery, performance or assistive technology. Keep essential feedback, for example with a fade instead of a slide.",
+      "tags": ["visual"],
+      "level": 1,
+      "asked": "Easy to support and often forgotten; the follow-up is whether reduced means none, and the answer is \"less, not necessarily zero\"."
+    },
+    {
+      "id": "a11y-023",
+      "q": "An automated scanner such as axe reports zero violations on your app. What can you conclude?",
+      "choices": [
+        "The app meets WCAG 2.2 AA, because the scanners test every success criterion",
+        "Only the machine-checkable rules pass; focus order and meaningful text need a manual check",
+        "The markup is valid, but you should still run the same scan across other browsers",
+        "Keyboard and screen reader behaviour pass, but contrast still needs a colour checker"
+      ],
+      "answer": 1,
+      "why": "Tools can check that an image has alt text, not that the text is meaningful; that a label exists, not that it makes sense; and nothing about whether focus order or error flow is usable. Estimates put automated coverage at roughly a third to a half of issues. Contrast is actually one of the things tools check well.",
+      "tags": ["testing"],
+      "level": 2,
+      "asked": "Filters out candidates who treat a green Lighthouse score as done; the good answer describes the manual pass that follows."
+    },
+    {
+      "id": "a11y-024",
+      "q": "Before merging a new form, what does a five-minute manual keyboard pass check?",
+      "choices": [
+        "That every element, including text and headings, receives focus in turn",
+        "That every button has a keyboard shortcut, as WCAG AA requires for forms",
+        "That every control is reachable, focus is visible, order is logical, nothing traps it",
+        "That the `tabindex` values run 1, 2, 3 and onwards to match the visual reading order"
+      ],
+      "answer": 2,
+      "why": "Unplug the mouse, Tab and Shift+Tab through the form, operate every control with Enter, Space and arrows, and submit with errors to see where focus lands. Only interactive elements should be focusable, WCAG does not require shortcuts, and positive tabindex values are a bug, not a check.",
+      "tags": ["testing", "keyboard"],
+      "level": 2,
+      "asked": "Interviewers want a concrete habit; adding \"then a quick screen reader smoke test with NVDA or VoiceOver\" rounds out the answer."
+    },
+    {
+      "id": "a11y-025",
+      "q": "A low-vision user zooms the browser to 400%, which makes the layout 320 CSS pixels wide. What does WCAG 2.2 AA require of your orders page there?",
+      "choices": [
+        "Nothing at AA; behaviour above 200% zoom is covered only by AAA criteria on visual presentation",
+        "Content reflows to one column with no horizontal scrolling, except for things like data tables",
+        "The page may disable zoom above 200% with the viewport meta tag to protect the layout",
+        "A separate mobile site is served, since desktop layouts need not support zoom"
+      ],
+      "answer": 1,
+      "why": "1.4.10 Reflow (AA) requires content to be usable at 320 CSS pixels wide without two-dimensional scrolling, which is what 400% zoom on a 1280px window produces; a mobile-first responsive layout usually passes for free. Exceptions exist for content that needs two dimensions, such as data tables and maps. Blocking zoom with `user-scalable=no` or `maximum-scale` fails 1.4.4 Resize Text and is ignored by iOS anyway.",
+      "tags": ["visual", "wcag"],
+      "level": 2,
+      "asked": "Zoom users are a large group, and the question checks you connect responsive design to an actual AA criterion rather than to phones only."
+    }
+  ]
+}

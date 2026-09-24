@@ -1,0 +1,330 @@
+{
+  "id": "testing-dotnet",
+  "topic": ".NET testing",
+  "title": "Testing .NET code",
+  "blurb": "xUnit mechanics, fixtures, mocking without pain and integration tests that boot the real app against a real database.",
+  "questions": [
+    {
+      "id": "td-001",
+      "q": "How many test cases does xUnit report for this method?",
+      "code": "[Theory]\n[InlineData(\"\", false)]\n[InlineData(\"a@b.com\", true)]\npublic void Validates_email(string input, bool expected)\n    => Assert.Equal(expected, EmailRule.IsValid(input));",
+      "lang": "cs",
+      "choices": [
+        "One, which loops over both rows and stops at the first failing row",
+        "Two, one per InlineData row, each passing or failing on its own",
+        "Two, but only if the method is also marked with a [Fact] attribute",
+        "None, because xUnit test methods are not allowed to take parameters"
+      ],
+      "answer": 1,
+      "why": "A `[Theory]` is a parameterised test: each `InlineData` row becomes its own test case with its own result, so one failing row does not hide the others. `[Fact]` is for tests with no parameters, and the two attributes are not combined. `MemberData` and `ClassData` supply rows that are not compile-time constants.",
+      "tags": ["xunit"],
+      "level": 1,
+      "asked": "Basic xUnit fluency; the follow-up is when you would reach for MemberData."
+    },
+    {
+      "id": "td-002",
+      "q": "Do both tests pass, whatever order they run in?",
+      "code": "public class CartTests\n{\n    private readonly Cart _cart = new();\n    [Fact] public void A() { _cart.Add(\"x\"); Assert.Single(_cart.Items); }\n    [Fact] public void B() { _cart.Add(\"y\"); Assert.Single(_cart.Items); }\n}",
+      "lang": "cs",
+      "choices": [
+        "Yes: xUnit creates a new CartTests instance for every single test",
+        "No: whichever test runs second sees two items in the shared cart",
+        "Only if the tests run in parallel, since each thread gets its own copy",
+        "Only if the class implements IDisposable and clears the cart afterwards"
+      ],
+      "answer": 0,
+      "why": "xUnit constructs the test class once per test, so fields are fresh each time and the constructor acts as per-test setup (Dispose as teardown). That is deliberate: it makes shared mutable state between tests hard to create by accident. State you do want to share goes in a fixture.",
+      "tags": ["xunit"],
+      "level": 1,
+      "asked": "Candidates coming from NUnit or MSTest often assume one instance per class; this checks you know the xUnit model."
+    },
+    {
+      "id": "td-003",
+      "q": "What is the difference between `IClassFixture<T>` and a collection fixture in xUnit?",
+      "choices": [
+        "A class fixture is created for each test; a collection fixture once for the whole run",
+        "A class fixture must be synchronous; only a collection fixture supports async setup",
+        "A class fixture is shared by every class using it; a collection fixture by one class",
+        "A class fixture is shared by the tests in one class; a collection fixture across classes"
+      ],
+      "answer": 3,
+      "why": "A class fixture is created once and shared by all tests in that class. A collection fixture is shared by every class in the same `[Collection]`, which also stops those classes running in parallel with each other. Both can use IAsyncLifetime. xUnit v3 adds assembly fixtures for one instance across the entire test assembly.",
+      "tags": ["xunit", "fixtures"],
+      "level": 2,
+      "asked": "Comes up as soon as integration tests share an expensive resource such as a database container."
+    },
+    {
+      "id": "td-004",
+      "q": "In xUnit v3, why do the start and stop of this fixture live in `IAsyncLifetime` rather than the constructor and Dispose?",
+      "code": "public class DbFixture : IAsyncLifetime\n{\n    public PostgreSqlContainer Db { get; } =\n        new PostgreSqlBuilder().WithImage(\"postgres:17\").Build();\n    public async ValueTask InitializeAsync() => await Db.StartAsync();\n    public async ValueTask DisposeAsync() => await Db.DisposeAsync();\n}",
+      "lang": "cs",
+      "choices": [
+        "xUnit runs fixture constructors in parallel, which would start several containers",
+        "A constructor cannot await, and starting or stopping a container is asynchronous",
+        "IAsyncLifetime runs once per test run, whereas a constructor runs once per test",
+        "xUnit never calls Dispose on a fixture, so the container would otherwise leak"
+      ],
+      "answer": 1,
+      "why": "Constructors cannot be async, and blocking on `StartAsync().Result` in one wastes a thread and risks deadlocks. xUnit awaits `InitializeAsync` before the first test that uses the fixture and `DisposeAsync` after the last. In xUnit v3 both return ValueTask. How often the fixture is created depends on how it is used, not on this interface.",
+      "tags": ["xunit", "fixtures"],
+      "level": 2,
+      "asked": "Shows you have wired real infrastructure into tests rather than only unit-testing pure functions."
+    },
+    {
+      "id": "td-005",
+      "q": "With default settings, how does xUnit parallelise tests?",
+      "choices": [
+        "Every test method runs in parallel with every other method, even within a class",
+        "Nothing runs in parallel until you add a [Parallelizable] attribute to a class",
+        "Test classes run one after another, and the methods in each class run in parallel",
+        "Test collections run in parallel, and the tests inside one collection run in sequence"
+      ],
+      "answer": 3,
+      "why": "Each class is its own collection by default, so different classes run at the same time while tests within a class run one by one. Putting classes in the same `[Collection]` serialises them, which is how you protect a shared database. `[Parallelizable]` is an NUnit attribute. Tests that pass alone but fail together usually share state across classes.",
+      "tags": ["xunit"],
+      "level": 3,
+      "asked": "Explains a whole class of flaky integration tests, which is why interviewers use it as a probe."
+    },
+    {
+      "id": "td-006",
+      "q": "`OrderRepository` is a class and `GetAsync` is not virtual. What happens with this NSubstitute setup?",
+      "code": "var repo = Substitute.For<OrderRepository>();\nrepo.GetAsync(1).Returns(new Order { Id = 1 });",
+      "lang": "cs",
+      "choices": [
+        "It works: NSubstitute rewrites the class at runtime so any method can be stubbed",
+        "It fails to compile, because `Substitute.For` accepts only interface types",
+        "It works, but only because the test project references the class's assembly",
+        "The real GetAsync runs, because NSubstitute can only intercept virtual members"
+      ],
+      "answer": 3,
+      "why": "NSubstitute (like Moq) builds a runtime subclass, and a subclass can only override virtual members. The non-virtual call runs the real code, and `Returns` then fails because no substitute call was recorded. Depend on an interface, or make the member virtual. The NSubstitute analyzers package flags this at build time.",
+      "tags": ["mocking"],
+      "level": 2,
+      "asked": "A daily annoyance in .NET test suites; it also opens the \"why do we have all these interfaces\" discussion."
+    },
+    {
+      "id": "td-007",
+      "q": "Why is substituting `DbContext` and `DbSet` a weak way to test a service built on EF Core queries?",
+      "choices": [
+        "DbContext is sealed, so no mocking library can create a substitute for it",
+        "The fake runs LINQ in memory, so queries the database would treat differently pass",
+        "Substituted DbSets are not thread-safe, so tests that run in parallel fail randomly",
+        "SaveChanges cannot be substituted, so every test still writes to a real database"
+      ],
+      "answer": 1,
+      "why": "A faked DbSet is LINQ to Objects: string comparisons are case-sensitive where your database collation may not be, untranslatable expressions work, and Include does nothing. The test passes while production fails. Test query-heavy code against a real database in a container, or put a narrow repository interface in front and substitute that.",
+      "tags": ["mocking"],
+      "level": 3,
+      "asked": "Separates people who have been burned by green-but-wrong data tests from those who mock everything."
+    },
+    {
+      "id": "td-008",
+      "q": "When is asserting an interaction like the second line the right choice?",
+      "code": "await sut.PlaceOrderAsync(cart);\nawait email.Received(1).SendAsync(Arg.Is<Email>(e => e.To == \"ann@example.com\"));",
+      "lang": "cs",
+      "choices": [
+        "When the call itself is the outcome, and there is no state you could inspect",
+        "Always, because verifying every collaborator call gives the strongest tests",
+        "When the collaborator is a repository whose saved rows you could query",
+        "Never: good tests assert only on return values, not on calls to collaborators"
+      ],
+      "answer": 0,
+      "why": "Sending an email is a side effect at the edge of the system, so \"it was called once with this recipient\" is the behaviour. Where you can check resulting state, such as rows in a repository, assert on that instead: interaction checks couple tests to implementation and break on harmless refactors. Verifying everything makes a suite brittle.",
+      "tags": ["mocking"],
+      "level": 2,
+      "asked": "Tests judgement about brittle tests, which matters more than knowing the Received syntax."
+    },
+    {
+      "id": "td-009",
+      "q": "Why do tests fake the handler like this instead of substituting `HttpClient` itself?",
+      "code": "class StubHandler(HttpResponseMessage response) : HttpMessageHandler\n{\n    protected override Task<HttpResponseMessage> SendAsync(\n        HttpRequestMessage request, CancellationToken ct) => Task.FromResult(response);\n}",
+      "lang": "cs",
+      "choices": [
+        "HttpClient is sealed, so no mocking library is able to subclass it",
+        "Substituting HttpClient only covers GET, while the handler covers all verbs",
+        "A substituted HttpClient still looks up DNS for BaseAddress on each call",
+        "GetAsync and friends are not virtual, and every call ends in the handler"
+      ],
+      "answer": 3,
+      "why": "The convenience methods on HttpClient cannot be intercepted, but every request passes through the handler's `SendAsync`, so replacing the handler controls the whole pipeline. Pass `new HttpClient(new StubHandler(...))` to the code under test, or register the handler with `AddHttpClient(...).ConfigurePrimaryHttpMessageHandler`. HttpClient is not sealed.",
+      "tags": ["mocking"],
+      "level": 3,
+      "asked": "Every service calls another API; the interviewer wants to see you can test that without a network."
+    },
+    {
+      "id": "td-010",
+      "q": "In a .NET 8 app with top-level statements, why do test projects often add `public partial class Program { }`?",
+      "choices": [
+        "The compiler-generated Program class is internal, so tests cannot name it",
+        "WebApplicationFactory calls a Main method, and a top-level program has none",
+        "It marks Program as the entry point, which top-level statements do not do",
+        "It registers the app's services, which the factory cannot discover otherwise"
+      ],
+      "answer": 0,
+      "why": "Top-level statements compile into an internal `Program` class, so `WebApplicationFactory<Program>` in another assembly does not compile. The empty partial declaration makes it public; `InternalsVisibleTo` is the alternative. Newer SDKs can generate the declaration for you, but the explicit line is harmless and still common.",
+      "tags": ["integration"],
+      "level": 1,
+      "asked": "Everyone hits this on their first integration test; knowing why beats knowing the incantation."
+    },
+    {
+      "id": "td-011",
+      "q": "Why does this test use `ConfigureTestServices` rather than `ConfigureServices`?",
+      "code": "var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>\n    b.ConfigureTestServices(s =>\n    {\n        s.RemoveAll<IEmailSender>();\n        s.AddSingleton<IEmailSender, FakeEmailSender>();\n    }));",
+      "lang": "cs",
+      "choices": [
+        "It runs before Program.cs, so the app sees the fake first and skips its own",
+        "It runs after the app's own registrations, so the fake replaces the real one",
+        "It is the only hook that works with minimal APIs rather than a Startup class",
+        "It gives each test its own container, so registrations never leak between tests"
+      ],
+      "answer": 1,
+      "why": "`ConfigureTestServices` callbacks run after the application has registered its services, so your registration wins. `ConfigureServices` on the test builder can run before the app's own, which then overwrites the fake. `RemoveAll` makes the replacement explicit. The container is per factory, not per test.",
+      "tags": ["integration"],
+      "level": 2,
+      "asked": "Checks you have actually swapped a dependency in an integration test and know why the obvious method sometimes does not work."
+    },
+    {
+      "id": "td-012",
+      "q": "Registered as the default scheme in the test host, what does this handler let integration tests do?",
+      "code": "class TestAuth(IOptionsMonitor<AuthenticationSchemeOptions> o, ILoggerFactory l, UrlEncoder e)\n    : AuthenticationHandler<AuthenticationSchemeOptions>(o, l, e)\n{\n    protected override Task<AuthenticateResult> HandleAuthenticateAsync() =>\n        Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(\n            new ClaimsPrincipal(new ClaimsIdentity([new Claim(\"sub\", \"42\")], \"Test\")), \"Test\")));\n}",
+      "lang": "cs",
+      "choices": [
+        "Skip authorisation entirely, so that every endpoint allows every request",
+        "Validate real JWTs offline, using the signing key found in appsettings.json",
+        "Call [Authorize] endpoints as a known user without issuing any real tokens",
+        "Test the login page, because the handler renders a fake sign-in form"
+      ],
+      "answer": 2,
+      "why": "The handler authenticates every request as user 42 with the claims you give it, so tests exercise real endpoints without an identity provider. Authorisation still runs: policies, roles and resource checks are evaluated against that principal, which is what lets you test them. Varying the claims per test (for example, from a request header) covers different users.",
+      "tags": ["integration", "auth"],
+      "level": 2,
+      "asked": "Most real APIs are authenticated, so an integration suite without this pattern tests very little."
+    },
+    {
+      "id": "td-013",
+      "q": "You want an integration test proving that `/admin` rejects signed-in users who lack the Admin role. Which test is right?",
+      "choices": [
+        "Send the request with no credentials at all, and assert 403 Forbidden",
+        "Sign in through the test handler without the role, and assert 401 Unauthorized",
+        "Remove the Admin policy in ConfigureTestServices, and assert 200 OK",
+        "Sign in through the test handler without the role, and assert 403 Forbidden"
+      ],
+      "answer": 3,
+      "why": "An authenticated user who fails a policy is forbidden (403); an anonymous request is challenged (401). A test with no credentials proves authentication, not the role check. Removing the policy tests nothing. Pair it with a test that signs in with the role and gets 200, so the policy is proven in both directions.",
+      "tags": ["integration", "auth"],
+      "level": 2,
+      "asked": "Authorisation bugs are security bugs; interviewers like candidates who test the negative path."
+    },
+    {
+      "id": "td-014",
+      "q": "Integration tests use SQLite in-memory, but production runs Postgres. What does switching to Testcontainers catch?",
+      "choices": [
+        "Nothing about SQL behaviour; it only makes the suite run faster than SQLite",
+        "Race conditions between tests, because each test gets its own Docker host",
+        "Provider differences: real SQL translation, Postgres types and collations",
+        "Network latency, because containers reproduce production's real round trips"
+      ],
+      "answer": 2,
+      "why": "Testcontainers starts the same database engine you run in production, in Docker, from test code, so EF translation, column types, case sensitivity, JSON columns and constraints behave as they will live. SQLite differs on all of those. It is slower to start than SQLite, which is why the container is usually shared through a fixture.",
+      "tags": ["integration"],
+      "level": 2,
+      "asked": "Shows you know why \"tests pass, prod fails\" happens with substitute databases."
+    },
+    {
+      "id": "td-015",
+      "q": "Integration tests share one Postgres container. How do you keep them independent without restarting it?",
+      "choices": [
+        "Disable parallelism, because tests that run one at a time cannot affect each other",
+        "Rely on xUnit creating a new test class instance, which clears the database too",
+        "Reset the data between tests, with a tool such as Respawn or a rolled-back transaction",
+        "Use AsNoTracking in every test, so that no test ever writes rows to the database"
+      ],
+      "answer": 2,
+      "why": "Running tests one at a time removes races but not leftover rows: a test that counts orders still sees the previous test's data. Respawn deletes rows in dependency order quickly; wrapping each test in a transaction you never commit also works when the code under test uses the same connection. A new class instance only resets C# fields.",
+      "tags": ["integration"],
+      "level": 3,
+      "asked": "Order-dependent tests are the main source of flaky suites; a strong answer names a concrete reset strategy."
+    },
+    {
+      "id": "td-016",
+      "q": "Besides the current time, what does injecting `TimeProvider` (.NET 8+) let a test control?",
+      "code": "var time = new FakeTimeProvider(DateTimeOffset.Parse(\"2026-01-01T00:00Z\"));\nvar sut = new ReminderService(time);\ntime.Advance(TimeSpan.FromHours(25));",
+      "lang": "cs",
+      "choices": [
+        "The process-wide time zone, because TimeProvider sets it for every thread",
+        "Timers and delays created through it, which Advance fires without waiting",
+        "The operating system clock of the test machine, via a call from the fake",
+        "Thread scheduling, so every async continuation runs in a fixed order"
+      ],
+      "answer": 1,
+      "why": "TimeProvider also creates timers, and APIs such as `Task.Delay`, `PeriodicTimer` and `CancellationTokenSource` accept it. With FakeTimeProvider, `Advance` moves the clock and fires any timers now due, so a 24-hour reminder is tested in milliseconds. It touches nothing outside the objects that use it. That is what it adds over a hand-rolled `IClock`.",
+      "tags": ["design", "time"],
+      "level": 3,
+      "asked": "Checks you know the built-in abstraction and its timer support rather than writing your own clock interface."
+    },
+    {
+      "id": "td-017",
+      "q": "Services take a `TimeProvider` in their constructors. What do you register in Program.cs?",
+      "choices": [
+        "`new FakeTimeProvider()`, which defaults to the real current time",
+        "A new TimeProvider subclass per request, so each one sees fresh time",
+        "Nothing: the host already injects `DateTime.UtcNow` as a provider",
+        "`TimeProvider.System`, the built-in instance that reads the real clock"
+      ],
+      "answer": 3,
+      "why": "`services.AddSingleton(TimeProvider.System)` gives production the real clock, and tests pass a FakeTimeProvider instead. FakeTimeProvider starts at a fixed moment and only moves when you advance it, which is exactly what you do not want in production. Register it explicitly rather than assuming the host did: a missing registration fails at resolution, not at build.",
+      "tags": ["design", "time"],
+      "level": 1,
+      "asked": "A quick check that you know the .NET 8 idiom end to end, not only in the test project."
+    },
+    {
+      "id": "td-018",
+      "q": "In xUnit v3, what happens with this test?",
+      "code": "[Fact]\npublic async void Saves_order()\n{\n    await sut.SaveAsync(order);\n    Assert.True(repo.Saved);\n}",
+      "lang": "cs",
+      "choices": [
+        "It works, since xUnit awaits an async void test just like any other test",
+        "It always passes, because the assert runs before SaveAsync has finished",
+        "It fails: async void tests are not supported, so it must return a Task",
+        "It does not compile, because async test methods need [AsyncFact] instead"
+      ],
+      "answer": 2,
+      "why": "A test runner cannot await `async void`, so exceptions escape its control. xUnit v2 papered over this with a special synchronisation context; v3 rejects async void tests outright. Return `Task` (or `ValueTask`) and the runner awaits the method properly. There is no `[AsyncFact]`: `[Fact]` handles async methods.",
+      "tags": ["design", "xunit"],
+      "level": 1,
+      "asked": "An async void habit in tests usually means async void elsewhere; interviewers use it as a quick smell test."
+    },
+    {
+      "id": "td-019",
+      "q": "What does an assertion library such as Shouldly mainly add over xUnit's `Assert`?",
+      "code": "order.Total.ShouldBe(42m);\n// versus\nAssert.Equal(42m, order.Total);",
+      "lang": "cs",
+      "choices": [
+        "Failure messages that name the expression: \"order.Total should be 42 but was 40\"",
+        "Faster test runs, because the assertions are compiled to IL at build time",
+        "Assertions that also work in production code, outside of any test method",
+        "Automatic retries of a failing assertion, which smooth out flaky tests"
+      ],
+      "answer": 0,
+      "why": "The value is readability: a fluent assertion reads like the requirement, and its failure message tells you which expression was wrong, so a failing CI run is diagnosable without a debugger. It changes nothing about speed or behaviour. Pick one style per codebase; mixing three assertion libraries is its own smell.",
+      "tags": ["design"],
+      "level": 1,
+      "asked": "Mostly a conversation opener about what makes a test failure easy to diagnose."
+    },
+    {
+      "id": "td-020",
+      "q": "When does a snapshot or approval test (for example with Verify) earn its keep?",
+      "choices": [
+        "Replacing unit tests for business rules, because one snapshot covers every branch",
+        "Speeding up slow integration tests, because the snapshot caches their results",
+        "Checking a large, stable output such as a JSON response, reviewed as a diff",
+        "Checking one boolean result, where a snapshot file reads better than an assert"
+      ],
+      "answer": 2,
+      "why": "Snapshot tests store an approved copy of a big output and fail on any difference, which you then review and accept or reject. That suits API contracts, generated documents and serialisation, where hand-written asserts would be long and incomplete. They do not explain intent, so rules still need targeted tests, and a small value is clearer as a plain assert.",
+      "tags": ["approval"],
+      "level": 2,
+      "asked": "Tests whether you know a tool beyond Assert and, more importantly, its limits."
+    }
+  ]
+}

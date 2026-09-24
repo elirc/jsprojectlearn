@@ -1,0 +1,8 @@
+# One line ending in the repo, whatever the checkout OS. Windows editors cope
+# with LF; mixed endings break byte-for-byte test fixtures and noisy diffs.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

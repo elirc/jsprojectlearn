@@ -9,6 +9,18 @@
       name="description"
       content="An interactive path from your first line of JavaScript to a hireable mid-level CRUD web developer on JS, TypeScript, React, Node, C# and .NET."
     />
+    <script>
+      // Set the theme before first paint so a light-theme user never sees a
+      // dark frame. Same rule as useTheme(): a stored choice, else the OS.
+      (function () {
+        var t;
+        try { t = localStorage.getItem('devpath.theme'); } catch (e) {}
+        if (t !== 'light' && t !== 'dark') {
+          t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.dataset.theme = t;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

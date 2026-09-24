@@ -8,13 +8,13 @@
       "id": "dn-001",
       "q": "What is the difference between Singleton, Scoped and Transient?",
       "choices": [
-        "Singleton: one for the app's lifetime. Scoped: one per request. Transient: a new one every time it is resolved",
-        "They control thread safety",
-        "They control how long an object stays in memory before GC",
-        "Singleton is per request, Scoped is per application"
+        "Singleton: one per request. Scoped: one per application. Transient: one per calling thread",
+        "Singleton: one for the app's lifetime. Scoped: one per request. Transient: new on each resolve",
+        "They set thread safety: Singleton is locked, Scoped is per thread, Transient is unsynchronised",
+        "They set GC behaviour: Singleton is never collected, Scoped and Transient are collected early"
       ],
-      "answer": 0,
-      "why": "DbContext is scoped because it tracks changes for one unit of work. Stateless helpers can be singletons. Transient is the safe default for cheap objects with no shared state.",
+      "answer": 1,
+      "why": "Lifetimes decide how many instances the container creates, not how they are locked or collected. DbContext is scoped because it tracks changes for one unit of work. Stateless helpers can be singletons, which must then be thread-safe on their own. Transient suits cheap objects with no shared state.",
       "tags": ["di"],
       "level": 1,
       "asked": "The single most asked .NET interview question. Know it cold."
@@ -23,13 +23,13 @@
       "id": "dn-002",
       "q": "What is a captive dependency?",
       "choices": [
-        "A longer-lived service holding a shorter-lived one — e.g. a singleton capturing a scoped DbContext",
-        "A circular dependency between two services",
-        "A dependency registered twice",
-        "A service resolved outside the container"
+        "Two services that depend on each other, so the container can never finish building either",
+        "A service registered twice with different lifetimes, so the last registration silently wins",
+        "A longer-lived service holding a shorter-lived one, such as a singleton capturing a DbContext",
+        "A dependency created with `new` inside a service, so the container cannot manage its lifetime"
       ],
-      "answer": 0,
-      "why": "The scoped object is captured on first resolution and then reused for the life of the singleton — so one DbContext is shared across every request, which is neither thread-safe nor correct. Inject IServiceScopeFactory and create a scope per unit of work.",
+      "answer": 2,
+      "why": "In Development, scope validation is on and the host throws at startup (\"Cannot consume scoped service from singleton\"). In Production validation is off by default, so the scoped object is silently captured on first resolution and shared by every request, which is neither thread-safe nor correct. Inject IServiceScopeFactory and create a scope per unit of work.",
       "tags": ["di"],
       "level": 3,
       "asked": "The natural depth follow-up to the lifetimes question, and it separates real experience from memorisation."
@@ -38,13 +38,13 @@
       "id": "dn-003",
       "q": "Why does the order of `app.Use...` calls matter?",
       "choices": [
-        "Middleware forms an ordered pipeline; each component can short-circuit or pass to the next",
-        "It does not matter — ASP.NET Core sorts them",
-        "Only the first and last matter",
-        "Order matters only for authentication"
+        "It does not: ASP.NET Core sorts the built-in middleware into a safe order at startup",
+        "Middleware forms an ordered pipeline; each one can short-circuit or pass to the next",
+        "Only the first and last calls matter, because the middle ones run in parallel",
+        "Order matters only for authentication; every other middleware can go anywhere"
       ],
-      "answer": 0,
-      "why": "UseAuthentication must come before UseAuthorization, both must come before endpoints, and UseCors must come before anything that would short-circuit the preflight. Wrong order usually fails silently rather than crashing.",
+      "answer": 1,
+      "why": "Each middleware wraps the ones registered after it. UseAuthentication must come before UseAuthorization, both before the endpoints, and UseCors before anything that would short-circuit a preflight. Nothing re-sorts them for you, and a wrong order usually fails silently rather than crashing.",
       "tags": ["middleware"],
       "level": 1,
       "asked": "The second most asked .NET question. Expect to be asked to place a few in order."
@@ -53,312 +53,606 @@
       "id": "dn-004",
       "q": "How does a middleware short-circuit the pipeline?",
       "choices": [
+        "By throwing an OperationCanceledException, which stops the pipeline cleanly",
+        "By returning false from InvokeAsync, which tells the host to stop there",
         "By writing a response and not calling `await next(context)`",
-        "By throwing an exception",
-        "By returning false",
-        "By calling context.Abort()"
+        "By calling `context.Abort()`, which completes the request normally"
       ],
-      "answer": 0,
-      "why": "That is how authorisation returns 401 without ever reaching your endpoint, and how a caching middleware serves a hit. Calling next after writing the response is a common bug — headers are already sent.",
+      "answer": 2,
+      "why": "Not calling `next` means nothing later in the pipeline runs. That is how authorisation returns 401 without reaching your endpoint and how caching serves a hit. `Abort()` resets the connection rather than sending a response, and a thrown exception becomes an error. Calling next after writing the response is a common bug: the headers are already sent.",
       "tags": ["middleware"],
-      "level": 2
+      "level": 2,
+      "asked": "Tests whether you could write a middleware yourself, not only configure the built-in ones."
     },
     {
       "id": "dn-005",
-      "q": "Where does ASP.NET Core read configuration from, and in what order?",
+      "q": "With the default WebApplication builder, where is configuration read from, and in what order?",
       "choices": [
-        "appsettings.json, then appsettings.{Environment}.json, then user secrets, then environment variables, then command line — later wins",
-        "Only appsettings.json",
-        "Environment variables first, then files",
-        "In alphabetical order of provider"
+        "Environment variables, then appsettings.{Environment}.json, then appsettings.json; first found wins",
+        "appsettings.json only, unless you call AddEnvironmentVariables yourself, and then variables win",
+        "appsettings.json, appsettings.{Environment}.json, user secrets (Development only), env vars, CLI",
+        "Command line, then environment variables, then the JSON files; a key set earlier cannot change"
       ],
-      "answer": 0,
-      "why": "Later providers override earlier ones, which is exactly what lets a container override a file value with an environment variable. Nested keys use `Section__Key` in environment variables.",
+      "answer": 2,
+      "why": "Later providers override earlier ones, which is what lets a container override a file value with an environment variable, and the command line override both. User secrets are added only in Development. The default builder already adds environment variables. Nested keys use `Section__Key` in environment variables.",
       "tags": ["configuration"],
-      "level": 2
+      "level": 2,
+      "asked": "Explains \"why is production using the wrong connection string\", which is a real debugging question."
     },
     {
       "id": "dn-006",
       "q": "What is the difference between `IOptions<T>`, `IOptionsSnapshot<T>` and `IOptionsMonitor<T>`?",
       "choices": [
-        "IOptions is a singleton read once; IOptionsSnapshot is scoped and re-reads per request; IOptionsMonitor supports change notifications",
-        "They are equivalent",
-        "IOptions is for secrets only",
-        "IOptionsMonitor is obsolete"
+        "IOptions re-reads on each access; IOptionsSnapshot caches for the app's life; IOptionsMonitor is for logs",
+        "IOptions is a singleton read once; IOptionsSnapshot is re-read per request; IOptionsMonitor notifies changes",
+        "IOptions is for secrets; IOptionsSnapshot is for appsettings.json; IOptionsMonitor is for environment variables",
+        "All three behave the same at runtime; they differ only in the package and namespace they come from"
       ],
-      "answer": 0,
-      "why": "If a config change should take effect without a restart, IOptions will not see it. Note IOptionsSnapshot cannot be injected into a singleton — that is a captive dependency.",
+      "answer": 1,
+      "why": "If a config change should take effect without a restart, IOptions will not see it. IOptionsSnapshot is scoped, so it cannot be injected into a singleton (a captive dependency); IOptionsMonitor is a singleton with `CurrentValue` and `OnChange`, which is the one to use there. None of them is tied to a configuration source.",
       "tags": ["configuration", "di"],
-      "level": 3
+      "level": 2,
+      "asked": "A standard mid-level .NET question; the singleton follow-up shows whether you have used it."
     },
     {
       "id": "dn-007",
-      "q": "Where do model validation errors surface in a controller-based API?",
+      "q": "In a controller marked `[ApiController]`, what happens when the request body fails validation?",
       "choices": [
-        "`[ApiController]` automatically returns a 400 with a ValidationProblemDetails body before your action runs",
-        "You must check ModelState.IsValid manually in every action",
-        "They throw an exception",
-        "They are silently ignored"
+        "Nothing automatic: the action must check ModelState.IsValid itself before using the input",
+        "The model binder throws, and the developer exception page shows the validation errors",
+        "An automatic 400 with a ValidationProblemDetails body is returned before the action runs",
+        "The invalid fields are reset to defaults and the action runs as if the input were valid"
       ],
-      "answer": 0,
-      "why": "With `[ApiController]` the automatic 400 happens for you. Without the attribute — or in a minimal API — you check yourself. Knowing which applies is what the question is testing.",
-      "tags": ["validation", "model-binding"],
-      "level": 2
+      "answer": 2,
+      "why": "`[ApiController]` adds a filter that short-circuits invalid model state with a 400 and a ValidationProblemDetails body. Without the attribute, or in a minimal API without the opt-in validation added in .NET 10, you check yourself, which is what the first choice describes. Knowing which applies is what the question is testing.",
+      "tags": ["model-binding"],
+      "level": 2,
+      "asked": "Checks whether you know what the framework does for you and where it stops."
     },
     {
       "id": "dn-008",
       "q": "What is model binding?",
       "choices": [
-        "Mapping route values, query string, headers and body onto action parameters and their types",
-        "Binding a view to a model",
-        "Mapping an entity to a database table",
-        "Serialising the response"
+        "Binding a Razor view to a model so that edits in the view update the model object",
+        "Mapping an entity class to a database table, including its columns and relations",
+        "Serialising the action's return value into JSON in the format the client asked for",
+        "Mapping route values, query string, headers and body onto action parameters"
       ],
-      "answer": 0,
-      "why": "The bug it causes: a complex type binds from the body by default, a simple type from the route or query. Getting a null parameter usually means the source is not where the binder looked — hence `[FromBody]`, `[FromQuery]`.",
+      "answer": 3,
+      "why": "The bug it causes: a complex type binds from the body by default, a simple type from the route or query. Getting a null parameter usually means the value was not where the binder looked, hence `[FromBody]`, `[FromQuery]` and friends. Table mapping is EF Core, and writing the response is output formatting.",
       "tags": ["model-binding"],
-      "level": 2
+      "level": 1,
+      "asked": "Definitional, but the null-parameter bug is the practical follow-up."
     },
     {
       "id": "dn-009",
       "q": "What is ProblemDetails?",
       "choices": [
-        "The RFC 7807 standard error body — type, title, status, detail, and optional field errors",
-        "A logging format",
-        "An exception base class",
-        "A health check response"
+        "A structured logging format that records the exception type, message and stack trace",
+        "The standard error body from RFC 9457 (formerly 7807): type, title, status, detail",
+        "The base exception class that ASP.NET Core maps to HTTP status codes for you",
+        "The JSON body a health check endpoint returns when a dependency is unhealthy"
       ],
-      "answer": 0,
-      "why": "Using the standard shape means clients and tooling can parse errors without bespoke code. Wire it up in one exception-handling middleware rather than try/catch in every action.",
+      "answer": 1,
+      "why": "Using the standard shape means clients and tooling can parse errors without bespoke code. `AddProblemDetails()` plus the exception handler middleware produce it for unhandled errors, rather than a try/catch in every action. It is a response format, not an exception type or a log format.",
       "tags": ["errors"],
-      "level": 2
+      "level": 1,
+      "asked": "Shows you design consistent error responses instead of ad-hoc strings."
     },
     {
       "id": "dn-010",
       "q": "What does EF Core's change tracker do?",
       "choices": [
-        "Records the original values of loaded entities so SaveChanges can generate the right UPDATE statements",
-        "Logs every query for auditing",
-        "Caches query results between requests",
-        "Tracks schema migrations"
+        "Logs every query the context runs, so that data access can be audited later",
+        "Caches query results between requests, so repeated reads skip the database",
+        "Records which migrations have been applied, so the schema always matches the model",
+        "Records original values of loaded entities, so SaveChanges can write UPDATEs"
       ],
-      "answer": 0,
-      "why": "It is why you can mutate an entity and call SaveChanges with no explicit update. For read-only queries `AsNoTracking()` skips the bookkeeping and is meaningfully faster on large result sets.",
+      "answer": 3,
+      "why": "It is why you can change a loaded entity and call SaveChanges with no explicit update: EF compares current values with the snapshot. It does not cache across requests (each context is short-lived), and migrations history lives in a table. For read-only queries `AsNoTracking()` skips the bookkeeping.",
       "tags": ["ef-core"],
-      "level": 2,
-      "asked": "The follow-up is always AsNoTracking — an easy, concrete performance win to mention."
+      "level": 1,
+      "asked": "The follow-up is always AsNoTracking, an easy, concrete performance win to mention."
     },
     {
       "id": "dn-011",
-      "q": "What causes an N+1 in EF Core, and how do you fix it?",
+      "q": "What typically causes an N+1 query pattern in EF Core?",
       "choices": [
-        "Accessing a navigation property per row — fix with Include, a projection, or split queries",
-        "Using async methods",
-        "Calling SaveChanges too often",
-        "Registering DbContext as transient"
+        "Reading a navigation property with default settings, which loads it once per row",
+        "Calling SaveChanges in a loop, which re-runs the original query for each entity",
+        "Lazy-loading proxies being enabled, or a query issued inside a loop over results",
+        "Registering the DbContext as transient, so each entity gets its own query"
       ],
-      "answer": 0,
-      "why": "`Include` eagerly joins. A `Select` projection into a DTO is often better — it fetches only the columns you need. Log the generated SQL in development so you can actually see it happening.",
-      "tags": ["ef-core", "performance"],
-      "level": 2
+      "answer": 2,
+      "why": "Lazy loading is off by default in EF Core: with default settings an unloaded navigation is just null (a NullReferenceException, not N+1). The extra queries appear when proxies are switched on, or when your code queries inside a loop. Fix it with `Include`, a `Select` projection or a split query, and log the generated SQL in development to see it.",
+      "tags": ["ef-core"],
+      "level": 2,
+      "asked": "Tests whether you know EF Core defaults, not only the N+1 definition."
     },
     {
       "id": "dn-012",
       "q": "Why is DbContext registered as Scoped?",
       "choices": [
-        "It is not thread-safe and represents one unit of work per request",
-        "Because it is expensive to construct",
-        "To keep the connection open across requests",
-        "Because EF Core requires it for migrations"
+        "It is expensive to construct, so one per request is the cheapest safe option",
+        "It is not thread-safe and represents one unit of work, so one per request fits",
+        "It keeps its database connection open for the whole request to avoid reconnecting",
+        "EF Core migrations require it and fail at design time for other lifetimes"
       ],
-      "answer": 0,
-      "why": "Two concurrent requests sharing a context would corrupt the change tracker. For background work you create your own scope — you cannot inject the request-scoped one into a singleton.",
+      "answer": 1,
+      "why": "Two concurrent requests sharing a context would corrupt the change tracker. Construction is cheap (and `AddDbContextPool` reuses instances when it matters), and connections are opened per operation and pooled by ADO.NET. For background work you create your own scope or context rather than borrowing the request's.",
       "tags": ["ef-core", "di"],
-      "level": 2
+      "level": 2,
+      "asked": "Connects DI lifetimes to a concrete type; the background-work follow-up is common."
     },
     {
       "id": "dn-013",
       "q": "What is a migration in EF Core?",
       "choices": [
-        "A generated, checked-in C# class describing a schema change, applied in order to bring a database up to date",
-        "A data import script",
-        "A change to the model classes only",
-        "A backup of the database"
+        "A generated C# class describing a schema change, checked in and applied in order",
+        "A data import script that copies rows from one environment's database to another",
+        "A change to the model classes that EF applies to the database on the next start",
+        "A snapshot backup of the database taken before a deploy, used for rolling back"
       ],
       "answer": 0,
-      "why": "`dotnet ef migrations add` scaffolds it from model changes; `database update` applies it. In production, applying migrations automatically at startup is convenient and risky — a failed migration takes the app down and multiple instances race.",
-      "tags": ["ef-core", "migrations"],
-      "level": 2
+      "why": "`dotnet ef migrations add` scaffolds it from model changes and `database update` applies it. Model changes alone do nothing to the database until a migration is generated and applied. In production, migrating at startup is convenient and risky: a failed migration takes the app down and multiple instances race.",
+      "tags": ["ef-core"],
+      "level": 2,
+      "asked": "Basic EF workflow; the production-apply follow-up is where experience shows."
     },
     {
       "id": "dn-014",
       "q": "What is the difference between a minimal API and a controller-based API?",
       "choices": [
-        "Minimal APIs map endpoints directly with less ceremony; controllers give conventions, filters and attribute routing",
-        "Minimal APIs cannot use dependency injection",
-        "Controllers are deprecated",
-        "Minimal APIs cannot return JSON"
+        "Minimal APIs cannot use dependency injection, so they suit only stateless endpoints",
+        "Controllers are deprecated since .NET 8 and remain only for backwards compatibility",
+        "Minimal APIs cannot return JSON directly and need a controller to serialise it",
+        "Minimal APIs map handlers directly; controllers add conventions and filters"
       ],
-      "answer": 0,
-      "why": "Both are first-class. Minimal APIs suit small services and are faster to read; controllers earn their keep on large surfaces with cross-cutting filters and model binding conventions.",
+      "answer": 3,
+      "why": "Both are first-class and share routing, DI, auth and model binding. Minimal APIs suit small services and read quickly; controllers earn their keep on large surfaces with cross-cutting filters and conventions. Minimal API handlers take services as parameters and return JSON by default.",
       "tags": ["aspnet"],
-      "level": 2
+      "level": 1,
+      "asked": "Checks you are current; \"controllers are legacy\" and \"minimal APIs are toys\" are both wrong."
     },
     {
       "id": "dn-015",
-      "q": "How should long-running work be handled in a request?",
+      "q": "How should long-running work triggered by a request be handled?",
       "choices": [
-        "Queue it and return 202 Accepted with a way to check status; process it in a background service",
-        "Await it in the controller and increase the timeout",
-        "Use async void so the request returns immediately",
-        "Run it on a new Thread"
+        "Await it in the action, and raise the server's request timeout far enough to cover it",
+        "Start it with async void so the request returns while the work continues",
+        "Run it on a new Thread so it outlives the request and its pipeline",
+        "Queue it, return 202 Accepted with a status URL, and process it in the background"
       ],
-      "answer": 0,
-      "why": "Holding a request open ties up resources and dies with the deploy. A hosted service reading from a queue survives restarts; fire-and-forget on a thread pool thread does not.",
-      "tags": ["background-work", "design"],
-      "level": 2
+      "answer": 3,
+      "why": "Holding a request open ties up resources, hits proxy timeouts and dies with the deploy. A hosted service reading from a durable queue survives restarts. Async void and raw threads are fire-and-forget: their failures go unobserved and the work is lost when the process stops.",
+      "tags": ["background-work"],
+      "level": 2,
+      "asked": "A design question disguised as a .NET one; the strong answer mentions durability."
     },
     {
       "id": "dn-016",
       "q": "What does `IHostedService` / `BackgroundService` give you?",
       "choices": [
-        "A long-running task with proper startup and graceful shutdown hooks, tied to the host lifetime",
-        "A cron scheduler",
-        "A message queue implementation",
-        "Automatic retries"
+        "A cron-style scheduler that runs a job once across all instances at a set time",
+        "A long-running task with startup and graceful-shutdown hooks tied to the host",
+        "A durable message queue that keeps pending work safe across process restarts",
+        "Automatic retries with exponential backoff for work that fails transiently"
       ],
-      "answer": 0,
-      "why": "It gets a CancellationToken on shutdown so it can finish cleanly. It is per instance though — scale to three replicas and your 'nightly job' runs three times unless you add a distributed lock.",
+      "answer": 1,
+      "why": "It gets a CancellationToken on shutdown so it can finish cleanly. It is per instance, though: scale to three replicas and your \"nightly job\" runs three times unless you add a distributed lock or a real scheduler. It has no queue, schedule or retry logic of its own.",
       "tags": ["background-work"],
       "level": 3,
-      "asked": "The 'it runs on every instance' catch is the part that shows production experience."
+      "asked": "The \"it runs on every instance\" catch is the part that shows production experience."
     },
     {
       "id": "dn-017",
-      "q": "What is the difference between authentication and authorization in ASP.NET Core?",
+      "q": "A request to `/me` carries a valid bearer token. What response does it get?",
+      "code": "app.UseAuthorization();\napp.UseAuthentication();\napp.MapGet(\"/me\", (ClaimsPrincipal user) => user.Identity!.Name)\n   .RequireAuthorization();",
+      "lang": "cs",
       "choices": [
-        "Authentication establishes who the caller is; authorization decides what they may do",
-        "They are the same middleware",
-        "Authorization runs first",
-        "Authentication is only for cookies"
+        "200, because endpoint routing puts the two middlewares in the right order",
+        "401, because authorisation runs while the user is still anonymous",
+        "403, because the user is authenticated too late to pass the policy",
+        "None: the host refuses to start with the middlewares in this order"
       ],
-      "answer": 0,
-      "why": "UseAuthentication populates HttpContext.User from a cookie or token. UseAuthorization then evaluates policies and `[Authorize]` attributes. Registering them in the wrong order means every user looks anonymous.",
+      "answer": 1,
+      "why": "UseAuthentication is what reads the token and fills `HttpContext.User`. Placed after UseAuthorization, the policy check sees an anonymous user and challenges, so every protected endpoint returns 401 even with a valid token. Nothing re-orders them and nothing fails at startup, which is why this bug survives until the first real request.",
       "tags": ["auth", "middleware"],
-      "level": 1
+      "level": 2,
+      "asked": "A classic misconfiguration; recognising the symptom is more useful than reciting the AuthN/AuthZ definition."
     },
     {
       "id": "dn-018",
       "q": "What is a claims-based identity?",
       "choices": [
-        "The user is represented as a set of claims (key/value assertions) that policies evaluate",
-        "A role name stored in the database",
-        "A JWT signature",
-        "The username from the login form"
+        "A role name stored in the database and checked by `[Authorize(Roles)]` attributes",
+        "The signature of the JWT, which policies compare against the signing key",
+        "The user as a set of claims (key/value statements) that policies evaluate",
+        "The username typed into the login form, kept in session state per request"
       ],
-      "answer": 0,
-      "why": "Roles are just one kind of claim. Policy-based authorization (`RequireClaim`, `RequireAssertion`) scales better than scattering role names through attributes.",
+      "answer": 2,
+      "why": "A ClaimsPrincipal carries claims such as sub, email and role, issued by whatever authenticated the user. Roles are just one kind of claim. Policy-based authorization (`RequireClaim`, `RequireAssertion`, custom requirements) scales better than scattering role names through attributes.",
       "tags": ["auth"],
-      "level": 2
+      "level": 2,
+      "asked": "Leads into policies, which is how real apps express \"only the owner or an admin\"."
     },
     {
       "id": "dn-019",
       "q": "Why is `IMemoryCache` not enough once you scale out?",
       "choices": [
-        "Each instance has its own copy, so entries are inconsistent and invalidation does not propagate",
-        "It has a hard size limit",
-        "It is not thread-safe",
-        "It cannot store objects"
+        "It has a fixed limit of 100 MB per process, which fills up quickly once traffic grows",
+        "It is not thread-safe, so concurrent requests across instances corrupt it",
+        "It can hold only strings, so every instance must serialise its objects",
+        "Each instance has its own copy, so entries diverge and eviction does not spread"
       ],
-      "answer": 0,
-      "why": "Three instances, three caches, three different answers — and evicting on one does nothing to the others. A distributed cache (Redis) gives one shared view at the cost of a network hop.",
-      "tags": ["caching", "scaling"],
-      "level": 2
+      "answer": 3,
+      "why": "Three instances, three caches, three possibly different answers, and evicting on one does nothing to the others. A distributed cache (Redis, or HybridCache in .NET 9 over one) gives a shared view at the cost of a network hop. IMemoryCache is thread-safe, stores objects and has no fixed size limit unless you set one.",
+      "tags": ["caching"],
+      "level": 2,
+      "asked": "Scaling questions start here; the invalidation part is what interviewers push on."
     },
     {
       "id": "dn-020",
       "q": "What does `WebApplicationFactory<T>` enable?",
       "choices": [
-        "Integration tests that boot the real app in memory and issue real HTTP requests, with services swappable",
-        "Load testing",
-        "Generating client SDKs",
-        "Running migrations in tests"
+        "Load tests that start many copies of the app and measure its throughput under traffic",
+        "Integration tests that boot the real app in memory and send it real requests",
+        "Generated client SDKs for the API, built from the endpoints the app maps",
+        "Migrations run against a fresh test database before each test class starts"
       ],
-      "answer": 0,
-      "why": "It tests routing, model binding, middleware, filters and serialisation together — everything a unit test on a controller method misses. Usually paired with an in-memory or containerised database.",
-      "tags": ["testing"],
-      "level": 2
+      "answer": 1,
+      "why": "It tests routing, model binding, middleware, filters and serialisation together, which a unit test on a handler misses, and lets you swap services. Pair it with a real database in a container (Testcontainers) or SQLite in-memory; Microsoft discourages the EF InMemory provider for this, because it behaves nothing like a relational database.",
+      "tags": ["aspnet"],
+      "level": 2,
+      "asked": "Shows you test the HTTP surface, not only classes in isolation."
     },
     {
       "id": "dn-021",
       "q": "How do you configure CORS correctly in ASP.NET Core?",
       "choices": [
-        "A named policy with explicit allowed origins, registered with UseCors before the endpoints",
-        "AllowAnyOrigin with AllowCredentials",
-        "Add the header manually in each controller",
-        "It is enabled by default"
+        "AllowAnyOrigin together with AllowCredentials, so every client can send cookies",
+        "An Access-Control-Allow-Origin header added by hand in each controller action",
+        "A named policy with explicit origins, applied with UseCors before the endpoints",
+        "Nothing: ASP.NET Core allows cross-origin requests by default for JSON endpoints"
       ],
-      "answer": 0,
-      "why": "AllowAnyOrigin together with AllowCredentials is invalid and the browser rejects it — credentials require an explicit origin. And UseCors placed after the endpoints never sees the preflight.",
-      "tags": ["cors", "middleware"],
-      "level": 2
+      "answer": 2,
+      "why": "Credentials require an explicit origin, so the CORS policy builder throws if you combine AllowAnyOrigin with AllowCredentials, before any browser gets involved. UseCors placed after the endpoints never sees the preflight. Hand-written headers miss preflight handling, and nothing is allowed cross-origin by default.",
+      "tags": ["middleware", "security"],
+      "level": 2,
+      "asked": "Every SPA-plus-API project hits CORS; the interviewer wants the server-side mechanics."
     },
     {
       "id": "dn-022",
       "q": "What does `services.AddHttpClient<T>()` solve?",
       "choices": [
-        "Socket exhaustion and stale DNS from manually constructing or statically holding HttpClient",
-        "Automatic retries only",
-        "JSON serialisation",
-        "Authentication headers"
+        "Retries on transient failures, which it adds to every client with no configuration",
+        "JSON serialisation of request and response bodies, which HttpClient cannot do on its own",
+        "Socket exhaustion and stale DNS from creating a client per call or keeping one forever",
+        "Authentication headers, which it copies from the incoming request to every call"
       ],
-      "answer": 0,
-      "why": "`new HttpClient()` per request leaks sockets in TIME_WAIT; one static instance never picks up DNS changes. The factory pools handlers and recycles them, and gives you a place to add Polly retry policies.",
-      "tags": ["http", "di"],
+      "answer": 2,
+      "why": "`new HttpClient()` per request leaks sockets in TIME_WAIT; a static instance with default settings never picks up DNS changes. The factory pools and recycles handlers and gives you a place to add resilience handlers. A static client with `SocketsHttpHandler.PooledConnectionLifetime` set is also a recommended pattern. Retries are opt-in.",
+      "tags": ["di"],
       "level": 3,
       "asked": "A well-known .NET gotcha that shows whether you have debugged a production networking issue."
     },
     {
       "id": "dn-023",
-      "q": "What is the difference between `Environment.IsDevelopment()` behaviour and production defaults?",
+      "q": "What changes when ASPNETCORE_ENVIRONMENT is Development instead of Production?",
       "choices": [
-        "Development shows the developer exception page with stack traces; production must not",
-        "Development disables dependency injection",
-        "Production disables logging",
-        "There is no difference"
+        "Development turns off DI scope validation and HTTPS, which Production always enables",
+        "Production turns off logging, so only Development writes any log output",
+        "Development shows the developer exception page with stack traces; Production must not",
+        "Nothing at runtime: the variable only picks which appsettings file you edit"
       ],
-      "answer": 0,
-      "why": "A stack trace tells an attacker your framework versions, file paths and sometimes connection strings. `ASPNETCORE_ENVIRONMENT` drives it, so getting that variable wrong in production is a real disclosure risk.",
+      "answer": 2,
+      "why": "The environment switches on the developer exception page, user secrets and DI scope validation, and selects `appsettings.{Environment}.json`. A stack trace tells an attacker your framework versions, file paths and sometimes connection strings, so getting this variable wrong in production is a real disclosure risk.",
       "tags": ["configuration", "security"],
-      "level": 2
+      "level": 1,
+      "asked": "Checks you know what a misconfigured environment variable exposes in production."
     },
     {
       "id": "dn-024",
       "q": "What is the recommended way to return a 404 from a minimal API endpoint?",
       "choices": [
-        "Return `Results.NotFound()` (or `TypedResults.NotFound()`) from the handler",
-        "Throw a NotFoundException",
-        "Set context.Response.StatusCode and return",
-        "Return null"
+        "Throw a KeyNotFoundException, which the framework maps to a 404 response for you",
+        "Return `Results.NotFound()` or `TypedResults.NotFound()` from the handler",
+        "Return null, which minimal APIs convert into a 404 Not Found response",
+        "Call `context.Abort()` so the client treats the resource as unavailable"
       ],
-      "answer": 0,
-      "why": "TypedResults additionally gives a strongly typed return you can assert on in tests and that feeds OpenAPI metadata correctly.",
+      "answer": 1,
+      "why": "An unhandled exception becomes a 500, not a 404, and a null return is serialised rather than turned into Not Found. `TypedResults` additionally gives a strongly typed return you can assert on in tests and that feeds OpenAPI metadata correctly. `Abort()` drops the connection.",
       "tags": ["aspnet"],
-      "level": 1
+      "level": 1,
+      "asked": "A quick check of minimal API idioms."
     },
     {
       "id": "dn-025",
       "q": "You add a field to an entity and the API stops returning existing rows correctly. Where do you look first?",
       "choices": [
+        "Whether the new field's service is registered correctly in the DI container",
         "Whether a migration was created and applied to that environment's database",
-        "The DI registration",
-        "The CORS policy",
-        "The JSON serialiser settings"
+        "Whether the CORS policy lets the new field through to the browser client",
+        "Whether the JSON serialiser settings still include properties that are null"
+      ],
+      "answer": 1,
+      "why": "Model and schema drift is the most common EF Core deployment failure: the code expects a column the database does not have. CORS never filters individual fields, and DI has nothing to do with entity properties. The general lesson: schema changes are deployments, and each environment has its own database state.",
+      "tags": ["ef-core"],
+      "level": 2,
+      "asked": "A realistic debugging prompt; the interviewer wants a hypothesis, not a guess."
+    },
+    {
+      "id": "dn-026",
+      "q": "What does `MapGroup` give you here?",
+      "code": "var orders = app.MapGroup(\"/api/orders\").RequireAuthorization();\norders.MapGet(\"/\", ListOrders);\norders.MapGet(\"/{id:int}\", GetOrder);",
+      "lang": "cs",
+      "choices": [
+        "A separate middleware pipeline that runs only for requests under /api/orders",
+        "The two endpoints share the /api/orders prefix and the authorisation requirement",
+        "A controller class generated at build time from the handlers mapped in the group",
+        "A shared concurrency limit, so only one request in the group runs at a time"
+      ],
+      "answer": 1,
+      "why": "A route group (.NET 7+) applies a prefix and conventions such as authorisation, filters, tags and rate-limit policies to every endpoint mapped on it. It is endpoint metadata, not a separate middleware branch; for that you would use `app.Map` or `UseWhen`. It keeps a minimal API organised without controllers.",
+      "tags": ["aspnet"],
+      "level": 1,
+      "asked": "The first thing people ask about minimal APIs is how to organise them; route groups are the answer."
+    },
+    {
+      "id": "dn-027",
+      "q": "What can a minimal API endpoint filter see that a middleware cannot?",
+      "choices": [
+        "The raw request body stream, before anything else in the whole app has read from it",
+        "Requests that matched no endpoint at all, such as those that end in 404",
+        "The response after it has been sent and the connection has been closed",
+        "The handler's bound arguments, such as the deserialised DTO, before it runs"
+      ],
+      "answer": 3,
+      "why": "Endpoint filters run after model binding, around one handler, so they can validate or transform the actual arguments. Middleware runs earlier on the raw HttpContext and sees every request, including ones that match no endpoint. Use middleware for cross-cutting HTTP concerns and filters for per-endpoint logic that needs the typed inputs.",
+      "tags": ["middleware"],
+      "level": 2,
+      "asked": "Checks you know the layers in the pipeline and pick the right one for validation or auditing."
+    },
+    {
+      "id": "dn-028",
+      "q": "What does `ValidateOnStart()` add to this registration?",
+      "code": "builder.Services.AddOptions<SmtpOptions>()\n    .BindConfiguration(\"Smtp\")\n    .ValidateDataAnnotations()\n    .ValidateOnStart();",
+      "lang": "cs",
+      "choices": [
+        "It re-validates the options on every request and rejects requests once they are invalid",
+        "It validates appsettings.json against a JSON schema as part of the build",
+        "An invalid or missing Smtp setting stops the app at startup, not on first use",
+        "It reloads the options automatically whenever the configuration file changes"
+      ],
+      "answer": 2,
+      "why": "Options are validated lazily by default, when something first reads them, which might be the first password-reset email hours after a deploy. `ValidateOnStart` runs the validation while the host starts, so a bad deploy fails immediately and visibly. It has nothing to do with reloading or per-request checks.",
+      "tags": ["configuration"],
+      "level": 2,
+      "asked": "Fail-fast configuration is a production-readiness signal interviewers like to hear."
+    },
+    {
+      "id": "dn-029",
+      "q": "Why prefer the second logging call?",
+      "code": "logger.LogInformation($\"Order {orderId} shipped to {customerId}\");\nlogger.LogInformation(\"Order {OrderId} shipped to {CustomerId}\", orderId, customerId);",
+      "lang": "cs",
+      "choices": [
+        "The first does not compile, because the Log methods reject interpolated strings",
+        "The second encrypts the values, so they cannot leak into plain-text log files",
+        "It keeps OrderId and CustomerId as queryable fields, and skips formatting when disabled",
+        "The first logs asynchronously on another thread, so it can reorder your log messages"
+      ],
+      "answer": 2,
+      "why": "A message template sends the template and the values separately, so a structured sink stores OrderId as a field you can filter on, and all \"Order shipped\" events group together. The interpolated version bakes the values into one unique string and is formatted even when Information is disabled. It compiles fine, which is why analysers (CA2254) flag it.",
+      "tags": ["observability"],
+      "level": 2,
+      "asked": "Structured logging is how production issues get found; this is the most common mistake in .NET logging."
+    },
+    {
+      "id": "dn-030",
+      "q": "With these mappings, what does `/health/live` report while the database is down?",
+      "code": "builder.Services.AddHealthChecks().AddCheck<DbCheck>(\"db\", tags: [\"ready\"]);\napp.MapHealthChecks(\"/health/live\", new() { Predicate = _ => false });\napp.MapHealthChecks(\"/health/ready\", new() { Predicate = c => c.Tags.Contains(\"ready\") });",
+      "lang": "cs",
+      "choices": [
+        "Unhealthy, because every registered check runs on every health endpoint",
+        "Degraded, because the db check is tagged for a different endpoint and is only partly run",
+        "Healthy: its predicate selects no checks, so it only proves the app responds",
+        "A 404, because an endpoint whose predicate matches no check is not mapped"
+      ],
+      "answer": 2,
+      "why": "The predicate chooses which registered checks an endpoint runs. `_ => false` runs none, so liveness reports Healthy whenever the process can answer HTTP, and a database outage does not get the app restarted. The tagged readiness endpoint runs the db check and reports Unhealthy, so traffic is routed away until it recovers.",
+      "tags": ["observability"],
+      "level": 2,
+      "asked": "Mixing liveness and readiness causes restart loops during outages; the tag mechanics are how you avoid it in .NET."
+    },
+    {
+      "id": "dn-031",
+      "q": "The 101st request in a minute to `/search` is rejected. What status does it get with this setup?",
+      "code": "builder.Services.AddRateLimiter(o => o.AddFixedWindowLimiter(\"api\", w =>\n    { w.PermitLimit = 100; w.Window = TimeSpan.FromMinutes(1); }));\napp.UseRateLimiter();\napp.MapGet(\"/search\", Search).RequireRateLimiting(\"api\");",
+      "lang": "cs",
+      "choices": [
+        "429 Too Many Requests, with a Retry-After header added automatically",
+        "503 Service Unavailable, unless you set RejectionStatusCode to 429",
+        "403 Forbidden, because the limiter runs as part of authorisation",
+        "None: it waits in a queue until the next window opens, then succeeds"
+      ],
+      "answer": 1,
+      "why": "The built-in rate limiter (.NET 7+) rejects with 503 by default. Set `options.RejectionStatusCode = 429` and, if you want Retry-After, write it in `OnRejected`. `QueueLimit` defaults to 0, so nothing waits unless you configure a queue. It is independent of authorisation.",
+      "tags": ["middleware"],
+      "level": 3,
+      "asked": "A detail you only know from having shipped it; clients that expect 429 break on the default."
+    },
+    {
+      "id": "dn-032",
+      "q": "What is the key difference between output caching (.NET 7+) and the older response caching middleware?",
+      "choices": [
+        "Output caching sets Cache-Control for browsers; response caching stores responses in Redis",
+        "Output caching works only for MVC controllers; response caching works only for minimal API endpoints",
+        "Output caching stores HTML pages only; response caching stores JSON API responses only",
+        "Output caching stores responses on the server by your rules; response caching obeys HTTP headers"
+      ],
+      "answer": 3,
+      "why": "Response caching follows HTTP caching semantics, so a client sending `Cache-Control: no-cache` bypasses it and your server cache is only as good as the headers. Output caching is a server-side cache configured by policy, with tag-based eviction and resource locking against stampedes, and it ignores client headers. Both work with any endpoint type.",
+      "tags": ["caching"],
+      "level": 3,
+      "asked": "Checks whether you know which cache you are actually configuring, a common source of \"caching does nothing\" bugs."
+    },
+    {
+      "id": "dn-033",
+      "q": "In `AddJwtBearer`, what does validating the audience (`ValidAudience`) protect against?",
+      "choices": [
+        "A token issued for a different API by the same identity provider being accepted by yours",
+        "A token with a forged signature, because the audience value is part of the signing key itself",
+        "A token that has expired, because the audience check also covers the token's lifetime",
+        "A token replayed from another browser, because the audience binds it to one device"
       ],
       "answer": 0,
-      "why": "Model and schema drift is the most common EF Core deployment failure. The general lesson: schema changes are deployments, and each environment has its own database state.",
-      "tags": ["ef-core", "debugging"],
-      "level": 2
+      "why": "One identity provider often issues tokens for many APIs, all signed with the same key. The `aud` claim says which API a token is for, so without the check a token meant for a low-privilege service works against yours. Signature, lifetime and issuer are separate validations (`ValidateIssuerSigningKey`, `ValidateLifetime`, `ValidIssuer`).",
+      "tags": ["auth"],
+      "level": 2,
+      "asked": "Tests whether you understand what each JWT validation parameter is for, not only that defaults exist."
+    },
+    {
+      "id": "dn-034",
+      "q": "Why is this check done in the handler rather than with `[Authorize(Policy = \"CanEdit\")]`?",
+      "code": "var doc = await db.Documents.FindAsync(id);\nif (doc is null) return Results.NotFound();\nvar result = await authz.AuthorizeAsync(User, doc, \"CanEdit\");\nif (!result.Succeeded) return Results.Forbid();",
+      "lang": "cs",
+      "choices": [
+        "Attributes cannot refer to policies that use custom authorisation requirements",
+        "The policy needs the loaded document, such as its owner, which only exists here",
+        "IAuthorizationService is faster, because it skips the authentication middleware",
+        "Forbid() returns 404 here, hiding that the document exists, unlike the attribute"
+      ],
+      "answer": 1,
+      "why": "Resource-based authorisation passes the resource into the policy so a handler can compare, for example, `doc.OwnerId` with the user's id. An attribute runs before the handler, when the document has not been loaded. Attributes can use custom requirements, and `Forbid()` produces 403 (or the scheme's forbid behaviour), not 404.",
+      "tags": ["auth"],
+      "level": 3,
+      "asked": "\"Users can edit only their own records\" is in every CRUD app; this is the idiomatic .NET way to express it."
+    },
+    {
+      "id": "dn-035",
+      "q": "In .NET 8+, what does this setup do with an unhandled exception thrown by an endpoint?",
+      "code": "builder.Services.AddExceptionHandler<GlobalExceptionHandler>();\nbuilder.Services.AddProblemDetails();\napp.UseExceptionHandler();",
+      "lang": "cs",
+      "choices": [
+        "Shows the developer exception page in every environment, including Production",
+        "Swallows the exception and returns 200 with an empty body to hide the failure",
+        "Calls GlobalExceptionHandler.TryHandleAsync, which can write a ProblemDetails reply",
+        "Logs it and lets it reach Kestrel, which then closes the connection without any response"
+      ],
+      "answer": 2,
+      "why": "`IExceptionHandler` implementations are called in registration order by the exception handler middleware; one that returns true has handled it. Otherwise the middleware falls back to a ProblemDetails 500 via `AddProblemDetails`. It replaces the hand-written try/catch middleware most codebases used to have, and it never exposes stack traces unless you write them.",
+      "tags": ["errors"],
+      "level": 2,
+      "asked": "The modern answer to \"how do you handle errors globally in ASP.NET Core?\"."
+    },
+    {
+      "id": "dn-036",
+      "q": "What does `[FromKeyedServices(\"s3\")]` inject here (.NET 8+)?",
+      "code": "builder.Services.AddKeyedSingleton<IStorage, S3Storage>(\"s3\");\nbuilder.Services.AddKeyedSingleton<IStorage, DiskStorage>(\"disk\");\napp.MapPost(\"/upload\", ([FromKeyedServices(\"s3\")] IStorage storage)\n    => storage.GetType().Name);",
+      "lang": "cs",
+      "choices": [
+        "The last IStorage registered, because the key is used only for diagnostics",
+        "Every implementation at once, injected together as an `IEnumerable<IStorage>`",
+        "A new S3Storage on every request, because keyed services are always transient",
+        "The S3Storage registration, chosen by its key rather than registration order"
+      ],
+      "answer": 3,
+      "why": "Keyed services let several implementations of one interface coexist and be requested by key, without writing a factory or a wrapper interface. The lifetime is whatever you registered, a singleton here. Registration order never matters for a keyed lookup; it is only a set of unkeyed `AddSingleton<IStorage, ...>` calls where the last one wins, which is the ambiguity keys exist to avoid.",
+      "tags": ["di"],
+      "level": 2,
+      "asked": "A recent DI feature that replaces a lot of hand-rolled factory code."
+    },
+    {
+      "id": "dn-037",
+      "q": "A singleton service copies `HttpContext` from `IHttpContextAccessor` into a field in its constructor. What goes wrong?",
+      "choices": [
+        "Nothing: the stored field keeps pointing at whichever request is current at the time",
+        "The constructor throws, because a singleton cannot receive the accessor",
+        "It keeps one request's HttpContext, which is stale or recycled for later requests",
+        "Each request gets its own copy of the singleton, doubling memory use"
+      ],
+      "answer": 2,
+      "why": "The accessor is safe to inject into a singleton, but only when you read `.HttpContext` at the moment you need it. A stored HttpContext belongs to one request; afterwards its objects are reset and reused, so you read another user's data or get ObjectDisposedException. HttpContext is also not thread-safe, so do not share it across parallel work.",
+      "tags": ["di"],
+      "level": 3,
+      "asked": "Leads to real data-leak bugs between users; interviewers ask it to find people who have debugged one."
+    },
+    {
+      "id": "dn-038",
+      "q": "Behind a reverse proxy that terminates TLS, `Request.Scheme` is http and `RemoteIpAddress` is the proxy's. What fixes it?",
+      "choices": [
+        "UseHttpsRedirection, which rewrites the request scheme to https on every single request",
+        "Setting ASPNETCORE_URLS to an https address, so Kestrel reports https",
+        "UseHsts, which tells the app that every request arrived over TLS",
+        "UseForwardedHeaders, trusting the proxy, to apply X-Forwarded-For and -Proto"
+      ],
+      "answer": 3,
+      "why": "The proxy passes the original scheme and client IP in X-Forwarded-Proto and X-Forwarded-For; the forwarded headers middleware applies them, but only from proxies you configure as trusted, so clients cannot spoof them. HTTPS redirection alone causes a redirect loop here, because every request looks like http. HSTS only sets a browser header.",
+      "tags": ["middleware", "configuration"],
+      "level": 2,
+      "asked": "Every containerised deployment sits behind a proxy; wrong scheme and IP break redirects, cookies and rate limiting."
+    },
+    {
+      "id": "dn-039",
+      "q": "In a new .NET 9 Web API project, what generates the OpenAPI document?",
+      "choices": [
+        "Swashbuckle's AddSwaggerGen, which the template still includes by default",
+        "NSwag, which is compiled into ASP.NET Core itself starting with .NET 9",
+        "Nothing: OpenAPI support was removed from ASP.NET Core in .NET 9",
+        "Microsoft.AspNetCore.OpenApi, via AddOpenApi and MapOpenApi"
+      ],
+      "answer": 3,
+      "why": "From .NET 9 the templates use the built-in Microsoft.AspNetCore.OpenApi package: `AddOpenApi()` registers generation and `MapOpenApi()` serves the JSON document. Swashbuckle was removed from the templates, though it still works if you add it. A UI (Swagger UI or Scalar) is a separate choice.",
+      "tags": ["aspnet"],
+      "level": 1,
+      "asked": "A currency check; tutorials written before .NET 9 still show Swashbuckle."
+    },
+    {
+      "id": "dn-040",
+      "q": "In .NET 8+, a minimal API endpoint binds `[FromForm]` data and the app uses antiforgery. A POST arrives without a token. What happens?",
+      "choices": [
+        "It succeeds, because minimal API endpoints never validate antiforgery tokens",
+        "It is rejected, because form-binding endpoints validate the token automatically",
+        "It succeeds, provided that the request also carries a valid authentication cookie",
+        "It is redirected to the login page, where the client can fetch a fresh token"
+      ],
+      "answer": 1,
+      "why": "With `AddAntiforgery()` and `UseAntiforgery()`, minimal API endpoints that bind form data require a valid token and reject the request (400) without one; `DisableAntiforgery()` opts an endpoint out. The auth cookie is exactly what a cross-site form would ride on, so it proves nothing. JSON APIs using bearer tokens do not need this.",
+      "tags": ["security", "model-binding"],
+      "level": 2,
+      "asked": "Checks you know where CSRF protection is automatic in .NET and where it is not."
+    },
+    {
+      "id": "dn-041",
+      "q": "By default, where does each parameter of this minimal API handler bind from?",
+      "code": "app.MapPost(\"/orders/{id:int}\",\n    (int id, OrderDto body, IOrderService svc, int? page) => Results.Ok());",
+      "lang": "cs",
+      "choices": [
+        "id from the route, body from JSON, svc from DI, page from the query string",
+        "id and page from the query string, body from the form, svc from the route",
+        "id from the route, body from the query string, svc and page from headers",
+        "All four from the JSON body, matched to its properties by each parameter name"
+      ],
+      "answer": 0,
+      "why": "Minimal APIs infer sources: a name in the route template binds from the route, a registered service from DI, a complex type from the JSON body, and remaining simple types from the query string. Use `[FromQuery]`, `[FromHeader]`, `[FromServices]` or `[FromForm]` when the inference is not what you want.",
+      "tags": ["model-binding"],
+      "level": 1,
+      "asked": "Binding surprises cause most \"my parameter is null\" questions; knowing the rules prevents them."
+    },
+    {
+      "id": "dn-042",
+      "q": "A minimal API returns `new { Status = OrderStatus.Shipped }` and the React client receives `{\"status\": 2}`. Why, and what is the idiomatic fix?",
+      "choices": [
+        "System.Text.Json writes enums as numbers by default; add `JsonStringEnumConverter` to the JSON options",
+        "Web defaults camel-cased the property and dropped its enum type; decorate it with `[JsonPropertyName]`",
+        "The anonymous type boxed the enum to an int; return a record with a typed `OrderStatus` property instead",
+        "The client sent `Accept: application/json` without a schema; add OpenAPI so it can map the number back"
+      ],
+      "answer": 0,
+      "why": "System.Text.Json serialises an enum as its underlying integer unless a converter says otherwise; `builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()))` (or `AddJsonOptions` for controllers) makes it write and accept \"Shipped\". Camel-casing only touches the property name, an anonymous type keeps the enum's type, and OpenAPI describes output rather than changing it. Numbers also break the moment someone reorders the enum.",
+      "tags": ["serialisation", "aspnet"],
+      "level": 1,
+      "asked": "A first-week bug on every .NET-plus-React team; the interviewer wants the mechanism and the one-line fix."
     }
   ]
 }

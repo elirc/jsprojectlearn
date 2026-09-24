@@ -1,0 +1,441 @@
+{
+  "id": "dotnet-data",
+  "topic": ".NET data",
+  "title": "EF Core and data access in .NET",
+  "blurb": "Tracking, loading strategies, concurrency, migrations in production, transactions and when to reach for Dapper.",
+  "questions": [
+    {
+      "id": "dd-001",
+      "q": "In EF Core 9 with default settings, what happens when this runs against a fresh DbContext?",
+      "code": "var orders = await db.Orders.ToListAsync();\nforeach (var o in orders)\n    Console.WriteLine(o.Customer.Name);",
+      "lang": "cs",
+      "choices": [
+        "One extra query per order to fetch its customer: the classic N+1 problem",
+        "A NullReferenceException, because Customer was never loaded and stays null",
+        "EF notices the loop reads Customer and joins it into the first query for you",
+        "Blank lines, because EF fills Customer with an empty placeholder object"
+      ],
+      "answer": 1,
+      "why": "Lazy loading is off by default in EF Core: it needs the Proxies package plus `UseLazyLoadingProxies()` and virtual navigations. Without it, an unloaded reference navigation is simply null. The N+1 answer describes what happens only when lazy loading is switched on. Load what you need up front with `Include` or, better, a projection.",
+      "tags": ["loading"],
+      "level": 1,
+      "asked": "Checks that you know EF Core defaults rather than EF6 or NHibernate habits, which is where most N+1 folklore comes from."
+    },
+    {
+      "id": "dd-002",
+      "q": "A list page shows each order's number, date and customer name. Which query reads the least data?",
+      "choices": [
+        "`db.Orders.Include(o => o.Customer).ToListAsync()`, joining the customer in",
+        "`db.Orders.AsNoTracking().Include(o => o.Customer).ToListAsync()`",
+        "`db.Orders.Select(o => new { o.Number, o.Date, o.Customer.Name }).ToListAsync()`",
+        "`db.Orders.ToListAsync()`, then `db.Customers.ToListAsync()` and a join in memory"
+      ],
+      "answer": 2,
+      "why": "A projection becomes one SQL JOIN that selects exactly three columns, and the results are not tracked because they are not entities. `Include` fetches every column of both tables, with or without tracking. Loading both tables and joining in memory reads everything twice over. Project into a DTO for read-only screens and keep `Include` for when you will modify the graph.",
+      "tags": ["loading"],
+      "level": 2,
+      "asked": "The practical follow-up to \"how do you avoid N+1\": a strong answer reaches for projection, not only Include."
+    },
+    {
+      "id": "dd-003",
+      "q": "Each blog has 200 posts and 50 tags. What does adding `AsSplitQuery()` to this query fix?",
+      "code": "var blogs = await db.Blogs\n    .Include(b => b.Posts)\n    .Include(b => b.Tags)\n    .ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "An N+1: without it, EF runs one query per blog to load its posts and its tags",
+        "Client evaluation: two Includes otherwise force EF to filter the rows in memory",
+        "Tracking overhead: split queries return untracked entities, which load faster",
+        "The JOIN returning 200 × 50 rows per blog: each collection gets its own query"
+      ],
+      "answer": 3,
+      "why": "Two collection Includes in one query join into a cartesian product, so every blog comes back as 10,000 rows with its columns repeated. A split query loads blogs, posts and tags in three queries. The trade-off: more round trips, and without a transaction the separate queries can see different snapshots of the data. You can set split mode as the default with `UseQuerySplittingBehavior`.",
+      "tags": ["loading"],
+      "level": 3,
+      "asked": "Cartesian explosion is the performance bug that comes after you learn Include; knowing the consistency trade-off is the senior signal."
+    },
+    {
+      "id": "dd-004",
+      "q": "Without lazy-loading proxies, how do you load the Lines of an order you already have, only when needed?",
+      "choices": [
+        "`await db.Entry(order).Collection(o => o.Lines).LoadAsync()`",
+        "`await db.Entry(order).ReloadAsync()` with Lines declared virtual",
+        "`await db.Orders.Include(o => o.Lines).AttachAsync(order)`",
+        "`await order.Lines.LoadAsync()` called on the navigation itself"
+      ],
+      "answer": 0,
+      "why": "Explicit loading goes through the entry: `Collection(...)` for collections, `Reference(...)` for single navigations, then `LoadAsync()`. It issues one query when you decide to, which is lazy loading made visible. `ReloadAsync` only refreshes scalar values from the database, and a navigation has no load method of its own. There is no `AttachAsync` on a query.",
+      "tags": ["loading"],
+      "level": 2,
+      "asked": "Shows you know the third loading strategy and can load conditionally without turning on proxies."
+    },
+    {
+      "id": "dd-005",
+      "q": "The row with Id 1 has Name \"Ann\". In one tracking DbContext, what does this print?",
+      "code": "var a = await db.Users.FirstAsync(u => u.Id == 1);\na.Name = \"changed\";\nvar b = await db.Users.FirstAsync(u => u.Id == 1);\nConsole.WriteLine(b.Name);",
+      "lang": "cs",
+      "choices": [
+        "Ann: the second query creates a new instance, and both are now tracked",
+        "Ann: the second query refreshes the tracked entity from the database",
+        "changed: EF returns the instance it already tracks, without overwriting it",
+        "Nothing: it throws, because an entity with that key is already tracked"
+      ],
+      "answer": 2,
+      "why": "A tracking context keeps one instance per key (identity resolution). The second query still runs SQL, but EF finds the key already tracked and returns the same instance without overwriting its values, so `b` and `a` are the same object. That is how unsaved edits survive a re-query. `AsNoTracking` would give a fresh object reading \"Ann\".",
+      "tags": ["loading", "tracking"],
+      "level": 3,
+      "asked": "Tests whether you know the change tracker is also an identity map, which explains many \"why did my query not see the database\" bugs."
+    },
+    {
+      "id": "dd-006",
+      "q": "When is `AsNoTracking()` the right choice?",
+      "choices": [
+        "A query whose entities you will change and then save through the same context",
+        "A read-only query whose results you will not modify and save in this context",
+        "Any query that uses Include, because tracking does not work across joins",
+        "When two queries must return the same instance for the same database row"
+      ],
+      "answer": 1,
+      "why": "No tracking skips the snapshot and identity bookkeeping, which is noticeably cheaper for lists, reports and API reads. The cost is that changes are not detected and you can get duplicate instances for the same row; `AsNoTrackingWithIdentityResolution` keeps one instance per key without tracking. Use tracking when you will modify and save.",
+      "tags": ["loading", "tracking"],
+      "level": 1,
+      "asked": "An easy win to mention; the interviewer wants to hear when you would not use it, too."
+    },
+    {
+      "id": "dd-007",
+      "q": "What does `SaveChangesAsync` write to the database here?",
+      "code": "var order = await db.Orders.AsNoTracking().FirstAsync(o => o.Id == id);\norder.Status = OrderStatus.Shipped;\nawait db.SaveChangesAsync();",
+      "lang": "cs",
+      "choices": [
+        "An UPDATE of Status only, found by comparing the entity with the current row",
+        "An UPDATE of every column, because untracked entities are always fully rewritten",
+        "Nothing at all: the entity is not tracked, so the context detects no change",
+        "It throws, because an untracked entity was modified before SaveChanges ran"
+      ],
+      "answer": 2,
+      "why": "SaveChanges only saves what the change tracker knows about, and `AsNoTracking` kept this entity out of it. The call succeeds and writes nothing, which is why this bug passes review. Remove `AsNoTracking` for queries you intend to modify, or call `Update`/`Attach` deliberately. EF never compares with the database row to find changes.",
+      "tags": ["tracking"],
+      "level": 2,
+      "asked": "The \"AsNoTracking everywhere\" performance tip causes this bug; the interviewer wants to see you know the other side of it."
+    },
+    {
+      "id": "dd-008",
+      "q": "You add an order and three lines, then call SaveChanges once. The third line violates a constraint. What is stored?",
+      "choices": [
+        "The order and the first two lines, since each INSERT commits on its own",
+        "Nothing from this call: SaveChanges runs all its statements in one transaction",
+        "The order only, because the lines are saved in a second, separate transaction",
+        "Everything except the failing line, which EF skips and reports in the exception"
+      ],
+      "answer": 1,
+      "why": "By default each SaveChanges call wraps its INSERTs, UPDATEs and DELETEs in a single transaction, so one failure rolls back the lot. That is why you should build a whole unit of work and save once. Work split across several SaveChanges calls is not atomic unless you begin a transaction yourself.",
+      "tags": ["saving", "transactions"],
+      "level": 1,
+      "asked": "A basic guarantee that many candidates never realise they rely on."
+    },
+    {
+      "id": "dd-009",
+      "q": "The row starts with IsActive = true. What does this print (EF Core 7+)?",
+      "code": "var user = await db.Users.FirstAsync(u => u.Id == 7);\nawait db.Users.Where(u => u.Id == 7)\n    .ExecuteUpdateAsync(s => s.SetProperty(u => u.IsActive, false));\nConsole.WriteLine(user.IsActive);",
+      "lang": "cs",
+      "choices": [
+        "False, because EF refreshes the tracked copy of every row it updates",
+        "True, because ExecuteUpdate goes straight to SQL and ignores tracked entities",
+        "It throws, because rows cannot be bulk-updated while one of them is tracked",
+        "False, but only once SaveChangesAsync is called and flushes the tracker"
+      ],
+      "answer": 1,
+      "why": "`ExecuteUpdate` and `ExecuteDelete` run a single SQL statement immediately, bypassing the change tracker and SaveChanges entirely. Entities already loaded keep their old values, so the tracker is now stale. Use them for set-based changes, and do not mix them with tracked edits of the same rows in one context without reloading.",
+      "tags": ["saving"],
+      "level": 2,
+      "asked": "Checks you know the modern bulk APIs and the trade-off: fast, but outside the unit of work."
+    },
+    {
+      "id": "dd-010",
+      "q": "On SQL Server, what does this property on the Order entity do?",
+      "code": "[Timestamp]\npublic byte[] RowVersion { get; set; } = null!;",
+      "lang": "cs",
+      "choices": [
+        "Stores the last-modified time in UTC so the edit screen can display it",
+        "Tells EF to lock the row with UPDLOCK whenever the order is read",
+        "Makes EF compare the original value of every column in each UPDATE",
+        "Maps to a rowversion column; EF adds it to each UPDATE's WHERE clause"
+      ],
+      "answer": 3,
+      "why": "SQL Server bumps a `rowversion` value on every write. EF sends the value it read in the UPDATE's WHERE clause, so if someone else changed the row first, zero rows match and EF throws DbUpdateConcurrencyException. Despite the name it holds no time. This is optimistic concurrency, so nothing is locked on read.",
+      "tags": ["saving", "concurrency"],
+      "level": 2,
+      "asked": "Optimistic concurrency is the standard answer to lost updates in .NET; interviewers want the mechanism, not only the attribute."
+    },
+    {
+      "id": "dd-011",
+      "q": "You move the app to PostgreSQL with Npgsql. What is the idiomatic replacement for the SQL Server rowversion token?",
+      "code": "public uint Version { get; set; }\n// in OnModelCreating:\nmodelBuilder.Entity<Order>().Property(o => o.Version).IsRowVersion();",
+      "lang": "cs",
+      "choices": [
+        "Keep the `byte[]` property: Postgres has a native rowversion type",
+        "A `timestamptz` column defaulting to now(), which EF sets on each save",
+        "Nothing: Postgres detects conflicting updates on its own by default",
+        "This: a `uint` row version that Npgsql maps to the system column xmin"
+      ],
+      "answer": 3,
+      "why": "Postgres has no rowversion type, but every row carries the system column `xmin`, which changes on each update. Npgsql maps a `uint` configured as a row version (or marked `[Timestamp]`) onto it, with no extra column. Postgres does not detect lost updates for you at the default isolation level. `[ConcurrencyCheck]` on an ordinary property is the provider-neutral alternative.",
+      "tags": ["saving", "concurrency"],
+      "level": 3,
+      "asked": "Separates people who copied a SQL Server tutorial from people who have shipped EF on more than one provider."
+    },
+    {
+      "id": "dd-012",
+      "q": "An edit endpoint's SaveChanges throws `DbUpdateConcurrencyException`. What does that mean?",
+      "choices": [
+        "Two threads used the same DbContext at the same time during the request",
+        "The database picked this transaction as the victim of a deadlock and aborted it",
+        "The UPDATE matched zero rows, because the token changed after the entity was read",
+        "Another transaction held a lock on the row until the command timeout expired"
+      ],
+      "answer": 2,
+      "why": "EF checks the affected-row count. When the concurrency token in the WHERE clause no longer matches, the UPDATE affects nothing and EF raises this exception. The usual API response is 409 Conflict, so the client can reload and retry. Concurrent use of one context throws InvalidOperationException, and deadlocks and timeouts surface as provider exceptions.",
+      "tags": ["saving", "concurrency"],
+      "level": 2,
+      "asked": "The follow-up is \"what does the client see?\": a strong answer says 409 and a reload flow."
+    },
+    {
+      "id": "dd-013",
+      "q": "User also has Name and CreatedAt columns. What does this PUT endpoint save?",
+      "code": "app.MapPut(\"/users/{id}\", async (int id, UserDto dto, AppDb db) =>\n{\n    var user = new User { Id = id, Email = dto.Email };\n    db.Users.Update(user);\n    await db.SaveChangesAsync();\n});",
+      "lang": "cs",
+      "choices": [
+        "Only Email, because EF compares the new object with the stored row first",
+        "Every column: Name and CreatedAt are overwritten with null and default values",
+        "Nothing, because the newly created User instance was never tracked",
+        "An INSERT of a second user with the same Id, which fails on the primary key"
+      ],
+      "answer": 1,
+      "why": "`Update` attaches the object and marks every property modified, so EF writes all columns from the object as it is, including the ones you never set. EF does not read the row first. Load the entity and copy the DTO onto it, or attach it and mark only `Email` as modified.",
+      "tags": ["saving"],
+      "level": 3,
+      "asked": "A real data-loss bug in CRUD code; the interviewer wants to hear \"load, then apply\"."
+    },
+    {
+      "id": "dd-014",
+      "q": "In EF Core 3 or later, what happens when this query runs?",
+      "code": "var recent = await db.Orders\n    .Where(o => IsRecent(o.CreatedAt))\n    .ToListAsync();\n\nstatic bool IsRecent(DateTime d) => d > DateTime.UtcNow.AddDays(-7);",
+      "lang": "cs",
+      "choices": [
+        "It loads every order and filters them in memory, logging a warning",
+        "EF inlines the body of IsRecent and translates the comparison to SQL",
+        "It returns an empty list, because unknown methods evaluate as false",
+        "It throws InvalidOperationException: the expression cannot be translated"
+      ],
+      "answer": 3,
+      "why": "EF Core cannot see inside a compiled C# method, so it cannot translate `IsRecent` to SQL. Since EF Core 3 it throws instead of silently loading the whole table, which is what EF Core 2 did. Client evaluation is still allowed in the final `Select` projection. Write the condition inline, `o.CreatedAt > cutoff`, with `cutoff` computed before the query.",
+      "tags": ["queries"],
+      "level": 2,
+      "asked": "Tests whether you know where the SQL boundary is; the older silent client-evaluation behaviour still shows up in interview folklore."
+    },
+    {
+      "id": "dd-015",
+      "q": "In EF Core 7 or later, which of these is safe against SQL injection?",
+      "code": "var a = db.Users.FromSql($\"SELECT * FROM Users WHERE Email = {email}\");\nvar b = db.Users.FromSqlRaw(\"SELECT * FROM Users WHERE Email = '\" + email + \"'\");",
+      "lang": "cs",
+      "choices": [
+        "`a`: FromSql turns each interpolated value into a DbParameter",
+        "`b`: FromSqlRaw escapes the quotes inside the concatenated string",
+        "Each of them: EF Core parameterises any SQL passed to a DbSet",
+        "Neither of them: raw SQL in EF Core is never parameterised"
+      ],
+      "answer": 0,
+      "why": "`FromSql` (EF Core 7+, formerly `FromSqlInterpolated`) takes a FormattableString and sends every hole as a parameter. `FromSqlRaw` runs the string as given, so concatenating input into it is injectable. It is safe only with placeholders such as `{0}` plus separate arguments. The same rule applies to `ExecuteSql` and `ExecuteSqlRaw`.",
+      "tags": ["queries", "security"],
+      "level": 1,
+      "asked": "The EF-specific version of the SQL injection question, and a common code review catch."
+    },
+    {
+      "id": "dd-016",
+      "q": "With this filter configured, which query returns soft-deleted posts for an admin report?",
+      "code": "modelBuilder.Entity<Post>().HasQueryFilter(p => !p.IsDeleted);",
+      "lang": "cs",
+      "choices": [
+        "`db.Posts.AsNoTracking()`, because filters apply only to tracked queries",
+        "`db.Posts.IgnoreQueryFilters()`, which drops the filter for this query",
+        "`db.Set<Post>()`, because filters are bound to the `Posts` property only",
+        "`db.Posts.Where(p => p.IsDeleted)`, which overrides the model filter"
+      ],
+      "answer": 1,
+      "why": "A global query filter is added to every query for that entity type, including Includes that load it through a navigation. Adding your own Where combines with it (AND), so `Where(p => p.IsDeleted)` returns nothing. Tracking and the way you reach the set make no difference. The same mechanism is used for per-tenant filtering.",
+      "tags": ["queries"],
+      "level": 2,
+      "asked": "Soft delete and multi-tenancy both rely on this; the strong answer mentions that filters apply to Includes too."
+    },
+    {
+      "id": "dd-017",
+      "q": "What do you need before `dotnet ef migrations add Init` works in a new project?",
+      "choices": [
+        "Only the database provider package, because the migration commands ship inside it",
+        "A running database, because EF diffs the live schema to generate the migration",
+        "The dotnet-ef tool, plus the Microsoft.EntityFrameworkCore.Design package",
+        "A Visual Studio extension, because the CLI can apply migrations but not create them"
+      ],
+      "answer": 2,
+      "why": "`dotnet ef` is a separate .NET tool (`dotnet tool install --global dotnet-ef`, or a local tool manifest), and it needs the Design package in the startup project to build and inspect your model. Adding a migration compares the model with the snapshot in your repository, not with a live database; only `database update` needs a connection.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Practical setup knowledge; the snapshot detail shows you know how migrations are generated."
+    },
+    {
+      "id": "dd-018",
+      "q": "Why should an app that uses migrations not call `Database.EnsureCreated()` at startup?",
+      "choices": [
+        "EnsureCreated drops and recreates the database each time the app starts",
+        "EnsureCreated applies pending migrations but skips the seed data they add",
+        "EnsureCreated works only on SQLite and throws for every other provider",
+        "It creates the schema without a migrations history, so migrations cannot follow"
+      ],
+      "answer": 3,
+      "why": "`EnsureCreated` builds the schema straight from the current model and records no migrations history, so a later `Migrate()` tries to create tables that already exist. It also does nothing at all if the database exists, even when the model has changed. It suits throwaway test databases and prototypes; use migrations everywhere else.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "Catches a common tutorial shortcut that breaks the first real schema change."
+    },
+    {
+      "id": "dd-019",
+      "q": "What is the safest way to apply EF Core migrations to a production database?",
+      "choices": [
+        "Call `Database.Migrate()` in Program.cs so each instance applies them on startup",
+        "Generate an idempotent SQL script or a migration bundle and run it as a deploy step",
+        "Run `dotnet ef database update` from a developer laptop against production",
+        "Let EnsureCreated add the missing tables and columns on the first request"
+      ],
+      "answer": 1,
+      "why": "A script (`migrations script --idempotent`) or a bundle (`migrations bundle`) can be reviewed, run once by the pipeline with the right credentials, and fail before new code is live. Migrating at startup makes several instances race and gives the app schema-changing permissions. A laptop run is unrepeatable and unaudited.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "Deployment maturity question; the interviewer is listening for \"reviewable, run once, by the pipeline\"."
+    },
+    {
+      "id": "dd-020",
+      "q": "A migration already applied in staging and production has a bug. What do you do?",
+      "choices": [
+        "Edit the migration file to fix it, then run database update in every environment",
+        "Delete the migration and its snapshot changes, then add it again with the fix",
+        "Add a new migration that corrects the problem, and leave the applied one as it is",
+        "Run `migrations remove` so it is rolled back from every database it reached"
+      ],
+      "answer": 2,
+      "why": "Databases record applied migrations by id in `__EFMigrationsHistory`, so an edited migration is never run again where it has already been applied, and environments silently diverge. Only migrations that have not left your machine are safe to change or remove. `migrations remove` only touches your code and refuses once the migration has been applied.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "The same rule as \"never rewrite published git history\", applied to schema."
+    },
+    {
+      "id": "dd-021",
+      "q": "How do you run two SaveChanges calls and an `ExecuteSqlAsync` as one unit at a chosen isolation level?",
+      "choices": [
+        "Set `db.Database.IsolationLevel` once, and each SaveChanges call then uses it",
+        "Put a `[Transaction(IsolationLevel.Serializable)]` attribute on the endpoint",
+        "`db.Database.BeginTransactionAsync(level)`, then commit after all three calls",
+        "Nothing: all SaveChanges calls in one request already share a transaction"
+      ],
+      "answer": 2,
+      "why": "EF exposes isolation only when you begin the transaction yourself; SaveChanges and raw SQL on that context then enlist in it until you commit or dispose. Otherwise each SaveChanges gets its own transaction at the database default. There is no per-context isolation property and no transaction attribute. What each level guarantees is a database question, not an EF one.",
+      "tags": ["transactions"],
+      "level": 2,
+      "asked": "Checks you can make multi-step writes atomic, which comes up in every order or payment flow."
+    },
+    {
+      "id": "dd-022",
+      "q": "With `EnableRetryOnFailure()`, `BeginTransactionAsync` throws \"does not support user-initiated transactions\". What is the fix?",
+      "choices": [
+        "Remove the transaction, because the retries already make separate SaveChanges calls atomic",
+        "Run the whole transaction inside `db.Database.CreateExecutionStrategy().ExecuteAsync(...)`",
+        "Begin the transaction before the retry strategy is configured during application startup",
+        "Switch to a TransactionScope, because the retrying strategy is designed to ignore it"
+      ],
+      "answer": 1,
+      "why": "A retrying strategy can only replay work it controls. If a transient failure happens halfway through your own transaction, retrying the last statement alone would be wrong, so EF refuses. Wrapping the whole block in the execution strategy lets it retry the transaction as one unit. TransactionScope is not supported with retries either.",
+      "tags": ["transactions"],
+      "level": 3,
+      "asked": "Hits everyone who enables retries on Azure SQL; knowing the fix shows production EF experience."
+    },
+    {
+      "id": "dd-023",
+      "q": "For which job is Dapper a better fit than EF Core?",
+      "choices": [
+        "Editing an aggregate and its child rows through a form, then saving them together",
+        "Tracking changes to entities across several method calls before one final save",
+        "A hand-tuned reporting query whose exact SQL you want to write and control",
+        "Evolving the schema through versioned migrations checked into the repository"
+      ],
+      "answer": 2,
+      "why": "Dapper maps the results of SQL you write onto objects, with almost no overhead, which suits reports, complex reads and stored procedures. It has no change tracking, unit of work or migrations, which are exactly what the other three jobs need. Many teams use both: EF Core for writes, Dapper for heavy reads.",
+      "tags": ["dapper"],
+      "level": 1,
+      "asked": "Checks for tool judgement instead of tribal loyalty; \"both, for different jobs\" is the answer interviewers like."
+    },
+    {
+      "id": "dd-024",
+      "q": "How does Dapper send `email` to the database here?",
+      "code": "var user = await conn.QuerySingleOrDefaultAsync<User>(\n    \"SELECT * FROM Users WHERE Email = @Email\",\n    new { Email = email });",
+      "lang": "cs",
+      "choices": [
+        "As a parameter called @Email, taken from the anonymous object's property",
+        "Inlined into the SQL text after Dapper escapes any quotes it contains",
+        "As a parameter, but only when the SQL text is a stored procedure call",
+        "Positionally, in the order the properties appear in the anonymous object"
+      ],
+      "answer": 0,
+      "why": "Dapper matches `@Email` to the property of the same name and sends a real DbParameter, so the query is injection-safe and its plan is reused. It never splices values into the text. The injection risk with Dapper comes only from building the SQL string itself with concatenation or interpolation.",
+      "tags": ["dapper", "security"],
+      "level": 2,
+      "asked": "Confirms you can use a micro-ORM without reintroducing SQL injection."
+    },
+    {
+      "id": "dd-025",
+      "q": "What does `splitOn: \"Id\"` tell Dapper here?",
+      "code": "var sql = \"SELECT o.*, c.* FROM Orders o JOIN Customers c ON c.Id = o.CustomerId\";\nvar orders = await conn.QueryAsync<Order, Customer, Order>(sql,\n    (o, c) => { o.Customer = c; return o; }, splitOn: \"Id\");",
+      "lang": "cs",
+      "choices": [
+        "Which column to group rows by, so that each order appears only once",
+        "Which column is the key Dapper uses to track changes to each entity",
+        "Which column joins the two tables when Dapper rewrites the SQL text",
+        "Which column marks where the Customer's columns begin in each row"
+      ],
+      "answer": 3,
+      "why": "Multi-mapping reads each flat row left to right and needs to know where one object ends and the next begins; `splitOn` names that boundary column (\"Id\" is the default). Dapper does no de-duplication, so an order with several lines in a one-to-many join comes back several times unless you group it yourself in the map function.",
+      "tags": ["dapper"],
+      "level": 3,
+      "asked": "Only people who have used Dapper on joins know this; the one-to-many follow-up separates them further."
+    },
+    {
+      "id": "dd-026",
+      "q": "A BackgroundService (a singleton) queries the database every minute. What is the idiomatic way to get a DbContext?",
+      "choices": [
+        "Inject AppDb into its constructor, since the container scopes it per hosted service",
+        "Create one AppDb at startup and keep it in a static field for the service to reuse",
+        "Register AppDb as a singleton so that its lifetime matches the hosted service",
+        "Inject `IDbContextFactory<AppDb>` and create a short-lived context for each run"
+      ],
+      "answer": 3,
+      "why": "`AddDbContextFactory` registers a factory that is safe to inject anywhere, and each run creates and disposes its own context, so the change tracker never grows or goes stale. Injecting the scoped context into a singleton is a captive dependency, and a long-lived shared context is not thread-safe. Creating a scope with `IServiceScopeFactory` also works.",
+      "tags": ["lifetime"],
+      "level": 2,
+      "asked": "Background jobs are where DbContext lifetime bugs show up; a strong answer names the factory or a scope."
+    },
+    {
+      "id": "dd-027",
+      "q": "On PostgreSQL with Npgsql 6 or later, saving this entity throws 'Cannot write DateTime with Kind=Unspecified to PostgreSQL type timestamp with time zone'. Why?",
+      "code": "var order = new Order { PlacedAt = DateTime.Parse(dto.PlacedAt) };\ndb.Orders.Add(order);\nawait db.SaveChangesAsync();",
+      "lang": "cs",
+      "choices": [
+        "Npgsql maps `DateTime` to `timestamptz` and demands `Kind == Utc`; parse as UTC or use `DateTimeOffset`",
+        "Postgres has no `timestamp with time zone` type, so the column must be changed to `timestamp` in a migration",
+        "`DateTime.Parse` always yields Kind=Local, and Npgsql accepts only Local values for timestamptz columns",
+        "EF Core cannot translate `DateTime.Parse`, so the assignment must move into a `Select` projection instead"
+      ],
+      "answer": 0,
+      "why": "Since Npgsql 6 a `DateTime` property maps to `timestamp with time zone` by default and only UTC values may be written, so an Unspecified or Local Kind is rejected instead of silently shifted. Parse with `DateTimeStyles.AdjustToUniversal`, use `DateTimeOffset`, or map the column to `timestamp without time zone` if it is genuinely a wall-clock value. The type exists in Postgres, and `DateTime.Parse` runs in C# before any SQL, so translation is not involved.",
+      "tags": ["postgres", "types"],
+      "level": 2,
+      "asked": "The most common EF-on-Postgres exception after a SQL Server migration; it tests whether you store instants or wall-clock times."
+    }
+  ]
+}

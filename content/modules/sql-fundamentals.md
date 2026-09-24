@@ -140,8 +140,9 @@ HAVING COUNT(*) > 10
 ORDER BY 1 DESC;
 ```
 
-`GROUP BY 1` refers to the first select expression — convenient, and accepted
-in most engines.
+`GROUP BY 1` refers to the first select expression — convenient in Postgres,
+MySQL and SQLite, but **SQL Server rejects it** (see "SQL Server differences"
+below); repeating the expression works everywhere.
 
 ## Window functions: top N per group
 
@@ -235,7 +236,10 @@ think-time holds locks and exhausts the connection pool.
 ### Isolation levels, in brief
 
 Default is usually READ COMMITTED: you never read uncommitted data, but the same
-query twice in one transaction can return different results. REPEATABLE READ and
+query twice in one transaction can return different results. The exceptions
+worth naming: MySQL/InnoDB defaults to REPEATABLE READ, and SQL Server's READ
+COMMITTED takes shared locks unless READ_COMMITTED_SNAPSHOT (RCSI) is on, which
+it is by default on Azure SQL. REPEATABLE READ and
 SERIALIZABLE add guarantees at the cost of more blocking or more retries. You
 mostly do not need to change it — but knowing the default exists is worth a
 sentence.
@@ -255,7 +259,8 @@ WHERE id = 7 AND version = 3;
 
 Zero rows affected means someone got there first — return 409 and tell the user.
 
-**Pessimistic**: `SELECT ... FOR UPDATE` locks the row. Simple, but it holds a
+**Pessimistic**: `SELECT ... FOR UPDATE` (SQL Server: `WITH (UPDLOCK,
+ROWLOCK)`) locks the row. Simple, but it holds a
 lock for as long as you hold it, which is dangerous across user interaction.
 
 ## The N+1 problem
@@ -303,6 +308,23 @@ control, never from user input.
 - **Ids**: sequential integers are compact and index well but leak volume and
   are enumerable. UUIDs avoid that but fragment a clustered index — use a
   sequential UUID variant if you need both.
+
+## SQL Server differences
+
+If you are on the .NET track you will probably meet SQL Server. What changes
+from the Postgres used above:
+
+| Postgres | SQL Server |
+|---|---|
+| `LIMIT 20 OFFSET 40` | `TOP (20)`, or `OFFSET 40 ROWS FETCH NEXT 20 ROWS ONLY` (needs `ORDER BY`) |
+| `GROUP BY 1` | Not allowed; repeat the expression. Ordinal `ORDER BY 1` is fine |
+| `date_trunc('month', created_at)` | `DATETRUNC(month, created_at)` (SQL Server 2022+) |
+| `AVG(total_cents)::int` | `CAST(AVG(total_cents) AS int)` (`CAST` works in both) |
+| `SELECT … FOR UPDATE` | `SELECT … FROM orders WITH (UPDLOCK, ROWLOCK) WHERE …` |
+| `BIGSERIAL` / `GENERATED … AS IDENTITY` | `BIGINT IDENTITY(1,1)` |
+| `TIMESTAMPTZ` | `datetimeoffset` (`datetime2` has no offset) |
+| `TEXT` | `NVARCHAR(n)` for Unicode; `VARCHAR` is not Unicode unless the collation is UTF-8 |
+| `(a, b) < (x, y)` row comparison | Not supported; expand to `a < x OR (a = x AND b < y)` |
 
 ## The 20-minute practice list
 

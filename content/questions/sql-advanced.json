@@ -1,0 +1,432 @@
+{
+  "id": "sql-advanced",
+  "topic": "SQL+",
+  "title": "SQL, the deeper parts",
+  "blurb": "Window functions, CTEs, reading a query plan, isolation levels and locking: the SQL that turns 'it's slow' into a diagnosis.",
+  "questions": [
+    {
+      "id": "sqa-001",
+      "q": "The scores are ana 90, ben 90, cy 80 and di 70. What ranks does this return, in that order?",
+      "code": "SELECT player,\n       RANK() OVER (ORDER BY score DESC) AS rk\nFROM scores;",
+      "lang": "sql",
+      "choices": [
+        "1, 2, 3, 4: every row gets its own number, with ties broken arbitrarily",
+        "1, 1, 2, 3: tied rows share a rank and the next rank follows straight on",
+        "1, 1, 3, 4: tied rows share a rank and the next rank skips past the tie",
+        "1, 1, 3, 3: tied rows share a rank and every later rank is rounded down"
+      ],
+      "answer": 2,
+      "why": "`RANK` gives ties the same number and leaves a gap, like a sports table. `DENSE_RANK` gives 1, 1, 2, 3 with no gap, and `ROW_NUMBER` gives 1, 2, 3, 4, breaking the tie arbitrarily unless the ORDER BY is unique. Pick by whether 'the second place' after a tie should exist.",
+      "tags": ["window-functions"],
+      "level": 1,
+      "asked": "The warm-up window-function question; the follow-up is which one you use for 'top 3 per group' when ties matter."
+    },
+    {
+      "id": "sqa-002",
+      "q": "In Postgres, SQL Server or SQLite, the rows are (day 1, 10), (day 2, 20), (day 2, 5), (day 3, 1). What `running` values do the two day-2 rows get?",
+      "code": "SELECT day, amount,\n       SUM(amount) OVER (ORDER BY day) AS running\nFROM sales;",
+      "lang": "sql",
+      "choices": [
+        "30 and then 35, as each row adds only its own amount to the rows before",
+        "35 on both, as the default frame includes every peer tied on the same day",
+        "25 on both, as tied rows are summed together apart from the earlier days",
+        "An error, as ORDER BY inside OVER requires a sort key that is unique"
+      ],
+      "answer": 1,
+      "why": "With ORDER BY and no frame clause, the default frame is `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`, and RANGE includes all peers of the current row, so both day-2 rows see 10 + 20 + 5. Write `ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW` (and a unique tiebreaker) to get a true row-by-row running total of 30 then 35.",
+      "tags": ["window-functions", "frames"],
+      "level": 3,
+      "asked": "A subtle bug in real reports; knowing ROWS vs RANGE shows you have read the frame rules, not just copied a running-total snippet."
+    },
+    {
+      "id": "sqa-003",
+      "q": "`daily` holds signups of 40, 55 and 50 for days 1, 2 and 3. What does `change` contain, in day order?",
+      "code": "SELECT day,\n       signups - LAG(signups) OVER (ORDER BY day) AS change\nFROM daily;",
+      "lang": "sql",
+      "choices": [
+        "NULL, 15, -5, since the first row has no previous row to read",
+        "0, 15, -5, since LAG treats a missing previous row as zero",
+        "15, -5, NULL, since LAG reads the value from the following row",
+        "40, 15, -5, since the first row is compared with itself as zero"
+      ],
+      "answer": 0,
+      "why": "`LAG(x)` reads x from the previous row in the window order and returns NULL when there is none, and anything minus NULL is NULL. Pass a default, `LAG(signups, 1, 0)`, if you want 40 for the first day. `LEAD` is the one that looks at the following row.",
+      "tags": ["window-functions"],
+      "level": 1,
+      "asked": "Period-over-period change is the everyday use of window functions; the NULL edge shows you have actually run one."
+    },
+    {
+      "id": "sqa-004",
+      "q": "What is the key difference between `GROUP BY customer_id` with `SUM(total)` and `SUM(total) OVER (PARTITION BY customer_id)`?",
+      "choices": [
+        "GROUP BY gives one row per customer; the window keeps every row and adds the sum",
+        "PARTITION BY needs an index on customer_id, while GROUP BY works without one",
+        "The window version sums only the rows before the current row within each customer",
+        "They return identical results, and PARTITION BY is only the newer syntax for it"
+      ],
+      "answer": 0,
+      "why": "Aggregation collapses each group to one row; a window function computes over the partition but leaves every input row in the result, so you can show each order next to its customer's total. Without an ORDER BY in the OVER clause the frame is the whole partition, not a running total.",
+      "tags": ["window-functions"],
+      "level": 1,
+      "asked": "The concept that makes window functions click; interviewers use it to see whether you would otherwise reach for a self-join."
+    },
+    {
+      "id": "sqa-005",
+      "q": "Which frame gives a 7-day moving average over the current day and the six before it, assuming one row per day?",
+      "code": "SELECT day,\n       AVG(visits) OVER (ORDER BY day /* frame here */) AS avg7\nFROM daily_visits;",
+      "lang": "sql",
+      "choices": [
+        "ROWS BETWEEN 7 PRECEDING AND CURRENT ROW",
+        "ROWS BETWEEN 6 PRECEDING AND CURRENT ROW",
+        "RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW",
+        "ROWS BETWEEN CURRENT ROW AND 6 FOLLOWING"
+      ],
+      "answer": 1,
+      "why": "`6 PRECEDING AND CURRENT ROW` is seven rows. `7 PRECEDING` averages eight, `UNBOUNDED PRECEDING` is a cumulative average, and `6 FOLLOWING` looks forward. ROWS counts rows, not days, so a missing day silently widens the window; fill gaps with a calendar table, or use a RANGE frame with an interval where the engine supports it (Postgres 11+).",
+      "tags": ["window-functions", "frames"],
+      "level": 2,
+      "asked": "Moving averages are a staple dashboard query; the off-by-one and the missing-day caveat are what interviewers probe."
+    },
+    {
+      "id": "sqa-006",
+      "q": "The rows (id, parent_id) are (1, NULL), (2, 1), (3, 1) and (4, 2). Which ids does this Postgres/SQLite query return?",
+      "code": "WITH RECURSIVE sub AS (\n  SELECT id FROM categories WHERE id = 2\n  UNION ALL\n  SELECT c.id FROM categories c JOIN sub s ON c.parent_id = s.id\n)\nSELECT id FROM sub;",
+      "lang": "sql",
+      "choices": [
+        "2 only, since the recursive member runs for just a single level",
+        "1, 2 and 4, following the tree up to the root and back",
+        "2 and 4: category 2 and everything beneath it in the tree",
+        "2, 3 and 4, since every row under the root is included"
+      ],
+      "answer": 2,
+      "why": "The anchor returns 2; each pass joins children onto the rows found last pass (4), and the recursion stops when a pass adds nothing. The join direction decides whether you walk down (children) or up (ancestors). SQL Server omits the `RECURSIVE` keyword and stops at `MAXRECURSION` (default 100); Postgres loops on cyclic data until you add a depth column or, from 14, a `CYCLE` clause.",
+      "tags": ["ctes", "recursive"],
+      "level": 2,
+      "asked": "Category trees, org charts and threaded comments all need this; interviewers want to see you can read the anchor and recursive parts."
+    },
+    {
+      "id": "sqa-007",
+      "q": "In Postgres 12 and later, what happens to a non-recursive, side-effect-free CTE that the query references once?",
+      "choices": [
+        "It is always computed first and stored, so outer filters cannot reach inside",
+        "The planner inlines it like a subquery, unless you write `AS MATERIALIZED`",
+        "It is cached for the rest of the session, so repeat queries skip the work",
+        "It becomes a temporary table with its own statistics, gathered at runtime"
+      ],
+      "answer": 1,
+      "why": "Before Postgres 12, every CTE was an optimisation fence: computed in full, with outer WHERE clauses unable to push down, which is the folklore behind 'CTEs are slow'. Since 12 a single-reference CTE is inlined; `MATERIALIZED` restores the fence and `NOT MATERIALIZED` forces inlining. SQL Server has always inlined CTEs, which are not cached anywhere.",
+      "tags": ["ctes", "performance"],
+      "level": 3,
+      "asked": "Separates people who repeat 'CTEs are slow' from those who know when and on which engine it was true."
+    },
+    {
+      "id": "sqa-008",
+      "q": "This is meant to list customers who have placed at least one order. Ana has three orders. What goes wrong, and what fixes it?",
+      "code": "SELECT c.name\nFROM customers c\nJOIN orders o ON o.customer_id = c.id;",
+      "lang": "sql",
+      "choices": [
+        "Nothing: an inner join returns each customer row at most once",
+        "Ana appears three times; test the orders with WHERE EXISTS instead",
+        "Customers without orders appear with NULLs; filter them with IS NOT NULL",
+        "It fails without GROUP BY c.name; add it so each name is aggregated"
+      ],
+      "answer": 1,
+      "why": "A join produces one row per matching pair, so a customer with three orders appears three times. `WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id)` is a semi-join: it only asks whether a match exists and returns each customer once. Patching it with DISTINCT works but hides the intent and does extra de-duplication work.",
+      "tags": ["joins", "semi-join"],
+      "level": 2,
+      "asked": "Checks you know joins multiply rows; strong candidates reach for EXISTS rather than DISTINCT."
+    },
+    {
+      "id": "sqa-009",
+      "q": "In Postgres 11+ or SQL Server, what does `INCLUDE` buy the query below?",
+      "code": "CREATE INDEX ix_orders_customer\n  ON orders (customer_id) INCLUDE (status, total);\n\nSELECT status, total FROM orders WHERE customer_id = 42;",
+      "lang": "sql",
+      "choices": [
+        "status and total become key columns, so `WHERE status = ?` can seek on them",
+        "The table is physically re-sorted by customer_id, then status and total",
+        "status and total must now be unique within each customer_id in the table",
+        "The index alone answers the query, with no lookup into the table per row"
+      ],
+      "answer": 3,
+      "why": "INCLUDE stores extra columns in the index leaf pages without making them part of the key, so this query becomes an index-only scan (Postgres) or avoids key lookups (SQL Server). They cannot be used to seek or sort, and they widen the index, so include only what hot queries read. In Postgres, index-only scans also depend on the visibility map being current.",
+      "tags": ["indexes", "covering"],
+      "level": 2,
+      "asked": "Covering indexes are the most common fix for a hot read query; interviewers check you know included columns are not searchable."
+    },
+    {
+      "id": "sqa-010",
+      "q": "In Postgres or SQLite (a filtered index in SQL Server), what does this index enforce?",
+      "code": "CREATE UNIQUE INDEX ux_users_email_live\n  ON users (email)\n  WHERE deleted_at IS NULL;",
+      "lang": "sql",
+      "choices": [
+        "Every email is unique across all rows, whether soft-deleted or live",
+        "Deleted rows can never be inserted with an email that is already in use",
+        "One live user per email, while soft-deleted rows may share the address",
+        "Emails are unique among live rows, and any NULL email is rejected outright"
+      ],
+      "answer": 2,
+      "why": "A partial (filtered) index covers only rows matching its WHERE, so uniqueness applies among live users and a person can re-register after deleting their account. It is also smaller than a full index. A query can use it only when its own filter implies `deleted_at IS NULL`, so write that predicate literally.",
+      "tags": ["indexes", "partial-index"],
+      "level": 2,
+      "asked": "The standard answer to 'soft delete broke our unique constraint'; it shows you can make the database enforce a rule with conditions."
+    },
+    {
+      "id": "sqa-011",
+      "q": "`orders.status` has an index, and 95% of rows are 'active'. Postgres answers `WHERE status = 'active'` with a sequential scan. Why?",
+      "choices": [
+        "Reading most of the table through the index costs more than one full scan",
+        "The index must be corrupt, since a usable index is always chosen over a scan",
+        "Postgres never uses an index for equality tests on text-typed columns",
+        "The query is missing an index hint, which Postgres requires to use one"
+      ],
+      "answer": 0,
+      "why": "The planner costs both options using column statistics: fetching 95% of rows one index entry at a time means random page reads, while a sequential scan reads pages in order once. For the rare 'cancelled' value the same index wins. Postgres has no index hints; a partial index on the rare values is the usual improvement.",
+      "tags": ["indexes", "query-plans"],
+      "level": 2,
+      "asked": "'Why isn't it using my index?' is the most common tuning question; selectivity is the first thing a strong answer checks."
+    },
+    {
+      "id": "sqa-012",
+      "q": "After a bulk import, Postgres `EXPLAIN ANALYZE` shows this slow plan. What is the most likely cause?",
+      "code": "Nested Loop  (rows=1) (actual rows=48210 loops=1)\n  -> Index Scan using ix_orders_status on orders\n       (rows=1) (actual rows=48210 loops=1)\n  -> Index Scan using customers_pkey on customers\n       (rows=1) (actual rows=1 loops=48210)",
+      "lang": "txt",
+      "choices": [
+        "Stale statistics: it expected 1 row, so ANALYZE the orders table",
+        "The customers primary key index is missing and has to be created",
+        "Nested loops are always slow, so disable them for the whole server",
+        "The import left orders locked, so each lookup waits on a lock"
+      ],
+      "answer": 0,
+      "why": "Estimated rows=1 against actual 48,210 is the tell: the planner chose a nested loop for one row and then ran the inner lookup 48,210 times. Autoanalyze has not caught up with the imported rows; run `ANALYZE orders` after big loads. The plan does use the primary key, and lock waits show up as time, not as a row-estimate gap.",
+      "tags": ["query-plans", "statistics"],
+      "level": 2,
+      "asked": "Reading estimated vs actual rows is the core skill in plan reading; interviewers hand you a plan to see if you find the gap."
+    },
+    {
+      "id": "sqa-013",
+      "q": "In SQL Server, after a restart, a tenant with 10 orders ran this first. Now the tenant with 2 million orders times out on it. Why?",
+      "code": "CREATE PROCEDURE GetOrders @TenantId int AS\n  SELECT * FROM Orders WHERE TenantId = @TenantId;",
+      "lang": "sql",
+      "choices": [
+        "Stored procedures cannot use an index on a column compared with a parameter",
+        "SQL Server caps each procedure's result set at a fixed number of rows",
+        "The small tenant's call is still holding shared locks on the Orders table",
+        "The plan compiled for the tiny tenant's value is cached and reused for all"
+      ],
+      "answer": 3,
+      "why": "This is parameter sniffing: the first call's value shapes the cached plan (say, a seek plus key lookups for 10 rows), which is disastrous for 2 million. Fixes include `OPTION (RECOMPILE)` for that statement, `OPTIMIZE FOR`, splitting the query per tenant size, or SQL Server 2022's parameter-sensitive plan optimisation. Locks would show as waits, not a bad plan.",
+      "tags": ["query-plans", "statistics"],
+      "level": 3,
+      "asked": "The classic 'fast in SSMS, slow in the app' mystery; a strong answer names the cause and at least two fixes with their costs."
+    },
+    {
+      "id": "sqa-014",
+      "q": "Which anomaly does READ COMMITTED prevent that READ UNCOMMITTED allows?",
+      "choices": [
+        "Phantom reads: new rows appearing when a range query is repeated",
+        "Non-repeatable reads: a re-read row showing another's committed change",
+        "Dirty reads: seeing changes another transaction has not committed yet",
+        "Lost updates: two transactions overwriting each other's changes"
+      ],
+      "answer": 2,
+      "why": "READ COMMITTED only lets you see committed data, but each statement may see newer commits than the last, so non-repeatable reads and phantoms remain possible. In Postgres, READ UNCOMMITTED behaves as READ COMMITTED, so dirty reads never happen there; SQL Server's `NOLOCK` hint really does allow them.",
+      "tags": ["isolation"],
+      "level": 1,
+      "asked": "The entry point to isolation levels; the NOLOCK follow-up is common in SQL Server shops."
+    },
+    {
+      "id": "sqa-015",
+      "q": "Within one transaction you run the same query twice. What distinguishes a phantom read from a non-repeatable read?",
+      "choices": [
+        "A phantom is new rows matching the filter; a non-repeatable read is a changed row",
+        "A phantom is a row deleted by rollback; a non-repeatable read is one never committed",
+        "A phantom happens only in NoSQL stores; a non-repeatable read happens only in SQL",
+        "A phantom is a stale cached result; a non-repeatable read is a failed second query"
+      ],
+      "answer": 0,
+      "why": "A non-repeatable read re-reads the same row and sees a committed update; a phantom repeats a range or filter and sees rows inserted or deleted by another transaction. The SQL standard's REPEATABLE READ may still allow phantoms, though Postgres's snapshot-based REPEATABLE READ prevents them.",
+      "tags": ["isolation"],
+      "level": 1,
+      "asked": "Tests precise vocabulary; the Postgres note shows you know engines go beyond the standard's minimums."
+    },
+    {
+      "id": "sqa-016",
+      "q": "Under default settings, a long report reads `orders` while another transaction is updating some of its rows. How do Postgres and on-premises SQL Server differ?",
+      "choices": [
+        "Each engine blocks the report until the writer commits, as READ COMMITTED needs",
+        "Each engine shows the report the writer's uncommitted rows, to avoid waiting",
+        "Postgres blocks the writer until the report ends; SQL Server blocks neither",
+        "Postgres reads a snapshot and waits for nothing; SQL Server's reader can block"
+      ],
+      "answer": 3,
+      "why": "Postgres uses MVCC: readers see the last committed version of each row and never wait for writers. SQL Server's default READ COMMITTED uses shared locks, so a reader waits on a row a writer holds, unless READ_COMMITTED_SNAPSHOT is on (the default in Azure SQL Database), which gives Postgres-like row versioning in tempdb.",
+      "tags": ["isolation", "mvcc"],
+      "level": 2,
+      "asked": "Explains many 'the report froze checkout' incidents; mentioning RCSI shows real SQL Server experience."
+    },
+    {
+      "id": "sqa-017",
+      "q": "Two transfers like these run at the same moment and occasionally deadlock. What is the standard fix?",
+      "code": "-- T1: move 50 from account 1 to account 2\nUPDATE accounts SET balance = balance - 50 WHERE id = 1;\nUPDATE accounts SET balance = balance + 50 WHERE id = 2;\n-- T2, concurrently: move 20 from account 2 to account 1\nUPDATE accounts SET balance = balance - 20 WHERE id = 2;\nUPDATE accounts SET balance = balance + 20 WHERE id = 1;",
+      "lang": "sql",
+      "choices": [
+        "Raise both to SERIALIZABLE, so the database queues them one after another",
+        "Add an index on accounts.id, so each row lock is taken and released faster",
+        "Commit after each UPDATE, so neither transaction holds a lock while waiting",
+        "Lock the rows in a consistent order, such as always the lower id first"
+      ],
+      "answer": 3,
+      "why": "T1 holds row 1 and wants row 2 while T2 holds row 2 and wants row 1: a cycle neither can break. If both always lock the lower id first, the second simply waits for the first to finish. SERIALIZABLE adds more locking (or serialisation failures), and committing between the two updates breaks the transfer's atomicity.",
+      "tags": ["isolation", "deadlocks"],
+      "level": 2,
+      "asked": "Asks for the mechanism behind deadlocks, not just 'retry'; consistent lock ordering is the answer interviewers want."
+    },
+    {
+      "id": "sqa-018",
+      "q": "SQL Server detects a deadlock between two transactions. By default, which one does it choose as the victim?",
+      "choices": [
+        "The one that started most recently, whatever work it has already done",
+        "The one holding the most locks, since releasing those frees the most",
+        "The one least expensive to roll back, unless DEADLOCK_PRIORITY differs",
+        "Neither: both wait until their lock timeout expires, then both fail"
+      ],
+      "answer": 2,
+      "why": "The lock monitor finds the cycle and kills the transaction with the lowest DEADLOCK_PRIORITY, and among equals the one that has written the least transaction log, so the least work is lost. Postgres works differently: a waiter checks for a cycle after `deadlock_timeout` (1 s by default) and aborts itself. Either way, the victim's work is rolled back and the application must retry it.",
+      "tags": ["isolation", "deadlocks"],
+      "level": 3,
+      "asked": "Goes past 'retry on deadlock' to how the engine decides, which matters when you set a batch job's priority."
+    },
+    {
+      "id": "sqa-019",
+      "q": "Ten workers run this Postgres statement at once to claim jobs. What does `SKIP LOCKED` contribute?",
+      "code": "UPDATE jobs SET status = 'running', worker = $1\nWHERE id = (\n  SELECT id FROM jobs WHERE status = 'queued'\n  ORDER BY id LIMIT 1\n  FOR UPDATE SKIP LOCKED\n)\nRETURNING id;",
+      "lang": "sql",
+      "choices": [
+        "Each worker claims a different job instead of queuing behind one row",
+        "It skips jobs that failed earlier and were left in a locked state",
+        "It runs the subquery without taking any row lock, so it is faster",
+        "It lets two workers share a job, and whichever finishes first wins"
+      ],
+      "answer": 0,
+      "why": "Without it, all ten workers pick the same first queued row and nine block on its lock. With SKIP LOCKED each worker passes over rows another transaction has locked and takes the next free one, so Postgres works as a simple job queue. SQL Server's equivalent is `WITH (UPDLOCK, READPAST, ROWLOCK)`; MySQL 8 also supports SKIP LOCKED.",
+      "tags": ["locking", "queues"],
+      "level": 2,
+      "asked": "A practical pattern for job queues without extra infrastructure; interviewers like it because it tests locking in a real design."
+    },
+    {
+      "id": "sqa-020",
+      "q": "`stock` holds one row, ('A1', 5). In Postgres or SQLite, what does the final SELECT return?",
+      "code": "INSERT INTO stock (sku, qty) VALUES ('A1', 3), ('B2', 4)\nON CONFLICT (sku) DO UPDATE SET qty = stock.qty + excluded.qty;\n\nSELECT sku, qty FROM stock ORDER BY sku;",
+      "lang": "sql",
+      "choices": [
+        "A1 3 and B2 4, as the conflicting row is overwritten",
+        "A1 5 and B2 4, as the conflicting row is left untouched",
+        "A1 8 and B2 4, as the new quantity is added to the old",
+        "An error for A1, and neither row is inserted as a result"
+      ],
+      "answer": 2,
+      "why": "`excluded` is the row that failed to insert, so A1 becomes 5 + 3 = 8 and B2, which had no conflict, is inserted as 4. `DO NOTHING` would leave A1 at 5. ON CONFLICT is atomic even under concurrency, and needs a unique index or constraint on the conflict target.",
+      "tags": ["upserts"],
+      "level": 1,
+      "asked": "Upserts appear in every sync and import job; reading `excluded` correctly is the basic check."
+    },
+    {
+      "id": "sqa-021",
+      "q": "In SQL Server, two sessions run this MERGE for the same new SKU at once, and one fails with a primary key violation. Why?",
+      "code": "MERGE Stock AS t\nUSING (VALUES (@Sku, @Qty)) AS s (Sku, Qty) ON t.Sku = s.Sku\nWHEN MATCHED THEN UPDATE SET Qty = t.Qty + s.Qty\nWHEN NOT MATCHED THEN INSERT (Sku, Qty) VALUES (s.Sku, s.Qty);",
+      "lang": "sql",
+      "choices": [
+        "MERGE runs its INSERT branch before it has looked for any matching row",
+        "Neither session sees a match, so each inserts, since nothing locks the gap",
+        "Each WHEN branch of a MERGE runs as its own separate, nested transaction",
+        "The VALUES source must have its own unique index before MERGE can match"
+      ],
+      "answer": 1,
+      "why": "MERGE is a single statement but not an atomic upsert: under READ COMMITTED no lock protects the missing key, so both sessions take the NOT MATCHED branch. Add `WITH (HOLDLOCK)` (serializable range locking) on the target, or retry on the duplicate-key error. Postgres `ON CONFLICT` handles this race itself; its MERGE (Postgres 15+) has the same caveat.",
+      "tags": ["upserts", "locking"],
+      "level": 3,
+      "asked": "MERGE's concurrency trap is a known production bug; knowing HOLDLOCK shows you have been bitten or read the post-mortems."
+    },
+    {
+      "id": "sqa-022",
+      "q": "In Postgres, why does this query not use the GIN index on `data`?",
+      "code": "CREATE INDEX ix_events_data ON events USING GIN (data);\n\nSELECT * FROM events WHERE data->>'status' = 'failed';",
+      "lang": "sql",
+      "choices": [
+        "GIN indexes serve only full-text search columns, never jsonb documents",
+        "The index covers only nested keys, and status sits at the top level here",
+        "Postgres cannot index jsonb columns at all, so every JSON filter must scan",
+        "The default jsonb GIN index serves operators like `@>`, not `->>` equality"
+      ],
+      "answer": 3,
+      "why": "A GIN index with the default `jsonb_ops` supports containment and key-existence operators (`@>`, `?`), so rewrite the filter as `data @> '{\"status\": \"failed\"}'`. Alternatively, index the expression: `CREATE INDEX ON events ((data->>'status'))`, a plain B-tree for equality and ranges on that one field.",
+      "tags": ["json", "indexes"],
+      "level": 2,
+      "asked": "JSON columns are common now; checks you know an index must match the operator the query actually uses."
+    },
+    {
+      "id": "sqa-023",
+      "q": "An import inserts 10,000 rows with one INSERT per row in autocommit mode, and it takes minutes. What is the biggest single improvement?",
+      "choices": [
+        "Add more indexes, so the database finds each new row's slot faster",
+        "Wrap the rows in one transaction, or send them as multi-row inserts",
+        "Switch the primary key to a UUID, so that concurrent inserts never contend",
+        "Run 50 parallel connections, each inserting rows in autocommit"
+      ],
+      "answer": 1,
+      "why": "Each autocommit waits for a durable log flush, plus a network round trip, so 10,000 commits cost 10,000 flushes. One transaction, a multi-row VALUES list, or a bulk path (`COPY`, `SqlBulkCopy`) removes most of that; in a local SQLite test the gap was about 1,000×. Extra indexes slow inserts, and parallel autocommit still pays per-commit costs.",
+      "tags": ["performance", "batching"],
+      "level": 1,
+      "asked": "A very common real performance fix; strong answers mention batch sizes so one giant transaction does not hold locks too long."
+    },
+    {
+      "id": "sqa-024",
+      "q": "In Postgres 12+ (SQL Server computed columns and MySQL 8 behave alike), what does declaring `total` this way guarantee that a trigger or application code does not?",
+      "code": "CREATE TABLE order_lines (\n  qty        int            NOT NULL,\n  unit_price numeric(10,2)  NOT NULL,\n  total      numeric(12,2)  GENERATED ALWAYS AS (qty * unit_price) STORED\n);",
+      "lang": "sql",
+      "choices": [
+        "`total` is recomputed on every read, so it costs no storage space but can never be indexed",
+        "`total` never disagrees with qty and unit_price, and an INSERT or UPDATE that sets it is an error",
+        "`total` is filled once at insert time and then kept as a snapshot even when unit_price later changes",
+        "`total` acts like a DEFAULT, so an UPDATE that supplies its own value overrides the formula"
+      ],
+      "answer": 1,
+      "why": "A stored generated column is written by the engine from its expression on every INSERT and UPDATE and cannot be assigned (Postgres: 'cannot insert a non-DEFAULT value into column'), so no code path lets it drift, unlike a trigger someone disables or an ORM someone forgets. It is on disk and indexable; Postgres 18 adds VIRTUAL (computed on read), which is what SQL Server does unless you say PERSISTED. The expression must be immutable and may not reference other tables.",
+      "tags": ["constraints", "generated-columns"],
+      "level": 2,
+      "asked": "Derived values that drift from their inputs are a classic data bug; knowing the database can own the formula, and what it refuses to let you do, is the mid-level answer."
+    },
+    {
+      "id": "sqa-025",
+      "q": "In Postgres, SQL Server, MySQL 8 and SQLite alike, `discount` is nullable. Which of these inserts succeeds?",
+      "code": "CREATE TABLE promo (\n  code     text PRIMARY KEY,\n  discount int  CHECK (discount BETWEEN 1 AND 100)\n);\nINSERT INTO promo VALUES ('A', 150);\nINSERT INTO promo VALUES ('B', NULL);",
+      "lang": "sql",
+      "choices": [
+        "Both: CHECK only runs when a WHERE-style comparison is evaluated, and neither insert has one",
+        "Only A: 150 is an integer so the type check passes, while NULL fails the BETWEEN range test",
+        "Neither: 150 is outside the range and NULL is outside it too, so both rows are rejected",
+        "Only B: a CHECK rejects a row only when its test is false, and with NULL it is unknown"
+      ],
+      "answer": 3,
+      "why": "A CHECK constraint rejects a row only when its condition is false; NULL makes `discount BETWEEN 1 AND 100` unknown, which is not false, so B is accepted on all four engines (MySQL enforces CHECK since 8.0.16). 150 is plainly false and A is rejected. If a missing discount is invalid, add `NOT NULL`; the CHECK alone will never enforce it.",
+      "tags": ["constraints", "null"],
+      "level": 2,
+      "asked": "The three-valued-logic trap in constraints; a CHECK that quietly admits NULLs is a common cause of 'how did that row get in'."
+    },
+    {
+      "id": "sqa-026",
+      "q": "Postgres `EXPLAIN` shows a Hash Join for a query joining `orders` (2 million rows) to `customers` (50,000 rows) with no WHERE clause. Why is that the right choice over a Nested Loop?",
+      "choices": [
+        "It builds a hash table of the smaller side once and probes it per order row, which beats 2 million index lookups",
+        "Hash joins are chosen whenever the tables lack indexes, which means the missing index on customers should be added",
+        "Nested Loop only works when one side fits into a single page, so it is unavailable at this table size in Postgres",
+        "Hash joins return rows in customer id order, which saves the sort that an ORDER BY would otherwise need afterwards"
+      ],
+      "answer": 0,
+      "why": "When most rows on both sides are needed, one pass to hash 50,000 customers plus one sequential pass over orders is far cheaper than 2 million random index probes; a Nested Loop wins when the outer side is a handful of rows (a selective WHERE) and the inner lookup is indexed. Hash output is unordered; Merge Join is the one that exploits sorted inputs. SQL Server's Hash Match, Nested Loops and Merge Join are the same trio, and all are chosen by estimated cost, so stale statistics can still pick wrong.",
+      "tags": ["query-plans", "joins"],
+      "level": 2,
+      "asked": "Reading the join node is the second skill after row estimates; strong answers say when each of the three join strategies wins."
+    }
+  ]
+}

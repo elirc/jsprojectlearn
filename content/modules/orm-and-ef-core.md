@@ -130,6 +130,53 @@ builder.Services.AddDbContext<AppDb>(o => o
 
 Watching your own SQL scroll past is the fastest way to develop ORM intuition.
 
+## Loading strategies, bulk writes and raw SQL
+
+**Eager, explicit, lazy.** Three ways a navigation property gets its data:
+
+| Strategy | How | When it runs | Verdict |
+|---|---|---|---|
+| **Eager** | `.Include(o => o.Customer)` or a projection | In the same query (or split queries) | The default for anything you know you need |
+| **Explicit** | `await db.Entry(order).Collection(o => o.Items).LoadAsync()` | When you ask, one query per call | Fine for "load this only on a branch" |
+| **Lazy** | `UseLazyLoadingProxies()` (the Proxies package) plus `virtual` navigations | On first property access, silently | The N+1 generator; off by default for a reason |
+
+Lazy loading makes N+1 invisible: `order.Customer.Name` in a loop is a query per
+iteration and nothing in the code says so. Say you leave it off.
+
+**Bulk updates and deletes without tracking.** Since EF Core 7, set-based
+statements run directly in the database, skip the change tracker, and do not
+need a `SaveChanges`:
+
+```csharp
+// One UPDATE ... WHERE, however many rows match
+await db.Orders
+    .Where(o => o.Status == OrderStatus.Pending && o.CreatedAt < cutoff)
+    .ExecuteUpdateAsync(s => s.SetProperty(o => o.Status, OrderStatus.Cancelled));
+
+await db.Sessions.Where(s => s.ExpiresAt < now).ExecuteDeleteAsync();
+```
+
+The catch: already-loaded entities are not updated, and concurrency tokens are
+not checked.
+
+**Global query filters** apply a `WHERE` to every query on an entity type, which
+is the standard way to do soft delete and tenant isolation:
+
+```csharp
+modelBuilder.Entity<Order>().HasQueryFilter(o => !o.IsDeleted && o.TenantId == _tenantId);
+// The one admin query that must see everything:
+db.Orders.IgnoreQueryFilters();
+```
+
+**Raw SQL.** `FromSql` takes an interpolated string and turns every `{value}`
+into a parameter. `FromSqlRaw` takes a plain string, so concatenating input into
+it is SQL injection through an ORM:
+
+```csharp
+db.Orders.FromSql($"SELECT * FROM orders WHERE status = {status}");      // parameterised
+db.Orders.FromSqlRaw("SELECT * FROM orders WHERE status = '" + status + "'"); // injectable
+```
+
 ## Why DbContext is Scoped
 
 It is **not thread-safe** and it holds per-request change-tracking state. Two
@@ -151,10 +198,15 @@ Note also that within one context, awaiting two EF queries concurrently throws �
 
 ## Migrations
 
-```
+```bash
 dotnet ef migrations add AddShippedAtToOrders
 dotnet ef database update
 ```
+
+These need `dotnet tool install --global dotnet-ef` plus the
+`Microsoft.EntityFrameworkCore.Design` package; `EnsureCreated()` is the
+no-tooling alternative for throwaway apps and tests, and it cannot evolve a
+schema.
 
 EF diffs your model against the last migration's snapshot and generates a class
 with `Up` and `Down`. **Read the generated code before committing it** — a
@@ -165,7 +217,8 @@ migration takes the app down, and multiple replicas starting simultaneously race
 each other. Better is a dedicated pipeline step, or an init container, that runs
 once before the new version starts.
 
-For anything on a large live table, use expand/contract (see the SQL guide):
+For anything on a large live table, use expand/contract (see the CI/CD guide,
+"Migrations in the pipeline"):
 add nullable, backfill in batches, dual-write, migrate reads, then tighten the
 constraint. This is also what makes rolling deploys safe, because old and new
 code run simultaneously.
@@ -194,14 +247,19 @@ provider holds locks for the duration of someone else's outage.
 
 ## Concurrency
 
-Add a concurrency token and EF adds it to the WHERE clause of every update:
+Add a concurrency token and EF adds it to the WHERE clause of every update. The
+mapping depends on the provider, which is why copying a sample between them
+fails:
 
 ```csharp
-public class Order
-{
-    public int Id { get; set; }
-    [Timestamp] public byte[] RowVersion { get; set; } = default!;
-}
+// SQL Server: a rowversion column the database bumps on every write
+[Timestamp] public byte[] RowVersion { get; set; } = default!;
+
+// Postgres (Npgsql): maps to the xmin system column; no column to add
+[Timestamp] public uint Version { get; set; }
+
+// Provider-neutral (and the SQLite answer): a plain int you bump yourself
+[ConcurrencyCheck] public int Version { get; set; }
 ```
 
 If zero rows are affected, EF throws `DbUpdateConcurrencyException` — catch it

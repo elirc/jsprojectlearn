@@ -1,164 +1,176 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Content, SearchRow } from '../lib/types.ts';
+import { useContent } from '../lib/content-context.ts';
+import { shouldIgnoreKey } from '../lib/hooks.ts';
+import { buildSearch, hrefFor, searchRows } from '../lib/search.ts';
+import type { SearchRow } from '../lib/types.ts';
 
 /**
- * Ctrl/Cmd-K search across projects, modules and decks.
+ * Ctrl/Cmd-K (or `/`) search across pages, the path, guides and their
+ * sections, projects and decks. (react/58-command-palette is the long-form
+ * version of this component.)
  *
- * The whole index is a few hundred rows, so scoring every row on every
- * keystroke is cheaper than any index structure would be — and much easier to
- * read. (react/58-command-palette is the long-form version of this component.)
+ * The dialog is modal: focus moves into it, Tab cannot leave it, and closing
+ * it puts focus back where it was.
  */
-
-function score(row: SearchRow, terms: string[]): number {
-  const title = row.title.toLowerCase();
-  const haystack = `${title} ${row.sub} ${row.text}`.toLowerCase();
-  let total = 0;
-  for (const term of terms) {
-    if (title.startsWith(term)) total += 6;
-    else if (title.includes(term)) total += 4;
-    else if (haystack.includes(term)) total += 1;
-    else return -1;
-  }
-  return total;
-}
-
-function hrefFor(row: SearchRow): string {
-  if (row.kind === 'project') return `/project/${row.id}`;
-  if (row.kind === 'deck') return `/drill/${row.id}`;
-  return `/path/${row.id.split('/')[0]}`;
-}
-
-const KIND_LABEL: Record<SearchRow['kind'], string> = {
-  project: 'Project',
-  deck: 'Deck',
-  module: 'Module',
-};
-
-export default function CommandBar({ content }: { content: Content }) {
+export default function CommandBar() {
+  const content = useContent();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const returnTo = useRef<HTMLElement | null>(null);
   const navigate = useNavigate();
 
+  const index = useMemo(() => buildSearch(content), [content]);
+  const groups = useMemo(() => searchRows(index, query), [index, query]);
+  const hits = useMemo(() => groups.flatMap((group) => group.rows), [groups]);
+  const active = Math.min(cursor, Math.max(0, hits.length - 1));
+
+  const show = () => {
+    if (!open) returnTo.current = document.activeElement as HTMLElement | null;
+    setOpen(true);
+  };
+  const close = () => {
+    setOpen(false);
+    setQuery('');
+    setCursor(0);
+  };
+
+  // Attached once; the effect event always sees the current `open`.
+  const onWindowKey = useEffectEvent((event: KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      if (open) close();
+      else show();
+    } else if (event.key === 'Escape' && open) {
+      close();
+    } else if (event.key === '/' && !open && !shouldIgnoreKey(event)) {
+      event.preventDefault();
+      show();
+    }
+  });
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        setOpen((wasOpen) => !wasOpen);
-      }
-      if (event.key === 'Escape') setOpen(false);
-    };
+    const onKey = (event: KeyboardEvent) => onWindowKey(event);
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-    else {
-      setQuery('');
-      setCursor(0);
+    if (open) {
+      inputRef.current?.focus();
+      return;
     }
+    // Back to whatever had focus before the dialog opened (the trigger, usually).
+    const target = returnTo.current;
+    returnTo.current = null;
+    if (target?.isConnected) target.focus();
   }, [open]);
 
-  const hits = useMemo(() => {
-    const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    if (!terms.length) return [];
-    return content.search
-      .map((row) => ({ row, points: score(row, terms) }))
-      .filter((hit) => hit.points >= 0)
-      .sort((a, b) => b.points - a.points)
-      .slice(0, 12)
-      .map((hit) => hit.row);
-  }, [content.search, query]);
-
-  if (!open) {
-    return (
-      <div className="row" style={{ padding: '14px 32px 0', justifyContent: 'flex-end' }}>
-        <button className="btn sm ghost" onClick={() => setOpen(true)}>
-          Search <span className="kbd">Ctrl K</span>
-        </button>
-      </div>
-    );
-  }
+  // Keep the highlighted row visible while arrowing through a long list.
+  useEffect(() => {
+    listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView?.({ block: 'nearest' });
+  }, [active, open]);
 
   const go = (row: SearchRow) => {
+    returnTo.current = null; // focus belongs to the new page now
+    close();
     navigate(hrefFor(row));
-    setOpen(false);
   };
 
+  const onInputKey = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setCursor(Math.min(active + 1, hits.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setCursor(Math.max(active - 1, 0));
+    } else if (event.key === 'Enter') {
+      const hit = hits[active];
+      if (hit) go(hit);
+    } else if (event.key === 'Tab') {
+      // The input is the dialog's only tab stop; results are reached with arrows.
+      event.preventDefault();
+    }
+  };
+
+  const optionId = (row: SearchRow) => `cmd-opt-${row.kind}-${row.id}`.replace(/[^\w-]/g, '_');
+  const activeRow = hits[active];
+
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgb(0 0 0 / 0.45)',
-        zIndex: 50,
-        display: 'grid',
-        placeItems: 'start center',
-        paddingTop: '12vh',
-      }}
-      onClick={() => setOpen(false)}
-    >
-      <div
-        className="card"
-        style={{ width: 'min(620px, 92vw)', padding: 10 }}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <input
-          ref={inputRef}
-          type="search"
-          placeholder="Search projects, modules, decks…"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setCursor(0);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'ArrowDown') {
-              event.preventDefault();
-              setCursor((c) => Math.min(c + 1, hits.length - 1));
-            } else if (event.key === 'ArrowUp') {
-              event.preventDefault();
-              setCursor((c) => Math.max(c - 1, 0));
-            } else if (event.key === 'Enter') {
-              const hit = hits[cursor];
-              if (hit) go(hit);
-            }
-          }}
-        />
-        <div style={{ marginTop: 8, maxHeight: '52vh', overflowY: 'auto' }}>
-          {hits.map((row, index) => (
-            <button
-              key={`${row.kind}:${row.id}`}
-              className="search-hit"
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                border: index === cursor ? '1px solid var(--accent)' : '1px solid transparent',
-                background: index === cursor ? 'var(--bg-inset)' : 'transparent',
-                cursor: 'pointer',
+    <>
+      <button className="nav-item cmd-trigger" onClick={show} aria-haspopup="dialog">
+        <span className="glyph" aria-hidden="true">
+          ⌕
+        </span>
+        Search
+        <span className="kbd">Ctrl K</span>
+      </button>
+
+      {open && (
+        <div className="cmd-overlay" onClick={close}>
+          <div
+            className="card cmd-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Search"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <input
+              ref={inputRef}
+              type="search"
+              role="combobox"
+              aria-expanded={hits.length > 0}
+              aria-controls="cmd-list"
+              aria-autocomplete="list"
+              aria-activedescendant={activeRow ? optionId(activeRow) : undefined}
+              aria-label="Search DevPath"
+              placeholder="Search pages, guides, sections, projects, decks…"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setCursor(0);
               }}
-              onMouseEnter={() => setCursor(index)}
-              onClick={() => go(row)}
-            >
-              <div className="spread">
-                <strong style={{ fontSize: 14 }}>{row.title}</strong>
-                <span className="pill">{KIND_LABEL[row.kind]}</span>
-              </div>
-              <div className="faint">{row.sub}</div>
-            </button>
-          ))}
-          {query && hits.length === 0 && <div className="empty">Nothing matches “{query}”.</div>}
-          {!query && (
-            <div className="faint" style={{ padding: '10px 12px' }}>
-              Type to search {content.stats.projects} projects, {content.stats.modules} modules and{' '}
-              {content.stats.questions} questions.
+              onKeyDown={onInputKey}
+            />
+            <div className="cmd-list" id="cmd-list" role="listbox" aria-label="Results" ref={listRef}>
+              {groups.map((group) => (
+                <div key={group.label} role="group" aria-label={group.label}>
+                  <div className="search-group" aria-hidden="true">
+                    {group.label}
+                  </div>
+                  {group.rows.map((row) => {
+                    const i = hits.indexOf(row);
+                    return (
+                      <div
+                        key={`${row.kind}:${row.id}`}
+                        id={optionId(row)}
+                        role="option"
+                        aria-selected={i === active}
+                        className="search-hit"
+                        onMouseEnter={() => setCursor(i)}
+                        onClick={() => go(row)}
+                      >
+                        <strong>{row.title}</strong>
+                        <div className="faint">{row.sub}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
-          )}
+            {query && hits.length === 0 && <div className="empty">Nothing matches “{query}”.</div>}
+            {!query && (
+              <p className="faint cmd-hint">
+                Search {content.stats.projects} projects, {content.guides.length} guides and their sections,{' '}
+                {content.stats.modules} modules and {content.decks.length} decks. ↑↓ to move, Enter to open.
+              </p>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }

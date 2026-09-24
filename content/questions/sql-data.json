@@ -8,30 +8,30 @@
       "id": "sq-001",
       "q": "What is the difference between an INNER JOIN and a LEFT JOIN?",
       "choices": [
-        "INNER keeps only rows matching on both sides; LEFT keeps every left row, filling missing right columns with NULL",
-        "LEFT is faster",
-        "INNER returns duplicates, LEFT does not",
-        "LEFT joins on the primary key, INNER on any column"
+        "LEFT is faster, because it can stop reading the right table after one match",
+        "INNER keeps only matched rows; LEFT keeps every left row, with NULLs for no match",
+        "INNER can return duplicate rows, while LEFT always returns each left row just once",
+        "LEFT joins on the primary key only, while INNER can join on any column at all"
       ],
-      "answer": 0,
-      "why": "'Users and their orders' with INNER silently drops users who have never ordered. If the report is 'all users with their order count', you need LEFT — and COUNT on the joined column, not COUNT(*), so no-order users score 0.",
+      "answer": 1,
+      "why": "\"Users and their orders\" with INNER silently drops users who never ordered. For \"all users with their order count\" you need LEFT, and `COUNT(o.id)` rather than `COUNT(*)` so those users score 0. A LEFT JOIN repeats a left row once per match, so it can duplicate too.",
       "tags": ["joins"],
       "level": 1,
-      "asked": "You will be asked to write a JOIN. This is the distinction that gets tested."
+      "asked": "You will be asked to write a JOIN; this is the distinction that gets tested."
     },
     {
       "id": "sq-002",
-      "q": "Why does this return no rows for unmatched users?",
+      "q": "Why does this return no rows for users without a paid order?",
       "code": "SELECT u.name, o.total\nFROM users u\nLEFT JOIN orders o ON o.user_id = u.id\nWHERE o.status = 'paid';",
       "lang": "sql",
       "choices": [
-        "The WHERE filters out NULL rows, turning the LEFT JOIN into an INNER JOIN",
-        "LEFT JOIN cannot be filtered",
-        "status must be indexed",
-        "The join condition is backwards"
+        "A LEFT JOIN cannot be filtered with WHERE; the filter belongs in HAVING",
+        "status has no index, so the planner drops the unmatched rows early",
+        "The WHERE rejects the NULL rows, so the LEFT JOIN acts like an INNER JOIN",
+        "The ON condition is written backwards and should compare u.id to o.user_id instead"
       ],
-      "answer": 0,
-      "why": "For an unmatched user, `o.status` is NULL and `NULL = 'paid'` is not true. Move the condition into the ON clause to keep the outer join's semantics.",
+      "answer": 2,
+      "why": "For an unmatched user, `o.status` is NULL and `NULL = 'paid'` is not true, so WHERE removes exactly the rows the LEFT JOIN kept. Move the condition into the ON clause to keep them. Equality is symmetric, and indexes never change results.",
       "tags": ["joins", "null"],
       "level": 3,
       "asked": "A genuinely tricky one that comes up in real reporting bugs."
@@ -40,16 +40,16 @@
       "id": "sq-003",
       "q": "What does an index actually do?",
       "choices": [
-        "Keeps a sorted structure over selected columns so lookups avoid scanning the whole table — at the cost of slower writes and more storage",
-        "Caches query results",
-        "Compresses the table",
-        "Enforces uniqueness only"
+        "Caches recent query results and invalidates them when the table changes",
+        "Keeps a compressed copy of the table that the planner reads instead",
+        "Enforces uniqueness on a column, which is why every table needs one",
+        "Keeps a sorted structure over some columns: faster reads, slower writes"
       ],
-      "answer": 0,
-      "why": "Every index must be updated on every insert, update and delete. Index what you filter, join and sort on — not every column. And an index on a low-cardinality column like a boolean usually earns nothing.",
+      "answer": 3,
+      "why": "Every index must be updated on every insert, update and delete, and takes storage. Index what you filter, join and sort on, not every column; an index on a low-cardinality boolean usually earns nothing. Only a unique index enforces uniqueness.",
       "tags": ["indexes", "performance"],
       "level": 2,
-      "asked": "Then: 'so why not index everything?' The write cost is the answer."
+      "asked": "Then: \"so why not index everything?\" The write cost is the answer."
     },
     {
       "id": "sq-004",
@@ -57,343 +57,360 @@
       "code": "SELECT * FROM users WHERE LOWER(email) = 'a@b.com';",
       "lang": "sql",
       "choices": [
-        "Wrapping the column in a function makes the query non-sargable, so the index cannot be used",
-        "Indexes never apply to text columns",
-        "SELECT * disables indexes",
-        "The comparison must use LIKE"
+        "Indexes are never used for text columns, only for numbers and dates",
+        "SELECT * forces a full table scan, whatever indexes the table has",
+        "Wrapping the column in a function makes the predicate non-sargable",
+        "Equality on strings must be written with LIKE to consider an index"
       ],
-      "answer": 0,
-      "why": "The index stores the raw values, not the lowercased ones. Fixes: store the email already normalised, use a case-insensitive collation, or create a functional index on LOWER(email).",
+      "answer": 2,
+      "why": "The index stores raw values, not lowercased ones. Fixes: store the email normalised, use a case-insensitive collation (the SQL Server default; `citext` in Postgres), or index the expression: `CREATE INDEX ON users (lower(email))` in Postgres, a functional key in MySQL 8.0.13+, an indexed computed column in SQL Server.",
       "tags": ["indexes", "performance"],
-      "level": 3
+      "level": 3,
+      "asked": "Checks you can read a WHERE clause the way the planner does."
     },
     {
       "id": "sq-005",
-      "q": "What is the N+1 query problem?",
+      "q": "What is wrong with this code as the list grows?",
+      "code": "const orders = await db.query('SELECT * FROM orders LIMIT 100');\nfor (const o of orders) {\n  o.customer = await db.query(\n    'SELECT * FROM customers WHERE id = $1', [o.customer_id]);\n}",
+      "lang": "js",
       "choices": [
-        "One query for a list, then one more per row to load a relation — 101 queries for 100 rows",
-        "A query that returns one row too many",
-        "Running the same query N times for caching",
-        "A join producing N+1 duplicates"
+        "The awaits run the customer queries in parallel and exhaust the pool",
+        "LIMIT without ORDER BY attaches customers to the wrong orders",
+        "Each customer query holds a row lock until the whole loop completes",
+        "It runs one query for the list plus one per row: the N+1 problem"
       ],
-      "answer": 0,
-      "why": "It is the most common ORM performance bug and it is invisible in code — a `foreach (var o in orders) { o.Customer.Name }` looks harmless. Fix with eager loading (Include / a join) or a batched second query.",
+      "answer": 3,
+      "why": "100 orders means 101 round trips, and the page gets slower with every row. Fetch the customers in one query (a join, or `WHERE id = ANY($1)` in Postgres / `IN (...)` elsewhere). ORMs hide the same loop: EF Core does not lazy-load by default, so there it usually comes from a query inside a loop exactly like this.",
       "tags": ["orm", "performance"],
       "level": 2,
-      "asked": "Near-guaranteed for any role using an ORM. Being able to say how you'd *detect* it (log the SQL) is the strong part."
+      "asked": "Near-guaranteed for any role using an ORM. Saying how you would detect it (log the SQL) is the strong part."
     },
     {
       "id": "sq-006",
-      "q": "What does a transaction guarantee?",
+      "q": "What does a database transaction guarantee?",
       "choices": [
-        "All statements commit together or none do, and the change is durable once committed",
-        "The query runs faster",
-        "Only one user can access the table",
-        "Automatic retries on failure"
+        "Its statements run faster, because the engine skips the write-ahead log",
+        "It locks the whole table, so one user at a time can read or write it",
+        "It retries automatically after any failure until every one of its statements succeeds",
+        "All its statements commit together or none do, and commits survive a crash"
       ],
-      "answer": 0,
-      "why": "ACID: atomic (all or nothing), consistent (constraints hold), isolated (concurrent transactions do not see each other's partial work), durable (survives a crash). The money-transfer example is the canonical one.",
+      "answer": 3,
+      "why": "ACID: atomic (all or nothing), consistent (constraints hold), isolated (others do not see partial work), durable (a commit survives a crash, thanks to the log). The money transfer is the canonical example. Locking is usually per row, and retrying is your job.",
       "tags": ["transactions"],
-      "level": 1
+      "level": 1,
+      "asked": "The money-transfer example is expected; the follow-up is which statements belong inside the transaction."
     },
     {
       "id": "sq-007",
-      "q": "What is a lost update, and how do you prevent it?",
+      "q": "What is a lost update, and which fix prevents it without holding locks while the user edits?",
       "choices": [
-        "Two users read, then both write, and the second overwrites the first — prevented with optimistic (version column) or pessimistic (row lock) concurrency",
-        "A failed transaction rollback",
-        "A row deleted before it was saved",
-        "A cache invalidation failure"
+        "A rollback discards a saved change; commit each statement on its own",
+        "Two edits of one row overwrite each other; check a version in UPDATE ... WHERE",
+        "A row is deleted mid-edit; add ON DELETE CASCADE to its child tables",
+        "A stale cache hides the change; disable caching for that table entirely"
       ],
-      "answer": 0,
-      "why": "Optimistic: keep a version or timestamp, and make the UPDATE include `WHERE version = @read_version`; zero rows affected means someone beat you, so return 409. Pessimistic locks are simpler but hold locks across user think-time.",
+      "answer": 1,
+      "why": "Both users read version 5; the first writes and bumps it to 6; the second's `UPDATE ... WHERE id = @id AND version = 5` matches zero rows, so you return 409 instead of silently overwriting. Pessimistic row locks also work but hold locks across user think-time.",
       "tags": ["concurrency", "transactions"],
       "level": 3,
-      "asked": "A great mid-level question — every collaborative CRUD app has this problem."
+      "asked": "Every collaborative CRUD app has this problem; optimistic concurrency is the answer interviewers want."
     },
     {
       "id": "sq-008",
-      "q": "What does `NULL` mean in SQL, and why is `= NULL` wrong?",
+      "q": "What does NULL mean in SQL, and why is `= NULL` wrong?",
       "choices": [
-        "NULL is 'unknown', so any comparison with it is unknown — use IS NULL",
-        "NULL is the empty string",
-        "NULL equals zero",
-        "= NULL works in most databases"
+        "NULL is stored as an empty string, so compare with = '' instead",
+        "NULL equals zero in numeric columns, so compare with = 0 instead",
+        "NULL means unknown, so = NULL is never true; use IS NULL instead",
+        "= NULL works in every engine; IS NULL is just the ANSI spelling"
       ],
-      "answer": 0,
-      "why": "`NULL = NULL` is not true. This trips up NOT IN with a NULL in the list (which returns nothing), aggregates (COUNT(col) skips NULLs but COUNT(*) does not), and unique constraints in some engines.",
+      "answer": 2,
+      "why": "Any comparison with NULL is unknown, and WHERE keeps only true. This is why `NOT IN (subquery)` returns nothing when the subquery contains a NULL, and why COUNT(col) skips NULLs. SQL Server's legacy `ANSI_NULLS OFF` made `= NULL` work; it is deprecated.",
       "tags": ["null"],
-      "level": 2
+      "level": 1,
+      "asked": "Junior material, but the NOT IN follow-up catches experienced people too."
     },
     {
       "id": "sq-009",
       "q": "What is normalisation, and when would you deliberately denormalise?",
       "choices": [
-        "Removing duplicated data so each fact lives in one place; denormalise when read performance justifies the update cost",
-        "Converting all columns to text",
-        "Splitting a database across servers",
-        "Renaming tables to a convention"
+        "Converting every column to text, so that the schema can change freely",
+        "Splitting one database across servers so each holds part of the rows",
+        "Renaming tables and columns to one convention across the schema",
+        "Each fact lives in one place; denormalise when reads justify the cost"
       ],
-      "answer": 0,
-      "why": "Third normal form is the sane default. Deliberate exceptions: a cached counter, a stored order total (because the price at time of sale must not follow the product's current price), a search-friendly flattened table.",
+      "answer": 3,
+      "why": "Third normal form is the sane default. Deliberate exceptions: a cached counter, a stored order total (the price at the time of sale must not follow the product's current price), a flattened search table. Splitting across servers is sharding.",
       "tags": ["modelling"],
       "level": 2,
-      "asked": "The stored-order-total example is the answer that shows you've built a real system."
+      "asked": "The stored-order-total example is the answer that shows you have built a real system."
     },
     {
       "id": "sq-010",
       "q": "How do you model a many-to-many relationship?",
       "choices": [
-        "A join table holding the two foreign keys, with a composite primary key",
-        "A comma-separated column",
-        "A JSON array column",
-        "Two nullable foreign keys on each table"
+        "A comma-separated list of ids stored in a text column on one side",
+        "A JSON array of related ids stored in a column on each table",
+        "A join table holding both foreign keys, with a composite primary key",
+        "A nullable foreign key on each table pointing at one row on the other"
       ],
-      "answer": 0,
-      "why": "students ↔ courses becomes an enrolments table. The join table is also the natural home for attributes of the relationship itself — enrolled_at, grade.",
+      "answer": 2,
+      "why": "Students and courses become an enrolments table. The join table is also the natural home for attributes of the relationship itself (enrolled_at, grade). Lists in a column cannot carry foreign keys or be indexed and joined cleanly.",
       "tags": ["modelling"],
-      "level": 1
+      "level": 1,
+      "asked": "A modelling basic; the attributes-on-the-relationship follow-up shows real experience."
     },
     {
       "id": "sq-011",
-      "q": "What does `GROUP BY` require of the SELECT list?",
+      "q": "As a portable rule, what does `GROUP BY` require of the SELECT list?",
       "choices": [
-        "Every selected column must be grouped or aggregated",
-        "Nothing",
-        "All columns must be indexed",
-        "Only one column may be selected"
+        "Each selected column must be covered by an index on the grouped table",
+        "Each selected column must be grouped or wrapped in an aggregate",
+        "Only grouped columns may appear; aggregates need a separate query",
+        "Nothing: the engine picks a value from any row in each group for you"
       ],
-      "answer": 0,
-      "why": "Otherwise the database cannot know which row's value to show. Postgres errors; MySQL historically picked one arbitrarily, which produced silently wrong reports.",
+      "answer": 1,
+      "why": "Otherwise the engine cannot know which row's value to show. Postgres, and MySQL with ONLY_FULL_GROUP_BY (the default since 5.7.5), also accept columns functionally dependent on a grouped primary key. MySQL without that mode picks arbitrary values, which produced silently wrong reports; SQL Server applies the strict rule.",
       "tags": ["aggregation"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you know the rule and why it exists, not just the error message."
     },
     {
       "id": "sq-012",
       "q": "What is the difference between WHERE and HAVING?",
       "choices": [
-        "WHERE filters rows before grouping; HAVING filters groups after aggregation",
-        "They are interchangeable",
-        "HAVING is for joins",
-        "WHERE cannot be used with GROUP BY"
+        "They are interchangeable; HAVING is the older spelling kept for compatibility",
+        "HAVING filters joined rows; WHERE filters rows from the first table only",
+        "WHERE cannot appear in a query with GROUP BY, so HAVING replaces it",
+        "WHERE filters rows before grouping; HAVING filters groups after aggregating"
       ],
-      "answer": 0,
-      "why": "`WHERE status = 'paid'` narrows the input rows; `HAVING COUNT(*) > 5` narrows the resulting groups. Filtering in WHERE where you can is also faster — fewer rows to aggregate.",
+      "answer": 3,
+      "why": "`WHERE status = 'paid'` narrows the input rows; `HAVING COUNT(*) > 5` narrows the resulting groups. Filtering in WHERE when you can is also faster, because fewer rows reach the aggregation.",
       "tags": ["aggregation"],
-      "level": 2
+      "level": 2,
+      "asked": "A quick check before a live SQL exercise."
     },
     {
       "id": "sq-013",
-      "q": "What is SQL injection and what actually prevents it?",
+      "q": "What is SQL injection, and what actually prevents it?",
       "choices": [
-        "Attacker input becoming part of the SQL — prevented by parameterised queries, not by escaping",
-        "Prevented by validating input length",
-        "Prevented by an ORM automatically in all cases",
-        "Prevented by stripping quote characters"
+        "Input becoming part of the SQL text; prevented by capping input length",
+        "Input becoming part of the SQL text; prevented by parameterised queries",
+        "Input becoming part of the SQL text; prevented by stripping quote marks",
+        "Input becoming part of the SQL text; prevented by any ORM in all cases"
       ],
-      "answer": 0,
-      "why": "Parameters are sent separately from the query text, so input can never become code. Hand-rolled escaping fails on encodings and edge cases. An ORM parameterises by default — but raw SQL escape hatches and dynamic ORDER BY are still yours to get right.",
+      "answer": 1,
+      "why": "Parameters are sent separately from the query text, so input can never become code. Stripping quotes fails on numeric contexts and encodings. ORMs parameterise by default, but raw SQL escape hatches and dynamic ORDER BY are still yours to get right.",
       "tags": ["security"],
       "level": 1,
-      "asked": "Universal. The wrong answer is 'sanitise the input'."
+      "asked": "Universal. The wrong answer is \"sanitise the input\"."
     },
     {
       "id": "sq-014",
-      "q": "What does `EXPLAIN` tell you?",
+      "q": "What does `EXPLAIN` (Postgres, MySQL) show you about a query?",
       "choices": [
-        "The planner's chosen strategy — index scan vs sequential scan, join order, estimated rows",
-        "How long the query took",
-        "Which user ran the query",
-        "Whether the syntax is valid"
+        "How long the query took, broken down per table it touched",
+        "Which sessions ran the query most often in the last hour",
+        "The planner's strategy: scans, join order and estimated rows",
+        "Whether the syntax is valid, without consulting any statistics"
       ],
-      "answer": 0,
-      "why": "Seq Scan on a large table where you expected an index scan is the classic finding. EXPLAIN ANALYZE actually runs it and gives real timings and row counts, so you can see where the estimate was wrong.",
+      "answer": 2,
+      "why": "A sequential scan of a large table where you expected an index is the classic finding. Plain EXPLAIN does not run the query; Postgres `EXPLAIN ANALYZE` does, giving real timings and row counts so you can see where the estimate was wrong. In SQL Server the equivalent is the estimated or actual execution plan.",
       "tags": ["performance", "tooling"],
       "level": 2,
-      "asked": "'How would you diagnose a slow query?' — this is the first move."
+      "asked": "\"How would you diagnose a slow query?\" This is the first move."
     },
     {
       "id": "sq-015",
-      "q": "What is a database migration and why do you version them?",
+      "q": "What is a database migration, and why are migrations versioned?",
       "choices": [
-        "An ordered, checked-in script that changes the schema, so every environment reaches the same state reproducibly",
-        "Moving data between servers",
-        "Changing database vendor",
-        "A backup and restore"
+        "Copying data between servers when a database moves to new hardware",
+        "Switching database vendor, for example from MySQL to Postgres",
+        "Ordered, checked-in schema changes, so every environment converges",
+        "A scheduled backup and restore that resets staging to production"
       ],
-      "answer": 0,
-      "why": "Schema changes are code and belong in the repository and the pipeline. The hard part is the rollout: adding a NOT NULL column to a live table needs a multi-step expand/contract migration, not one script.",
+      "answer": 2,
+      "why": "Schema changes are code and belong in the repository and the pipeline, applied in order and recorded so each runs once. The hard part is the rollout on a live table, which is the next question.",
       "tags": ["migrations"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you treat the schema as code rather than something edited by hand in production."
     },
     {
       "id": "sq-016",
-      "q": "You must add a required column to a large live table. What is the safe sequence?",
+      "q": "You must add a required column, whose value is computed from existing data, to a large live table. What is the safe sequence?",
       "choices": [
-        "Add it nullable, backfill in batches, start writing it, then add the NOT NULL constraint",
-        "Add it NOT NULL with a default in one statement",
-        "Drop and recreate the table",
-        "Add it during a maintenance window with no other changes"
+        "Add it NOT NULL with a DEFAULT in one statement, then run one big UPDATE",
+        "Add it nullable, backfill in batches, write it from new code, then NOT NULL",
+        "Drop and recreate the table with the column, then reload it from backup",
+        "Add it NOT NULL inside a transaction, so the app simply waits until the backfill ends"
       ],
-      "answer": 0,
-      "why": "The expand/contract pattern. A single blocking ALTER can lock the table for minutes; batching keeps the app up. It also means old and new code can run simultaneously, which is what a rolling deploy requires.",
+      "answer": 1,
+      "why": "Expand/contract: batches keep locks short and old and new code can run side by side during a rolling deploy. A constant default alone is metadata-only in Postgres 11+ and SQL Server Enterprise, but a computed value still needs a backfill, and one giant UPDATE locks rows and bloats the log.",
       "tags": ["migrations", "operations"],
       "level": 3,
-      "asked": "A strong mid-level question — it tests deployment thinking, not just SQL."
+      "asked": "A strong mid-level question: it tests deployment thinking, not just SQL."
     },
     {
       "id": "sq-017",
       "q": "What does a foreign key constraint buy you?",
       "choices": [
-        "The database refuses rows referencing a missing parent, and can cascade or restrict deletes",
-        "Faster joins automatically",
-        "Automatic indexes on both sides",
-        "Nothing an application check cannot do"
+        "Faster joins, because the planner uses the key as a ready-made index",
+        "Indexes created on both columns automatically in every database engine",
+        "The database refuses rows pointing at a missing parent, and guards deletes",
+        "Nothing that an application check cannot do equally well just before inserting"
       ],
-      "answer": 0,
-      "why": "Application checks race and get bypassed by scripts and admin tools. Note the FK column is not automatically indexed in every engine — and an unindexed FK makes cascading deletes very slow.",
+      "answer": 2,
+      "why": "Application checks race and are bypassed by scripts and admin tools. The FK column is not indexed automatically in Postgres or SQL Server (MySQL InnoDB does create one), and an unindexed FK makes parent deletes scan the child table.",
       "tags": ["constraints", "modelling"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you trust the database for integrity, and know the indexing gotcha."
     },
     {
       "id": "sq-018",
       "q": "When would you use a composite index, and does column order matter?",
       "choices": [
-        "For queries filtering on several columns — and yes, it can serve a prefix of the columns but not a suffix",
-        "Order never matters",
-        "Only for unique constraints",
-        "Composite indexes are always worse than several single ones"
+        "Column order never matters, since the planner reorders the columns itself",
+        "For filters on several columns; it serves a leading prefix, not a later column",
+        "Only for unique constraints; ordinary filters should use single indexes",
+        "Never: several single-column indexes always beat one composite index"
       ],
-      "answer": 0,
-      "why": "An index on (tenant_id, created_at) serves `WHERE tenant_id = ?` and `WHERE tenant_id = ? ORDER BY created_at`, but not `WHERE created_at > ?` on its own. Put the equality column first.",
+      "answer": 1,
+      "why": "An index on (tenant_id, created_at) serves `WHERE tenant_id = ?` and `WHERE tenant_id = ? ORDER BY created_at`, but not `WHERE created_at > ?` on its own. Put equality columns first. Skip scans (MySQL 8.0.13+, Postgres 18) can sometimes use a later column, but do not design around them.",
       "tags": ["indexes"],
-      "level": 3
+      "level": 3,
+      "asked": "Checks you can design an index for a real query rather than index columns one by one."
     },
     {
       "id": "sq-019",
       "q": "What is the difference between `DELETE`, `TRUNCATE` and `DROP`?",
       "choices": [
-        "DELETE removes rows (logged, filterable, transactional); TRUNCATE empties the table fast; DROP removes the table itself",
-        "They are the same with different syntax",
-        "TRUNCATE removes the table structure",
-        "DELETE cannot be rolled back"
+        "DELETE removes chosen rows one by one; TRUNCATE empties it fast; DROP removes it",
+        "DELETE removes the table; TRUNCATE removes chosen rows; DROP empties it fast",
+        "They are one command with three spellings, kept for portability between SQL engines",
+        "DELETE cannot be rolled back, but TRUNCATE and DROP can both be undone at will"
       ],
       "answer": 0,
-      "why": "TRUNCATE is much faster but usually cannot be filtered, may not fire triggers, and resets identity sequences. Knowing which one someone ran is the first question when data goes missing.",
+      "why": "TRUNCATE takes no WHERE, resets identity values in SQL Server and MySQL (Postgres only with RESTART IDENTITY) and fires no per-row DELETE triggers. It is transactional in Postgres and SQL Server but commits implicitly in MySQL, so \"can I roll it back?\" depends on the engine. Knowing which one someone ran is the first question when data goes missing.",
       "tags": ["ddl"],
-      "level": 2
+      "level": 2,
+      "asked": "A classic; the engine-dependent rollback detail is the senior touch."
     },
     {
       "id": "sq-020",
       "q": "How should you store money?",
       "choices": [
-        "An integer of minor units, or a fixed-precision DECIMAL — never a float",
-        "As a float, rounding on display",
-        "As a string",
-        "As a double for precision"
+        "A float, rounding to two decimal places only when displaying it",
+        "A string, so the exact digits the user typed are always preserved",
+        "A double, since its extra precision removes the rounding errors",
+        "Integer minor units or a fixed-precision DECIMAL, never a binary float"
       ],
-      "answer": 0,
-      "why": "Binary floats cannot represent 0.10 exactly, so sums drift. DECIMAL(19,4) or integer cents are exact. Store the currency alongside it — a number without a currency is not money.",
+      "answer": 3,
+      "why": "Binary floats cannot represent 0.10 exactly, so sums drift; a double only moves the error further out. DECIMAL(19,4) or integer cents are exact and still support arithmetic. Store the currency alongside: a number without a currency is not money.",
       "tags": ["modelling", "types"],
-      "level": 1
+      "level": 1,
+      "asked": "A quick filter; the currency-column follow-up shows real e-commerce experience."
     },
     {
       "id": "sq-021",
       "q": "How should you store timestamps?",
       "choices": [
-        "In UTC, in a timestamp-with-time-zone column, converting to local time only for display",
-        "As a local time string",
-        "As a Unix integer in local time",
-        "In whatever timezone the server is in"
+        "As local time strings, so they read correctly for each user on screen",
+        "As Unix integers in the server's local time, so date arithmetic stays simple",
+        "In the server's own time zone, since that is where the rows are written",
+        "In UTC, in a zone-aware type such as timestamptz, converting for display"
       ],
-      "answer": 0,
-      "why": "Local times are ambiguous twice a year and meaningless across regions. Store UTC; keep the user's IANA timezone separately if you must reconstruct their wall-clock time.",
+      "answer": 3,
+      "why": "Local times are ambiguous twice a year and meaningless across regions. Postgres `timestamptz` stores UTC; SQL Server has `datetimeoffset` (or `datetime2` holding UTC by convention); MySQL `TIMESTAMP` converts to UTC while `DATETIME` does not. Keep the user's IANA zone separately if you need their wall-clock time.",
       "tags": ["modelling", "dates"],
-      "level": 2
+      "level": 2,
+      "asked": "Every app with users in more than one place hits this; the \"one day off\" bug is the follow-up."
     },
     {
       "id": "sq-022",
-      "q": "What is a connection pool and why does it matter?",
+      "q": "What is a database connection pool, and why does it matter?",
       "choices": [
-        "A reusable set of open database connections — connections are expensive, and unbounded ones exhaust the server",
-        "A cache of query results",
-        "A replica set for reads",
-        "A queue of pending transactions"
+        "A cache of recent query results, shared between the app's instances",
+        "A set of read replicas that the driver load-balances SELECT queries across",
+        "A reused, capped set of open connections, so the server is not swamped",
+        "A queue of pending transactions the database commits in batches"
       ],
-      "answer": 0,
-      "why": "Opening a connection costs a round trip and server memory. Pool exhaustion is a classic outage: a slow query holds connections, requests queue, and the app appears to hang with a healthy database.",
+      "answer": 2,
+      "why": "Opening a connection costs round trips and server memory. Pool exhaustion is a classic outage: a slow query holds connections, requests queue for one, and the app appears to hang while the database looks healthy.",
       "tags": ["operations", "performance"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks you can explain \"the app hangs but the database is fine\"."
     },
     {
       "id": "sq-023",
       "q": "What does `SELECT *` cost you in application code?",
       "choices": [
-        "More data over the wire, broken code when columns change, and it can prevent an index-only scan",
-        "Nothing — it is equivalent",
-        "It always causes a table scan",
-        "It disables the query cache"
+        "Nothing: the engine expands it to the same column list at no cost",
+        "A full table scan on every query, whatever indexes the table has",
+        "It disables the plan cache, so the query recompiles on each run",
+        "Extra data on the wire, breakage when columns change, no index-only scans"
       ],
-      "answer": 0,
-      "why": "Naming columns makes the contract explicit and stops a new BLOB column from silently doubling every response. It also protects you when someone reorders columns.",
+      "answer": 3,
+      "why": "Naming columns makes the contract explicit and stops a new BLOB column from silently doubling every response. A covering index can only answer the query alone if the query asks for the columns it holds. `SELECT *` does not by itself cause a table scan.",
       "tags": ["queries", "performance"],
-      "level": 2
+      "level": 2,
+      "asked": "A code-review staple; the index-only scan point is the deeper answer."
     },
     {
       "id": "sq-024",
-      "q": "What is the difference between a clustered and non-clustered index?",
+      "q": "In SQL Server (or MySQL InnoDB), what is the difference between a clustered and a non-clustered index?",
       "choices": [
-        "The clustered index determines the physical row order — one per table; non-clustered indexes point at rows",
-        "Clustered indexes are stored in memory",
-        "Non-clustered indexes cannot be unique",
-        "Clustered indexes are read-only"
+        "A clustered index is held entirely in memory; a non-clustered one lives on disk",
+        "Non-clustered indexes cannot be unique; only the clustered one can be",
+        "The clustered index is the table, stored in key order; others point to it",
+        "A clustered index is read-only and rebuilt nightly from the others"
       ],
-      "answer": 0,
-      "why": "This is why a random GUID primary key can hurt: inserts land all over the clustered index and fragment it, where a sequential id appends cleanly. Sequential GUIDs exist for exactly this reason.",
+      "answer": 2,
+      "why": "There is one clustered index per table because the rows can only be stored in one order. A random GUID key makes inserts land all over it and fragment it, which is why sequential GUIDs exist. Postgres stores tables as heaps; its CLUSTER command is a one-off reorder.",
       "tags": ["indexes"],
-      "level": 3
+      "level": 2,
+      "asked": "A standard SQL Server question; the GUID key follow-up is common in .NET interviews."
     },
     {
       "id": "sq-025",
-      "q": "When is a NoSQL document store a better fit than a relational database?",
+      "q": "When is a document store a better fit than a relational database?",
       "choices": [
-        "When documents are self-contained, the schema varies, and you rarely need cross-entity joins or multi-row transactions",
-        "Whenever you need to scale",
-        "When the data is large",
-        "When you want to avoid writing SQL"
+        "Whenever the app must scale, since relational databases cannot shard",
+        "Whenever the data grows beyond a few gigabytes on a single server",
+        "Self-contained documents, varied schema, few joins or multi-row transactions",
+        "Whenever the team would rather not write SQL or manage migrations"
       ],
-      "answer": 0,
-      "why": "Most CRUD apps are relational — orders reference customers reference addresses. Choosing a document store to avoid schema work usually means writing the joins in application code instead.",
+      "answer": 2,
+      "why": "Most CRUD apps are relational: orders reference customers who have addresses. Choosing a document store to avoid schema work usually means writing the joins, and the integrity checks, in application code instead. Relational databases handle far more than a few gigabytes.",
       "tags": ["modelling", "nosql"],
       "level": 2,
-      "asked": "An opinion question. 'It depends on the access pattern' is the beginning of a good answer."
+      "asked": "An opinion question. \"It depends on the access pattern\" is the beginning of a good answer."
     },
     {
       "id": "sq-026",
       "q": "What does a UNIQUE constraint do that an application check does not?",
       "choices": [
-        "It holds under concurrency — two simultaneous inserts cannot both pass",
-        "It is faster to validate",
-        "It gives a better error message",
-        "It works across tables"
+        "It validates faster than a SELECT, since the check skips the table",
+        "It gives users a clearer error message than application code can",
+        "It holds under concurrency: two simultaneous inserts cannot both pass",
+        "It can enforce uniqueness across several different tables in a single rule"
       ],
-      "answer": 0,
-      "why": "Check-then-insert is a race: both requests read 'no existing email', both insert. The constraint is the only thing that is actually atomic — catch the violation and turn it into a 409.",
+      "answer": 2,
+      "why": "Check-then-insert is a race: both requests read \"no such email\" and both insert. The constraint is the only atomic check, so catch the violation and turn it into a 409. Keep the application check too, for a friendly message.",
       "tags": ["constraints", "concurrency"],
       "level": 2,
       "asked": "A quietly excellent question about whether you think in terms of concurrency."
     },
     {
       "id": "sq-027",
-      "q": "What is the repository pattern, and is it worth it over an ORM?",
+      "q": "What is the repository pattern, and is it worth adding on top of EF Core?",
       "choices": [
-        "An abstraction over data access — worth it for testability and a clear seam, arguable when the ORM already provides one",
-        "Always worth it",
-        "It is required by Entity Framework",
-        "It is only for NoSQL"
+        "A pattern EF Core requires before a DbContext can be registered in DI",
+        "A NoSQL-only pattern for mapping stored documents onto objects in memory",
+        "A data-access seam: useful for domain queries, arguable if it only forwards calls",
+        "Always worth it, because it lets you swap databases without changing code"
       ],
-      "answer": 0,
-      "why": "A DbContext is already a unit of work with an abstraction. A thin repository that just forwards calls adds indirection; one that expresses domain-meaningful queries adds value. Have a reason either way.",
+      "answer": 2,
+      "why": "A DbContext is already a unit of work over repository-like DbSets. A thin repository that forwards every call adds indirection; one that names domain queries (\"GetOverdueInvoices\") adds value. Swapping databases behind it is rarer and harder than the slogan suggests.",
       "tags": ["orm", "architecture"],
       "level": 3,
       "asked": "A .NET favourite. Interviewers want a considered opinion, not a doctrine."
@@ -402,44 +419,219 @@
       "id": "sq-028",
       "q": "You need the 10 most recent orders per customer. What is the idiomatic SQL?",
       "choices": [
-        "A window function: ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at DESC), filtered to <= 10",
-        "A subquery per customer in a loop",
-        "GROUP BY customer_id with LIMIT 10",
-        "SELECT DISTINCT with ORDER BY"
+        "GROUP BY customer_id with ORDER BY created_at DESC and a LIMIT 10",
+        "SELECT DISTINCT customer_id ordered by created_at DESC, then LIMIT 10",
+        "A subquery per customer, run from application code in a loop over ids",
+        "ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at DESC) <= 10"
       ],
-      "answer": 0,
-      "why": "Window functions solve 'top N per group' in one pass. GROUP BY collapses rows and cannot give you ten of them; a loop of subqueries is N+1 in SQL form.",
+      "answer": 3,
+      "why": "Number rows within each customer and keep those numbered 10 or less, filtering in an outer query or CTE because window results cannot appear in WHERE. GROUP BY collapses each customer to one row, and LIMIT applies to the whole result. Postgres LATERAL and SQL Server CROSS APPLY are alternatives.",
       "tags": ["queries", "window-functions"],
-      "level": 3
+      "level": 3,
+      "asked": "The classic \"top N per group\" task in live SQL rounds."
     },
     {
       "id": "sq-029",
-      "q": "What does `IQueryable` vs `IEnumerable` change in an ORM query?",
+      "q": "In EF Core, which parts of this query run in SQL?",
+      "code": "var names = db.Orders\n    .Where(o => o.Status == \"paid\")\n    .AsEnumerable()\n    .Where(o => o.Total > 100)\n    .Select(o => o.CustomerName)\n    .ToList();",
+      "lang": "cs",
       "choices": [
-        "IQueryable composes into SQL executed on the server; IEnumerable pulls rows into memory and filters there",
-        "IEnumerable is faster",
-        "They are equivalent for databases",
-        "IQueryable executes immediately"
+        "All of it: EF Core translates the whole chain once ToList() finally runs",
+        "Only the Status filter; the Total filter and Select run in memory",
+        "None of it: AsEnumerable() loads the whole Orders table first",
+        "The two Where filters; only the Select projection runs in memory"
       ],
-      "answer": 0,
-      "why": "Calling `.AsEnumerable()` or `.ToList()` too early means `Where` runs in your process — the entire table is fetched first. This is one of the most consequential mistakes in EF Core code.",
+      "answer": 1,
+      "why": "`AsEnumerable()` switches from IQueryable to LINQ to Objects: everything before it becomes SQL, everything after runs on the materialised rows. Here every column of every paid order is fetched, then filtered in C#. Keep it only for a step that cannot be translated, as late as possible.",
       "tags": ["orm", "linq", "performance"],
       "level": 3,
-      "asked": "A .NET staple, and the same idea applies to lazy query builders in Node ORMs."
+      "asked": "Checks you can see where the database boundary is in a LINQ chain."
     },
     {
       "id": "sq-030",
-      "q": "How do you paginate reliably on a table receiving constant inserts?",
+      "q": "How do you paginate a feed reliably while new rows keep arriving?",
       "choices": [
-        "Cursor (keyset) pagination — `WHERE (created_at, id) < (?, ?) ORDER BY created_at DESC, id DESC LIMIT 20`",
-        "OFFSET with a larger page size",
-        "Cache page 1 and offset from there",
-        "Sort by id ascending and use OFFSET"
+        "OFFSET with a larger page size, so there are fewer page boundaries",
+        "Cache page 1 and compute OFFSET for later pages relative to that copy",
+        "Sort by id ascending and use OFFSET, since ids never change once set",
+        "Keyset: filter past the last row's (created_at, id) and order by both"
+      ],
+      "answer": 3,
+      "why": "Keyset pagination is stable under inserts and stays fast at any depth, because the index seeks to the cursor. Postgres and MySQL accept `WHERE (created_at, id) < ($1, $2)`; SQL Server needs `created_at < @c OR (created_at = @c AND id < @id)`. The id tiebreaker makes the order total.",
+      "tags": ["pagination", "performance"],
+      "level": 3,
+      "asked": "Pairs API design with database knowledge; the tiebreaker is what interviewers listen for."
+    },
+    {
+      "id": "sq-031",
+      "q": "Why do most tables use a surrogate key (an id) rather than a natural key such as email?",
+      "choices": [
+        "Databases cannot index text columns, so keys have to be numeric ids",
+        "Natural values can change or repeat, and a key must stay stable",
+        "Natural keys are slower to insert, as they must be generated first",
+        "Surrogate keys are required before a table can have foreign keys"
+      ],
+      "answer": 1,
+      "why": "People change email addresses, and every foreign key pointing at the old one would have to change too. Keep a UNIQUE constraint on the natural value. Natural keys are fine for truly stable codes such as ISO country codes.",
+      "tags": ["modelling", "keys"],
+      "level": 1,
+      "asked": "A modelling basic that shows whether you have lived through a key change."
+    },
+    {
+      "id": "sq-032",
+      "q": "What changes if you write `UNION ALL` instead of `UNION` here?",
+      "code": "SELECT email FROM customers\nUNION\nSELECT email FROM newsletter_subscribers;",
+      "lang": "sql",
+      "choices": [
+        "Duplicates are kept, and the de-duplication step is skipped",
+        "Rows from both tables interleave instead of one set after the other",
+        "Columns are matched by name instead of by position in each SELECT",
+        "NULL emails are kept, which UNION would silently drop from the result"
       ],
       "answer": 0,
-      "why": "Keyset pagination is stable under inserts and stays fast at any depth, because the index seeks straight to the cursor. Include a tiebreaker column so the ordering is total.",
-      "tags": ["pagination", "performance"],
-      "level": 3
+      "why": "`UNION` removes duplicate rows across the whole result, which costs a sort or hash; `UNION ALL` just appends. Use UNION ALL unless you need de-duplication. Both match columns by position, and neither guarantees order without ORDER BY.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "A cheap performance win that also tests whether you know what UNION actually does."
+    },
+    {
+      "id": "sq-033",
+      "q": "A query without ORDER BY returned rows in id order for months, then stopped. Why?",
+      "choices": [
+        "The clustered index was dropped, and it is the only thing that sorts rows",
+        "Row order follows insertion time, so a bulk import reshuffled the table",
+        "Without ORDER BY the engine may return rows in whatever order is cheapest",
+        "A recent upgrade changed the database's default sort setting for tables"
+      ],
+      "answer": 2,
+      "why": "Tables are unordered sets; without ORDER BY the order is whatever the plan produced. New statistics, a parallel scan or a different index change the plan and the order. Always ORDER BY, with a unique tiebreaker, when order matters.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "Checks you do not depend on accidental behaviour, a common source of flaky tests and reports."
+    },
+    {
+      "id": "sq-034",
+      "q": "The table has 5 rows; 2 have a NULL phone, and city is Leeds, Leeds, York, NULL, York. What does this return?",
+      "code": "SELECT COUNT(*), COUNT(phone), COUNT(DISTINCT city)\nFROM customers;",
+      "lang": "sql",
+      "choices": [
+        "5, 5, 3",
+        "5, 3, 3",
+        "5, 3, 2",
+        "3, 3, 2"
+      ],
+      "answer": 2,
+      "why": "`COUNT(*)` counts rows; `COUNT(col)` counts non-NULL values; `COUNT(DISTINCT col)` counts distinct non-NULL values, so NULL is not a third city. This is why a LEFT JOIN report must count a column from the right-hand table.",
+      "tags": ["aggregation", "null"],
+      "level": 1,
+      "asked": "A quick check of NULL handling in aggregates before a live SQL task."
+    },
+    {
+      "id": "sq-035",
+      "q": "What is the main schema cost of soft delete (a deleted_at column) over deleting rows?",
+      "choices": [
+        "Rows cannot be restored later, since deleted_at makes them read-only",
+        "Every query and unique rule must exclude deleted rows, or they leak back",
+        "Foreign keys stop working, because the parent row has left the table",
+        "The table is rebuilt on each delete, since deleted_at changes the row size"
+      ],
+      "answer": 1,
+      "why": "Every read needs `WHERE deleted_at IS NULL`, and a UNIQUE on email blocks re-registration unless it becomes a partial (Postgres) or filtered (SQL Server) unique index. Tables grow forever, and privacy erasure still needs real deletes. An archive table is the alternative.",
+      "tags": ["modelling", "constraints"],
+      "level": 2,
+      "asked": "A design trade-off question; the unique-constraint problem is the detail most candidates miss."
+    },
+    {
+      "id": "sq-036",
+      "q": "What is the risk of declaring `ON DELETE CASCADE` on every foreign key?",
+      "choices": [
+        "The engine ignores cascades inside explicit transactions, leaving orphans",
+        "Cascades are built on triggers, which slow every insert on child tables",
+        "Parents can no longer be deleted while any of their children still exist",
+        "One delete can silently remove large trees of rows across many tables"
+      ],
+      "answer": 3,
+      "why": "Cascade suits owned children (an order and its lines); on references such as customer to invoices, one mistaken delete wipes financial history. Blocking deletes while children exist is what RESTRICT and NO ACTION do. SQL Server also rejects multiple cascade paths to one table.",
+      "tags": ["constraints", "modelling"],
+      "level": 2,
+      "asked": "Checks you choose delete behaviour per relationship rather than by habit."
+    },
+    {
+      "id": "sq-037",
+      "q": "Why can a B-tree index on `name` not help with `WHERE name LIKE '%smith'`?",
+      "choices": [
+        "LIKE is always evaluated after a full scan, whatever the pattern is",
+        "The index is sorted by leading characters, and the pattern fixes none",
+        "Indexes store only the first 10 characters of each text value they hold",
+        "B-tree indexes support only = comparisons, never LIKE or range filters"
+      ],
+      "answer": 1,
+      "why": "`LIKE 'smith%'` becomes a range seek on the sorted index; a leading wildcard gives the seek nowhere to start. In Postgres the prefix case also needs the C collation or `text_pattern_ops`. For contains-search, use a trigram index (Postgres pg_trgm) or full-text search.",
+      "tags": ["indexes", "performance"],
+      "level": 2,
+      "asked": "Search boxes are in every CRUD app; checks you know why the naive one gets slow."
+    },
+    {
+      "id": "sq-038",
+      "q": "`created_at` is a timestamp column. This is meant to fetch all of March. What does it miss?",
+      "code": "SELECT * FROM orders\nWHERE created_at BETWEEN '2026-03-01' AND '2026-03-31';",
+      "lang": "sql",
+      "choices": [
+        "Orders on 1 March, since BETWEEN excludes both of its end points",
+        "Nothing: BETWEEN on timestamps widens each bound to the whole day",
+        "Orders from 31 March after midnight, as the end bound is 00:00:00",
+        "Orders in other zones, since string literals are always read as UTC"
+      ],
+      "answer": 2,
+      "why": "BETWEEN is inclusive, and `'2026-03-31'` means midnight at the start of the 31st, so almost the whole last day is lost. Use a half-open range: `created_at >= '2026-03-01' AND created_at < '2026-04-01'`. That holds in Postgres, SQL Server and MySQL and stays index-friendly.",
+      "tags": ["queries", "dates"],
+      "level": 2,
+      "asked": "Every report has a date filter; this bug ships in most first attempts."
+    },
+    {
+      "id": "sq-039",
+      "q": "When is a JSON column (Postgres jsonb, or JSON text in SQL Server) a reasonable choice?",
+      "choices": [
+        "For any field that might change, so migrations are never needed again",
+        "For related ids, since a JSON array joins faster than a separate table",
+        "For loosely structured data stored and returned whole, rarely filtered",
+        "For money and dates, since JSON keeps their types more exactly than SQL"
+      ],
+      "answer": 2,
+      "why": "Webhook payloads, per-tenant settings and third-party metadata fit well. Inside JSON you lose types, NOT NULL, foreign keys and easy indexing (Postgres needs GIN or expression indexes; SQL Server indexes computed columns). Once you filter or join on a field, promote it to a real column.",
+      "tags": ["modelling", "types"],
+      "level": 3,
+      "asked": "A judgement question: the strong answer names the signal for promoting a field to a column."
+    },
+    {
+      "id": "sq-040",
+      "q": "Why add `created_at` and `updated_at` columns to most tables?",
+      "choices": [
+        "The database needs them to order rows, since tables have no order",
+        "They replace backups, since old values can be rebuilt from them",
+        "They stop lost updates, since writes with an older stamp are rejected",
+        "They record when a row appeared or changed, for debugging and sync"
+      ],
+      "answer": 3,
+      "why": "They answer \"when did this change?\" in support tickets and let clients sync with \"changed since\". They record when, not who or what: use an audit or history table for that. `updated_at` prevents lost updates only if you check it in the UPDATE's WHERE.",
+      "tags": ["modelling"],
+      "level": 1,
+      "asked": "A cheap habit that interviewers read as operational experience."
+    },
+    {
+      "id": "sq-041",
+      "q": "Two customers buy the last unit at the same moment. Which approach guarantees stock never goes negative in Postgres, SQL Server and MySQL alike?",
+      "choices": [
+        "SELECT the quantity, check it is above zero in application code, then UPDATE it to quantity minus one",
+        "Wrap that SELECT and UPDATE in a transaction, since a transaction serialises concurrent writers",
+        "Run `UPDATE stock SET qty = qty - 1 WHERE id = ? AND qty > 0` and treat zero affected rows as sold out",
+        "Set the transaction to REPEATABLE READ, so the second transaction's SELECT waits for the first to commit"
+      ],
+      "answer": 2,
+      "why": "The conditional UPDATE is one atomic statement: the row is locked while the predicate is checked and the value written, so the second statement sees qty = 0 and matches nothing. Check-then-write has a gap between the read and the write, and a transaction at the default READ COMMITTED level does not close it: both transactions read 1. REPEATABLE READ changes what a transaction reads, not whether it waits, and what happens on the conflicting write then differs by engine, so it is not a portable fix. A CHECK (qty >= 0) constraint is a good backstop.",
+      "tags": ["concurrency", "transactions"],
+      "level": 3,
+      "asked": "The classic stock or seat-booking race; the strong answer knows the check has to happen inside the write."
     }
   ]
 }

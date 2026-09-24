@@ -18,8 +18,12 @@ ones interviewers ask you to justify.
 
 Sequential ids let anyone see you have 412 customers, and let them walk
 `/orders/1`, `/orders/2` looking for a missing authorization check. UUIDs avoid
-both but cost index performance. **Sequential UUIDs** (UUIDv7, or SQL Server's
-`NEWSEQUENTIALID`) give you most of both.
+both but cost index performance. **Sequential UUIDs** give you most of both.
+UUIDv7 puts a timestamp in the leading bytes so new ids sort after old ones, and
+it is native now: `uuidv7()` in Postgres 18, `Guid.CreateVersion7()` in .NET 9+.
+One SQL Server caveat: `uniqueidentifier` sorts by its *last* byte group first,
+so a v7 GUID is **not** sequential there. Use `NEWSEQUENTIALID()` or a `bigint`
+key on SQL Server.
 
 Being able to compare them is the interview answer; either choice is fine.
 
@@ -64,8 +68,10 @@ migrations. The constraint is the only thing that actually holds.
 
 Decide the delete behaviour explicitly:
 
-- `ON DELETE RESTRICT` (default in most engines) — refuse to delete a parent
-  that still has children. Usually what you want.
+- `ON DELETE NO ACTION` (the default in Postgres, SQL Server and MySQL) or
+  `RESTRICT` — refuse to delete a parent that still has children. Usually what
+  you want. The two differ only in when the check runs (`NO ACTION` can be
+  deferred to the end of the statement or transaction).
 - `ON DELETE CASCADE` — delete the children too. Correct for genuinely owned
   data (order line items), dangerous for anything else.
 - `ON DELETE SET NULL` — for optional relationships.

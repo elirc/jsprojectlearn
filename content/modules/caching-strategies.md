@@ -55,6 +55,19 @@ If-None-Match: "v3"                ->  304 Not Modified
 
 You still pay the round trip, but not the bandwidth or the rendering.
 
+**`Vary`** is the header that stops a CDN serving the wrong copy. A shared cache
+keys on the URL by default, so if the response differs by request header, say
+so:
+
+```
+Vary: Accept-Encoding          # gzip vs brotli vs plain are different bodies
+Vary: Accept-Language          # per-language content
+```
+
+Forget it and the CDN happily serves a brotli body to a client that cannot read
+it, or the English page to everyone. A response that varies by `Authorization`
+or `Cookie` should not be in a shared cache at all: mark it `private`.
+
 **The standard static-asset pattern:** content-hashed filenames cached forever,
 referenced from an HTML shell cached for seconds. New deploy, new filenames,
 instant pickup with no invalidation needed.
@@ -87,7 +100,32 @@ and an extra thing to operate.
 The rule: **in-memory for immutable or tolerant data** (reference lists,
 compiled templates, config), **distributed for anything that must be consistent
 across instances** (sessions, rate-limit counters, expensive shared query
-results).
+results). Redis changed its licence in 2024; **Valkey** is the BSD-licensed fork
+most clouds now offer, and it speaks the same protocol.
+
+### The .NET pieces
+
+.NET interviews name these, so know which is which:
+
+- `IMemoryCache` — in-process. `IDistributedCache` — the Redis-backed
+  interface, bytes in and out.
+- **`HybridCache`** (GA March 2025, works on .NET 8+) — both at once: an
+  in-memory L1 in front of a distributed L2, with **stampede protection built
+  in** (concurrent misses on one key run the factory once).
+- **Output caching** — middleware that caches whole HTTP responses on the
+  server, with tag-based eviction.
+
+```csharp
+builder.Services.AddHybridCache();
+builder.Services.AddOutputCache();
+app.UseOutputCache();
+
+app.MapGet("/products/{id}", async (int id, HybridCache cache, AppDb db, CancellationToken ct) =>
+    await cache.GetOrCreateAsync($"product:{id}",
+        async token => await db.Products.FindAsync([id], token), cancellationToken: ct));
+
+app.MapGet("/catalogue", GetCatalogue).CacheOutput(p => p.Expire(TimeSpan.FromMinutes(1)));
+```
 
 ## Invalidation
 

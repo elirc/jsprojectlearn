@@ -8,342 +8,526 @@
       "id": "gt-001",
       "q": "What is the difference between merge and rebase?",
       "choices": [
-        "Merge creates a commit joining two histories; rebase replays your commits on top of another branch, rewriting them",
-        "Rebase is a safer merge",
-        "Merge deletes the branch",
-        "They produce identical history"
+        "Merge adds a commit joining both histories; rebase replays your commits onto the other branch as new ones",
+        "Rebase keeps the original commit hashes and only moves the branch label, so it is safe on shared branches",
+        "Merge squashes the feature branch into one commit, while rebase keeps every commit exactly as it was",
+        "The history ends up identical; rebase just avoids the conflicts that merging the same branches would raise"
       ],
       "answer": 0,
-      "why": "Rebase gives linear, readable history. Because it rewrites commits, never rebase a branch other people have pulled — their history and yours diverge and the next merge is a mess.",
+      "why": "Rebase creates new commits with new hashes, which is why it gives linear history and why you never rebase a branch others have pulled: their copies and yours diverge. It does not avoid conflicts either; you resolve them commit by commit instead of once.",
       "tags": ["git"],
       "level": 2,
-      "asked": "Guaranteed. The 'never rebase shared branches' caveat is the part that matters."
+      "asked": "Guaranteed in any Git discussion; the 'never rebase shared branches' caveat is the part the interviewer is waiting for."
     },
     {
       "id": "gt-002",
-      "q": "You committed to `main` instead of a feature branch, and have not pushed. What now?",
+      "q": "You committed to `main` instead of a feature branch and have not pushed. What is the cleanest fix?",
       "choices": [
-        "Create the branch at the current commit, then reset main back to origin/main",
-        "Delete the repository and re-clone",
-        "git commit --amend",
-        "git push --force"
+        "Stash the commit, switch to a new branch, and pop the stash there to move the work",
+        "Run `git commit --amend` on main, which moves the latest commit onto a new branch",
+        "Create a branch at the current commit, then reset main back to `origin/main`",
+        "Check out a new branch; the commit moves with you and main drops back on its own"
       ],
-      "answer": 0,
-      "why": "`git branch feature`, then `git reset --hard origin/main` while on main. The commit is safe on the new branch. Nothing was pushed, so nobody else is affected.",
+      "answer": 2,
+      "why": "`git branch feature` keeps a pointer to the commit, then `git reset --hard origin/main` on main moves main back. Checking out a new branch copies the pointer but leaves main where it is, and stash only holds uncommitted changes, not commits.",
       "tags": ["git", "recovery"],
       "level": 2,
-      "asked": "A practical scenario question — the answer shows whether you actually understand branches as pointers."
+      "asked": "A practical scenario that shows whether you understand branches as movable pointers rather than folders of commits."
     },
     {
       "id": "gt-003",
       "q": "What is the difference between `git revert` and `git reset`?",
       "choices": [
-        "revert adds a new commit undoing a change (safe on shared branches); reset moves the branch pointer, rewriting history",
-        "revert deletes the commit, reset keeps it",
-        "They are the same for pushed commits",
-        "reset is for files, revert for commits"
+        "revert deletes the commit from history; reset keeps it but unstages the files it changed",
+        "reset is the safe choice for pushed commits, because it leaves the remote history untouched",
+        "revert only undoes the latest commit; reset can undo any commit further back in history",
+        "revert adds a new commit that undoes a change; reset moves the branch pointer back instead"
       ],
-      "answer": 0,
-      "why": "If it is already pushed, revert. Reset on a shared branch means everyone else's history disagrees with the remote and someone will force-push over someone's work.",
+      "answer": 3,
+      "why": "revert is additive, so it is safe on a shared branch. reset rewrites where the branch points, so after a push everyone else's history disagrees with yours and someone ends up force-pushing. revert can target any commit, not just the latest.",
       "tags": ["git", "recovery"],
-      "level": 2
+      "level": 2,
+      "asked": "The follow-up is always \"and if it is already pushed?\"; answering revert without prompting is the signal."
     },
     {
       "id": "gt-004",
-      "q": "What does `git reset --soft`, `--mixed` and `--hard` each keep?",
+      "q": "What do `git reset --soft`, `--mixed` and `--hard` each do with your changes?",
       "choices": [
-        "soft keeps staged changes, mixed keeps them unstaged, hard discards them entirely",
-        "They differ only in speed",
-        "soft is for files, hard for branches",
-        "hard is the only one that moves HEAD"
+        "soft moves only the index, mixed moves HEAD and the index, hard also deletes untracked files",
+        "soft keeps them staged, mixed keeps them in the working tree unstaged, hard discards them",
+        "All three keep your changes; they differ only in whether the reflog records the move",
+        "soft and mixed leave HEAD where it is; only hard actually moves the branch pointer"
       ],
-      "answer": 0,
-      "why": "`--hard` is the only Git command that routinely destroys uncommitted work — and it is the one people run when panicking. Commit or stash first.",
-      "tags": ["git"],
-      "level": 3
+      "answer": 1,
+      "why": "All three move the branch pointer; they differ in what happens to the index and working tree. `--hard` throws away uncommitted changes to tracked files, but it leaves untracked files alone (that is `git clean`). Commit or stash before reaching for it.",
+      "tags": ["git", "recovery"],
+      "level": 2,
+      "asked": "`--hard` is the command people run when panicking; knowing exactly what it destroys is the point."
     },
     {
       "id": "gt-005",
       "q": "What is `git stash` for?",
       "choices": [
-        "Temporarily shelving uncommitted changes so you can switch context, then reapply them",
-        "Backing up a branch",
-        "Squashing commits",
-        "Ignoring files"
+        "Saving a copy of the current branch to the remote so it survives a lost laptop",
+        "Squashing your recent local commits into one before opening a pull request",
+        "Shelving uncommitted changes so you can switch branches, then reapplying them",
+        "Keeping a file's local edits out of every future commit, like a private ignore"
       ],
-      "answer": 0,
-      "why": "Useful, but stashes are easy to forget and do not survive a fresh clone. A throwaway WIP commit on a branch is often the safer habit.",
+      "answer": 2,
+      "why": "Stash stores work-in-progress as local refs and restores it with `git stash pop`. It is never pushed, so it does not protect against a lost machine, which is why a throwaway WIP commit on a pushed branch is often the safer habit.",
       "tags": ["git"],
-      "level": 1
+      "level": 1,
+      "asked": "A warm-up question; a good answer adds that stashes are local and easy to forget."
     },
     {
       "id": "gt-006",
-      "q": "What does a `.gitignore` NOT do?",
+      "q": "Which of these does a `.gitignore` NOT do?",
       "choices": [
-        "It does not untrack a file that has already been committed",
-        "It does not affect new files",
-        "It does not work on directories",
-        "It does not apply to subfolders"
+        "Stop tracking a file that is already committed; that needs `git rm --cached`",
+        "Apply its patterns to files in subfolders below the .gitignore's own folder",
+        "Match only directories when the pattern ends with a trailing slash",
+        "Keep new untracked files that match its patterns out of `git status`"
       ],
       "answer": 0,
-      "why": "You need `git rm --cached`. And if a secret was committed, ignoring it now does nothing — it is still in history, so rotate the credential.",
+      "why": ".gitignore only affects untracked files. A file already in the index stays tracked until you remove it with `git rm --cached`. If that file was a secret, ignoring it now does nothing: it is still in history, so rotate the credential.",
       "tags": ["git", "secrets"],
-      "level": 2
+      "level": 2,
+      "asked": "It usually comes up as \"someone committed the .env file\"; the strong answer ends with \"rotate the key\"."
     },
     {
       "id": "gt-007",
       "q": "What makes a good commit message?",
       "choices": [
-        "A short imperative summary of what changed, and a body explaining why when it is not obvious",
-        "A list of every file touched",
-        "The ticket number alone",
-        "As much detail as possible about how"
+        "A line-by-line account of how the code changed, so reviewers can skip the diff",
+        "A short imperative summary, plus a body explaining why when it is not obvious",
+        "The ticket number alone, because the ticket tracker already holds the context",
+        "A list of every file touched and the functions changed in each, for searching"
       ],
-      "answer": 0,
-      "why": "The diff already says how. Six months later, `git log` is the only record of why — 'fix bug' tells the next person nothing when they are bisecting a regression.",
+      "answer": 1,
+      "why": "The diff already says how and which files. Months later `git log` is the only record of why, and trackers get migrated or purged, so a bare ticket number often leads nowhere. The ticket id is fine as an addition, not a replacement.",
       "tags": ["git", "process"],
-      "level": 1
+      "level": 1,
+      "asked": "Interviewers look at your public commits; this checks whether you write history for the next person."
     },
     {
       "id": "gt-008",
       "q": "What is `git bisect` for?",
       "choices": [
-        "Binary searching history to find the commit that introduced a bug",
-        "Splitting a commit in two",
-        "Comparing two branches",
-        "Splitting a repository"
+        "Splitting one large commit into two smaller ones so each can be reviewed alone",
+        "Comparing two branches side by side to list the commits that exist on only one of them",
+        "Cutting a subfolder out into its own repository with its history preserved",
+        "Binary-searching commits between a good and a bad one to find where a bug began"
       ],
-      "answer": 0,
-      "why": "Mark a good commit and a bad one and Git walks you through the halves. It is why small, atomic commits pay off — a bisect that lands on a 2000-line commit tells you very little.",
+      "answer": 3,
+      "why": "You mark one good and one bad commit and Git checks out the midpoint each round until one commit is left; `git bisect run` automates it with a test script. It is why small commits pay off: landing on a 2,000-line commit tells you little.",
       "tags": ["git", "debugging"],
-      "level": 3
+      "level": 2,
+      "asked": "A proxy for debugging maturity; people who have used it in anger usually mention `bisect run`."
     },
     {
       "id": "gt-009",
-      "q": "What should a CI pipeline run before a merge?",
+      "q": "Which checks should gate a merge to main if main must always be releasable?",
       "choices": [
-        "Build, lint, type-check, unit and integration tests — everything that must be true for the branch to be mergeable",
-        "Only the unit tests, for speed",
-        "A deployment to production",
-        "Nothing; run checks after merge"
+        "Build, lint, type-check and the automated test suites, all passing on the branch",
+        "Only the fast unit tests; integration tests can run nightly after the merge lands",
+        "A full production deploy of the branch, so every merge is proven on real traffic",
+        "Formatting and lint only, because reviewers verify behaviour by reading the code"
       ],
       "answer": 0,
-      "why": "The point is that main is always releasable. Anything you would be embarrassed to merge belongs in the pipeline, and anything not in the pipeline will eventually be skipped.",
+      "why": "Whatever must be true for a release has to be checked before the merge, or main is only releasable until someone breaks it. Nightly-only integration tests let a broken main sit for a day, and deploying every branch to production is not a gate at all.",
       "tags": ["ci"],
-      "level": 1
+      "level": 1,
+      "asked": "Checks that you see CI as the definition of \"mergeable\", not a nice-to-have."
     },
     {
       "id": "gt-010",
       "q": "What is the difference between continuous integration and continuous deployment?",
       "choices": [
-        "CI merges and verifies changes frequently; CD automatically releases every passing build",
-        "They are the same",
-        "CD means deploying manually but often",
-        "CI includes deployment by definition"
+        "CI builds every push; continuous deployment means a human approves each release first",
+        "CI is the test phase and CD the build phase; together they replace manual QA",
+        "CI merges and verifies changes often; continuous deployment ships every green build",
+        "CI runs on feature branches only; CD re-runs the same checks after merge to main"
       ],
-      "answer": 0,
-      "why": "Continuous *delivery* means every build is releasable; continuous *deployment* means it actually ships without a human. Plenty of good teams do the former and gate the latter.",
+      "answer": 2,
+      "why": "Continuous delivery means every build could be released; continuous deployment means it actually is, without a human gate. A manual approval step is delivery, not deployment, and many good teams stop there on purpose.",
       "tags": ["ci", "cd"],
-      "level": 2
+      "level": 2,
+      "asked": "Tests whether you can separate delivery from deployment, which most candidates blur."
     },
     {
       "id": "gt-011",
       "q": "What is a container, precisely?",
       "choices": [
-        "An isolated process sharing the host kernel, with its own filesystem and namespaces — not a virtual machine",
-        "A lightweight virtual machine with its own kernel",
-        "A packaged zip of the application",
-        "A process manager"
+        "A lightweight virtual machine that boots its own minimal kernel for each app",
+        "An isolated process on the host kernel, with its own filesystem view and namespaces",
+        "A compressed archive of the app and its dependencies that the OS unpacks and runs",
+        "A process supervisor that restarts the app on a crash and caps it to a set amount of memory"
       ],
-      "answer": 0,
-      "why": "Sharing the kernel is why containers start in milliseconds and VMs take seconds. It is also why a Linux container cannot run on a Windows kernel without a VM underneath.",
+      "answer": 1,
+      "why": "Containers share the host kernel and are isolated with namespaces and cgroups. That is why they start in milliseconds, and why a Linux container on Windows or macOS needs a Linux VM underneath. The archive is the image, not the container.",
       "tags": ["docker"],
       "level": 2,
-      "asked": "The 'it's not a VM' distinction is the whole question."
+      "asked": "The 'it is not a VM' distinction is the whole question."
     },
     {
       "id": "gt-012",
       "q": "What is the point of a multi-stage Dockerfile?",
       "choices": [
-        "Build with the full SDK, then copy only the artefacts into a small runtime image",
-        "To build for multiple architectures",
-        "To run multiple processes in one container",
-        "To cache layers between projects"
+        "Build with the full SDK image, then copy only the output into a small runtime image",
+        "Build one image for several CPU architectures, such as amd64 and arm64, in a single run",
+        "Run several processes, such as the app and a worker, inside a single container",
+        "Share cached layers between different projects' builds on the same CI runner"
       ],
       "answer": 0,
-      "why": "A .NET SDK image is roughly 800MB; the runtime image is a fraction of that. Smaller images pull faster, cost less to store, and contain fewer things a scanner can flag.",
+      "why": "Each `FROM` starts a stage, and only the last stage becomes the image. A .NET SDK image is several times the size of the runtime image, so shipping only the runtime pulls faster and gives a scanner less to flag. Multiple architectures is buildx, a separate feature.",
       "tags": ["docker"],
-      "level": 2
+      "level": 2,
+      "asked": "A standard Docker question; mentioning a smaller attack surface as well as size is the stronger answer."
     },
     {
       "id": "gt-013",
-      "q": "Why order Dockerfile instructions so dependency installs come before copying source?",
+      "q": "Why copy `package.json` and install dependencies before copying the rest of the source in a Dockerfile?",
       "choices": [
-        "Layer caching — a source change should not invalidate the dependency install layer",
-        "It reduces the final image size",
-        "Docker requires that order",
-        "It improves runtime performance"
+        "It makes the image smaller, because source is compressed along with the dependencies",
+        "Docker requires dependency steps to come before any COPY of application code",
+        "Layer caching: a source-only change then reuses the cached dependency-install layer",
+        "It speeds the container up at runtime, because dependencies load before app code"
       ],
-      "answer": 0,
-      "why": "Copy package.json and run install, then copy the rest. Get it backwards and every one-line change reinstalls every dependency, turning a 10-second build into three minutes.",
+      "answer": 2,
+      "why": "A layer is rebuilt when its inputs change, and so is every layer after it. If the whole source is copied before `npm ci`, every one-line edit reinstalls every dependency. Order has no effect on runtime speed and Docker imposes no such rule.",
       "tags": ["docker", "ci"],
-      "level": 2
+      "level": 2,
+      "asked": "Checks whether you understand the layer cache, which is what makes a Docker build take ten seconds or three minutes."
     },
     {
       "id": "gt-014",
-      "q": "How should configuration differ between dev, staging and production?",
+      "q": "How should configuration differ between dev, staging and production if you must ship exactly what you tested?",
       "choices": [
-        "Same build artefact everywhere, configured by environment variables injected at deploy",
-        "A separate build per environment",
-        "Config files committed per environment",
-        "Hard-coded switches on the hostname"
+        "Build a separate artefact per environment with that environment's settings baked in",
+        "Build one artefact and inject each environment's settings as variables at deploy time",
+        "Commit one config file per environment and choose between them at runtime from the hostname",
+        "Keep one config file and have the deployer edit it for each environment by hand"
       ],
-      "answer": 0,
-      "why": "Build once, promote the same artefact. If you rebuild per environment, the thing you tested is not the thing you shipped.",
+      "answer": 1,
+      "why": "Build once and promote the same artefact; only its configuration changes. Rebuilding per environment means the thing you tested is not the thing you shipped, and hostname switches or hand edits turn configuration into code nobody reviews.",
       "tags": ["config", "deployment"],
-      "level": 2
+      "level": 2,
+      "asked": "Build-once-promote-many is the principle; interviewers want to hear why rebuilding per environment is a risk."
     },
     {
       "id": "gt-015",
       "q": "What is a blue/green deployment?",
       "choices": [
-        "Run the new version alongside the old, switch traffic over, and switch back instantly if it fails",
-        "Deploying to two regions",
-        "Deploying half the features at a time",
-        "Running tests in production"
+        "Deploying the same version to two regions so that one can take over whenever the other fails",
+        "Sending a small share of users to the new version and raising it step by step",
+        "Releasing half the features first and the rest once the first half proves stable",
+        "Running the new version beside the old, moving all traffic, and moving it back on failure"
       ],
-      "answer": 0,
-      "why": "Rollback is a traffic switch, not a redeploy. The catch is shared state: database schema must work with both versions during the overlap, which is why expand/contract migrations matter.",
+      "answer": 3,
+      "why": "Rollback is a traffic switch, not a redeploy. Gradually shifting a percentage of users is a canary release, a different strategy. The catch is shared state: the database must work with both versions during the overlap.",
       "tags": ["deployment"],
-      "level": 3
+      "level": 2,
+      "asked": "Often paired with canary; being able to tell them apart is the mid-level bar."
     },
     {
       "id": "gt-016",
       "q": "What is a feature flag for?",
       "choices": [
-        "Separating deploy from release, so code can ship dark and be turned on independently",
-        "Managing Git branches",
-        "A/B testing only",
-        "Disabling tests"
+        "Separating deploy from release, so unfinished code can ship switched off",
+        "Choosing which Git branch a build comes from without editing the pipeline",
+        "Running A/B experiments; outside experiments a flag is just dead code",
+        "Skipping failing tests in CI until someone has time to fix them properly"
       ],
       "answer": 0,
-      "why": "It enables trunk-based development — merge small changes often without half-finished features reaching users. The cost is flag debt; every flag needs a removal date.",
+      "why": "Flags let you merge small changes to main continuously while the feature stays off for users. Experiments are one use, not the only one. The cost is flag debt: every flag needs an owner and a removal date.",
       "tags": ["deployment", "process"],
-      "level": 2
+      "level": 2,
+      "asked": "Leads into trunk-based development; mentioning flag cleanup shows you have lived with them."
     },
     {
       "id": "gt-017",
-      "q": "The pipeline is green but production is broken. What class of problem is this?",
+      "q": "The pipeline is green but production is broken. What class of problem is this most likely to be?",
       "choices": [
-        "Something that only exists in the target environment — config, secrets, data, network, or scale",
-        "A flaky test",
-        "A compiler bug",
-        "A merge conflict"
+        "A flaky test that happened to pass in CI and would fail on a second run",
+        "Something only the target environment has: config, secrets, data, network or scale",
+        "A merge conflict that was resolved wrongly on main after the pipeline had already run",
+        "A compiler or bundler bug that produces different output on the build server"
       ],
-      "answer": 0,
-      "why": "The pipeline validates the artefact, not the environment. This is why smoke tests after deploy and good observability matter more than adding another unit test.",
+      "answer": 1,
+      "why": "The pipeline validates the artefact, not the environment it lands in. That is why post-deploy smoke tests and observability matter more here than one more unit test. A flaky test passing by luck can hide a code bug, but it is rare; a green build that breaks only in production nearly always points at what production alone has.",
       "tags": ["deployment", "debugging"],
       "level": 2,
-      "asked": "A realistic scenario question. It tests whether you understand the limits of CI."
+      "asked": "A realistic scenario that tests whether you understand the limits of CI."
     },
     {
       "id": "gt-018",
       "q": "What does semantic versioning promise?",
       "choices": [
-        "MAJOR breaks compatibility, MINOR adds compatibly, PATCH fixes compatibly",
-        "Version numbers increase over time",
-        "Every release is tested",
-        "Nothing — it is only a convention for libraries"
+        "MAJOR marks a rewrite, MINOR marks new features, PATCH marks any other change",
+        "MAJOR breaks compatibility, MINOR adds features compatibly, PATCH fixes compatibly",
+        "Each number counts releases per year, month and day, so it encodes the date",
+        "The registry enforces compatibility, so a MINOR bump can never break your app"
       ],
-      "answer": 0,
-      "why": "It is a social contract, not an enforced rule, which is why lockfiles exist. For an application (rather than a library) it often matters less than a traceable build number.",
+      "answer": 1,
+      "why": "It is a promise the publisher makes, not something any tool enforces, which is why lockfiles exist: a MINOR release can still break you by mistake. Calendar versioning is a different scheme.",
       "tags": ["versioning"],
-      "level": 1
+      "level": 1,
+      "asked": "Leads straight into `^` ranges and lockfiles; the strong answer says semver is a promise, not a guarantee."
     },
     {
       "id": "gt-019",
       "q": "What is trunk-based development?",
       "choices": [
-        "Short-lived branches merged to main frequently, keeping main always releasable",
-        "Committing directly to main with no review",
-        "One long-running branch per release",
-        "Working only in forks"
+        "Everyone commits straight to main, with no pull requests and no review",
+        "One long-lived branch per release, with fixes merged back to main at the end",
+        "All work happens in personal forks and is merged back to main once at the end of each sprint",
+        "Short-lived branches merged to main at least daily, with main kept releasable"
       ],
-      "answer": 0,
-      "why": "The alternative — long-lived branches — produces enormous merges and integration pain. The trade-off is that incomplete work must be hidden behind flags.",
+      "answer": 3,
+      "why": "Branches live for hours or a day, so merges stay small and integration pain never builds up. It does not mean skipping review; short-lived PRs still get reviewed. The trade-off is that unfinished work must hide behind flags.",
       "tags": ["process", "git"],
-      "level": 2
+      "level": 2,
+      "asked": "Tests whether you know why long-lived branches hurt, not just the name of the alternative."
     },
     {
       "id": "gt-020",
       "q": "Someone force-pushed over your commits on a shared branch. Are they gone?",
       "choices": [
-        "Usually recoverable — `git reflog` locally, or the old commit SHA on the remote, still points at them",
-        "Yes, permanently",
-        "Only if you had pushed them",
-        "Only recoverable from a backup"
+        "Yes; a force-push deletes the old commits from the server and every clone at once",
+        "Only if you had tagged them, because untagged commits vanish on the next push",
+        "Usually not: the reflog on any clone that had them still points at the old SHAs",
+        "Only a server backup can help, since Git keeps no record of where a branch pointed"
       ],
-      "answer": 0,
-      "why": "Git rarely deletes objects immediately; the reflog records where HEAD has been. The real lesson is to protect main and require pull requests so this cannot happen.",
+      "answer": 2,
+      "why": "Git does not delete objects straight away, and the reflog records where each ref has been, so `git reflog` on a machine that had the commits finds them. The real fix is protecting shared branches so nobody can force-push there.",
       "tags": ["git", "recovery"],
-      "level": 3
+      "level": 3,
+      "asked": "A calm \"check the reflog\" is the answer; the follow-up is how you stop it happening again."
     },
     {
       "id": "gt-021",
       "q": "What is the difference between `npm install` and `npm ci`?",
       "choices": [
-        "install may update the lockfile; ci installs strictly from it and fails if package.json disagrees",
-        "ci is just faster",
-        "ci skips devDependencies",
-        "install works offline, ci does not"
+        "ci is a faster install that reuses node_modules and skips the integrity check",
+        "install may rewrite the lockfile; ci installs exactly from it and fails on a mismatch",
+        "ci installs only production dependencies, while install adds devDependencies too",
+        "install picks the newest versions in range; ci pins them by writing a new lockfile"
       ],
-      "answer": 0,
-      "why": "`npm ci` wipes node_modules and reproduces the lockfile exactly — which is what you want in a pipeline, where a surprise dependency upgrade should be an error, not a silent event.",
+      "answer": 1,
+      "why": "`npm ci` deletes node_modules and reproduces the lockfile exactly, failing if package.json and the lockfile disagree. That is what a pipeline wants: a surprise upgrade should be an error. It installs devDependencies too unless told to omit them.",
       "tags": ["npm", "ci"],
-      "level": 2
+      "level": 2,
+      "asked": "A quick check that you have set up a real pipeline rather than copied one."
     },
     {
       "id": "gt-022",
       "q": "What does a linter give you that the compiler does not?",
       "choices": [
-        "Rules about style and likely-wrong-but-legal code, enforced consistently without review debate",
-        "Type checking",
-        "Faster builds",
-        "Security scanning"
+        "Type checking of arguments and return values across module boundaries",
+        "Faster builds, because linted code needs less optimising by the compiler",
+        "Rules for legal-but-suspicious code and style, applied the same way to every change",
+        "A security audit that flags known-vulnerable dependency versions pinned in the lockfile"
       ],
-      "answer": 0,
-      "why": "`no-floating-promises` and the React hooks rules catch real bugs a type checker will not. Automating style also removes the least valuable category of review comment.",
+      "answer": 2,
+      "why": "Rules such as `no-floating-promises` or the React hooks rules catch real bugs in code that compiles. Type checking is the compiler's job and dependency audits are `npm audit`. Automating style also removes the least useful kind of review comment.",
       "tags": ["tooling"],
-      "level": 1
+      "level": 1,
+      "asked": "Checks that you use tooling to take arguments out of code review."
     },
     {
       "id": "gt-023",
-      "q": "Why should build artefacts and `node_modules` not be in version control?",
+      "q": "Why should build output and `node_modules` stay out of version control?",
       "choices": [
-        "They are derived, huge, platform-specific and generate constant conflicts",
-        "Git cannot store binary files",
-        "It slows down the linter",
-        "Licensing prohibits it"
+        "Git cannot store binary files, so compiled output would be corrupted on checkout",
+        "They are derived, large and platform-specific, and cause constant merge conflicts",
+        "Committing them makes the linter and formatter scan thousands of extra files",
+        "Package licences forbid redistributing third-party code inside a Git repository"
       ],
-      "answer": 0,
-      "why": "Commit the lockfile — the recipe — not the result. Native modules compiled on your machine will not even run on the build server.",
+      "answer": 1,
+      "why": "Commit the recipe (package.json and the lockfile), not the result. Native modules built on your machine may not even run on the build server. Git stores binaries fine; it just cannot diff or merge them usefully.",
       "tags": ["git", "tooling"],
-      "level": 1
+      "level": 1,
+      "asked": "A junior hygiene check; the lockfile-is-the-recipe framing is what lands."
     },
     {
       "id": "gt-024",
       "q": "What is a rolling deployment's main constraint?",
       "choices": [
-        "Old and new versions run simultaneously, so both must work against the same database and API contracts",
-        "It requires downtime",
-        "It only works with containers",
-        "It cannot be rolled back"
+        "It needs a maintenance window, because every instance restarts at the same moment",
+        "It only works for containers, because VMs cannot be replaced one at a time",
+        "Old and new versions serve traffic together, so both must work with one schema",
+        "It cannot be rolled back, because updated instances cannot take the old build"
       ],
-      "answer": 0,
-      "why": "This is why you never rename a column and deploy the code in the same release. Add, backfill, dual-write, migrate reads, then remove — across several deploys.",
+      "answer": 2,
+      "why": "Instances are replaced a few at a time, so for a while both versions run against the same database and clients. That is why you never rename a column in the same release as the code: add, backfill, switch reads, then remove, across several deploys.",
       "tags": ["deployment", "migrations"],
       "level": 3,
       "asked": "It connects deployment strategy to database migrations, which is a genuinely mid-level connection to make."
+    },
+    {
+      "id": "gt-025",
+      "q": "What is the difference between `git fetch` and `git pull`?",
+      "choices": [
+        "fetch downloads remote commits without moving your branch; pull fetches and then integrates",
+        "fetch downloads only the latest commit; pull downloads the full history of every branch",
+        "fetch updates your working files but not your branch; pull also moves the branch pointer forward",
+        "fetch is the read-only form of push; pull is the same as clone for an existing folder"
+      ],
+      "answer": 0,
+      "why": "fetch updates remote-tracking refs such as `origin/main` and touches nothing else, so you can inspect before integrating. pull is fetch followed by a merge (or rebase, if configured). Neither is limited to one commit.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "A phone-screen staple; people who fetch first and look before pulling tend to have fewer bad merges."
+    },
+    {
+      "id": "gt-026",
+      "q": "Your local main has one unpushed commit and the remote has two new ones. What does `git pull --rebase` do?",
+      "choices": [
+        "Creates a merge commit for the remote work, then rebases that merge onto yours",
+        "Discards your local commit and resets main to match the remote, like a hard reset",
+        "Fetches the two commits, then replays your commit on top of them for a linear history",
+        "Refuses to run, because rebasing a branch that has unpushed work is never allowed"
+      ],
+      "answer": 2,
+      "why": "It fetches, then rebases your unpushed commit onto the updated `origin/main`, so there is no \"Merge branch main\" noise. Your commit gets a new hash, which is fine because nobody else has it yet.",
+      "tags": ["git"],
+      "level": 2,
+      "asked": "Checks that you can apply \"rebase only what is not shared\" to a daily command."
+    },
+    {
+      "id": "gt-027",
+      "q": "What does `git cherry-pick <sha>` do?",
+      "choices": [
+        "Moves that commit off its original branch onto yours, removing it from the source",
+        "Checks out the repository as it was at that commit, detaching HEAD for inspection",
+        "Merges the whole branch containing that commit, stopping right after that commit",
+        "Applies the changes from that one commit as a new commit on your current branch"
+      ],
+      "answer": 3,
+      "why": "It copies the change, not the commit: you get a new commit with a new hash, and the original stays where it was. The usual use is taking one fix from main onto a release branch.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "Usually framed as \"ship one fix to the release branch without the rest of main\"."
+    },
+    {
+      "id": "gt-028",
+      "q": "Your team squash-merges pull requests. What does that do to main's history?",
+      "choices": [
+        "Each PR's commits are replayed onto main one by one with their original hashes",
+        "Each PR lands as one new commit on main; the individual branch commits stay off main",
+        "Main gets a two-parent merge commit, so the branch's own commits all stay reachable from main",
+        "The branch is rebased onto main first, then each commit is fast-forwarded in order"
+      ],
+      "answer": 1,
+      "why": "Squash-merge combines the diff into a single new commit on main, so main reads one commit per PR. A merge commit keeps the branch commits reachable; rebase-merge replays them with new hashes. Branches built on top of a squashed branch then conflict, because Git sees different commits.",
+      "tags": ["git", "process"],
+      "level": 2,
+      "asked": "Teams pick a merge strategy on purpose; knowing the three options and their trade-offs is expected."
+    },
+    {
+      "id": "gt-029",
+      "q": "After a merge conflict, a file contains `<<<<<<<`, `=======` and `>>>>>>>` lines. What do they mark?",
+      "choices": [
+        "Lines Git merged automatically, left in so you can check its choice before committing",
+        "Your side above `=======` and the incoming side below it; you edit, then stage the file",
+        "Lines deleted on both branches, kept only until `git merge --continue` removes them",
+        "A corrupted file that must be restored with `git checkout` before the merge can go on"
+      ],
+      "answer": 1,
+      "why": "Between `<<<<<<<` and `=======` is the version on your current branch (HEAD); below it is the incoming change. You edit the file to the intended result, remove the markers, `git add` it and continue the merge. During a rebase the sides swap: HEAD is the branch you are rebasing onto and the incoming side is your own commit.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "A junior question; the follow-up is what you do when you are not sure which side is right (ask the other author)."
+    },
+    {
+      "id": "gt-030",
+      "q": "What is a Git tag typically used for?",
+      "choices": [
+        "Labelling a branch so CI knows which environment that branch should deploy to",
+        "Marking a commit for review; a tagged commit cannot merge until someone approves",
+        "Grouping related commits so they can be reverted together in a single operation",
+        "Naming a specific commit, such as `v2.3.0`, so that release can always be rebuilt"
+      ],
+      "answer": 3,
+      "why": "A tag is a fixed name for one commit, unlike a branch, which moves. Annotated tags also record who tagged it and when, and many pipelines publish a release when a version tag is pushed.",
+      "tags": ["git", "versioning"],
+      "level": 1,
+      "asked": "Checks that you know a tag, unlike a branch, never moves."
+    },
+    {
+      "id": "gt-031",
+      "q": "Which setting reliably stops a change with a failing build from being merged into main?",
+      "choices": [
+        "Branch protection on main that requires a pull request and passing status checks",
+        "A pre-commit hook in the repo that runs the tests on each developer's machine",
+        "A CODEOWNERS file naming the team leads who must review every change to main",
+        "A `.gitattributes` rule marking main as read-only for everyone except the CI user"
+      ],
+      "answer": 0,
+      "why": "Only the server can enforce it. Hooks are not installed by cloning and can be skipped with `--no-verify`, and CODEOWNERS decides who reviews, not whether CI passed. Required checks plus no direct pushes make \"green before merge\" a rule, not a habit.",
+      "tags": ["ci", "git"],
+      "level": 2,
+      "asked": "Separates people who have configured a repository from people who have only used one."
+    },
+    {
+      "id": "gt-032",
+      "q": "Your CI caches the npm download cache between runs. What should the cache key be derived from?",
+      "choices": [
+        "The branch name, so each branch keeps its own warm cache for its whole lifetime",
+        "The commit SHA, so every commit starts from a fresh cache nothing has tainted",
+        "A fixed string, so the cache always hits and packages are never downloaded twice",
+        "A hash of the lockfile, plus OS and Node version, so a dependency change busts it"
+      ],
+      "answer": 3,
+      "why": "The key should change exactly when the inputs change. A per-commit key never hits, and a fixed key serves stale packages forever. Cache `~/.npm` rather than `node_modules` when you use `npm ci`, because `npm ci` deletes `node_modules` anyway.",
+      "tags": ["ci", "npm"],
+      "level": 3,
+      "asked": "Pipeline speed is a real cost; a correct cache key shows you have tuned one rather than copied a template."
+    },
+    {
+      "id": "gt-033",
+      "q": "Why do teams replace long-lived cloud access keys stored as CI secrets with OIDC federation?",
+      "choices": [
+        "CI secrets are shown in plain text to anyone who can open the repository's settings",
+        "The job trades a signed identity token for credentials that expire in about an hour",
+        "Cloud providers block static keys used from CI runners, because runner IPs change",
+        "OIDC encrypts the keys at rest, whereas CI secrets sit unencrypted on the runner"
+      ],
+      "answer": 1,
+      "why": "A stored key works from anywhere until someone rotates it, so one leaked log line or malicious workflow step is a long-term breach. With OIDC the provider trusts a token scoped to that repository and branch and issues short-lived credentials. CI secrets are encrypted and write-only in the UI, so that is not the problem.",
+      "tags": ["ci", "secrets"],
+      "level": 3,
+      "asked": "A modern pipeline-security question; the strong answer names the blast radius of a key that never expires."
+    },
+    {
+      "id": "gt-034",
+      "q": "Your deploy pulls `myapp:latest`. Why do teams deploy by version tag or image digest instead?",
+      "choices": [
+        "`latest` is only a movable label, so two nodes can run different images and rollback has no target",
+        "Registries delete images tagged `latest` after a day, so a restarted node may find nothing to pull at all",
+        "`latest` is resolved once when the service is created, so later pushes are never picked up",
+        "Images tagged `latest` skip the registry vulnerability scan, so pinning is a security rule"
+      ],
+      "answer": 0,
+      "why": "A tag points wherever it was last pushed, so a node that restarts tomorrow may pull a different image from the one it replaced. A digest (`@sha256:…`) is immutable, so every node runs the same bytes and rolling back means naming the previous digest.",
+      "tags": ["docker", "deployment"],
+      "level": 3,
+      "asked": "Tests whether you think about reproducible deploys, not just successful ones."
+    },
+    {
+      "id": "gt-035",
+      "q": "You rebased your own feature branch and must push it. Why prefer `git push --force-with-lease` over `--force`?",
+      "choices": [
+        "It force-pushes only the commits whose hashes changed and leaves every other remote commit untouched",
+        "It rebases the remote branch onto yours before pushing, so both sides end up with the same history",
+        "It fails if the remote branch moved since your last fetch, so you cannot overwrite a teammate's commits",
+        "It asks the server to keep the old commits reachable for 30 days, so an overwritten push can be recovered"
+      ],
+      "answer": 2,
+      "why": "`--force` overwrites whatever the remote has. `--force-with-lease` compares the remote ref with your remote-tracking copy and rejects the push if someone pushed in between, which is exactly the case where a force-push destroys work. It changes nothing about what is pushed or kept: Git has no built-in server-side retention, and it does not rebase for you. Running `git fetch` right before it refreshes the lease and defeats the check.",
+      "tags": ["git", "recovery"],
+      "level": 2,
+      "asked": "Follows naturally from 'never rebase shared branches'; the strong answer knows the check is against your last fetch, not the server's current state."
     }
   ]
 }

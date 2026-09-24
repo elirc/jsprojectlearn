@@ -16,9 +16,12 @@
  *
  * Run: `npm run content` (also runs automatically before dev and build).
  */
-import { readFile, writeFile, mkdir, readdir, stat, rm, cp } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, stat, rm, cp, rename } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { stepTarget } from '../app/src/lib/types.ts';
+import { headingIds, tableOfContents } from '../app/src/lib/markdown.ts';
+import { checkQuestions } from './check-questions.mjs';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,7 +47,9 @@ const PROJECT_DIR = /^(\d{2})-(.+)$/;
 const titleCase = (slug) =>
   slug.replace(/-/g, ' ').replace(/\b([a-z])/g, (_, c) => c.toUpperCase());
 
-const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2B00}-\u{2BFF}]/gu;
+// U+FE0F (the emoji variation selector) is matched on its own: inside the
+// class it would combine with the preceding range's character.
+const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}]|\u{FE0F}/gu;
 
 /** Prefer the document's own H1 over a title guessed from the folder name. */
 function headingOf(markdown, fallback) {
@@ -127,9 +132,41 @@ async function discoverProjects() {
   return projects;
 }
 
+/**
+ * Docs are copied into a private staging folder and swapped in at the end,
+ * so a dev server (or a second content build running at the same time) sees
+ * the old tree or the new one — never a half-deleted one.
+ */
 async function copyDocs(projects) {
-  await rm(DOCS, { recursive: true, force: true });
-  await mkdir(DOCS, { recursive: true });
+  const staging = `${DOCS}.staging-${process.pid}`;
+  await rm(staging, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  await mkdir(staging, { recursive: true });
+  try {
+    await copyDocsInto(staging, projects);
+    await swapIn(staging, DOCS);
+  } finally {
+    await rm(staging, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+}
+
+async function swapIn(staging, target) {
+  const old = `${target}.old-${process.pid}`;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      if (existsSync(target)) await rename(target, old);
+      await rename(staging, target);
+      break;
+    } catch (error) {
+      // Windows refuses renames while another process has a file open, and a
+      // concurrent build may have just recreated the target. Retry briefly.
+      if (attempt >= 20) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+  }
+  await rm(old, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+}
+
+async function copyDocsInto(DOCS, projects) {
 
   for (const project of projects) {
     const from = path.join(ROOT, project.dir);
@@ -143,14 +180,10 @@ async function copyDocs(projects) {
   }
 
   // Track-level references the app links to directly.
-  for (const rel of ['HANDBOOK.md', 'QUIZ.md', 'README.md', 'START-HERE.md']) {
-    for (const base of ['.', 'react', 'typescript', 'csharp']) {
-      const src = path.join(ROOT, base, rel);
-      if (!existsSync(src)) continue;
-      const dest = path.join(DOCS, base === '.' ? rel : `${base}/${rel}`);
-      await mkdir(path.dirname(dest), { recursive: true });
-      await cp(src, dest);
-    }
+  for (const [rel, src] of trackReferences()) {
+    const dest = path.join(DOCS, rel);
+    await mkdir(path.dirname(dest), { recursive: true });
+    await cp(src, dest);
   }
 
   // Standalone guides authored for the app live in content/modules/.
@@ -158,6 +191,52 @@ async function copyDocs(projects) {
   if (existsSync(modulesDir)) {
     await cp(modulesDir, path.join(DOCS, 'guides'), { recursive: true });
   }
+}
+
+/** Track-level reference docs: [path in the docs tree, source file]. */
+function trackReferences() {
+  const refs = [];
+  for (const rel of ['HANDBOOK.md', 'QUIZ.md', 'README.md', 'START-HERE.md']) {
+    for (const base of ['.', 'react', 'typescript', 'csharp']) {
+      const src = path.join(ROOT, base, rel);
+      if (existsSync(src)) refs.push([base === '.' ? rel : `${base}/${rel}`, src]);
+    }
+  }
+  return refs;
+}
+
+/**
+ * Every markdown file copyDocs ships, keyed by its path in the docs tree
+ * (the same path a `read` step's `doc` and the /doc/ route use).
+ */
+async function markdownDocs(projects) {
+  const docs = new Map();
+  for (const project of projects) {
+    for (const rel of project.docs) docs.set(`${project.dir}/${rel}`, path.join(ROOT, project.dir, rel));
+  }
+  for (const [rel, src] of trackReferences()) docs.set(rel, src);
+  const modulesDir = path.join(ROOT, 'content', 'modules');
+  if (existsSync(modulesDir)) {
+    for (const rel of await walkFiles(modulesDir)) {
+      if (rel.endsWith('.md')) docs.set(`guides/${rel}`, path.join(modulesDir, rel));
+    }
+  }
+  return docs;
+}
+
+/** The markdown behind every `read` step that points at a shipped doc. */
+async function readStepDocs(roadmap, projects) {
+  const sources = await markdownDocs(projects);
+  const out = new Map();
+  for (const stage of roadmap.stages) {
+    for (const mod of stage.modules) {
+      for (const step of mod.steps) {
+        if (step.kind !== 'read' || out.has(step.doc) || !sources.has(step.doc)) continue;
+        out.set(step.doc, await readFile(sources.get(step.doc), 'utf8'));
+      }
+    }
+  }
+  return out;
 }
 
 async function loadQuestions() {
@@ -189,32 +268,90 @@ async function loadQuestions() {
   return decks;
 }
 
-function validateRoadmap(roadmap, projects, decks, guides) {
+/**
+ * Fails the build on a roadmap the app could not follow. Returns warnings
+ * (things that work but are thin) for the caller to print.
+ *
+ * Step keys are `module/kind:target` (app/src/lib/types.ts), so a module id
+ * used twice, or two steps in one module pointing at the same thing, would
+ * make two steps share one tick.
+ *
+ * `docs` maps a docs-tree path to its markdown for every `read` step whose
+ * doc is shipped; a `read` step outside it, or whose anchor is not a heading
+ * id the app's renderer produces (the shared slugger in markdown.ts), fails.
+ */
+export function validateRoadmap(roadmap, projects, decks, guides, docs = new Map()) {
   const projectIds = new Set(projects.map((p) => p.id));
   // "mixed" is synthesised at runtime from every deck, so it has no file.
   const deckIds = new Set([...decks.map((d) => d.id), 'mixed']);
+  const allQuestions = decks.flatMap((d) => d.questions);
   const problems = [];
+  const warnings = [];
+  const moduleHome = new Map();
+  const idsOf = new Map();
+  const anchorsOf = (doc) => {
+    if (!idsOf.has(doc)) idsOf.set(doc, headingIds(docs.get(doc)));
+    return idsOf.get(doc);
+  };
 
   for (const stage of roadmap.stages) {
     for (const mod of stage.modules) {
+      if (moduleHome.has(mod.id)) {
+        problems.push(`module id "${mod.id}" is used in both ${moduleHome.get(mod.id)} and ${stage.id}`);
+      } else {
+        moduleHome.set(mod.id, stage.id);
+      }
+      const targets = new Set();
       for (const step of mod.steps) {
+        const where = `${stage.id}/${mod.id}`;
+        const key = `${step.kind}:${stepTarget(step)}`;
+        if (targets.has(key)) problems.push(`${where}: two steps are both "${key}"`);
+        targets.add(key);
+
         if (step.kind === 'build' && !projectIds.has(step.project)) {
-          problems.push(`${stage.id}/${mod.id}: unknown project "${step.project}"`);
-        }
-        if (step.kind === 'drill' && !deckIds.has(step.deck)) {
-          problems.push(`${stage.id}/${mod.id}: unknown deck "${step.deck}"`);
+          problems.push(`${where}: unknown project "${step.project}"`);
         }
         if (step.kind === 'guide' && !guides.has(step.guide)) {
-          problems.push(`${stage.id}/${mod.id}: missing guide content/modules/${step.guide}.md`);
+          problems.push(`${where}: missing guide content/modules/${step.guide}.md`);
+        }
+        if (step.kind === 'read') {
+          if (!docs.has(step.doc)) {
+            problems.push(`${where}: read step points at "${step.doc}", which is not a shipped doc`);
+          } else if (step.anchor && !(step.anchor.startsWith('#') && anchorsOf(step.doc).has(step.anchor.slice(1)))) {
+            problems.push(`${where}: "${step.doc}${step.anchor}" is not a heading in that doc`);
+          }
+        }
+        if (step.kind === 'drill') {
+          if (!deckIds.has(step.deck)) {
+            problems.push(`${where}: unknown deck "${step.deck}"`);
+            continue;
+          }
+          if (!step.tags?.length) continue;
+          const pool =
+            step.deck === 'mixed' ? allQuestions : (decks.find((d) => d.id === step.deck)?.questions ?? []);
+          for (const tag of step.tags) {
+            if (!pool.some((q) => q.tags?.includes(tag))) {
+              problems.push(`${where}: no question in "${step.deck}" carries the tag "${tag}"`);
+            }
+          }
+          const matching = pool.filter((q) => q.tags?.some((t) => step.tags.includes(t))).length;
+          if (matching < step.count) {
+            problems.push(
+              `${where}: drill asks for ${step.count} questions but only ${matching} in "${step.deck}" carry ${step.tags.join('/')}`,
+            );
+          } else if (matching < step.count * 1.8) {
+            warnings.push(
+              `${where}: only ${matching} questions for a ${step.count}-question tagged drill — every session will look the same`,
+            );
+          }
         }
       }
     }
   }
   if (problems.length) {
-    throw new Error(
-      `Roadmap references content that does not exist:\n  - ${problems.join('\n  - ')}`,
-    );
+    throw new Error(`Roadmap problems:\n  - ${problems.join('\n  - ')}`);
   }
+  return warnings;
 }
 
 function buildSearchIndex(projects, decks, roadmap) {
@@ -265,7 +402,9 @@ async function loadGuides() {
       title: headingOf(md, titleCase(id)),
       blurb: blurbOf(md),
       words: md.split(/\s+/).length,
-      headings: [...md.matchAll(/^##\s+(.+)$/gm)].map((m) => m[1].trim()),
+      // H2 sections with the id the app's renderer gives them (one shared,
+      // deduping slugger), so a search hit always lands on its heading.
+      headings: tableOfContents(md),
     });
   }
   return guides;
@@ -274,10 +413,27 @@ async function loadGuides() {
 async function main() {
   const projects = await discoverProjects();
   const decks = await loadQuestions();
+
+  // The quality gate: no deck may ship with the "longest choice is correct" tell,
+  // a wrong-shaped question, or a copy-pasted stem from another deck.
+  const quality = await checkQuestions({ log: () => {} });
+  for (const warning of quality.warns) console.warn(`content: warning: ${warning}`);
+  if (quality.fails.length) {
+    const list = quality.fails.map((f) => `  - ${f}`).join('\n');
+    throw new Error(
+      `question bank failed the quality gate (${quality.fails.length} problems):\n${list}\n` +
+        '  Run node scripts/check-questions.mjs for the full report.',
+    );
+  }
+
   const guides = await loadGuides();
   const roadmap = JSON.parse(await readFile(path.join(ROOT, 'content', 'roadmap.json'), 'utf8'));
 
-  validateRoadmap(roadmap, projects, decks, new Set(guides.map((g) => g.id)));
+  const guideIds = new Set(guides.map((g) => g.id));
+  const docs = await readStepDocs(roadmap, projects);
+  for (const warning of validateRoadmap(roadmap, projects, decks, guideIds, docs)) {
+    console.warn(`content: warning: ${warning}`);
+  }
   await copyDocs(projects);
   await mkdir(OUT, { recursive: true });
 
@@ -310,7 +466,10 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(`\ncontent build failed: ${error.message}\n`);
-  process.exit(1);
-});
+// The tests import validateRoadmap from here; only a direct run builds.
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  main().catch((error) => {
+    console.error(`\ncontent build failed: ${error.message}\n`);
+    process.exit(1);
+  });
+}

@@ -25,7 +25,7 @@ kept alive, scaled and connected to a database.
 | Option | Good for | Trade-off |
 |--------|----------|-----------|
 | **Static host + serverless** (Vercel, Netlify, Cloudflare) | SPAs, Next.js, low-traffic APIs | Cold starts; long-lived connections and background work are awkward |
-| **PaaS** (Render, Railway, Fly.io, App Service) | A container with a managed database | Least operational work for a real backend; the sweet spot for most projects |
+| **PaaS** (Render, Railway, Fly.io, Azure App Service, Azure Container Apps) | A container with a managed database | Least operational work for a real backend; the sweet spot for most projects |
 | **Container orchestration** (ECS, Kubernetes) | Multiple services, real scale | Substantial operational overhead |
 | **A VM you manage** | Full control, cheap | You now own patching, TLS renewal, backups, monitoring |
 
@@ -66,6 +66,27 @@ Conflating them means a brief database blip restarts every instance at once.
 **Graceful shutdown** on SIGTERM: stop accepting connections, finish in-flight
 requests, close the pool, exit. Without it, every rolling deploy drops requests
 and users see intermittent 502s.
+
+**Trust the proxy's forwarded headers.** On every PaaS a load balancer
+terminates TLS and forwards plain HTTP, so your app sees `http` and the proxy's
+IP. Redirects go to `http://`, `Secure` cookies misbehave, and rate limiting
+treats every user as one IP. The proxy sends the truth in `X-Forwarded-For` and
+`X-Forwarded-Proto`; you have to opt in to reading it:
+
+```csharp
+// ASP.NET Core: first in the pipeline, or set ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto);
+app.UseForwardedHeaders();
+```
+
+```js
+// Express: trust exactly one hop, the platform's load balancer
+app.set('trust proxy', 1);
+```
+
+Trust only as many hops as you actually have: trusting everything lets any
+client spoof its IP with a header.
 
 ## The database
 
@@ -118,6 +139,26 @@ so you are not learning during an incident.
 
 Note that a rollback does not undo a migration. That is another reason schema
 changes must be compatible with the previous version.
+
+## Cloud vocabulary
+
+.NET jobs usually assume Azure, JS jobs often AWS. The services map closely
+enough that one table covers the interview:
+
+| Need | AWS | Azure |
+|---|---|---|
+| Run a container without managing servers | ECS on Fargate, App Runner | Container Apps, App Service |
+| Functions (serverless) | Lambda | Azure Functions |
+| Managed Postgres / SQL Server | RDS, Aurora | Azure Database for PostgreSQL, Azure SQL |
+| Files and uploads | S3 | Blob Storage |
+| Queue | SQS | Storage Queues, Service Bus |
+| Secrets | Secrets Manager | Key Vault |
+| Identity for your app | IAM roles | Managed identity (Entra ID) |
+| CDN | CloudFront | Azure Front Door |
+
+The idea that matters most is the last-but-one row: in the cloud your app
+should get its permissions from an identity the platform gives it, not from a
+key in an environment variable.
 
 ## Cost, briefly
 
