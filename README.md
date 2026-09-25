@@ -13,8 +13,8 @@ That opens the app. Everything below is the content it runs on.
 
 ## What it is
 
-A **12-stage roadmap** (63 modules, 283 steps, ~346 hours) that sequences 234
-hands-on projects, 37 written guides and **1,043 interview drill questions** into
+A **12-stage roadmap** (63 modules, 435 steps, ~380 hours) that sequences 234
+hands-on projects, 189 written guides and **5,215 interview drill questions** into
 one ordered path, tracks your progress through it, and tells you what to do today.
 
 | | |
@@ -23,7 +23,7 @@ one ordered path, tracks your progress through it, and tells you what to do toda
 | **The path** | Levels 0–11, in order. Each module says why it exists and what interviewers ask about it. Mark steps done from the page you did them on. |
 | **Drills** | Rapid-fire multiple choice with spaced repetition. Modes: today, due, new, missed, saved, and a 40-question timed **mock interview** with no feedback until the end and a readiness verdict. Save a question with `S`. |
 | **Projects** | 234 build-it-then-refactor-it exercises, readable in the app with copyable run commands. |
-| **Guides** | 37 guides on the material no project covers: HTTP, REST design, SQL, data modelling, EF Core, auth, security, DI, async in C#, testing in both stacks, background jobs, integrations, system design, architecture, Docker, CI/CD, observability, debugging, and the interview playbook. |
+| **Guides** | 189 guides on the material no project covers: HTTP, REST design, SQL, data modelling, EF Core, auth, security, DI, async in C#, testing in both stacks, background jobs, integrations, system design, architecture, Docker, CI/CD, observability, debugging, and the interview playbook. |
 | **Progress** | Per-stage completion, per-topic accuracy, a 12-week activity heatmap, streaks. Stored in your browser, versioned, exportable. |
 | **[Upskilling journal](upskilling/)** | For after the path: nine case studies drawn from decisions made in this very repo, ten chapters on how seniors work, a competency matrix, a 90-day plan, templates and worked examples. |
 
@@ -60,8 +60,8 @@ explains the choice.
 app/          the Vite + React 19 + TypeScript application
 content/
   roadmap.json    the curriculum — stages, modules, steps
-  questions/      34 interview drill decks (1,043 questions)
-  modules/        37 long-form guides
+  questions/      34 interview drill decks (5,215 questions)
+  modules/        189 long-form guides
 upskilling/   the junior → senior journal (case studies, chapters, plan, templates)
 scripts/
   build-content.mjs    indexes the repo into the app's content, validates it

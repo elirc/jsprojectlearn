@@ -318,6 +318,1266 @@
       "tags": ["ambiguity"],
       "level": 2,
       "asked": "Competing asks are weekly life for a mid-level developer; interviewers want to see the conflict escalated with data, not resolved by fatigue."
+    },
+    {
+      "id": "bh-022",
+      "q": "Asked \"Tell me about yourself\", which opening best connects your background to this role in under a minute?",
+      "choices": [
+        "\"I was born in Leeds, studied history, and have had quite a few jobs, and I will walk you through each of them in order.\"",
+        "\"I build full-stack CRUD apps in React and ASP.NET Core; most recently I cut our order screen's load time by 60%.\"",
+        "\"I am a hard-working, passionate team player who loves learning new things and always gives one hundred per cent.\"",
+        "\"Honestly, it is all on my CV, but in short I code, and I am looking for something new with better prospects.\""
+      ],
+      "answer": 1,
+      "why": "A good opener is a headline: what you do, in the stack they hire for, with one concrete result they can ask about. The chronological life story spends the minute on things the interviewer does not need. The adjectives answer claims qualities without evidence. Pointing at the CV and 'better prospects' gives nothing to probe and sounds disengaged.",
+      "tags": ["star", "motivation"],
+      "level": 1,
+      "asked": "The first answer sets the tone, and interviewers often pick their follow-ups from it."
+    },
+    {
+      "id": "bh-023",
+      "q": "Which Situation line sets up a STAR story most efficiently?",
+      "choices": [
+        "\"Our checkout had a 9% failure rate on mobile, costing about £4k a week, and I owned the payment form.\"",
+        "\"So, this was at my second job, which was a fintech, well sort of, and the team was about ten people I think.\"",
+        "\"There was a problem with the website that was quite bad, and people were not happy about it at all.\"",
+        "\"Let me explain our whole architecture first, starting with the load balancer and the six services behind it.\""
+      ],
+      "answer": 0,
+      "why": "The Situation should give just enough context to understand the stakes: what was wrong, why it mattered, and your role, in one or two sentences. The rambling company history uses time without establishing stakes. 'Quite bad' has no measure or role. Explaining the whole architecture buries the problem before the story has started.",
+      "tags": ["star"],
+      "level": 1,
+      "asked": "Most candidates overspend on the Situation; interviewers notice when you get to the point."
+    },
+    {
+      "id": "bh-024",
+      "q": "Which Action section best shows the reasoning behind what you did, not just the steps?",
+      "choices": [
+        "\"I added an index on customer_id, deployed it, then checked the dashboards, and that fixed the slow page.\"",
+        "\"I did what any good developer would do and optimised it properly, following all the best practices I knew.\"",
+        "\"I tried lots of different things over a couple of weeks until something eventually made the page load faster.\"",
+        "\"I profiled first, saw 80% of time was one query, and indexed it; caching was no use as the data changed often.\""
+      ],
+      "answer": 3,
+      "why": "Interviewers assess judgement, so the strongest Action says what evidence you gathered and why you chose one option over another. The step list shows what you did but not why an index rather than a cache. 'Lots of things' suggests trial and error. 'Best practices' is a claim with no content to probe.",
+      "tags": ["star"],
+      "level": 2,
+      "asked": "The 'why' inside the Action is what separates mid-level answers from junior ones."
+    },
+    {
+      "id": "bh-025",
+      "q": "After your story the interviewer asks \"What would you do differently?\" Which answer shows the most useful reflection?",
+      "choices": [
+        "\"Nothing really. It went well, we hit the date, and I would make exactly the same decisions again.\"",
+        "\"I would have worked longer hours earlier on, so that we would have had more buffer at the end.\"",
+        "\"I would agree the API contract with the mobile team in week one; late changes cost us four days.\"",
+        "\"I would probably have had a better manager, because a lot of the problems came from above me.\""
+      ],
+      "answer": 2,
+      "why": "A strong reflection names a specific decision, what it cost and what you would change, which shows you learn from experience. 'Nothing' suggests you do not review your own work. Working longer hours is effort, not a better process. Blaming the manager puts the lesson on someone else and is a red flag in any interview.",
+      "tags": ["star", "feedback"],
+      "level": 1,
+      "asked": "Almost every behavioural story gets this follow-up, so prepare a real answer for each one."
+    },
+    {
+      "id": "bh-026",
+      "q": "Asked \"Tell me about a project you are proud of\", which answer makes your impact and your role clearest?",
+      "choices": [
+        "\"I am proud of our booking app, which used React, Redux, Node, Postgres, Docker and a CI pipeline.\"",
+        "\"I led our booking-flow rewrite and designed the slot locking; double bookings fell from ten a week to none.\"",
+        "\"Our team built a booking app that everyone liked, and it was really fun to work on with such great people.\"",
+        "\"The booking app was a big project for the company and took about eight months from start to finish.\""
+      ],
+      "answer": 1,
+      "why": "Pride should be backed by what you personally did and what changed because of it, in a way the interviewer can probe. The tech list shows tools, not impact or role. The team answer is warm but says nothing about you or the result. The size and duration answer describes the project, not your contribution.",
+      "tags": ["star", "motivation"],
+      "level": 1,
+      "asked": "An open question that rewards candidates who lead with their own impact."
+    },
+    {
+      "id": "bh-027",
+      "q": "Asked for \"a time you failed\", which answer picks a failure of the right size and shows real learning?",
+      "choices": [
+        "\"A migration I shipped untested on real data locked the orders table for ten minutes. Now I rehearse on a copy.\"",
+        "\"I sometimes care too much about quality, so a feature once took a little longer than we planned.\"",
+        "\"The whole project failed because the client kept changing requirements, so there was not much I could do.\"",
+        "\"I once deleted the entire production database with no backups, and the company nearly went under.\""
+      ],
+      "answer": 0,
+      "why": "A good failure story is real, owned, moderate in size and ends with a changed habit. The 'care too much' answer is a disguised boast that interviewers see through. The client answer blames others and has no lesson. The catastrophic story raises questions about judgement that one interview answer cannot settle, and says nothing about what changed.",
+      "tags": ["ownership", "star"],
+      "level": 1,
+      "asked": "Interviewers want evidence of self-awareness; a humblebrag is marked lower than an honest small mistake."
+    },
+    {
+      "id": "bh-028",
+      "q": "Describing a failed project, which answer best avoids blame while staying honest about what went wrong?",
+      "choices": [
+        "\"The PM gave us awful requirements and QA missed everything, so honestly it was doomed before I joined.\"",
+        "\"Nobody did anything wrong as such; sometimes projects just fail and there is no real reason for it.\"",
+        "\"It failed, but it was not my part that failed, since my backend work was finished and fully tested.\"",
+        "\"We skipped user research, and I did not voice my doubts. Now we test ideas with prototypes first.\""
+      ],
+      "answer": 3,
+      "why": "Honest post-project reflection names the real causes, including your share, and what the team changed. Blaming the PM and QA shows no ownership. 'Projects just fail' dodges the question and has no lesson. Separating your part from the failure suggests you think of success as your tickets rather than the outcome.",
+      "tags": ["ownership", "conflict"],
+      "level": 2,
+      "asked": "How you talk about other people's mistakes predicts how you will talk about your new colleagues."
+    },
+    {
+      "id": "bh-029",
+      "q": "Asked about going \"above and beyond\", which answer best shows good judgement rather than heroics?",
+      "choices": [
+        "\"I worked three all-nighters in a row to ship on time, and I barely slept that whole week, but we made it.\"",
+        "\"I always do more than I am asked, because that is just the kind of person that I have always been.\"",
+        "\"I noticed backups had never been test-restored, tried one, found it broken, and set up a monthly check.\"",
+        "\"I rewrote the whole frontend over a weekend without telling anyone, and it was much better afterwards.\""
+      ],
+      "answer": 2,
+      "why": "The strongest 'above and beyond' story is noticing a risk outside your ticket and fixing it sustainably. All-nighters show commitment but also poor planning and an unsustainable pace. The character claim has no evidence. A secret weekend rewrite ignores the team, review and risk, which many interviewers treat as a warning sign.",
+      "tags": ["ownership"],
+      "level": 2,
+      "asked": "Interviewers are wary of hero stories; they want initiative that the team can rely on."
+    },
+    {
+      "id": "bh-030",
+      "q": "The interviewer says \"Give me the one-line version first.\" Which headline best sets up a story about a performance fix?",
+      "choices": [
+        "\"It is a long story, so let me start with some background on the company and the product first.\"",
+        "\"I found an N+1 query on our dashboard and cut its load time from 8 seconds to under 1 second.\"",
+        "\"It was about performance, which is something I am very interested in and have read a lot about.\"",
+        "\"I think it went well, but I am not sure the metric I used was the right one, so it is hard to say.\""
+      ],
+      "answer": 1,
+      "why": "Leading with the result tells the interviewer where the story goes and lets them steer the detail. Starting with background ignores the request. The interest answer talks about you instead of the event. Opening with self-doubt undercuts the story before it starts; nuance belongs in the reflection, not the headline.",
+      "tags": ["star"],
+      "level": 1,
+      "asked": "Headline-first answers are easy to follow and easy to score, which interviewers appreciate."
+    },
+    {
+      "id": "bh-031",
+      "q": "The product manager wants a feature you believe will hurt performance. Which answer best shows you can disagree using evidence?",
+      "choices": [
+        "\"I prototyped it, showed it added 900 ms on mobile, and proposed lazy-loading it; the PM agreed.\"",
+        "\"I built it as asked, since the PM decides, even though I was fairly sure it would slow the page.\"",
+        "\"I told the PM it was a bad idea, and I refused to build it until they changed their mind about it.\"",
+        "\"I complained to my manager, who then spoke to the PM for me, and the feature was eventually dropped.\""
+      ],
+      "answer": 0,
+      "why": "Evidence plus an alternative turns a disagreement into a shared decision. Refusing to build puts you in a standoff over a call that is not yours alone. Building silently avoids conflict but hides a risk you saw. Escalating to your manager without talking to the PM first damages the relationship and skips the cheapest route.",
+      "tags": ["conflict"],
+      "level": 1,
+      "asked": "Interviewers look for disagreement that is direct, evidence-based and leaves the relationship intact."
+    },
+    {
+      "id": "bh-032",
+      "q": "You and a teammate keep leaving each other opposing style comments in reviews. Which answer best shows a lasting fix?",
+      "choices": [
+        "\"I kept commenting, because if I stopped they would think they were right, and the code would suffer.\"",
+        "\"I started approving their PRs without style comments, so that they would do the same thing for mine.\"",
+        "\"I asked our lead to tell them that my style was correct, since I had more experience with the codebase.\"",
+        "\"I proposed we let the formatter and linter decide, got the team to agree a config, and the comments stopped.\""
+      ],
+      "answer": 3,
+      "why": "A recurring dispute is fixed by changing the system, here by handing style to tools the whole team agrees on. A private truce removes the friction but leaves the code inconsistent. Asking the lead to rule for you turns a team question into a win-lose. Continuing the fight keeps wasting review time.",
+      "tags": ["conflict", "collaboration"],
+      "level": 1,
+      "asked": "Shows whether you look for a structural fix or just win arguments."
+    },
+    {
+      "id": "bh-033",
+      "q": "A teammate keeps missing agreed deadlines and it is delaying your work. Which answer best shows a direct, respectful approach?",
+      "choices": [
+        "\"I raised it with our manager straight away so they could deal with it, since it was not my job.\"",
+        "\"I quietly did their tasks myself in the evenings, so the team would not miss the sprint goal.\"",
+        "\"I asked them privately how things were going, learned they were stuck, and we paired to unblock it.\"",
+        "\"I mentioned it at stand-up in front of everyone so that there was some pressure on them to improve.\""
+      ],
+      "answer": 2,
+      "why": "Starting with a private, curious conversation often reveals a cause you can help with, and escalation stays available. Going straight to the manager skips that and damages trust. Covering their work hides the problem and burns you out. Calling someone out at stand-up embarrasses them and rarely changes behaviour.",
+      "tags": ["conflict", "collaboration"],
+      "level": 1,
+      "asked": "Interviewers want to see you assume good intent and talk to people before escalating."
+    },
+    {
+      "id": "bh-034",
+      "q": "A colleague presented your work in a demo as theirs. Which answer best shows professional handling?",
+      "choices": [
+        "\"I interrupted the demo and told everyone that I was actually the one who had built that feature.\"",
+        "\"I spoke to them privately about it, and after that we agreed to both name who built what in demos.\"",
+        "\"I posted in the team channel that some people like taking credit for things they did not do.\"",
+        "\"I said nothing, since credit does not really matter as long as the work gets shipped in the end.\""
+      ],
+      "answer": 1,
+      "why": "A private conversation assumes it may have been careless rather than malicious, and agreeing a norm stops it recurring. Interrupting the demo creates a public confrontation. Saying nothing lets it continue and can hurt your own visibility at review time. A passive-aggressive post damages trust with the whole team.",
+      "tags": ["conflict"],
+      "level": 2,
+      "asked": "Tests maturity: can you protect your interests without a public fight?"
+    },
+    {
+      "id": "bh-035",
+      "q": "Your manager sets a deadline you believe is unrealistic. Which answer best shows you can raise the risk constructively?",
+      "choices": [
+        "\"I broke the work down, showed what could fit by that date, and offered two options for the remainder.\"",
+        "\"I told them the date was impossible and that they clearly did not understand how software works.\"",
+        "\"I said yes to keep them happy, then worked every weekend to hit the date without telling anyone.\"",
+        "\"I agreed to the date, and when we missed it I explained that I had always thought it was unrealistic.\""
+      ],
+      "answer": 0,
+      "why": "Turning 'this is unrealistic' into a breakdown and options gives the manager real choices: cut scope, move the date or add risk. Saying yes and working weekends hides the problem and is unsustainable. Calling the date impossible without detail sounds like a refusal. Saying 'I told you so' afterwards is the worst of both.",
+      "tags": ["conflict", "communication"],
+      "level": 2,
+      "asked": "Deadline pressure is universal; interviewers want to know you will warn early with options."
+    },
+    {
+      "id": "bh-036",
+      "q": "In a design review, you and a senior colleague favour different databases. Which answer best shows you kept the discussion on criteria?",
+      "choices": [
+        "\"I let them choose, then pointed out the problems with their choice later on once they showed up.\"",
+        "\"I deferred straight away, because they were more senior and had probably thought about it more.\"",
+        "\"I argued for my choice until the end of the meeting, since I was sure that it was the better option.\"",
+        "\"I suggested we agree what mattered most, then scored both options on it, and theirs came out ahead.\""
+      ],
+      "answer": 3,
+      "why": "Agreeing the criteria first (consistency, team skills, hosting cost) takes ego out of the choice, and accepting a result that goes against you shows the method is genuine. Deferring on seniority alone withholds your view. Arguing to the end is about winning. Saving criticism for later is disagreement without the courage to raise it.",
+      "tags": ["conflict"],
+      "level": 3,
+      "asked": "A strong answer shows you care more about the decision than about being right."
+    },
+    {
+      "id": "bh-037",
+      "q": "A reviewer leaves a sharp, dismissive comment on your PR. Which answer best shows you can de-escalate?",
+      "choices": [
+        "\"I replied in the thread pointing out that their own code had the same issue in several other places.\"",
+        "\"I made every change they asked for without discussing it, just to get the PR merged quickly.\"",
+        "\"I suggested a quick call, asked what worried them, and we agreed a change that addressed it.\"",
+        "\"I reported the comment to HR, since that tone should never be acceptable at any workplace.\""
+      ],
+      "answer": 2,
+      "why": "Moving a tense thread to a short call removes tone from the equation, and asking about the underlying concern usually shows it was reasonable. Pointing at their code escalates. Silently complying avoids conflict but may accept a worse change and leaves the tone unaddressed. HR is for serious or repeated conduct, not a first sharp comment.",
+      "tags": ["conflict", "communication"],
+      "level": 2,
+      "asked": "Written review tone causes more friction than code; interviewers want to see you handle it."
+    },
+    {
+      "id": "bh-038",
+      "q": "Two teammates are arguing over whose approach to use and the work is stalled. Which answer best shows you can facilitate?",
+      "choices": [
+        "\"I picked the approach I liked best and started building it, so that the argument would just end.\"",
+        "\"I had each list pros and cons, we timeboxed a spike on the riskiest part, and the result decided it.\"",
+        "\"I stayed out of it, since it was their disagreement and not my place to get involved in any way.\"",
+        "\"I asked the manager to choose for them, because a decision from above settles things more quickly.\""
+      ],
+      "answer": 1,
+      "why": "Facilitation gives both people a fair process and a way to decide on evidence, so nobody simply loses. Picking your own approach adds a third opinion and bypasses them. Staying out lets the team stall. Asking the manager to choose may be needed eventually but skips steps the team can take itself.",
+      "tags": ["conflict", "collaboration"],
+      "level": 3,
+      "asked": "Mid-level engineers are expected to unstick team decisions, not just their own work."
+    },
+    {
+      "id": "bh-039",
+      "q": "A bug you approved in code review reaches production. Which answer best shows ownership as the reviewer?",
+      "choices": [
+        "\"I helped fix it, then admitted I had skimmed a large PR, and now I ask for big changes to be split.\"",
+        "\"The author wrote the bug, so it was their responsibility; reviewers cannot be expected to catch everything.\"",
+        "\"I reviewed it properly, so the problem must have been the tests, which is QA's area rather than mine.\"",
+        "\"I felt bad about it, so from then on I stopped reviewing PRs in areas that I did not know well.\""
+      ],
+      "answer": 0,
+      "why": "Approving is a shared responsibility, so ownership means helping fix it, naming what you did wrong and changing your practice. Putting it all on the author ignores what approval means. Blaming QA shifts the fault again. Withdrawing from unfamiliar reviews removes a reviewer instead of improving how you review.",
+      "tags": ["ownership"],
+      "level": 2,
+      "asked": "Many candidates only own code they wrote; owning your reviews shows a team mindset."
+    },
+    {
+      "id": "bh-040",
+      "q": "A flaky test that no one owns fails a third of CI runs. Which answer best shows initiative?",
+      "choices": [
+        "\"I just re-ran the pipeline whenever it failed, as everyone else did, and it usually passed on retry.\"",
+        "\"I raised a ticket for the team that owns CI and told everyone to wait for them to fix it later.\"",
+        "\"I disabled the test so CI would be green, since a flaky test is no better than having no test.\"",
+        "\"I found it depended on test order, fixed the shared state, and added a CI report of flaky tests.\""
+      ],
+      "answer": 3,
+      "why": "Initiative is fixing the root cause of a shared problem and making the next one visible. Re-running is the habit that lets flakiness spread. Disabling hides a test that may be catching a real race. A ticket to another team is reasonable only if you cannot fix it, and 'wait' leaves everyone blocked.",
+      "tags": ["ownership"],
+      "level": 1,
+      "asked": "Interviewers love small, concrete initiative stories because they predict day-to-day behaviour."
+    },
+    {
+      "id": "bh-041",
+      "q": "At 5 p.m. on a Friday you notice a bug that is double-charging some customers. Which answer best shows judgement?",
+      "choices": [
+        "\"I noted it for Monday, since nothing should be deployed on a Friday and the weekend is protected.\"",
+        "\"I pushed a quick fix straight to production on my own, since there was no time to wait for review.\"",
+        "\"I raised an incident, turned the feature off by its flag, and got a reviewed fix out that evening.\"",
+        "\"I emailed the whole company about it so that everyone was aware, and then logged off for the weekend.\""
+      ],
+      "answer": 2,
+      "why": "Customer money is at stake, so you stop the harm fast (flag off), bring in others and still review the fix. Waiting until Monday lets customers be charged all weekend. An unreviewed Friday push risks making it worse. A company-wide email creates noise without anyone owning the fix.",
+      "tags": ["ownership", "ambiguity"],
+      "level": 2,
+      "asked": "Tests whether you balance urgency and safety when customers are affected."
+    },
+    {
+      "id": "bh-042",
+      "q": "Your ticket passed review and was merged. Which answer best shows follow-through beyond the merge?",
+      "choices": [
+        "\"Once it was merged I moved straight on, since QA and ops handle everything after that point.\"",
+        "\"I checked it in production, watched the error rate, and told the requester it was live.\"",
+        "\"I closed the ticket immediately, since the definition of done only goes as far as the merge.\"",
+        "\"I waited for users to report any problems, because they are the ones who really test features.\""
+      ],
+      "answer": 1,
+      "why": "Ownership continues until the change works for users: verifying in production, watching metrics and closing the loop with whoever asked. Handing off at merge assumes someone else will notice problems. A definition of done that stops at merge is one to question, and waiting for user reports means users find your bugs.",
+      "tags": ["ownership"],
+      "level": 1,
+      "asked": "A small habit that marks a developer others trust with their features."
+    },
+    {
+      "id": "bh-043",
+      "q": "You realise you promised a teammate an API change by Wednesday and will not make it. Which answer best shows reliable communication?",
+      "choices": [
+        "\"I told them on Monday as soon as I knew, gave a new date, and offered a stub they could build against.\"",
+        "\"I kept working and delivered on Friday, since two days late is not a big deal in most projects.\"",
+        "\"I told them on Wednesday afternoon that it had been more complicated than expected, sorry about that.\"",
+        "\"I asked another developer to finish it for me without telling my teammate that anything had changed.\""
+      ],
+      "answer": 0,
+      "why": "Early warning lets others re-plan, and a stub reduces the damage. Delivering late without warning leaves the teammate blocked and guessing. Telling them on the deadline is too late to help. Quietly handing it off may work but hides the change and the risk from the person depending on you.",
+      "tags": ["ownership", "communication"],
+      "level": 1,
+      "asked": "Reliability is less about never slipping and more about saying so early."
+    },
+    {
+      "id": "bh-044",
+      "q": "Onboarding took you two weeks because setup steps were undocumented. Which answer best shows ownership of the problem?",
+      "choices": [
+        "\"I told my manager onboarding was poor, so that they could raise it with the team in the future.\"",
+        "\"I asked a senior developer to set up my machine for me, and I avoided touching the setup after that.\"",
+        "\"I accepted it, since every company has messy onboarding and new people always have to struggle.\"",
+        "\"I wrote down each fix as I hit it, turned it into a setup script, and the next hire was ready in a day.\""
+      ],
+      "answer": 3,
+      "why": "New joiners are best placed to see onboarding gaps, and fixing them as you go helps the next person measurably. Reporting it to your manager passes the work on. Accepting it treats a fixable problem as normal. Having someone else set you up gets you working but leaves the gap for everyone after you.",
+      "tags": ["ownership"],
+      "level": 1,
+      "asked": "Good for junior and mid candidates: it shows impact without needing seniority."
+    },
+    {
+      "id": "bh-045",
+      "q": "A ticket says only \"Make the dashboard faster.\" Which answer best shows you can turn vagueness into a clear goal?",
+      "choices": [
+        "\"I optimised everything I could find on the dashboard until it felt noticeably faster to me.\"",
+        "\"I sent the ticket back, since I could not start work until someone wrote proper requirements.\"",
+        "\"I asked which view felt slow and for whom, measured it at 6 s, and agreed a goal of under 2 s.\"",
+        "\"I rebuilt the dashboard in a newer framework, since that was likely to make it faster overall.\""
+      ],
+      "answer": 2,
+      "why": "Clarifying who is affected, measuring the baseline and agreeing a target gives you a definition of done and a result to report. Optimising 'until it felt faster' has no target or measure. Bouncing the ticket back without questions stalls it. A framework rewrite is a large, risky guess about the cause.",
+      "tags": ["ambiguity"],
+      "level": 1,
+      "asked": "Vague tickets are daily life; interviewers want to hear you ask questions and measure."
+    },
+    {
+      "id": "bh-046",
+      "q": "Your manager and the product owner give you conflicting top priorities for the week. Which answer best shows you can resolve it?",
+      "choices": [
+        "\"I did the product owner's task, since product decides priorities, and told my manager afterwards.\"",
+        "\"I put both requests in one message to them, explained I could do one, and asked them to agree which.\"",
+        "\"I did whichever one I found more interesting, as both of them seemed to be equally important.\"",
+        "\"I tried to do both at once, working late, so that neither of them would be disappointed in me.\""
+      ],
+      "answer": 1,
+      "why": "When two people with authority disagree, the fix is to make the conflict visible to both and let them decide, with your capacity stated plainly. Choosing one side yourself leaves the other surprised. Doing both by working late hides the conflict. Picking by interest ignores the business entirely.",
+      "tags": ["ambiguity", "communication"],
+      "level": 2,
+      "asked": "Tests whether you surface conflicts instead of absorbing them silently."
+    },
+    {
+      "id": "bh-047",
+      "q": "You inherit an undocumented legacy service and must change it. Which answer best shows a safe way to learn it?",
+      "choices": [
+        "\"I traced one real request through the logs, added tests around the part I changed, then refactored.\"",
+        "\"I made the change and relied on users to tell us if anything broke, since there were no tests.\"",
+        "\"I read every file from top to bottom first, so I understood all of it before changing anything.\"",
+        "\"I proposed rewriting it from scratch, as old code without documentation is not worth learning.\""
+      ],
+      "answer": 0,
+      "why": "Following a real request shows how the system behaves, and characterisation tests pin that behaviour before you change it. Reading every file is slow and does not tell you which paths matter. Changing it untested pushes risk onto users. Proposing a rewrite before understanding it is the classic legacy mistake.",
+      "tags": ["ambiguity", "learning"],
+      "level": 2,
+      "asked": "Legacy code is most of real work; interviewers want a method, not bravado."
+    },
+    {
+      "id": "bh-048",
+      "q": "You are asked to deliver a feature in half the estimated time. Which answer best shows you can negotiate scope?",
+      "choices": [
+        "\"I said it could not be done and that the original estimate had to stand, whatever the business wanted.\"",
+        "\"I agreed and cut the tests to save time, since tests could always be added in a later sprint.\"",
+        "\"I agreed and asked for two more developers, since doubling the team would halve the time taken.\"",
+        "\"I asked what mattered most by that date, proposed a smaller first release, and scheduled the rest.\""
+      ],
+      "answer": 3,
+      "why": "Finding the core need and shipping a smaller slice meets the business date without hiding risk. Refusing flatly ignores why the date matters. Cutting tests borrows against quality and rarely gets paid back. Adding people late usually slows a project down, because onboarding and coordination cost more than they add.",
+      "tags": ["ambiguity", "communication"],
+      "level": 2,
+      "asked": "A negotiation question in disguise; interviewers want options, not yes or no."
+    },
+    {
+      "id": "bh-049",
+      "q": "You are constantly interrupted by support questions during sprint work. Which answer best shows you improved the system?",
+      "choices": [
+        "\"I turned off chat notifications completely, so that nobody could interrupt my focus time again.\"",
+        "\"I answered every question straight away, since helping people is always more important than tickets.\"",
+        "\"I logged a week of questions, wrote an FAQ for the top five, and proposed a rotating support role.\"",
+        "\"I asked my manager to tell support to stop contacting developers directly with their questions.\""
+      ],
+      "answer": 2,
+      "why": "Measuring the interruptions, removing the most common ones and sharing the rest across a rota fixes the cause for the whole team. Going dark shifts the problem to colleagues and support. Answering everything instantly sacrifices sprint work. Asking your manager to block support treats a real need as a nuisance.",
+      "tags": ["ambiguity", "ownership"],
+      "level": 3,
+      "asked": "Shows you can improve a team's working conditions with data, which is a mid-level expectation."
+    },
+    {
+      "id": "bh-050",
+      "q": "Your lead tells you your pull requests are too big to review well. Which answer best shows you acted on the feedback?",
+      "choices": [
+        "\"I explained that my features are just naturally large, and that splitting them would slow me down a lot.\"",
+        "\"I agreed, then kept opening large PRs but added longer descriptions, so they were easier to read.\"",
+        "\"I started splitting work into refactor and behaviour PRs under 300 lines; review time halved.\"",
+        "\"I thanked them for the feedback and said I would definitely try to keep it in mind going forward.\""
+      ],
+      "answer": 2,
+      "why": "Acting on feedback means a visible change in behaviour and some evidence it worked. Defending the habit shows you heard criticism rather than information. Longer descriptions address a different problem and leave the PRs just as hard to review. A polite promise to 'keep it in mind' has no action or result, so there is nothing to assess.",
+      "tags": ["feedback"],
+      "level": 1,
+      "asked": "Interviewers ask for specific feedback you received, then listen for what you changed."
+    },
+    {
+      "id": "bh-051",
+      "q": "You had to learn a framework you had never used within two weeks. Which answer best shows an effective learning method?",
+      "choices": [
+        "\"I read the official documentation cover to cover before writing a single line of code in it.\"",
+        "\"I built a tiny version of our real feature, asked a colleague to review it, and read docs as I hit gaps.\"",
+        "\"I watched a long video course on it at double speed, which covered everything I needed to know.\"",
+        "\"I copied patterns from the existing codebase without really understanding them, and it mostly worked out.\""
+      ],
+      "answer": 1,
+      "why": "Learning by building something real, with fast feedback from someone who knows the stack, gets you productive quickest. Reading all the docs first delays practice and much of it will not stick. A video course is passive and not tied to your problem. Copying without understanding works until the first bug you cannot explain.",
+      "tags": ["learning"],
+      "level": 1,
+      "asked": "Every job needs you to learn fast; interviewers want a repeatable method."
+    },
+    {
+      "id": "bh-052",
+      "q": "Asked how you keep your skills current, which answer gives the most concrete, credible evidence?",
+      "choices": [
+        "\"I read release notes for tools we use; after React 19 I moved our forms to actions and wrote it up.\"",
+        "\"I follow lots of developers on social media and try to keep up with everything that is happening in tech.\"",
+        "\"I am always learning, it is just part of who I am, and I really love technology in general.\"",
+        "\"I have bookmarked hundreds of articles that I am planning to read when I get the time for it.\""
+      ],
+      "answer": 0,
+      "why": "Credible answers show a habit and an outcome: something you learned and applied at work. Following people on social media is passive and says nothing about what you did with it. A statement about who you are has no evidence. A backlog of unread bookmarks suggests intent rather than learning.",
+      "tags": ["learning", "motivation"],
+      "level": 1,
+      "asked": "A common warm-up; a specific example beats a list of blogs every time."
+    },
+    {
+      "id": "bh-053",
+      "q": "You receive feedback you think is unfair. Which answer best shows you can engage with it rather than dismiss it?",
+      "choices": [
+        "\"I ignored it, because I knew my work was good and they did not understand the context I was in.\"",
+        "\"I accepted all of it without question, since the person giving feedback is usually right about it.\"",
+        "\"I pointed out that they had made the same mistakes themselves, so they were not really in a position to say.\"",
+        "\"I asked for a specific example, found part of it was fair, acted on that, and explained my view on the rest.\""
+      ],
+      "answer": 3,
+      "why": "Asking for examples turns a vague judgement into something you can assess, and acting on the fair part while explaining your view shows maturity. Accepting everything uncritically can lead you to change the wrong things. Turning it back on them is defensive. Ignoring it throws away information and damages the relationship.",
+      "tags": ["feedback"],
+      "level": 2,
+      "asked": "Tests whether you are coachable without being a pushover."
+    },
+    {
+      "id": "bh-054",
+      "q": "Which answer best shows you can give constructive feedback to your own manager?",
+      "choices": [
+        "\"I never give my manager feedback, since it is not really my place to criticise the person above me.\"",
+        "\"I told the whole team at the retro that the manager's planning was poor, so that it would be on the record.\"",
+        "\"In our one-to-one I said last-minute scope changes cost us two days, and asked if we could fix a cut-off.\"",
+        "\"I sent an anonymous message through the survey tool, since telling them in person felt too risky.\""
+      ],
+      "answer": 2,
+      "why": "Good upward feedback is private, specific about impact and comes with a proposal. Never giving it leaves problems unaddressed. Raising it publicly in a retro puts the manager on the spot. An anonymous survey can be right when trust is low, but it is less specific and cannot start a conversation about a fix.",
+      "tags": ["feedback", "communication"],
+      "level": 2,
+      "asked": "Interviewers want to know you will tell them when something is not working."
+    },
+    {
+      "id": "bh-055",
+      "q": "Asked about a time you changed your mind, which answer best shows openness to evidence?",
+      "choices": [
+        "\"I rarely change my mind, because I research things carefully before forming any strong opinion.\"",
+        "\"I was sure GraphQL was overkill, but a spike showed it removed six endpoints, so I backed the switch.\"",
+        "\"I changed my mind when my manager told me to, since in the end it was their call and not mine.\"",
+        "\"I change my mind all the time, because I like to stay flexible and I try not to hold any strong views.\""
+      ],
+      "answer": 1,
+      "why": "The strongest answer shows a firm view, new evidence, and a visible change of position. 'I rarely change my mind' signals rigidity. Changing because a manager said so is compliance, not persuasion. Changing constantly without strong views suggests you do not form judgements at all.",
+      "tags": ["feedback", "learning"],
+      "level": 2,
+      "asked": "Intellectual honesty is hard to fake; interviewers use this to test for it."
+    },
+    {
+      "id": "bh-056",
+      "q": "You have been stuck on a bug for a whole morning. Which answer best shows good judgement about asking for help?",
+      "choices": [
+        "\"I timebox it to about an hour, write up what I have tried, then ask someone with the right context.\"",
+        "\"I ask for help as soon as I hit anything unfamiliar, so I do not waste any time at all.\"",
+        "\"I kept going for three days, since asking would make me look like I did not know what I was doing.\"",
+        "\"I never ask for help, because figuring things out alone is how you get better as a developer.\""
+      ],
+      "answer": 0,
+      "why": "A timebox balances learning with the team's time, and writing up what you tried makes the question quick to answer. Never asking wastes days on things a colleague knows in minutes. Asking at the first hurdle means you never build independence. Hiding struggles to look competent is what actually costs trust.",
+      "tags": ["learning", "collaboration"],
+      "level": 1,
+      "asked": "Juniors and mids are often judged on when they ask for help, not whether."
+    },
+    {
+      "id": "bh-057",
+      "q": "You have to explain an outage to a non-technical sales director. Which answer best shows clear communication?",
+      "choices": [
+        "\"I explained the race condition between the two Kubernetes pods and the connection pool in detail.\"",
+        "\"I forwarded them the whole incident channel so they could read for themselves everything that had happened.\"",
+        "\"I said it was a technical issue that the engineering team had now fixed, and left it at that.\"",
+        "\"I said orders failed for 40 minutes, about 200 customers were hit, and this cause is now fixed for good.\""
+      ],
+      "answer": 3,
+      "why": "Non-technical audiences need impact, scope and reassurance in their own terms. The deep technical explanation is accurate but not useful to them. 'A technical issue' is so vague it sounds evasive. Forwarding the raw incident channel makes them do the work of finding the story.",
+      "tags": ["communication"],
+      "level": 1,
+      "asked": "Mid-level developers talk to stakeholders; interviewers test whether you can translate."
+    },
+    {
+      "id": "bh-058",
+      "q": "A designer hands you a layout that would take weeks to build as drawn. Which answer best shows productive collaboration?",
+      "choices": [
+        "\"I built exactly what was designed, since the design is the designer's decision and not mine.\"",
+        "\"I built something simpler instead without asking, since they would not notice the difference.\"",
+        "\"I showed them what was costly, suggested a near version using existing components, and we agreed it.\"",
+        "\"I told them the design was unrealistic and that they should learn more about how the web works.\""
+      ],
+      "answer": 2,
+      "why": "Collaboration means sharing the cost of each part so the designer can make trade-offs, and offering an alternative. Building it all blindly spends weeks without anyone choosing to. Changing it silently breaks trust when they notice. Telling them to learn the web is dismissive and ends the conversation.",
+      "tags": ["collaboration"],
+      "level": 1,
+      "asked": "Frontend roles especially; interviewers want to see you treat design as a partnership."
+    },
+    {
+      "id": "bh-059",
+      "q": "A tester keeps reopening your tickets for issues outside the acceptance criteria. Which answer best shows a collaborative fix?",
+      "choices": [
+        "\"I closed the reopened tickets again, since they were not part of what the story had asked for.\"",
+        "\"I invited the tester to refinement so edge cases are agreed before build, and reopens dropped sharply.\"",
+        "\"I fixed every one of them without comment, to avoid any arguments with the testing team.\"",
+        "\"I asked my manager to tell the tester to stick strictly to the written acceptance criteria in future sprints.\""
+      ],
+      "answer": 1,
+      "why": "Bringing testing into refinement catches edge cases before development, which is the root cause of late reopens. Closing tickets again turns it into a tug of war. Fixing everything silently lets scope grow unchecked. Asking a manager to intervene is heavy-handed when a process change fixes it.",
+      "tags": ["collaboration", "conflict"],
+      "level": 2,
+      "asked": "Shows you fix recurring friction with process rather than argument."
+    },
+    {
+      "id": "bh-060",
+      "q": "Your team is split across London and Singapore with two hours of overlap. Which answer best shows effective remote collaboration?",
+      "choices": [
+        "\"I wrote clear hand-off notes each evening and saved the overlap for decisions that needed discussion.\"",
+        "\"I sent quick chat messages whenever I needed something and waited for whenever they replied.\"",
+        "\"I moved my working hours to overlap fully with Singapore, even though it meant working very late.\"",
+        "\"I set up daily hour-long video calls for everyone, so that we were always fully in sync.\""
+      ],
+      "answer": 0,
+      "why": "Async hand-offs keep work moving across time zones, and the scarce overlap is spent on what really needs a conversation. Working very late is unsustainable. Fragmentary chat messages cause day-long round trips. Long daily calls consume most of the overlap on status that could be written.",
+      "tags": ["collaboration", "communication"],
+      "level": 2,
+      "asked": "Remote and distributed teams are the norm; interviewers want to see async habits."
+    },
+    {
+      "id": "bh-061",
+      "q": "A new developer joins your team. Which answer best shows you helped them become productive quickly?",
+      "choices": [
+        "\"I sent them the wiki link on their first day and told them to come and ask me if anything was unclear.\"",
+        "\"I did their first few tickets for them, so they could watch and learn how things were done here.\"",
+        "\"I left them to explore on their own, since that is the best way to really learn a new codebase.\"",
+        "\"I paired on their first ticket, gave them a small real bug next, and checked in daily for two weeks.\""
+      ],
+      "answer": 3,
+      "why": "Pairing first, then a small real task with regular check-ins, builds confidence and context quickly. A wiki link and 'ask me' puts all the effort on someone who does not know what to ask. Doing their tickets teaches little. Leaving them alone is slow and can feel unwelcoming.",
+      "tags": ["collaboration", "leadership"],
+      "level": 1,
+      "asked": "Helping others ramp up is a common mid-level expectation."
+    },
+    {
+      "id": "bh-062",
+      "q": "A salesperson promises a client a feature that does not exist, due next week. Which answer best shows you can push back constructively?",
+      "choices": [
+        "\"I built it over the weekend, since the client had already been promised it and we could not let them down.\"",
+        "\"I told the salesperson it was their problem, since they should not have promised it in the first place.\"",
+        "\"I took it to the product owner with a quick estimate and a smaller option we could offer by that date.\"",
+        "\"I ignored it, as sales requests should come through the product owner rather than directly to me.\""
+      ],
+      "answer": 2,
+      "why": "Involving the product owner routes the decision correctly, and a smaller option gives sales something real to take back. Building it over the weekend rewards bypassing the process and burns you out. 'Their problem' damages a relationship you will need. Ignoring it leaves the client and the salesperson in trouble.",
+      "tags": ["communication", "conflict"],
+      "level": 2,
+      "asked": "Tests whether you can protect the team's process while still helping the business."
+    },
+    {
+      "id": "bh-063",
+      "q": "Your project is going to slip by two weeks. Which status update best shows honest, useful communication?",
+      "choices": [
+        "\"We are slightly behind, but I am confident we can catch up if everyone keeps working hard.\"",
+        "\"Payments integration is two weeks late due to sandbox issues; options: cut refunds or move the date.\"",
+        "\"Things are progressing and the team is making good headway on many of the key workstreams.\"",
+        "\"The delay is entirely due to the payment provider, and there is really nothing we can do about it.\""
+      ],
+      "answer": 1,
+      "why": "A useful update states the size of the slip, the cause and the decisions the reader can make. 'Slightly behind but confident' hides a two-week gap. Vague progress language gives the reader nothing to act on. Blaming the provider without options leaves stakeholders stuck and sounds defensive.",
+      "tags": ["communication"],
+      "level": 2,
+      "asked": "Bad news delivered early with options builds more trust than good news that later turns out wrong."
+    },
+    {
+      "id": "bh-064",
+      "q": "Your feature depends on another team who keep deprioritising your request. Which answer best shows cross-team influence?",
+      "choices": [
+        "\"I explained our deadline and its value to their lead, and offered to write the change for their review.\"",
+        "\"I kept messaging them every day until they finally agreed to do it, just to get me to stop.\"",
+        "\"I worked around their system entirely by duplicating their data in our own database instead.\"",
+        "\"I escalated to their director on the very first day, since that is the only way to get anything done there.\""
+      ],
+      "answer": 0,
+      "why": "Influence without authority means explaining why it matters to them and lowering their cost, here by offering the change for their review. Daily nagging gets resentment. Duplicating their data creates a consistency problem that outlives the deadline. Escalating on day one skips the conversation and damages the relationship.",
+      "tags": ["collaboration", "leadership"],
+      "level": 3,
+      "asked": "Mid-level engineers are expected to unblock themselves across team boundaries."
+    },
+    {
+      "id": "bh-065",
+      "q": "Which answer best shows you led a small project without having formal authority?",
+      "choices": [
+        "\"I told the others what to work on each day, since somebody had to take charge of the project.\"",
+        "\"I did all of the work myself so it would be done properly, and just kept the rest of the team updated on it.\"",
+        "\"I waited for my manager to assign a lead, since leading without the title would not be respected.\"",
+        "\"I wrote a one-page plan, agreed tasks with each person, ran a weekly check-in, and we shipped on time.\""
+      ],
+      "answer": 3,
+      "why": "Leading without authority works through a shared plan, agreement rather than orders, and a steady rhythm of check-ins. Telling people what to do without authority breeds resistance. Doing everything yourself is not leading and does not scale. Waiting for a title misses the chance to show you are ready for one.",
+      "tags": ["leadership"],
+      "level": 2,
+      "asked": "The classic step from junior to mid-level; interviewers want concrete mechanics."
+    },
+    {
+      "id": "bh-066",
+      "q": "You want your team to adopt automated end-to-end tests. Which answer best shows how you drove adoption?",
+      "choices": [
+        "\"I added a rule that every PR must have end-to-end tests, and blocked any PR that did not have one.\"",
+        "\"I sent an article explaining why end-to-end tests are important, and hoped people would read it.\"",
+        "\"I added tests for the checkout flow, showed the bug they caught, and paired with others on the next.\"",
+        "\"I wrote all the tests myself over a month, since the team would never do it on their own anyway.\""
+      ],
+      "answer": 2,
+      "why": "Adoption comes from showing value on something people care about, then making it easy to join in. Imposing a blocking rule without buy-in creates resentment and hollow tests. An article without a demonstration changes little. Writing everything yourself builds a suite nobody else maintains.",
+      "tags": ["leadership", "collaboration"],
+      "level": 2,
+      "asked": "Changing team habits is harder than writing code; interviewers want to see how you persuade."
+    },
+    {
+      "id": "bh-067",
+      "q": "Which answer best shows you improved a team process with measurable effect?",
+      "choices": [
+        "\"I suggested we have more meetings to talk about problems, and people seemed to like the idea.\"",
+        "\"I noticed reviews waited a day, proposed a morning review slot, and median wait fell to three hours.\"",
+        "\"I improved lots of our processes, which made the team much more efficient in a number of ways.\"",
+        "\"I changed our board columns around, and although nobody measured it I think it helped quite a bit.\""
+      ],
+      "answer": 1,
+      "why": "A strong process story has a measured problem, a specific change and a measured result. 'More meetings' is not an improvement by itself and 'seemed to like it' is not evidence. 'Lots of processes' gives the interviewer nothing to probe. An unmeasured board change may have helped, but you cannot show it did.",
+      "tags": ["leadership", "star"],
+      "level": 1,
+      "asked": "Interviewers look for developers who improve how the team works, not only what it ships."
+    },
+    {
+      "id": "bh-068",
+      "q": "You made a technical decision that some teammates disliked. Which answer best shows you handled it well?",
+      "choices": [
+        "\"I explained the trade-offs I had weighed, listened to their concerns, and agreed a point to review it.\"",
+        "\"I reversed the decision straight away, since keeping the team happy mattered more than the choice.\"",
+        "\"I stuck with it and did not discuss it further, since the decision had already been made by then.\"",
+        "\"I told them that if they disliked it they should have spoken up sooner, when it was being discussed.\""
+      ],
+      "answer": 0,
+      "why": "Explaining your reasoning, genuinely listening and agreeing when you will revisit it keeps trust while still making progress. Reversing instantly means decisions are set by whoever objects loudest. Refusing to discuss it makes people feel unheard. Blaming them for not speaking earlier is defensive, even if it is partly true.",
+      "tags": ["leadership", "conflict"],
+      "level": 3,
+      "asked": "Tests whether you can own an unpopular decision without either caving or bulldozing."
+    },
+    {
+      "id": "bh-069",
+      "q": "You need to split a feature across three developers. Which answer best shows effective delegation?",
+      "choices": [
+        "\"I split it by layer, so one did the database, one the API and one the UI, and we joined it at the end.\"",
+        "\"I gave the hardest parts to myself and the simple parts to the others, so nothing would go wrong.\"",
+        "\"I let everyone pick whatever they wanted to work on, so they would all feel motivated and engaged.\"",
+        "\"I defined the API contract first, split by user flow, and let each person own their slice end to end.\""
+      ],
+      "answer": 3,
+      "why": "Agreeing the contract first lets people work in parallel, and vertical slices give each person something that ships and that they own. Splitting by layer delays integration until the end, where the problems hide. Keeping the hard parts yourself stops others growing. Free choice without structure leaves gaps and overlaps.",
+      "tags": ["leadership", "collaboration"],
+      "level": 3,
+      "asked": "Tests whether you can plan work for others, a key step towards senior."
+    },
+    {
+      "id": "bh-070",
+      "q": "Asked about a mistake that affected customers, which answer shows the best balance of honesty and recovery?",
+      "choices": [
+        "\"I have been lucky enough never to make a mistake that reached customers in any of my jobs so far.\"",
+        "\"There was a small issue once, but it was really more of a misunderstanding with the requirements.\"",
+        "\"A cache bug I wrote showed one user's basket to another; I rolled back, we told them, and I added tests.\"",
+        "\"I made a mistake, but my reviewer should have caught it too, so really the fault was shared between the two of us.\""
+      ],
+      "answer": 2,
+      "why": "Owning a real mistake, the immediate recovery, telling the people affected and the preventive change is what interviewers want. Claiming no customer-facing mistakes is either untrue or suggests little responsibility. Recasting it as a misunderstanding dodges ownership. Splitting the blame with a reviewer is technically true but sounds defensive.",
+      "tags": ["ownership"],
+      "level": 2,
+      "asked": "Everyone has shipped a bug; interviewers want to see how you behave afterwards."
+    },
+    {
+      "id": "bh-071",
+      "q": "A project you worked on for months was cancelled. Which answer best shows resilience and perspective?",
+      "choices": [
+        "\"I was very upset, and honestly I lost a lot of motivation for the next few months after it happened.\"",
+        "\"It was frustrating, but user tests showed low demand, so stopping was right, and I reused the auth work.\"",
+        "\"It showed that management had no real idea what they were doing, so I started looking around for other jobs.\"",
+        "\"It did not bother me at all, since I get paid the same whether a project ships or gets cancelled.\""
+      ],
+      "answer": 1,
+      "why": "Acknowledging the frustration, understanding the business reason and salvaging something useful shows resilience. Losing motivation for months is honest but shows no recovery. Blaming management and job-hunting suggests you will not cope with normal business changes. Not caring at all suggests you are not invested in outcomes.",
+      "tags": ["motivation", "ambiguity"],
+      "level": 2,
+      "asked": "Priorities change; interviewers want to know you will not take it personally."
+    },
+    {
+      "id": "bh-072",
+      "q": "Your estimate for a feature was off by 100%. Which answer best shows you learned from it?",
+      "choices": [
+        "\"I compared estimate to actual, saw I had missed integration work, and now list integrations up front.\"",
+        "\"Estimates are always wrong, so I have stopped worrying about them and focus on the work itself.\"",
+        "\"I now double every estimate I give, so that I will never be caught out by the same thing again.\"",
+        "\"The requirements changed halfway through the work, so the estimate was not really wrong at the time I made it.\""
+      ],
+      "answer": 0,
+      "why": "Learning from an estimate miss means finding which part you underestimated and changing how you estimate. Giving up on estimates ignores why the team needs them. Doubling everything hides the cause and makes plans less useful. Blaming changed requirements may be partly true but offers no learning.",
+      "tags": ["ownership", "learning"],
+      "level": 2,
+      "asked": "Estimation misses are universal; the specific cause you found is what interviewers want."
+    },
+    {
+      "id": "bh-073",
+      "q": "You accidentally deleted rows from a staging database other teams were using. Which answer best shows immediate ownership?",
+      "choices": [
+        "\"I quietly restored it from last night's backup myself and hoped that nobody had noticed anything missing.\"",
+        "\"I waited to see whether anyone would complain before deciding whether it needed to be fixed.\"",
+        "\"I told my manager, and let them decide whether the other teams needed to know about it.\"",
+        "\"I posted in the shared channel straight away, restored from backup, and added a guard on that script.\""
+      ],
+      "answer": 3,
+      "why": "Telling the affected teams immediately lets them avoid wasting time on odd results, and the guard stops a repeat. Restoring quietly still leaves people debugging missing data they do not know about. Waiting for complaints puts the cost on others. Passing the decision to your manager delays the people who need to know.",
+      "tags": ["ownership", "communication"],
+      "level": 1,
+      "asked": "Speed and openness after a mistake matter more than the mistake itself."
+    },
+    {
+      "id": "bh-074",
+      "q": "You are on call and paged at 2 a.m. for an alert you do not recognise. Which answer best shows calm, effective handling?",
+      "choices": [
+        "\"I started changing configuration until the alert cleared, since speed was the most important thing.\"",
+        "\"I silenced the alert and went back to sleep, planning to look into it properly in the morning.\"",
+        "\"I checked the runbook, confirmed user impact on the dashboard, mitigated, and escalated where unsure.\"",
+        "\"I woke up the whole team straight away, since it is always better to have everyone on it together.\""
+      ],
+      "answer": 2,
+      "why": "A calm sequence is: find guidance, check real impact, mitigate, and escalate if out of depth. Silencing without checking risks a real outage going unnoticed. Changing configuration blindly can make things worse and destroys evidence. Waking everyone for an unknown alert burns the team out and is what escalation policies are for.",
+      "tags": ["ownership", "ambiguity"],
+      "level": 2,
+      "asked": "Tests how you behave under pressure, which on-call shows quickly."
+    },
+    {
+      "id": "bh-075",
+      "q": "You have three deadlines in the same week. Which answer best shows how you manage competing commitments?",
+      "choices": [
+        "\"I worked on all three a little each day, so that every one of them moved forward at the same pace.\"",
+        "\"I listed them with their impact, told each requester what was realistic, and did them in order.\"",
+        "\"I worked until midnight all week and got them all done, because that is what commitment means.\"",
+        "\"I did the easiest one first to get a quick win, then worried about the other two afterwards.\""
+      ],
+      "answer": 1,
+      "why": "Ranking by impact and telling each requester the realistic timing lets them plan, and doing one at a time finishes things. Spreading effort across all three risks finishing none. Working until midnight is a short-term fix that hides a capacity problem. Easiest-first optimises for your feeling of progress, not for the business.",
+      "tags": ["ambiguity", "communication"],
+      "level": 1,
+      "asked": "Workload questions test whether you communicate before you fall behind."
+    },
+    {
+      "id": "bh-076",
+      "q": "A colleague asks you to help cover up a mistake they made in production. Which answer best shows integrity while staying supportive?",
+      "choices": [
+        "\"I said I could not hide it, offered to help fix it, and went with them to explain it to the lead.\"",
+        "\"I reported them to our manager straight away, without speaking to them about it first at all.\"",
+        "\"I refused and then told the rest of the team about it, so that everyone knew what had happened.\"",
+        "\"I helped them hide it, since reporting it would only get them into trouble for no real benefit.\""
+      ],
+      "answer": 0,
+      "why": "Integrity means not concealing an incident, and support means helping them fix it and face it. Hiding it risks customers and trust, and makes you complicit. Reporting without speaking to them first damages the relationship unnecessarily. Telling the whole team humiliates them and is gossip, not accountability.",
+      "tags": ["ownership", "conflict"],
+      "level": 3,
+      "asked": "Integrity questions have a clear right answer; interviewers watch how you handle the human side."
+    },
+    {
+      "id": "bh-077",
+      "q": "Asked \"Why are you leaving your current job?\", which answer is most positive and forward-looking?",
+      "choices": [
+        "\"I have learned a lot there, but I want to work on a product with real scale and more backend ownership.\"",
+        "\"My manager is difficult and the codebase is a total mess, so honestly I just need to get out of there.\"",
+        "\"Mainly the money, to be honest; I have heard this company pays quite a bit more than where I am now.\"",
+        "\"I am not really sure; I just feel it is time for something different, whatever that turns out to be.\""
+      ],
+      "answer": 0,
+      "why": "A strong answer credits your current role and points towards something this job offers. Criticising your manager and codebase makes the interviewer wonder what you will say about them. Leading with money is honest but suggests you will leave for the next offer. Having no idea what you want makes it hard to see why this role fits.",
+      "tags": ["motivation"],
+      "level": 1,
+      "asked": "Interviewers listen for whether you are running away from something or towards something."
+    },
+    {
+      "id": "bh-078",
+      "q": "Asked \"Where do you see yourself in three years?\", which answer best shows ambition aligned with the role?",
+      "choices": [
+        "\"I do not really plan that far ahead in my career, so I would rather just see what happens and take it as it comes.\"",
+        "\"Honestly, I would like to have your job by then, since management is where I think I really belong.\"",
+        "\"Probably running my own startup, as I see this role mainly as a chance to learn how companies work.\"",
+        "\"Owning a significant part of the system, mentoring newer developers, and leading small projects end to end.\""
+      ],
+      "answer": 3,
+      "why": "The best answer describes growth the company can offer inside the job you are applying for: deeper ownership, mentoring, leading work. Aiming for the interviewer's job sounds either naive or combative. Planning to leave for a startup signals a short tenure. Having no plan suggests low motivation to grow.",
+      "tags": ["motivation"],
+      "level": 1,
+      "asked": "Companies invest in people they expect to grow with them; this checks for fit."
+    },
+    {
+      "id": "bh-079",
+      "q": "You moved into software from teaching via a bootcamp. Which answer best frames the career change as a strength?",
+      "choices": [
+        "\"I know I am behind people with CS degrees, so I hope you will give me a chance and be a bit patient with me.\"",
+        "\"Teaching was not for me, as the pay was poor and the hours were long, so I needed a totally new start.\"",
+        "\"Teaching taught me to explain clearly and plan under pressure; I use both when writing docs and reviews.\"",
+        "\"My background is irrelevant now, since all that really matters in this job is how well I can code.\""
+      ],
+      "answer": 2,
+      "why": "Framing a career change well links skills from the old career to concrete behaviours in the new one. Apologising for lacking a degree invites the interviewer to see you as a risk. Explaining why you left teaching focuses on the negative. Calling your background irrelevant throws away the thing that makes you different from other candidates.",
+      "tags": ["motivation"],
+      "level": 1,
+      "asked": "Career changers are common; interviewers want to know what you bring, not what you lack."
+    },
+    {
+      "id": "bh-080",
+      "q": "Asked about a nine-month gap in your CV, which answer is most honest and reassuring?",
+      "choices": [
+        "\"I would rather not go into it, as it was a personal matter and I do not think it is relevant here.\"",
+        "\"I cared for a parent, then built two projects to refresh my skills; that is behind me and I am ready.\"",
+        "\"I was busy with lots of different things, and I was also doing some freelance work here and there.\"",
+        "\"It was a hard job market, and nobody was hiring, so there was really nothing much I could do about it.\""
+      ],
+      "answer": 1,
+      "why": "A brief, honest reason, what you did to stay current and a clear statement that you are ready answers the real concern, which is whether you can start fully. Refusing outright raises more questions than it avoids, although you need not share private detail. Vague freelance claims invite probing you may not survive. Blaming the market sounds passive.",
+      "tags": ["motivation"],
+      "level": 2,
+      "asked": "Gaps are common; interviewers mostly want to hear that you are ready now."
+    },
+    {
+      "id": "bh-081",
+      "q": "Your manager pushes to skip tests to hit a demo date. Which answer best shows you can balance quality and speed?",
+      "choices": [
+        "\"I tested the payment path fully, left the admin screens lighter, and logged a ticket for the rest.\"",
+        "\"I skipped all of the tests as asked, since the manager is responsible for any risk that follows.\"",
+        "\"I refused to write any code without full test coverage, as quality should never be compromised.\"",
+        "\"I wrote the tests secretly after hours, so that the manager would not know I was slowing things down.\""
+      ],
+      "answer": 0,
+      "why": "Balancing speed and quality means testing where failure is expensive, accepting risk where it is cheap, and recording the debt. Refusing all compromise ignores a real business date. Skipping everything and blaming the manager abdicates your professional judgement. Working secretly after hours hides the trade-off instead of discussing it.",
+      "tags": ["ambiguity", "ownership"],
+      "level": 2,
+      "asked": "Trade-offs are the job; interviewers want to see risk-based thinking, not absolutes."
+    },
+    {
+      "id": "bh-082",
+      "q": "Which answer best shows you took a deliberate, well-managed shortcut?",
+      "choices": [
+        "\"I hard-coded some values to ship faster, and I think someone else probably cleaned it all up after that.\"",
+        "\"I take shortcuts all the time, since users care about features, not how the code is written behind it.\"",
+        "\"I never take shortcuts, because every one of them always turns into serious technical debt later on.\"",
+        "\"I hard-coded the tax rates for launch, flagged them in the PR, and moved them to config the next sprint.\""
+      ],
+      "answer": 3,
+      "why": "A good shortcut is chosen consciously, made visible to reviewers, and paid back on a plan. Taking shortcuts all the time shows no judgement about the cost. Never taking any is unrealistic and slows the business down. A shortcut you hope someone else cleaned up is the unmanaged debt that hurts teams.",
+      "tags": ["ownership", "ambiguity"],
+      "level": 2,
+      "asked": "Pragmatism is valued, but only when the debt is visible and repaid."
+    },
+    {
+      "id": "bh-083",
+      "q": "A user complains angrily that your new feature broke their workflow. Which answer best shows customer focus?",
+      "choices": [
+        "\"I told support that the user was using the feature wrongly, and that they should read the help page.\"",
+        "\"I rolled back the whole feature at once, since any complaint means the release must have been a mistake.\"",
+        "\"I watched a recording of their session, saw the lost shortcut, and restored it within a couple of days.\"",
+        "\"I ignored it, as one angry user is not really representative of how everyone feels about the change.\""
+      ],
+      "answer": 2,
+      "why": "Customer focus means understanding the real workflow behind a complaint and fixing what matters to them. Blaming the user dismisses a signal. Rolling back everything overreacts to one report and removes value for others. Ignoring it assumes one voice is noise, when complaints often represent many silent users.",
+      "tags": ["ownership", "collaboration"],
+      "level": 2,
+      "asked": "Shows whether you treat users as people to understand or as noise."
+    },
+    {
+      "id": "bh-084",
+      "q": "An accessibility audit finds your form unusable with a screen reader, just before launch. Which answer best shows responsible prioritisation?",
+      "choices": [
+        "\"I launched anyway, since only a small share of users rely on screen readers, and fixed it much later.\"",
+        "\"I fixed the labels and error announcements before launch and ticketed the smaller issues for next week.\"",
+        "\"I delayed the whole launch by a month to rebuild the entire frontend to be perfectly accessible.\"",
+        "\"I told the auditor that accessibility was the design team's job, since they had designed the form.\""
+      ],
+      "answer": 1,
+      "why": "Blocking issues for real users, and often legal obligations, get fixed before launch, while smaller issues are scheduled. Launching anyway excludes people and creates legal risk. A month-long rebuild is disproportionate when targeted fixes solve the blocking problems. Passing it to design ignores that labels and announcements are code.",
+      "tags": ["ownership", "ambiguity"],
+      "level": 2,
+      "asked": "Accessibility is a legal and ethical requirement; interviewers check you take it seriously."
+    },
+    {
+      "id": "bh-085",
+      "q": "You are asked to ship a feature with a known security flaw to meet a date. Which answer best shows integrity with pragmatism?",
+      "choices": [
+        "\"I wrote up the risk and a two-day fix, and the release waited for it after the lead read the risk.\"",
+        "\"I shipped it as told, since security decisions are made by management and not by developers.\"",
+        "\"I refused to work on the project any more, and told the team I would not be part of it at all.\"",
+        "\"I shipped it on time but fixed the flaw quietly afterwards, so that nobody would know it had been there.\""
+      ],
+      "answer": 0,
+      "why": "Making the risk concrete and offering a small fix lets decision-makers choose knowingly, and usually they choose the fix. Shipping silently makes you part of a decision you knew was wrong. Refusing entirely closes the conversation. Fixing it quietly afterwards hides a window in which users were exposed, which may need disclosure.",
+      "tags": ["ownership", "conflict"],
+      "level": 3,
+      "asked": "Integrity plus a practical way forward is what separates strong answers here."
+    },
+    {
+      "id": "bh-086",
+      "q": "Your manager asks you to report a project as 'on track' in a status update when it is not. Which answer best shows integrity?",
+      "choices": [
+        "\"I wrote 'on track' as asked, since my manager knows the politics better than I do.\"",
+        "\"I refused and reported my manager to HR for asking me to lie in the update.\"",
+        "\"I wrote 'on track', then warned the stakeholders privately that it was not true.\"",
+        "\"I asked why, then suggested 'at risk' with a recovery plan, which they accepted.\""
+      ],
+      "answer": 3,
+      "why": "Asking why and offering an honest framing with a recovery plan addresses the manager's worry while keeping the update true. Writing a false status misleads people who will plan around it. Going to HR first escalates before talking. Contradicting your own update privately undermines both your manager and your credibility.",
+      "tags": ["ownership", "communication"],
+      "level": 3,
+      "asked": "Tests whether you can hold a line on honesty without burning relationships."
+    },
+    {
+      "id": "bh-087",
+      "q": "The interviewer asks a hypothetical: \"What would you do if a teammate kept breaking the build?\" Which answer is strongest?",
+      "choices": [
+        "\"I would tell the manager, since it is their job to deal with people who keep breaking things.\"",
+        "\"I would just quietly fix the build myself each time, so that the rest of the team could keep on working.\"",
+        "\"I would talk to them first. Last year a colleague did this; we added pre-push checks and it stopped.\"",
+        "\"I would make a joke about it at stand-up so they got the message without it being awkward.\""
+      ],
+      "answer": 2,
+      "why": "Answering a hypothetical with a real past example turns 'what I would do' into evidence of what you have done. Going straight to the manager skips a conversation. Silently fixing it each time wastes your time and hides the pattern. A joke at stand-up embarrasses them publicly and does not fix the cause.",
+      "tags": ["conflict", "star"],
+      "level": 2,
+      "asked": "Anchoring hypotheticals in real stories is one of the most effective interview techniques."
+    },
+    {
+      "id": "bh-088",
+      "q": "Asked \"Have you used Kubernetes?\" when you have not, which answer is most honest and useful?",
+      "choices": [
+        "\"Yes, quite a lot. I have used it on a few projects, mainly for deployments and for scaling.\"",
+        "\"Not in production. I deploy with Docker Compose and know the pod and service concepts; I learn fast.\"",
+        "\"No, and to be honest I do not think it is necessary for most teams, so I have avoided learning it.\"",
+        "\"No, I have never used it, and I do not know anything about it at all, sorry about that.\""
+      ],
+      "answer": 1,
+      "why": "An honest 'not in production', plus the nearest real experience and what you already understand, answers the question and shows how close you are. Claiming experience collapses at the first follow-up. Dismissing the technology sounds defensive. A flat 'no' is honest but gives the interviewer nothing about how quickly you could learn it.",
+      "tags": ["learning", "ambiguity"],
+      "level": 1,
+      "asked": "Honesty about gaps is scored well; bluffing is one of the fastest ways to fail an interview."
+    },
+    {
+      "id": "bh-089",
+      "q": "Discussing your take-home exercise, the interviewer asks what you would change with more time. Which answer shows the best judgement?",
+      "choices": [
+        "\"I would add pagination and retry the payment call; I left them out to keep inside the four hours.\"",
+        "\"Nothing really, as I think it is complete and covers every requirement that you listed in the brief.\"",
+        "\"I would rewrite it in a different framework, as the one I chose was not really the best fit for this.\"",
+        "\"I ran out of time, so honestly most of it is unfinished and I would need to redo a lot of the work.\""
+      ],
+      "answer": 0,
+      "why": "Naming specific omissions and why you made them shows you understood the trade-offs and managed the time box. Claiming it is complete suggests you do not see its limits. Rewriting in another framework questions your own choice without a reason. Saying most of it is unfinished undersells the work and suggests poor planning.",
+      "tags": ["star", "ambiguity"],
+      "level": 2,
+      "asked": "Take-home reviews are about trade-off reasoning more than the code itself."
+    },
+    {
+      "id": "bh-090",
+      "q": "During live coding you are unsure how to proceed. Which behaviour best shows your problem solving to the interviewer?",
+      "choices": [
+        "\"I go silent and think hard until I have the complete answer, then type it out all in one go.\"",
+        "\"I type as quickly as I can so that at least something is on screen, even if it is not quite right.\"",
+        "\"I apologise and say that I usually perform much better when I am not being watched like this.\"",
+        "\"I say what I am considering, try the simplest version, and ask if the input can ever be empty.\""
+      ],
+      "answer": 3,
+      "why": "Thinking aloud lets the interviewer follow and help, starting simple gets something working, and asking about edge cases shows you clarify requirements. Silence hides your reasoning, which is what they are scoring. Apologising for nerves spends time without adding information. Typing fast without direction produces code you then have to defend.",
+      "tags": ["ambiguity", "communication"],
+      "level": 1,
+      "asked": "Interviewers score communication as heavily as correctness in live coding."
+    },
+    {
+      "id": "bh-091",
+      "q": "Presenting a bootcamp group project, which answer best shows honesty about your own contribution?",
+      "choices": [
+        "\"I built the whole application myself, since the others in the group did not really contribute much.\"",
+        "\"We built a full e-commerce platform that was basically the same as the ones big companies use.\"",
+        "\"In a team of four I owned the cart API and its tests; the auth and frontend were my teammates' work.\"",
+        "\"It was a group project, so it is hard to say who did what, as we all worked on everything together.\""
+      ],
+      "answer": 2,
+      "why": "Clear boundaries about what you built make every follow-up question safe to answer and show integrity. Claiming the whole app will unravel under questioning. Overstating the project's scale invites scrutiny it cannot survive. 'We all did everything' avoids the question and leaves the interviewer unable to credit you.",
+      "tags": ["star", "ownership"],
+      "level": 1,
+      "asked": "Portfolio projects are probed in detail; interviewers check you can explain your own part."
+    },
+    {
+      "id": "bh-092",
+      "q": "Asked how you handle sustained pressure over a long project, which answer best shows sustainable habits?",
+      "choices": [
+        "\"I just push through it, since pressure is part of the job and taking breaks feels like weakness to me.\"",
+        "\"I keep a realistic plan, flag risks early, protect focus time, and raise it when load stays too high.\"",
+        "\"I do not really feel pressure, as I am naturally very calm and nothing at work tends to bother me.\"",
+        "\"I work longer hours until it passes, which usually only takes a few months at a time, then I recover.\""
+      ],
+      "answer": 1,
+      "why": "Sustainable habits combine planning, early warnings and saying so when workload is too high, which protects both you and delivery. Pushing through as a point of pride leads to burnout and mistakes. Claiming never to feel pressure is not credible. Months of long hours is a pattern interviewers see as a burnout risk.",
+      "tags": ["ownership", "communication"],
+      "level": 2,
+      "asked": "Teams want people who stay effective over years, not sprints."
+    },
+    {
+      "id": "bh-093",
+      "q": "You believe the team should move from a legacy ORM to EF Core. Which answer best shows you influenced a technical direction?",
+      "choices": [
+        "\"I wrote a short proposal with a pilot on one module, shared the results, and the team adopted it.\"",
+        "\"I started using EF Core in my own features without asking, so the team would eventually follow.\"",
+        "\"I kept mentioning at every stand-up how much better EF Core was, until people eventually agreed.\"",
+        "\"I asked the architect to mandate EF Core for everyone, since a top-down rule is the fastest way.\""
+      ],
+      "answer": 0,
+      "why": "A written proposal plus a small pilot gives the team evidence and a chance to shape the change, which leads to real buy-in. Using it unilaterally creates two patterns in one codebase. Repeating the case at stand-up wears people down rather than persuading them. A mandate may work but skips the team's input and breeds resistance.",
+      "tags": ["leadership", "conflict"],
+      "level": 3,
+      "asked": "Influence without authority is a core mid-to-senior skill."
+    },
+    {
+      "id": "bh-094",
+      "q": "The product owner always prioritises features over tech debt. Which answer best shows you reached a sustainable agreement?",
+      "choices": [
+        "\"I fixed debt secretly inside feature tickets and did not mention it, since the PO would say no.\"",
+        "\"I refused to start new features until the debt was cleared, so that the problem would be fixed.\"",
+        "\"I accepted it, since the product owner decides priorities and it is not my place to argue with that.\"",
+        "\"I showed how the debt slowed features, and we agreed about 20% of each sprint for improvements.\""
+      ],
+      "answer": 3,
+      "why": "Linking debt to the delivery speed the product owner cares about, then agreeing a standing allocation, turns an argument into a shared plan. Hiding debt work inflates estimates and erodes trust. Accepting it silently lets delivery slow down with nobody deciding. Refusing features is a standoff that damages the relationship.",
+      "tags": ["conflict", "communication"],
+      "level": 3,
+      "asked": "Tech debt negotiation is a common mid-level scenario; interviewers want a durable outcome."
+    },
+    {
+      "id": "bh-095",
+      "q": "Three months into a new role you feel slower than your teammates. Which answer best shows self-awareness and action?",
+      "choices": [
+        "\"I assumed it was normal and waited for it to improve on its own, since everyone is slow at the start.\"",
+        "\"I worked extra hours every evening so that nobody would notice I was slower than the rest of them.\"",
+        "\"I asked my lead how my pace compared with expectations, then paired more on the parts slowing me.\"",
+        "\"I told the team that the codebase was badly documented, which was why I was slower than expected.\""
+      ],
+      "answer": 2,
+      "why": "Checking your perception against expectations and targeting the specific gaps is both honest and effective. Hiding it with extra hours is unsustainable and may not fix the cause. Waiting passively might be fine but misses a cheap chance to speed up. Blaming the documentation may be partly fair but avoids your part.",
+      "tags": ["learning", "feedback"],
+      "level": 2,
+      "asked": "Interviewers want to know you will ask rather than struggle silently."
+    },
+    {
+      "id": "bh-096",
+      "q": "You want to raise the quality of reviews across the team. Which answer best shows you did it by example rather than by rule?",
+      "choices": [
+        "\"I started rejecting every PR that did not meet my standards, until people improved their work.\"",
+        "\"I gave clear, labelled comments with reasons, praised good work, and shared a short checklist.\"",
+        "\"I wrote a long document of review rules and asked the manager to make everyone follow it.\"",
+        "\"I stopped reviewing other people's code, since my feedback did not seem to be making a difference.\""
+      ],
+      "answer": 1,
+      "why": "Modelling the behaviour you want, with reasons, explicit labels and positive feedback, spreads naturally, and a light checklist helps others copy it. Blocking everything by your own standard creates resentment. A long rulebook enforced from above tends to be ignored. Withdrawing removes a reviewer who cares.",
+      "tags": ["leadership", "feedback"],
+      "level": 3,
+      "asked": "Shows whether you improve culture through behaviour or through control."
+    },
+    {
+      "id": "bh-097",
+      "q": "Your manager asks you to take on a second project while you are already at capacity. Which answer best shows you can say no well?",
+      "choices": [
+        "\"I showed my current work and asked which item should drop or move for the new one to fit in.\"",
+        "\"I said yes, since you should never refuse your manager, and then did both of them as best I could.\"",
+        "\"I said no, as I was far too busy, and suggested they give it to someone who has more free time.\"",
+        "\"I agreed, then let the new project slip quietly, since they would see for themselves I was too busy.\""
+      ],
+      "answer": 0,
+      "why": "Making the trade-off visible lets the manager choose what matters most, which is really a 'yes, if'. Saying yes to everything spreads you thin and hides the cost. A flat no without context pushes the problem back on them. Agreeing and letting it slip quietly damages trust more than an honest conversation.",
+      "tags": ["communication", "ambiguity"],
+      "level": 2,
+      "asked": "Saying no with options is a skill interviewers value in mid-level developers."
+    },
+    {
+      "id": "bh-098",
+      "q": "Which answer best shows you handled being wrong in a technical disagreement gracefully?",
+      "choices": [
+        "\"I kept arguing even after the benchmark showed they were right, since I still thought mine was cleaner.\"",
+        "\"I said nothing and quietly changed my code, hoping nobody would notice I had been on the wrong side.\"",
+        "\"I pointed out they had also been wrong about something else the month before, to even things up.\"",
+        "\"I said I had been wrong, thanked them, and noted what I had missed so I would check it next time.\""
+      ],
+      "answer": 3,
+      "why": "Saying 'I was wrong' openly, crediting the other person and learning from it builds trust quickly. Continuing to argue against evidence looks stubborn. Changing quietly without acknowledgement misses a chance to build the relationship. Scoring points with an older mistake turns a technical discussion into a contest.",
+      "tags": ["conflict", "feedback"],
+      "level": 2,
+      "asked": "Admitting error is rare in interviews and memorable when done well."
+    },
+    {
+      "id": "bh-099",
+      "q": "After a tense disagreement, your working relationship with a colleague has cooled. Which answer best shows you repaired it?",
+      "choices": [
+        "\"I avoided working with them for a while, so that things could calm down naturally over time.\"",
+        "\"I waited for them to come and apologise, since they were the one who had raised their voice first.\"",
+        "\"I asked them for a coffee, acknowledged my part, and we agreed how to disagree better next time.\"",
+        "\"I asked the manager to move one of us onto a different team, so that we would not clash again.\""
+      ],
+      "answer": 2,
+      "why": "Reaching out, owning your share and agreeing a better way to disagree repairs the relationship and prevents a repeat. Avoiding them lets distance harden. Waiting for an apology makes repair depend on the other person. Asking for a move treats a normal disagreement as unfixable and costs the team.",
+      "tags": ["conflict", "collaboration"],
+      "level": 3,
+      "asked": "Interviewers want to know you can rebuild trust, not just win arguments."
+    },
+    {
+      "id": "bh-100",
+      "q": "A stakeholder keeps changing requirements after work starts. Which answer best shows a sustainable fix?",
+      "choices": [
+        "\"I just rebuilt it every time, because the stakeholder is the customer and is always right in the end.\"",
+        "\"I showed them early prototypes each week, so changes came before build, and rework fell noticeably.\"",
+        "\"I complained to my manager that the stakeholder was impossible to work with and asked for help.\"",
+        "\"I refused all changes after the first sprint, and told them to put any new ideas in writing instead.\""
+      ],
+      "answer": 1,
+      "why": "Frequent, cheap previews move changes to before the expensive work, which fixes the pattern rather than each instance. Rebuilding every time accepts endless rework. Refusing all changes ignores that requirements legitimately evolve. Complaining to your manager escalates without trying a process change first.",
+      "tags": ["ambiguity", "collaboration"],
+      "level": 3,
+      "asked": "Changing requirements are normal; the strong answer changes the process, not the person."
+    },
+    {
+      "id": "bh-101",
+      "q": "Asked about your hardest bug, which answer best shows systematic debugging?",
+      "choices": [
+        "\"I reproduced it with a failing test, bisected commits to the cause, then fixed it and kept the test.\"",
+        "\"I changed things at random until it disappeared, then moved on before it could come back again.\"",
+        "\"It was so complex that it would take too long to explain, but in the end I did manage to fix it.\"",
+        "\"I asked a senior developer, who found it within ten minutes, so I did not need to investigate it.\""
+      ],
+      "answer": 0,
+      "why": "Reproduce, narrow down, fix and keep the test is the method interviewers want to hear, with each step checkable. Random changes may hide a bug without understanding it. Refusing to explain gives nothing to assess. Asking a senior is fine, but the answer shows no debugging of your own and misses the question.",
+      "tags": ["star", "ambiguity"],
+      "level": 1,
+      "asked": "Debugging stories reveal method; interviewers probe each step you mention."
+    },
+    {
+      "id": "bh-102",
+      "q": "A user asks you directly to delete all their personal data. Which answer best shows responsible handling?",
+      "choices": [
+        "\"I deleted their rows from the main table straight away, since the user had asked me to do it.\"",
+        "\"I told them I was a developer and that data requests were not really anything to do with me.\"",
+        "\"I ignored the request, as we need to keep all of the data that we collect for analytics anyway.\"",
+        "\"I passed it to our privacy process, and helped make sure backups and logs were covered too.\""
+      ],
+      "answer": 3,
+      "why": "Data-subject requests have legal steps (verifying identity, deadlines, records), so they go through the defined process, and developers help find every copy. Deleting rows ad hoc skips verification and misses backups, logs and third parties. Saying it is not your concern is unhelpful. Ignoring it may breach GDPR.",
+      "tags": ["ownership", "communication"],
+      "level": 3,
+      "asked": "Privacy obligations reach developers; interviewers check you know to use the process."
+    },
+    {
+      "id": "bh-103",
+      "q": "A release you led caused a two-hour outage. In the postmortem, which answer best shows leadership?",
+      "choices": [
+        "\"I explained that the outage was caused by an unlucky timing issue that nobody could have predicted.\"",
+        "\"I said that the ops team should have caught it in monitoring, since that is really what it is for.\"",
+        "\"I walked through the timeline, owned the gaps in my rollout plan, and took on the canary action.\"",
+        "\"I kept quiet in the meeting, since postmortems are blameless and so no one needs to take ownership.\""
+      ],
+      "answer": 2,
+      "why": "Leading a postmortem well means a clear timeline, openly owning what your plan missed, and taking on a preventive action. Calling it unpredictable avoids learning. Pointing at ops shifts blame. Blameless does not mean nobody owns anything: it means focusing on system fixes, which still need an owner.",
+      "tags": ["ownership", "leadership"],
+      "level": 3,
+      "asked": "Leading after failure shows more about you than leading after success."
+    },
+    {
+      "id": "bh-104",
+      "q": "Which answer best shows you give credit to others while still making your own role clear?",
+      "choices": [
+        "\"I did everything on that project, although a few other people helped out a little bit here and there.\"",
+        "\"I designed the sync engine; Priya built the conflict UI and Sam the tests, which made it shippable.\"",
+        "\"It was a total team effort, and I really could not say what I did compared with anyone else on it.\"",
+        "\"Everyone was great, and the manager in particular deserves all the credit for making it a success.\""
+      ],
+      "answer": 1,
+      "why": "Naming your part and naming others' specific contributions shows both self-awareness and generosity. Taking all the credit while minimising helpers is a red flag for teamwork. 'A total team effort' hides your role entirely. Giving all the credit to the manager is generous but gives the interviewer nothing about you.",
+      "tags": ["star", "collaboration"],
+      "level": 2,
+      "asked": "Interviewers check that you can talk about yourself without erasing your team."
+    },
+    {
+      "id": "bh-105",
+      "q": "The team's velocity is being used by management to push for more points each sprint. Which answer best shows you addressed it constructively?",
+      "choices": [
+        "\"I explained in the review how pressure on points distorts them, and proposed tracking cycle time too.\"",
+        "\"I inflated our estimates so the numbers went up, since that is what management wanted to see.\"",
+        "\"I refused to estimate at all any more, since the numbers were clearly being misused by management.\"",
+        "\"I told the team to work harder so we could meet the new targets, whatever it took to get there.\""
+      ],
+      "answer": 0,
+      "why": "Explaining why a target distorts the measure and offering a better signal addresses management's real need, which is predictability. Inflating estimates games the number and destroys forecasting. Refusing to estimate is a standoff. Pushing the team harder treats a measurement problem as an effort problem.",
+      "tags": ["communication", "leadership"],
+      "level": 3,
+      "asked": "Tests whether you can push back upward using reasons, which mid-level developers need to do."
     }
   ]
 }

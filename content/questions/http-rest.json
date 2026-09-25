@@ -545,6 +545,2144 @@
       "tags": ["design", "errors"],
       "level": 3,
       "asked": "Checks you design the failure path of a batch, which is where imports and syncs go wrong."
+    },
+    {
+      "id": "hr-037",
+      "q": "A client sends `DELETE /api/articles/9` to a route that only supports GET and PUT. Which response is correct?",
+      "choices": [
+        "404 Not Found, because no DELETE handler exists for that path",
+        "405 Method Not Allowed, with an `Allow: GET, PUT` header",
+        "400 Bad Request, because the method is invalid for this URI",
+        "501 Not Implemented, since the server does not support DELETE"
+      ],
+      "answer": 1,
+      "why": "405 says the resource exists but this method is not supported on it, and RFC 9110 requires an `Allow` header listing the methods that are. 404 would claim the resource is missing; 501 is for a method the server does not recognise at all, anywhere.",
+      "tags": ["status-codes", "methods"],
+      "level": 1,
+      "asked": "Checks whether you know the codes beyond the big five and the header that must travel with 405."
+    },
+    {
+      "id": "hr-038",
+      "q": "An endpoint accepts a video for transcoding that takes several minutes. What should `POST /api/transcodes` return immediately?",
+      "choices": [
+        "200 OK with an empty body, and the client polls the list endpoint",
+        "201 Created with the finished video URL filled in as null for now",
+        "202 Accepted with a `Location` pointing at a job-status resource",
+        "204 No Content, because nothing is ready to send back to the client"
+      ],
+      "answer": 2,
+      "why": "202 means the request was accepted for processing that has not finished, and the job-status URL gives the client something to poll (or a webhook fires later). 201 promises the resource exists now, which is untrue while the transcode is still running.",
+      "tags": ["status-codes", "async-operations"],
+      "level": 2,
+      "asked": "Long-running work is common in CRUD apps; a strong answer describes the status resource and what it returns when the job completes."
+    },
+    {
+      "id": "hr-039",
+      "q": "Which statement about 204 No Content is correct?",
+      "choices": [
+        "It must not include a body, and clients should not try to parse one",
+        "It is only valid as a response to DELETE, never to PUT or PATCH",
+        "It tells the browser to clear the current page and show a blank one",
+        "It may carry a JSON body as long as `Content-Length` is set to zero"
+      ],
+      "answer": 0,
+      "why": "A 204 has no content by definition, so a client that calls `res.json()` on it throws. It is valid for any method where there is nothing useful to return, commonly PUT, PATCH and DELETE.",
+      "tags": ["status-codes"],
+      "level": 1,
+      "asked": "Catches the frontend bug of calling `response.json()` unconditionally on a successful response."
+    },
+    {
+      "id": "hr-040",
+      "q": "In the browser, what does this code log when the server responds 404 with a JSON error body?",
+      "code": "try {\n  const res = await fetch('/api/users/999');\n  console.log('ok?', res.ok, res.status);\n} catch (e) {\n  console.log('caught', e.name);\n}",
+      "lang": "js",
+      "choices": [
+        "caught TypeError, since fetch rejects on any 4xx status",
+        "caught HTTPError, the error type fetch uses for 4xx/5xx",
+        "ok? false 404, because fetch only rejects on network failure",
+        "ok? true 404, because the server did send back a response"
+      ],
+      "answer": 2,
+      "why": "`fetch` resolves for any HTTP response, including 404 and 500; it rejects (with a TypeError) only when no response arrives, such as a DNS failure, CORS block or abort. You must check `res.ok` (status 200–299) yourself.",
+      "tags": ["fetch", "status-codes"],
+      "level": 1,
+      "asked": "The most common fetch bug in take-homes; a strong answer shows a wrapper that throws on `!res.ok`."
+    },
+    {
+      "id": "hr-041",
+      "q": "A user requests `GET /api/posts/123`, but that post was deliberately and permanently removed. Which status tells clients and crawlers not to try again?",
+      "choices": [
+        "404 Not Found, the only code for a resource that is not there",
+        "410 Gone, meaning the resource existed and is permanently removed",
+        "301 Moved Permanently, pointing at the site's home page instead",
+        "403 Forbidden, because nobody may access the deleted post now"
+      ],
+      "answer": 1,
+      "why": "410 states the removal is intentional and permanent, so search engines drop the URL faster and clients can stop retrying. 404 makes no claim about permanence; redirecting deleted content to the home page is treated as a soft 404.",
+      "tags": ["status-codes"],
+      "level": 2,
+      "asked": "Shows awareness that status codes carry meaning for caches and crawlers, not just for your own frontend."
+    },
+    {
+      "id": "hr-042",
+      "q": "A client uploads a 60 MB file to an endpoint whose limit is 10 MB. Which status fits best?",
+      "choices": [
+        "400 Bad Request, because the upload fails the endpoint's validation",
+        "413 Content Too Large, because the body exceeds what the server accepts",
+        "422 Unprocessable Content, because the file cannot be processed as sent",
+        "507 Insufficient Storage, because the server will not store that much"
+      ],
+      "answer": 1,
+      "why": "413 (renamed from 'Payload Too Large' in RFC 9110) names the exact problem, and proxies such as nginx emit it before your code even runs. 507 is a WebDAV code about the server running out of space, not a per-request limit.",
+      "tags": ["status-codes", "uploads"],
+      "level": 1,
+      "asked": "Often asked alongside 'where do you enforce upload limits', where the answer is at the proxy and in the framework."
+    },
+    {
+      "id": "hr-043",
+      "q": "What does `206 Partial Content` indicate?",
+      "choices": [
+        "The server answered a `Range` request with only the requested bytes",
+        "The server timed out part-way and is sending what it had so far",
+        "The response was truncated because it exceeded the client's buffer",
+        "Only some items in a bulk request succeeded and the rest failed"
+      ],
+      "answer": 0,
+      "why": "206 answers a request with a `Range: bytes=...` header, returning a `Content-Range` slice; it is how video seeking and resumable downloads work. It is not a 'partial success' code for bulk operations, which is a common misuse.",
+      "tags": ["status-codes", "range-requests"],
+      "level": 2,
+      "asked": "Comes up when discussing file downloads or video; misusing 206 for bulk results is a red flag."
+    },
+    {
+      "id": "hr-044",
+      "q": "Why does a 308 redirect exist when 301 already means 'moved permanently'?",
+      "choices": [
+        "308 can be cached by browsers, whereas a 301 can never be cached",
+        "308 is only for HTTPS upgrades, while 301 is for moved domains",
+        "308 forbids changing the method, while 301 lets a POST become GET",
+        "308 is the HTTP/2 version of 301, and HTTP/1.1 clients ignore it"
+      ],
+      "answer": 2,
+      "why": "Historically browsers turned a redirected POST into a GET on 301 and 302, dropping the body. 307 and 308 were added so the method and body are preserved; both 301 and 308 are cacheable by default.",
+      "tags": ["redirects", "status-codes"],
+      "level": 2,
+      "asked": "Interviewers use it to see if you understand why API redirects silently lose request bodies."
+    },
+    {
+      "id": "hr-045",
+      "q": "A successful `PUT /api/settings` replaces the user's settings. Which response pairs are both correct?",
+      "choices": [
+        "201 with the new settings, or 202 if the write will happen later",
+        "200 with the stored representation, or 204 with no body at all",
+        "200 with `{ success: true }`, or 304 if nothing actually changed",
+        "204 with the stored settings, or 205 to make the client refresh"
+      ],
+      "answer": 1,
+      "why": "Either return the updated representation with 200 (saving the client a GET) or return 204 with nothing. 201 applies only when the PUT created the resource; 304 is only for conditional GET/HEAD, never a write.",
+      "tags": ["status-codes", "methods"],
+      "level": 1,
+      "asked": "A strong answer mentions returning the representation so the client sees server-set fields like `updatedAt`."
+    },
+    {
+      "id": "hr-046",
+      "q": "Your API sits behind a load balancer. The upstream app takes 70 seconds and the balancer's timeout is 60. What does the client most likely receive?",
+      "choices": [
+        "500 Internal Server Error, raised by the app when the balancer disconnects",
+        "408 Request Timeout, because the client waited too long for its answer",
+        "503 Service Unavailable, because the balancer marks the app as down",
+        "504 Gateway Timeout, generated by the balancer, not by your own code"
+      ],
+      "answer": 3,
+      "why": "504 means a gateway or proxy did not get a timely response from upstream. 408 is sent by a server when the client was too slow to send its request, which is the opposite direction.",
+      "tags": ["status-codes", "proxies"],
+      "level": 2,
+      "asked": "Debugging 502/504 in production is a mid-level expectation; strong answers mention that your app logs may show nothing."
+    },
+    {
+      "id": "hr-047",
+      "q": "A client sends `Accept: application/xml` to an endpoint that can only produce JSON. What are the reasonable responses?",
+      "choices": [
+        "406 Not Acceptable, or ignore the header and send JSON anyway",
+        "415 Unsupported Media Type, since XML is not a type the API reads",
+        "400 Bad Request, because an XML Accept header is not valid here",
+        "200 with an empty body, because nothing matching could be made"
+      ],
+      "answer": 0,
+      "why": "RFC 9110 allows either a 406 or disregarding `Accept` and sending the default representation; many APIs choose the latter. 415 is about the request body's `Content-Type`, not what the client wants back.",
+      "tags": ["content-negotiation", "status-codes"],
+      "level": 2,
+      "asked": "Pairs with the 406-vs-415 distinction, which reveals whether you know which header each code is about."
+    },
+    {
+      "id": "hr-048",
+      "q": "What is the difference between a safe method and an idempotent one?",
+      "choices": [
+        "Safe methods need authentication; idempotent ones can run anonymously",
+        "Safe means read-only in intent; idempotent means repeats give one end state",
+        "Safe methods are cached by browsers; idempotent ones are cached by proxies",
+        "Safe means it cannot fail; idempotent means it always returns the same body"
+      ],
+      "answer": 1,
+      "why": "GET, HEAD, OPTIONS and TRACE are safe: the client is not asking for a state change. PUT and DELETE are idempotent but not safe. Idempotency is about server state, not identical responses; a second DELETE can return 404.",
+      "tags": ["methods", "idempotency"],
+      "level": 1,
+      "asked": "Standard warm-up; a strong answer gives an example of a method that is idempotent but not safe."
+    },
+    {
+      "id": "hr-049",
+      "q": "What is a HEAD request typically used for?",
+      "choices": [
+        "Sending only headers to the server, with the request body stripped",
+        "Fetching the first part of a resource before streaming the rest",
+        "Getting the headers a GET would return, such as size, with no body",
+        "Asking the server which HTTP methods a given resource supports"
+      ],
+      "answer": 2,
+      "why": "HEAD returns the same status and headers as GET without the body, so a client can check existence, `Content-Length`, `ETag` or `Last-Modified` cheaply. Listing supported methods is what OPTIONS (or the `Allow` header) is for.",
+      "tags": ["methods"],
+      "level": 1,
+      "asked": "Link checkers and download managers rely on it; it tests breadth beyond GET and POST."
+    },
+    {
+      "id": "hr-050",
+      "q": "Is it valid for a `GET` request to carry a JSON body with search filters?",
+      "choices": [
+        "Yes, and every server and proxy is required to forward and read it",
+        "Yes, HTTP/2 made GET bodies standard, so it is now the preferred style",
+        "No, fetch sends it but servers must reply 400 to any GET with a body",
+        "It has no defined meaning, so proxies, caches and fetch may drop or reject it"
+      ],
+      "answer": 3,
+      "why": "RFC 9110 says a body on GET has no generally defined semantics; the browser's `fetch` throws if you pass one, and caches key on the URL only. Put filters in the query string, or use POST (or the newer QUERY method draft) for large searches.",
+      "tags": ["methods", "fetch"],
+      "level": 2,
+      "asked": "Comes up when designing complex search; a strong answer mentions POST-for-search and its caching trade-off."
+    },
+    {
+      "id": "hr-051",
+      "q": "A POST to `/api/login` gets a 302 redirect to `/dashboard`. What does the browser do next?",
+      "choices": [
+        "It re-sends the POST, login body included, to `/dashboard`",
+        "It issues a GET to `/dashboard` and drops the request body",
+        "It prompts the user to confirm re-sending the form data",
+        "It stops, because a redirect is not allowed after a POST"
+      ],
+      "answer": 1,
+      "why": "For 301, 302 and 303, browsers switch a POST to a GET without a body; 303 See Other makes that explicit and is the textbook Post/Redirect/Get code. Only 307 and 308 re-send the POST.",
+      "tags": ["redirects", "forms"],
+      "level": 1,
+      "asked": "Leads into the Post/Redirect/Get pattern that stops refresh from resubmitting forms."
+    },
+    {
+      "id": "hr-052",
+      "q": "What is the Post/Redirect/Get pattern for server-rendered forms?",
+      "choices": [
+        "Redirecting every POST through a CDN so the response is cached",
+        "Answering a successful form POST with 303 to a page the browser GETs",
+        "Converting forms to GET so that their submissions can be bookmarked",
+        "Having the browser GET a CSRF token before each POST it submits"
+      ],
+      "answer": 1,
+      "why": "After a successful POST the server replies 303 See Other; the browser loads the result page with GET, so refresh or back does not resubmit the form and create a duplicate. It is a UX and duplicate-prevention pattern, not a caching or CSRF one.",
+      "tags": ["redirects", "forms"],
+      "level": 2,
+      "asked": "Still asked for MVC and Razor Pages roles; a strong answer names the duplicate-submission problem it solves."
+    },
+    {
+      "id": "hr-053",
+      "q": "Which part of this URL is never sent to the server? `https://shop.example/products?id=7#reviews`",
+      "choices": [
+        "The fragment `#reviews`, which stays inside the browser",
+        "The query string `?id=7`, which only JavaScript can read",
+        "The scheme `https`, since the connection already implies it",
+        "The host `shop.example`, as it only resolves the IP address"
+      ],
+      "answer": 0,
+      "why": "The fragment is client-side only: it scrolls to an anchor or drives client routing, and never appears in the request line or server logs. The host is sent in the `Host` header (or `:authority` in HTTP/2) and the query string is part of the request target.",
+      "tags": ["urls"],
+      "level": 1,
+      "asked": "Explains why hash-based routers need no server config and why tokens in fragments do not reach server logs."
+    },
+    {
+      "id": "hr-054",
+      "q": "A search term `rock & roll` must go into a query string. What does this Node 24 code print?",
+      "code": "const u = new URL('https://api.example/search');\nu.searchParams.set('q', 'rock & roll');\nconsole.log(u.search);",
+      "lang": "js",
+      "choices": [
+        "?q=rock & roll",
+        "?q=rock%20%26%20roll",
+        "?q=rock+%26+roll",
+        "?q=rock+&+roll"
+      ],
+      "answer": 2,
+      "why": "`URLSearchParams` uses form encoding, so spaces become `+` and `&` becomes `%26`. Building query strings by string concatenation would leave the raw `&`, splitting the value into a second parameter.",
+      "tags": ["urls", "encoding"],
+      "level": 2,
+      "asked": "Tests whether you build URLs with the platform API instead of concatenation, a real source of bugs."
+    },
+    {
+      "id": "hr-055",
+      "q": "What does the `Host` header do in an HTTP/1.1 request?",
+      "choices": [
+        "It tells the server the client's hostname for logging purposes",
+        "It names the site requested, so one IP can serve many domains",
+        "It chooses which backend in a cluster should handle the request",
+        "It is optional metadata that proxies add and origin servers ignore"
+      ],
+      "answer": 1,
+      "why": "`Host` is mandatory in HTTP/1.1 and enables virtual hosting: many domains on one IP and port, with the server routing by header. TLS uses SNI for the same purpose before any HTTP is exchanged.",
+      "tags": ["headers"],
+      "level": 1,
+      "asked": "Warm-up question that leads into reverse proxies, SNI and multi-tenant hosting."
+    },
+    {
+      "id": "hr-056",
+      "q": "Behind a reverse proxy, your Express app logs every request as coming from `10.0.0.5`. What is the correct fix?",
+      "choices": [
+        "Read the first IP in `X-Forwarded-For` without any further checks",
+        "Use `req.socket.remoteAddress`, which always holds the real client",
+        "Set `trust proxy` to the proxy hop so `req.ip` reads forwarded headers",
+        "Ask the proxy to rewrite the TCP source address to the client's IP"
+      ],
+      "answer": 2,
+      "why": "The socket address is the proxy's. Express's `trust proxy` setting tells it how many hops to trust when deriving `req.ip` from `X-Forwarded-For`; blindly taking the first entry lets any client spoof its IP by sending the header itself, which breaks rate limiting.",
+      "tags": ["proxies", "headers"],
+      "level": 2,
+      "asked": "Real production bug; a strong answer mentions IP spoofing and ASP.NET Core's ForwardedHeaders middleware equivalent."
+    },
+    {
+      "id": "hr-057",
+      "q": "What does `Content-Length` tell the recipient, and what replaces it when the size is unknown up front?",
+      "choices": [
+        "The body size in bytes; chunked transfer or HTTP/2 framing replaces it",
+        "The body size in characters; `Content-Range` replaces it for streams",
+        "The maximum size allowed; `Accept-Ranges` replaces it for large files",
+        "The compressed size in kilobytes; `Content-Encoding` replaces it for gzip"
+      ],
+      "answer": 0,
+      "why": "`Content-Length` is a byte count, which matters for UTF-8 where characters are multi-byte. When a server streams a response of unknown length, HTTP/1.1 uses `Transfer-Encoding: chunked`, while HTTP/2 and HTTP/3 mark the end with frames.",
+      "tags": ["headers", "streaming"],
+      "level": 2,
+      "asked": "Shows up when debugging streamed responses or a mismatched length that hangs the client."
+    },
+    {
+      "id": "hr-058",
+      "q": "Your API returns a JSON body in reply to a HEAD request, and it passes local tests. Why is that wrong?",
+      "choices": [
+        "HEAD must return 204, so any body produces a protocol error",
+        "HEAD responses never have a body, so clients ignore or misread it",
+        "HEAD is only for CORS checks, so the body leaks data cross-origin",
+        "HEAD bodies are allowed but must be sent as plain text, not JSON"
+      ],
+      "answer": 1,
+      "why": "A HEAD response carries GET's headers, including `Content-Length`, but no body; a body can desync a keep-alive connection. Most frameworks (Express, ASP.NET Core) handle HEAD by running the GET handler and discarding the body for you.",
+      "tags": ["methods"],
+      "level": 3
+    },
+    {
+      "id": "hr-059",
+      "q": "What does an `OPTIONS` request with no CORS headers ask a server?",
+      "choices": [
+        "To return the resource's metadata without authenticating the caller",
+        "To list which communication options, such as methods, the target supports",
+        "To return the cached copy of the resource with any options applied",
+        "To confirm the server is healthy before the client sends a real request"
+      ],
+      "answer": 1,
+      "why": "OPTIONS asks about the capabilities of the target resource, typically answered with an `Allow` header. CORS preflights reuse the method with extra `Access-Control-Request-*` headers, which is why many devs only know it from CORS.",
+      "tags": ["methods", "cors"],
+      "level": 2,
+      "asked": "Probes whether you know OPTIONS predates CORS, which helps when a framework's routing rejects preflights."
+    },
+    {
+      "id": "hr-060",
+      "q": "A proxy returns 502 Bad Gateway. What does that tell you about the upstream app?",
+      "choices": [
+        "It replied too slowly, so the proxy gave up waiting on it",
+        "It returned a well-formed 500 that the proxy passed along",
+        "It sent an invalid response, or the connection to it failed",
+        "It is in maintenance mode and has asked the proxy to back off"
+      ],
+      "answer": 2,
+      "why": "502 means the gateway got an invalid response from upstream, which in practice includes a refused or reset connection (app crashed, wrong port). Slowness is 504; a deliberate 'not now' is 503; a 500 from the app is forwarded as 500.",
+      "tags": ["status-codes", "proxies"],
+      "level": 2,
+      "asked": "Reading 502 versus 504 correctly tells you whether to look at crashes or slowness, which interviewers probe for on-call experience."
+    },
+    {
+      "id": "hr-061",
+      "q": "An API returns `200 OK` with `{ \"error\": \"Invalid email\" }` for failed validation. What concretely goes wrong?",
+      "choices": [
+        "Browsers refuse to parse JSON from a 200 that contains an `error` key",
+        "Nothing, as long as the frontend always checks for the `error` field",
+        "The response becomes uncacheable because it contains error content",
+        "Clients, retries, monitoring and caches all treat the failure as success"
+      ],
+      "answer": 3,
+      "why": "Status codes are how generic tooling understands outcomes: `res.ok` is true, error-rate dashboards stay green, a CDN may even cache the error. Every consumer then has to know your private convention.",
+      "tags": ["status-codes", "errors"],
+      "level": 1,
+      "asked": "Classic code-review finding; a strong answer lists the concrete tools that get fooled."
+    },
+    {
+      "id": "hr-062",
+      "q": "A client has been sending requests to your API for a year. You rename `GET /api/customers` to `/api/clients`. What keeps old clients working with least effort?",
+      "choices": [
+        "Return 410 Gone from the old path so clients notice and update",
+        "Return 308 from the old path to the new one and keep it for a period",
+        "Return 404 from the old path and publish a changelog with the rename",
+        "Return 303 from the old path so that clients switch to a GET request"
+      ],
+      "answer": 1,
+      "why": "A permanent, method-preserving redirect keeps GETs and any writes working while clients migrate, though many HTTP clients do not follow redirects for non-GET methods, so announce the change too. 410 and 404 break every existing client immediately.",
+      "tags": ["redirects", "versioning"],
+      "level": 2,
+      "asked": "Tests whether you think about existing consumers before renaming anything in a public API."
+    },
+    {
+      "id": "hr-063",
+      "q": "What does `Retry-After` mean on a 503 response?",
+      "choices": [
+        "How long the server estimates it will be unavailable before retrying",
+        "The number of retries the client is allowed before being banned",
+        "The minimum wait between any two requests during normal operation",
+        "The time at which the server's cache for this resource expires"
+      ],
+      "answer": 0,
+      "why": "On 503 (and 429, and 3xx) `Retry-After` gives either a number of seconds or an HTTP date. Well-behaved clients honour it rather than retrying immediately, which would keep an overloaded server down.",
+      "tags": ["headers", "retries"],
+      "level": 1,
+      "asked": "Follows naturally from 429; strong answers link it to backoff and thundering-herd problems."
+    },
+    {
+      "id": "hr-064",
+      "q": "Which status should a login endpoint return when the email and password do not match?",
+      "choices": [
+        "403 Forbidden, because the credentials presented are not permitted",
+        "404 Not Found when the email is unknown, and 401 for a bad password",
+        "400 Bad Request, because the body contained invalid credentials",
+        "401 Unauthorized, with the same message whether email or password is wrong"
+      ],
+      "answer": 3,
+      "why": "Authentication failed, so 401; the identical message stops attackers enumerating which emails have accounts. Returning 404 for unknown emails is exactly that enumeration leak. Some APIs use 400 for form logins, but never with distinguishable messages.",
+      "tags": ["status-codes", "auth"],
+      "level": 1,
+      "asked": "Combines status codes with account enumeration, a favourite security follow-up."
+    },
+    {
+      "id": "hr-065",
+      "q": "What is the practical difference between HTTP/2 and HTTP/3?",
+      "choices": [
+        "HTTP/3 adds server push, which HTTP/2 never supported in browsers",
+        "HTTP/3 replaces JSON with binary encoding for request payloads",
+        "HTTP/3 runs over QUIC on UDP, so one lost packet stalls only its stream",
+        "HTTP/3 drops TLS for speed, relying on QUIC's own checksums instead"
+      ],
+      "answer": 2,
+      "why": "HTTP/2 multiplexes streams over one TCP connection, so a lost packet stalls every stream (TCP head-of-line blocking). QUIC gives each stream independent delivery and integrates TLS 1.3, with faster connection setup. Server push was removed from browsers, not added.",
+      "tags": ["http-versions"],
+      "level": 3,
+      "asked": "Asked in performance-leaning interviews; strong answers mention it is enabled at the CDN or proxy, not in app code."
+    },
+    {
+      "id": "hr-066",
+      "q": "Why is domain sharding (spreading assets over `static1`, `static2` hosts) now considered an anti-pattern?",
+      "choices": [
+        "Browsers block pages that load assets from more than one subdomain",
+        "HTTP/2 multiplexes many requests over one connection per origin",
+        "CDNs charge per hostname, so extra domains raise bandwidth costs",
+        "Cookies are always sent to every subdomain, doubling request size"
+      ],
+      "answer": 1,
+      "why": "Sharding worked around HTTP/1.1's roughly six connections per host. With HTTP/2 one connection carries everything, and extra hosts cost DNS lookups and TLS handshakes while defeating prioritisation.",
+      "tags": ["http-versions", "performance"],
+      "level": 3
+    },
+    {
+      "id": "hr-067",
+      "q": "A fingerprinted bundle `app.3f9c2a.js` never changes at that URL. Which `Cache-Control` value suits it?",
+      "choices": [
+        "`no-cache`, so the browser checks with the server on every load",
+        "`public, max-age=31536000, immutable`",
+        "`private, max-age=60, must-revalidate` so updates show up quickly",
+        "`no-store`, so a stale bundle can never be served after a deploy"
+      ],
+      "answer": 1,
+      "why": "A content hash in the filename means a new build gets a new URL, so the old one can be cached for a year and `immutable` stops even reload revalidation. The HTML that references the bundle is what must stay short-lived or `no-cache`.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "The standard 'how do you cache a SPA' question; strong answers contrast the hashed assets with index.html."
+    },
+    {
+      "id": "hr-068",
+      "q": "After every deploy, some users get a blank SPA page until they hard-refresh. What caching mistake is the most likely cause?",
+      "choices": [
+        "The hashed JS bundles were served with a max-age of one year",
+        "The CDN was set to compress JS with Brotli instead of gzip",
+        "`index.html` is cached long-term and still names deleted bundles",
+        "The API responses were sent with `Cache-Control: no-store`"
+      ],
+      "answer": 2,
+      "why": "A stale `index.html` references old hashed bundles that the deploy removed, so the script 404s and nothing renders. Serve the HTML with `no-cache` (revalidate every time) and keep old bundles around briefly across deploys.",
+      "tags": ["caching", "deployment"],
+      "level": 2,
+      "asked": "A real incident shape; a strong answer includes keeping the previous build's assets on the CDN."
+    },
+    {
+      "id": "hr-069",
+      "q": "What does `s-maxage` do that `max-age` does not?",
+      "choices": [
+        "It sets a lifetime for shared caches like CDNs, overriding `max-age` there",
+        "It sets the lifetime in seconds, whereas `max-age` is measured in minutes",
+        "It applies only to secure HTTPS responses, while `max-age` covers plain HTTP",
+        "It limits how long a stale response may be served while revalidating"
+      ],
+      "answer": 0,
+      "why": "`s-maxage` applies only to shared caches, so `max-age=0, s-maxage=300` lets a CDN hold a page for five minutes while browsers always revalidate. The stale-serving window is `stale-while-revalidate`.",
+      "tags": ["caching", "cdn"],
+      "level": 2,
+      "asked": "Separates people who have configured a CDN from those who have only read about browser caching."
+    },
+    {
+      "id": "hr-070",
+      "q": "A response with `Cache-Control: max-age=60, stale-while-revalidate=300` is 120 seconds old. What happens on the next request?",
+      "choices": [
+        "The cache blocks the request until it has fetched a fresh copy",
+        "The cache serves the stale copy at once and refreshes in the background",
+        "The cache discards the entry and returns a 504 to the client",
+        "The cache serves the copy only if the origin is currently down"
+      ],
+      "answer": 1,
+      "why": "Within the 300-second window after going stale, the cache may return the stale response immediately and revalidate asynchronously, hiding origin latency. Serving stale only when the origin is failing is `stale-if-error`.",
+      "tags": ["caching"],
+      "level": 3,
+      "asked": "Shows up in CDN and SWR (the React library is named after it) discussions; strong answers name the latency trade-off."
+    },
+    {
+      "id": "hr-071",
+      "q": "The browser sends `If-None-Match: \"v7\"` and the resource's current ETag is still `\"v7\"`. What should the server send?",
+      "choices": [
+        "200 with the full body, plus the same ETag header again",
+        "412 Precondition Failed, because that tag has already been sent before",
+        "304 Not Modified with no body, so the cached copy is reused",
+        "204 No Content, because there is nothing new to send back"
+      ],
+      "answer": 2,
+      "why": "A matching `If-None-Match` on a GET means the client's copy is current, so the server answers 304 with no body and the browser uses its cache. 412 is for failed preconditions on writes such as `If-Match`.",
+      "tags": ["caching", "etag"],
+      "level": 1,
+      "asked": "Basic conditional GET; follow-ups ask what the server saves (bandwidth, sometimes not the database query)."
+    },
+    {
+      "id": "hr-072",
+      "q": "What is the difference between a strong ETag `\"abc\"` and a weak one `W/\"abc\"`?",
+      "choices": [
+        "Weak tags expire after one hour; strong ones last until the resource changes",
+        "Weak tags are for GET only; strong tags are required for PUT and DELETE",
+        "Strong means byte-identical; weak means semantically equivalent content",
+        "Strong tags are hashed with SHA-256; weak ones may use MD5 or CRC32"
+      ],
+      "answer": 2,
+      "why": "A strong validator changes whenever any byte changes, so it is safe for range requests and `If-Match`; a weak one only promises equivalent meaning, which suits responses that differ by compression or whitespace. Neither implies a hash algorithm or lifetime.",
+      "tags": ["caching", "etag"],
+      "level": 3,
+      "asked": "Comes up when a proxy's gzip turns ETags weak and If-Match writes start failing."
+    },
+    {
+      "id": "hr-073",
+      "q": "How does an ETag help prevent lost updates when two users edit the same record?",
+      "choices": [
+        "The server locks the row while any client holds the current ETag",
+        "The client sends `If-Match` with its ETag, and a stale one gets 412",
+        "The client sends `If-None-Match`, and the server merges both edits",
+        "The CDN rejects the second PUT because its ETag is already cached"
+      ],
+      "answer": 1,
+      "why": "Optimistic concurrency: the PUT carries `If-Match: \"v7\"`; if someone else saved first the ETag is now `\"v8\"`, so the server refuses with 412 Precondition Failed and the client refetches. No lock is held while a user edits.",
+      "tags": ["etag", "concurrency"],
+      "level": 2,
+      "asked": "Strong answers map it to a rowversion or version column in EF Core, the database side of the same idea."
+    },
+    {
+      "id": "hr-074",
+      "q": "An API wants to force clients to use `If-Match` on every PUT so no client can blindly overwrite. Which status rejects a PUT that omits it?",
+      "choices": [
+        "409 Conflict",
+        "412 Precondition Failed",
+        "428 Precondition Required",
+        "400 Bad Request with a note"
+      ],
+      "answer": 2,
+      "why": "428 (RFC 6585) means the server requires the request to be conditional. 412 is for a precondition that was sent but failed; 409 describes a state conflict, not a missing header.",
+      "tags": ["status-codes", "concurrency"],
+      "level": 3
+    },
+    {
+      "id": "hr-075",
+      "q": "Why does a CDN caching `GET /api/me` without care risk a data leak?",
+      "choices": [
+        "The CDN may serve one user's cached profile to the next user",
+        "The CDN strips the `Authorization` header before forwarding it",
+        "CDNs always cache 401 responses, locking out logged-in users",
+        "CDNs decompress JSON, which exposes it to other CDN tenants"
+      ],
+      "answer": 0,
+      "why": "Unless the response is marked `private` or `no-store` (or the CDN is configured to bypass authenticated requests), a shared cache keyed by URL can hand the first user's data to everyone. Most CDNs skip caching when `Authorization` is present, but cookies are not always treated the same way.",
+      "tags": ["caching", "cdn", "security"],
+      "level": 2,
+      "asked": "A real incident class; strong answers mention `Cache-Control: private` as the explicit fix."
+    },
+    {
+      "id": "hr-076",
+      "q": "What does `Cache-Control: private, max-age=300` allow?",
+      "choices": [
+        "Any cache may store it, but only for the user who first requested it",
+        "The browser may cache it for five minutes; shared caches must not",
+        "Nobody may cache it, and `max-age` is ignored when `private` is set",
+        "The CDN may cache it for five minutes if the request used HTTPS"
+      ],
+      "answer": 1,
+      "why": "`private` restricts storage to a single-user cache such as the browser, so per-user responses can still be cached locally. It is not encryption and does not stop the browser cache.",
+      "tags": ["caching"],
+      "level": 1
+    },
+    {
+      "id": "hr-077",
+      "q": "A browser gets `Last-Modified: Tue, 02 Sep 2025 10:00:00 GMT` and no other caching headers. What may it do?",
+      "choices": [
+        "It must revalidate on every request, as if `no-cache` were set",
+        "It must not cache the response, because no `max-age` was given",
+        "It caches it for exactly 24 hours, the HTTP default freshness",
+        "It may compute a heuristic freshness lifetime and reuse it unchecked"
+      ],
+      "answer": 3,
+      "why": "Without explicit freshness, RFC 9111 lets caches use a heuristic, commonly 10% of the time since `Last-Modified`. That is why users sometimes see stale files: always set `Cache-Control` explicitly.",
+      "tags": ["caching"],
+      "level": 3,
+      "asked": "Explains a confusing 'why is this stale' bug; strong answers say never rely on heuristic caching."
+    },
+    {
+      "id": "hr-078",
+      "q": "Why is `Vary: Accept-Encoding` sent with compressed responses?",
+      "choices": [
+        "It tells the browser which compression algorithms the server supports",
+        "It makes caches store gzip and uncompressed copies as separate entries",
+        "It forces the browser to decompress the body before storing it",
+        "It stops proxies from recompressing a body that has already been compressed"
+      ],
+      "answer": 1,
+      "why": "`Vary` lists request headers that change the response, so a cache keys on them too. Without it a proxy could hand a Brotli body to a client that cannot decode it.",
+      "tags": ["caching", "compression"],
+      "level": 2
+    },
+    {
+      "id": "hr-079",
+      "q": "A CDN caches pages with `Vary: User-Agent`. What is the problem?",
+      "choices": [
+        "The CDN will ignore the header and cache one copy for all browsers",
+        "Mobile browsers do not send a User-Agent, so they receive errors",
+        "Thousands of distinct UA strings split the cache, so hit rates collapse",
+        "`Vary` only accepts `Accept-*` headers, so the response is rejected"
+      ],
+      "answer": 2,
+      "why": "Every UA string variant becomes a separate cache key, so almost nothing is ever reused. Normalise at the edge (for example to a device-class header) or avoid varying on UA at all.",
+      "tags": ["caching", "cdn"],
+      "level": 3,
+      "asked": "Shows you understand that every `Vary` header multiplies cache keys, a lesson usually learned from a bad hit rate."
+    },
+    {
+      "id": "hr-080",
+      "q": "In an ASP.NET Core 9 API, what is the key difference between response caching middleware and output caching middleware?",
+      "choices": [
+        "Response caching stores in Redis; output caching can only use memory",
+        "Response caching obeys client headers; output caching is server-controlled",
+        "Output caching is for Razor views only; response caching covers APIs",
+        "Output caching sets `Cache-Control`; response caching stores the body"
+      ],
+      "answer": 1,
+      "why": "Response caching follows HTTP caching rules, so a client sending `Cache-Control: no-cache` bypasses it. Output caching (`AddOutputCache`) is configured on the server, ignores client cache headers, supports tag-based eviction and can use Redis.",
+      "tags": ["caching", "aspnet-core"],
+      "level": 3,
+      "asked": "Asked in .NET roles; the strong answer is why output caching is the one you usually want for APIs."
+    },
+    {
+      "id": "hr-081",
+      "q": "A React app on `https://app.example` calls `https://api.example`. Which statement is true?",
+      "choices": [
+        "They share an origin because the registrable domain is the same",
+        "They are different origins, so the API must answer with CORS headers",
+        "They share an origin because both use HTTPS on the default port 443",
+        "Only cookies differ between them; fetch calls are unaffected by CORS"
+      ],
+      "answer": 1,
+      "why": "An origin is scheme + host + port, and `app.` and `api.` are different hosts. They are, however, the same site, which matters for `SameSite` cookies; same-site and same-origin are not the same thing.",
+      "tags": ["cors"],
+      "level": 1,
+      "asked": "The origin-versus-site distinction is a common follow-up that exposes how deep the candidate's model goes."
+    },
+    {
+      "id": "hr-082",
+      "q": "Which cross-origin request is sent without a preflight?",
+      "choices": [
+        "A PUT with `Content-Type: application/json` and no custom headers",
+        "A GET with an `Authorization: Bearer` header",
+        "A POST with `Content-Type: text/plain` and no custom headers",
+        "A DELETE with no body and no extra request headers set"
+      ],
+      "answer": 2,
+      "why": "Simple requests are GET, HEAD or POST with only safelisted headers and a form-like content type (`text/plain`, `multipart/form-data`, `application/x-www-form-urlencoded`). `Authorization`, JSON content type, PUT and DELETE all trigger a preflight.",
+      "tags": ["cors"],
+      "level": 2,
+      "asked": "Explains why adding a JSON header suddenly makes 'CORS break'; strong answers link simple requests to CSRF."
+    },
+    {
+      "id": "hr-083",
+      "q": "A cross-origin fetch fails with a CORS error, but the server log shows the request ran and a row was inserted. How is that possible?",
+      "choices": [
+        "The browser retried the request, and the retry succeeded silently",
+        "CORS blocks JavaScript from reading the response, not from sending it",
+        "The server ran the preflight OPTIONS as if it were the actual POST",
+        "The log is wrong, since CORS stops the request leaving the browser"
+      ],
+      "answer": 1,
+      "why": "For simple requests the browser sends the request and only withholds the response from your code if CORS headers are missing. That is why CORS is not a defence against CSRF: side effects still happen.",
+      "tags": ["cors", "security"],
+      "level": 2,
+      "asked": "Strong answers conclude that server-side authorization and CSRF protection must not depend on CORS."
+    },
+    {
+      "id": "hr-084",
+      "q": "A cross-origin fetch uses `credentials: 'include'`. Which response header setup lets the browser expose the response?",
+      "choices": [
+        "`Access-Control-Allow-Origin: *` together with `Allow-Credentials: true`",
+        "`Access-Control-Allow-Origin: https://app.example` plus `Allow-Credentials: true`",
+        "`Access-Control-Allow-Credentials: true` alone, as the origin is implied",
+        "`Access-Control-Allow-Origin: *` alone, since the cookie is on the request"
+      ],
+      "answer": 1,
+      "why": "With credentials the wildcard is forbidden; the server must echo the exact origin and send `Access-Control-Allow-Credentials: true`. Echoing any origin without an allowlist check is a serious misconfiguration.",
+      "tags": ["cors", "cookies"],
+      "level": 2,
+      "asked": "Cookie-based SPAs on a separate API domain hit this immediately, so it reveals hands-on CORS debugging."
+    },
+    {
+      "id": "hr-085",
+      "q": "Your API reflects the request's `Origin` into `Access-Control-Allow-Origin` for an allowlist of three sites, and a CDN caches responses. Which header must you also send?",
+      "choices": [
+        "`Vary: Origin`, so each origin gets its own cached response",
+        "`Access-Control-Max-Age`, so the CDN knows how long to cache",
+        "`Cache-Control: public`, so the CDN can store all the variants",
+        "`Access-Control-Expose-Headers: Origin` for the browser to see it"
+      ],
+      "answer": 0,
+      "why": "Without `Vary: Origin`, the CDN may serve a response carrying site A's allowed origin to site B, whose browser then blocks it. The cors middleware packages add `Vary: Origin` for you when reflecting origins.",
+      "tags": ["cors", "caching"],
+      "level": 3,
+      "asked": "Intermittent 'CORS works for some users' bugs come from this; it shows real debugging experience."
+    },
+    {
+      "id": "hr-086",
+      "q": "What does `Access-Control-Max-Age: 600` on a preflight response do?",
+      "choices": [
+        "It lets the browser cache the preflight result for up to 600 seconds",
+        "It lets the actual response be cached by the browser for 600 seconds",
+        "It limits the cross-origin session to 600 seconds before re-login",
+        "It tells the server to reject preflights sent more than 600s apart"
+      ],
+      "answer": 0,
+      "why": "The browser can skip repeat OPTIONS requests for the same URL, method and headers while the cached preflight is valid; browsers cap the value (Chromium at two hours). It has no effect on caching the real response.",
+      "tags": ["cors", "performance"],
+      "level": 2
+    },
+    {
+      "id": "hr-087",
+      "q": "Your frontend needs to read a custom `X-Total-Count` header from a cross-origin response, but `res.headers.get()` returns null. What fixes it?",
+      "choices": [
+        "Sending `Access-Control-Allow-Headers: X-Total-Count` on the preflight",
+        "Adding `Access-Control-Expose-Headers: X-Total-Count` to the response",
+        "Setting `mode: 'no-cors'` on the fetch so all headers become readable",
+        "Renaming it to `Total-Count`, since `X-` headers are always hidden"
+      ],
+      "answer": 1,
+      "why": "Cross-origin JavaScript can read only CORS-safelisted response headers unless the server exposes others. `Allow-Headers` is the opposite direction (request headers the client may send), and `no-cors` gives an opaque response with nothing readable.",
+      "tags": ["cors", "headers"],
+      "level": 2,
+      "asked": "A very common pagination bug; mixing up Allow-Headers and Expose-Headers is the tell."
+    },
+    {
+      "id": "hr-088",
+      "q": "In development, a Vite React app on port 5173 calls an API on port 5000 and hits CORS errors. What avoids CORS entirely for local development?",
+      "choices": [
+        "Setting `mode: 'no-cors'` on every fetch call the app makes",
+        "Running the browser with web security disabled during development",
+        "Configuring Vite's dev server to proxy `/api` to the backend",
+        "Moving the API to port 80 so the ports no longer need to match"
+      ],
+      "answer": 2,
+      "why": "With a dev-server proxy the browser only talks to its own origin, and Vite forwards `/api` server-side, where CORS does not apply. Production can mirror this with a reverse proxy serving both on one origin.",
+      "tags": ["cors", "tooling"],
+      "level": 1,
+      "asked": "Practical question; a strong answer mentions serving SPA and API from one origin in production too."
+    },
+    {
+      "id": "hr-089",
+      "q": "A request arrives with `Accept: application/json;q=0.5, text/csv`. Which format does the client prefer?",
+      "choices": [
+        "JSON, because it is listed first in the header",
+        "Either one; order and `q` values are only hints",
+        "CSV, because it has the implicit quality of 1",
+        "JSON, because `q=0.5` marks it as the default"
+      ],
+      "answer": 2,
+      "why": "Each media range has a quality value from 0 to 1, defaulting to 1 when omitted; higher wins regardless of order. So `text/csv` (q=1) beats JSON (q=0.5).",
+      "tags": ["content-negotiation"],
+      "level": 2,
+      "asked": "Checks that you can read q-values rather than assuming header order decides preference."
+    },
+    {
+      "id": "hr-090",
+      "q": "What does `Accept-Language: fr-CA, fr;q=0.8, en;q=0.5` let an API do?",
+      "choices": [
+        "Force the browser to translate the JSON response client-side",
+        "Pick the best localised representation the server can produce",
+        "Reject clients whose preferred language the server lacks with 406",
+        "Set the response's `Content-Type` charset to a French encoding"
+      ],
+      "answer": 1,
+      "why": "It is proactive content negotiation: the server chooses among available translations and should reply with `Content-Language` and `Vary: Accept-Language`. Many apps prefer an explicit user setting, since browser language is often wrong for the user.",
+      "tags": ["content-negotiation", "i18n"],
+      "level": 1
+    },
+    {
+      "id": "hr-091",
+      "q": "A client sends a gzip-compressed request body. Which header tells the server how to decode it?",
+      "choices": [
+        "`Accept-Encoding: gzip` on the request",
+        "`Content-Type: application/gzip`",
+        "`Transfer-Encoding: gzip` on the request",
+        "`Content-Encoding: gzip` on the request"
+      ],
+      "answer": 3,
+      "why": "`Content-Encoding` describes how the body being sent is encoded, in either direction; `Accept-Encoding` only states what the sender can receive. Servers often reject compressed request bodies unless configured, partly because of zip-bomb risk.",
+      "tags": ["compression", "headers"],
+      "level": 2
+    },
+    {
+      "id": "hr-092",
+      "q": "Why should you not gzip a response that contains both a secret CSRF token and text the attacker can inject, over HTTPS?",
+      "choices": [
+        "Gzip breaks the TLS record layer, so responses arrive corrupted",
+        "Gzip exposes the plain text to any proxy between the two ends",
+        "Compressed size leaks guesses about the secret (BREACH attack)",
+        "Gzip disables HTTP/2 multiplexing for that entire connection"
+      ],
+      "answer": 2,
+      "why": "BREACH: when attacker-controlled input and a secret share a compressed response, the ciphertext length shrinks when the guess matches part of the secret. Mitigations include masking tokens per response, separating secrets from reflected input, or disabling compression for such pages.",
+      "tags": ["compression", "security"],
+      "level": 3
+    },
+    {
+      "id": "hr-093",
+      "q": "A client requests `Range: bytes=0-1023` on a large file. Which response headers accompany the 206?",
+      "choices": [
+        "`Content-Range: bytes 0-1023/5000000` and `Content-Length: 1024`",
+        "`Accept-Ranges: 1024` and `Content-Length: 5000000` for the file",
+        "`Range: bytes 0-1023` echoed back and `Transfer-Encoding: chunked`",
+        "`Content-Range: 1024` and `Content-Length: 5000000` for the file"
+      ],
+      "answer": 0,
+      "why": "`Content-Range` states which bytes are included and the total size; `Content-Length` is the size of this part. `Accept-Ranges: bytes` in normal responses advertises that range requests are supported.",
+      "tags": ["range-requests", "headers"],
+      "level": 3
+    },
+    {
+      "id": "hr-094",
+      "q": "What is the main reason API responses are usually served with `Cache-Control: no-store` or `private, no-cache` by default?",
+      "choices": [
+        "Browsers cannot cache JSON, so any other value is simply ignored",
+        "API data is often per-user or changes often, so reuse is risky",
+        "HTTP/2 disables caching for requests that carry an `Authorization`",
+        "Setting any max-age on JSON breaks the browser's `fetch` API"
+      ],
+      "answer": 1,
+      "why": "Browsers and CDNs can cache JSON perfectly well; the default is conservative because API data is usually user-specific or volatile. Public, rarely changing endpoints (a product catalogue) can and should use `max-age` plus ETags.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Checks that you choose cache headers per endpoint rather than blanket-disabling caching."
+    },
+    {
+      "id": "hr-095",
+      "q": "Which of these responses does a shared cache store by default when no `Cache-Control` is present?",
+      "choices": [
+        "A 200 to a GET, which can be heuristically cached",
+        "A 201 to a POST, which carries the new resource",
+        "A 500 to a GET, so a failing origin is shielded",
+        "A 302 to a GET, which is cached until the next redirect arrives"
+      ],
+      "answer": 0,
+      "why": "200 to GET is cacheable by default (as are 301, 308, 404, 410 and a few others), so heuristic freshness can apply. POST responses are only cacheable with explicit freshness, 5xx generally are not, and 302 is not cacheable by default.",
+      "tags": ["caching"],
+      "level": 3
+    },
+    {
+      "id": "hr-096",
+      "q": "Which media type does RFC 9457 define for machine-readable HTTP error bodies?",
+      "choices": [
+        "`application/problem+json`",
+        "`application/error+json` with a `code` field",
+        "`application/json` with a top-level `error` key",
+        "`text/problem` with a plain-text error message"
+      ],
+      "answer": 0,
+      "why": "RFC 9457 (which obsoletes RFC 7807) defines Problem Details with members `type`, `title`, `status`, `detail` and `instance`, served as `application/problem+json`. ASP.NET Core emits it via `AddProblemDetails()` and `Results.Problem()`.",
+      "tags": ["errors", "problem-details"],
+      "level": 1,
+      "asked": "Knowing the standard by name signals you do not invent a new error format for every project."
+    },
+    {
+      "id": "hr-097",
+      "q": "In an RFC 9457 problem details body, what is the `type` member for?",
+      "choices": [
+        "The exception class name, such as `ValidationException`, for debugging",
+        "A URI identifying the kind of problem, stable enough for clients to switch on",
+        "The HTTP status family written as a word, such as `client-error` or `server-error`",
+        "The content type of the original request that caused the problem"
+      ],
+      "answer": 1,
+      "why": "`type` is a URI (ideally dereferenceable to docs) naming the problem category, such as `https://api.example/problems/insufficient-funds`; clients branch on it rather than parsing `detail`. Exposing exception class names leaks internals. It defaults to `about:blank` when absent.",
+      "tags": ["errors", "problem-details"],
+      "level": 2,
+      "asked": "A strong answer contrasts `type` (for code) with `detail` (for humans) and mentions extension members."
+    },
+    {
+      "id": "hr-098",
+      "q": "A form POST fails validation on two fields. How does an RFC 9457 response carry the per-field messages?",
+      "choices": [
+        "In the `detail` string, as one sentence listing both fields",
+        "In two separate problem objects inside a top-level JSON array",
+        "In an extension member such as `errors` mapping field to messages",
+        "In response headers named after each field that failed validation"
+      ],
+      "answer": 2,
+      "why": "Problem details allows extension members, and ASP.NET Core's `ValidationProblemDetails` uses `errors: { \"email\": [\"...\"] }`. A structured map lets the frontend put each message next to the right input; a sentence in `detail` cannot be mapped reliably.",
+      "tags": ["errors", "validation"],
+      "level": 2,
+      "asked": "Links API design to form UX; strong answers mention the field path format for nested objects."
+    },
+    {
+      "id": "hr-099",
+      "q": "What should a 500 response body contain in production?",
+      "choices": [
+        "A generic message plus a correlation id the user can quote to support",
+        "The exception message and stack trace so clients can report the bug",
+        "The failing SQL statement, so the team can reproduce the query quickly",
+        "Nothing at all, because any body on a 500 is a security vulnerability"
+      ],
+      "answer": 0,
+      "why": "Stack traces and SQL leak internals useful to attackers; the details belong in server logs, joined to the response by a trace or correlation id. An empty body is safe but leaves support with nothing to search for.",
+      "tags": ["errors", "security"],
+      "level": 1,
+      "asked": "Strong answers mention that ASP.NET Core's developer exception page must only run in Development."
+    },
+    {
+      "id": "hr-100",
+      "q": "Which URL design follows REST conventions for 'the comments on post 42'?",
+      "choices": [
+        "`GET /getCommentsForPost?postId=42`",
+        "`GET /posts/42/comments`",
+        "`POST /comments/search` with `{ postId: 42 }`",
+        "`GET /comment/list/42`"
+      ],
+      "answer": 1,
+      "why": "Resources are plural nouns and the method carries the verb; nesting expresses 'belongs to'. Keep nesting to one level: `/comments/7` is a better address for a single comment than `/posts/42/comments/7` when comment ids are globally unique.",
+      "tags": ["rest-design", "urls"],
+      "level": 1
+    },
+    {
+      "id": "hr-101",
+      "q": "How should a REST API model 'publish this draft article', an action that is not simple CRUD?",
+      "choices": [
+        "`GET /articles/7/publish`, so that it can be triggered by a link",
+        "`PATCH /articles/7` with `{ status: \"published\" }` when it is just a state change",
+        "`POST /publishArticle?id=7`, because actions that are not CRUD should always be verbs",
+        "`PUT /articles/7/publish` with an empty body that the server ignores"
+      ],
+      "answer": 1,
+      "why": "If publishing is only a field change with validation, PATCH the state. If it triggers significant side effects (notify subscribers, schedule), a sub-resource such as `POST /articles/7/publication` is also accepted. A GET with side effects is the one clearly wrong option.",
+      "tags": ["rest-design"],
+      "level": 2,
+      "asked": "Tests pragmatism: strong candidates give both options and the reason to choose each."
+    },
+    {
+      "id": "hr-102",
+      "q": "What does HATEOAS add to a REST response?",
+      "choices": [
+        "A schema version so clients can validate the response structure",
+        "Links to related actions and resources, so clients follow URLs not build them",
+        "A signed hash of the body, so that the client can detect any tampering in transit",
+        "An expiry time telling the client when to fetch the resource again"
+      ],
+      "answer": 1,
+      "why": "Hypermedia controls (for example `_links.cancel.href`) let the server advertise what the client can do next in the current state. Few JSON APIs go all the way, but including `next` links in pagination is a widely used piece of it.",
+      "tags": ["rest-design"],
+      "level": 3,
+      "asked": "Usually asked as 'is your API really RESTful'; a pragmatic answer beats a purist one."
+    },
+    {
+      "id": "hr-103",
+      "q": "A client needs to delete 500 records. What is a sensible API shape?",
+      "choices": [
+        "500 parallel `DELETE /items/:id` calls from the browser in one burst",
+        "`GET /items/delete?ids=1,2,3,...` so the ids fit in a single request",
+        "`POST /items/bulk-delete` with the ids in the body and a per-id result",
+        "`DELETE /items` with no body, clearing the collection the user sees"
+      ],
+      "answer": 2,
+      "why": "A bulk endpoint keeps it to one request with a bounded body, and per-id results tell the client which failed. A GET with side effects is unsafe, 500 parallel calls hammer the server and rate limits, and a body-less collection DELETE is terrifyingly broad.",
+      "tags": ["rest-design", "bulk-operations"],
+      "level": 2,
+      "asked": "Bulk operations come up in almost every admin-screen design question."
+    },
+    {
+      "id": "hr-104",
+      "q": "Should a JSON API wrap every response as `{ \"data\": ... }`?",
+      "choices": [
+        "It is a style choice, useful for adding `meta` or paging alongside the data",
+        "Yes, because browsers refuse to parse a bare JSON array returned from any cross-origin API",
+        "No, because an envelope breaks HTTP caching of JSON responses",
+        "Yes, and the status code should also be duplicated inside the envelope"
+      ],
+      "answer": 0,
+      "why": "Envelopes help when you need `meta` (totals, cursors) next to the payload, and top-level objects are easier to extend than bare arrays. The old top-level array concern was a JSON hijacking issue in ancient browsers, not a parsing limit, and duplicating the status in the body is redundant.",
+      "tags": ["rest-design"],
+      "level": 2
+    },
+    {
+      "id": "hr-105",
+      "q": "A `GET /orders` endpoint returns `createdAt`. Which format is safest for dates in a JSON API?",
+      "choices": [
+        "A locale string like `24/09/2026 14:00` expressed in the server's own local time zone",
+        "Seconds since the epoch as a string, to avoid float precision loss",
+        "ISO 8601 in UTC, such as `2026-09-24T14:00:00Z`, formatted by the client",
+        "A JavaScript `Date` object, which `JSON.stringify` preserves as a type"
+      ],
+      "answer": 2,
+      "why": "ISO 8601 with an explicit offset is unambiguous, sortable and parsed by every platform; formatting for display belongs in the UI. JSON has no date type, so `JSON.stringify` turns a `Date` into an ISO string and `JSON.parse` leaves it as a string.",
+      "tags": ["rest-design", "dates"],
+      "level": 1,
+      "asked": "Time zone bugs are a common interview war story; strong answers mention storing UTC and formatting late."
+    },
+    {
+      "id": "hr-106",
+      "q": "What does this Node 24 code print?",
+      "code": "const order = { total: 12.5, placed: new Date(0) };\nconst back = JSON.parse(JSON.stringify(order));\nconsole.log(typeof back.placed, back.placed);",
+      "lang": "js",
+      "choices": [
+        "object 1970-01-01T00:00:00.000Z",
+        "number 0",
+        "string 1970-01-01T00:00:00.000Z",
+        "string Thu, 01 Jan 1970 00:00:00 GMT"
+      ],
+      "answer": 2,
+      "why": "`Date.prototype.toJSON` produces an ISO string, and `JSON.parse` has no way to know it was a date, so it stays a string. Clients must convert explicitly (or validate with a schema that coerces), otherwise date methods fail at runtime.",
+      "tags": ["dates", "json"],
+      "level": 1,
+      "asked": "Dates arriving as strings is a daily frontend bug; the interviewer wants to hear where you convert them."
+    },
+    {
+      "id": "hr-107",
+      "q": "Why should an API send large numeric ids, such as 64-bit database keys, as strings in JSON?",
+      "choices": [
+        "JSON cannot represent integers, only floating-point numbers",
+        "JavaScript numbers lose precision above 2^53, corrupting the id",
+        "String ids compress better with gzip than numeric ones do",
+        "Numeric ids are not allowed as values for `Content-Type: application/json`"
+      ],
+      "answer": 1,
+      "why": "`JSON.parse` turns numbers into IEEE-754 doubles, which are exact only up to `Number.MAX_SAFE_INTEGER` (2^53 - 1). A Snowflake-style id like 1234567890123456789 silently changes, so APIs such as Twitter's send `id_str`.",
+      "tags": ["json", "rest-design"],
+      "level": 2,
+      "asked": "Real cross-language bug between C# `long` and JavaScript; strong answers mention BigInt and string ids."
+    },
+    {
+      "id": "hr-108",
+      "q": "What does this Node 24 code print?",
+      "code": "const body = '{\"id\": 9007199254740993}';\nconsole.log(JSON.parse(body).id);",
+      "lang": "js",
+      "choices": [
+        "9007199254740993",
+        "9007199254740992",
+        "It throws a RangeError",
+        "9007199254740993n"
+      ],
+      "answer": 1,
+      "why": "9007199254740993 is 2^53 + 1, which a double cannot represent, so it rounds to 9007199254740992 with no error. This is why APIs serialise 64-bit ids as strings.",
+      "tags": ["json"],
+      "level": 3
+    },
+    {
+      "id": "hr-109",
+      "q": "A PATCH body is `{ \"nickname\": null }`. With JSON Merge Patch (RFC 7396) semantics, what happens?",
+      "choices": [
+        "The `nickname` field is left unchanged, as null values are skipped",
+        "The `nickname` field is removed or cleared on the stored resource",
+        "The request is rejected, because null is not valid in a merge patch",
+        "Every field not in the body is also set to null on the resource"
+      ],
+      "answer": 1,
+      "why": "In merge patch, a present key with `null` means delete that member, and absent keys mean leave alone. Your deserialiser must distinguish absent from null; plain C# DTOs map both to null unless you track which properties were supplied.",
+      "tags": ["methods", "patch"],
+      "level": 2,
+      "asked": "Asked to see if you have hit the absent-versus-null problem when implementing PATCH."
+    },
+    {
+      "id": "hr-110",
+      "q": "What does a JSON Patch (RFC 6902) request body look like?",
+      "choices": [
+        "A partial object whose fields overwrite the stored resource's fields",
+        "An array of operations such as `{ op: \"replace\", path: \"/name\", value: \"x\" }`",
+        "A diff in unified format generated from the old and new JSON text",
+        "A full copy of the resource, with each changed field marked by a `$set` operator key"
+      ],
+      "answer": 1,
+      "why": "JSON Patch (`application/json-patch+json`) is a list of add/remove/replace/move/copy/test operations with JSON Pointer paths, which can edit array items precisely. The partial-object style is JSON Merge Patch (`application/merge-patch+json`).",
+      "tags": ["methods", "patch"],
+      "level": 3
+    },
+    {
+      "id": "hr-111",
+      "q": "Which API change is backwards compatible for existing JSON clients?",
+      "choices": [
+        "Renaming the `userName` response field to `username`",
+        "Adding an optional `nickname` field to the response",
+        "Making a previously optional request field required",
+        "Changing `price` from a number to a formatted string"
+      ],
+      "answer": 1,
+      "why": "Adding response fields is safe for tolerant readers that ignore unknown properties. Renames, type changes and new required inputs all break existing callers. Strict clients that reject unknown fields are a reason to document the 'ignore unknown fields' rule.",
+      "tags": ["versioning"],
+      "level": 1,
+      "asked": "The base of every versioning conversation; strong answers mention enum additions as a subtle break."
+    },
+    {
+      "id": "hr-112",
+      "q": "Your API adds a new value `\"refunded\"` to the `status` enum in responses. Why can this still break clients?",
+      "choices": [
+        "Clients with exhaustive switches or strict enum parsing fail on the new value",
+        "It cannot break anything, because adding data is always backwards compatible",
+        "JSON enums are positional, so every existing value shifts along by one index number",
+        "Browsers cache enum schemas and reject values not seen on first load"
+      ],
+      "answer": 0,
+      "why": "A C# client deserialising into an enum, or a TypeScript switch that throws on unknown values, breaks on an unexpected member. Document that enums may grow and that clients must handle unknown values.",
+      "tags": ["versioning", "enums"],
+      "level": 3,
+      "asked": "Separates candidates who have maintained a public API from those who have only designed one."
+    },
+    {
+      "id": "hr-113",
+      "q": "What do the `Deprecation` and `Sunset` response headers communicate?",
+      "choices": [
+        "That the response came from a stale cache and is due to be refreshed",
+        "That the endpoint is deprecated, and the date after which it stops working",
+        "That the client's API key expires soon and must be rotated before then",
+        "That the server is going into scheduled maintenance at the stated time"
+      ],
+      "answer": 1,
+      "why": "`Sunset` (RFC 8594) gives the date the resource is expected to become unresponsive and `Deprecation` (RFC 9745) marks it deprecated, often with a `Link` to migration docs. Clients and API gateways can alert on them before anything breaks.",
+      "tags": ["versioning", "headers"],
+      "level": 2,
+      "asked": "Shows you know how to retire an endpoint gracefully instead of just deleting it."
+    },
+    {
+      "id": "hr-114",
+      "q": "Which versioning strategy is easiest to test in a browser and route at a gateway?",
+      "choices": [
+        "A custom media type such as `Accept: application/vnd.shop.v2+json`",
+        "A custom request header such as `Api-Version: 2`",
+        "A version in the URL path, such as `/v2/orders`",
+        "A version negotiated inside the JSON request body"
+      ],
+      "answer": 2,
+      "why": "Path versions are visible, bookmarkable and trivially routed by proxies. Header and media-type versioning keep URLs stable and are arguably purer, but need tooling to test; versioning in the body cannot work for GET.",
+      "tags": ["versioning"],
+      "level": 1
+    },
+    {
+      "id": "hr-115",
+      "q": "What does an OpenAPI document describe?",
+      "choices": [
+        "An HTTP API's paths, operations, parameters, schemas and auth schemes",
+        "The deployment topology of the API servers and the load balancers that sit in front",
+        "Rate-limit quotas and billing tiers for each consumer of the API",
+        "The database tables behind each endpoint and their foreign keys"
+      ],
+      "answer": 0,
+      "why": "OpenAPI (3.1 is current) is a machine-readable contract of the HTTP surface, used to render docs, generate clients and validate requests. It deliberately says nothing about storage or infrastructure.",
+      "tags": ["openapi"],
+      "level": 1
+    },
+    {
+      "id": "hr-116",
+      "q": "A team keeps its OpenAPI spec in the repo and wants CI to stop accidental breaking changes. What does that check compare?",
+      "choices": [
+        "The spec's YAML formatting against a linter's style rules only",
+        "The new spec against the last released one, flagging breaking diffs",
+        "The number of endpoints, failing the build when the count goes down",
+        "Response times recorded against the spec's documented latency goals"
+      ],
+      "answer": 1,
+      "why": "Tools such as oasdiff compare two OpenAPI versions and classify changes, for example a removed field, a newly required parameter or a narrowed enum, as breaking. Linting (Spectral) enforces style but cannot tell you what changed since the last release.",
+      "tags": ["openapi", "versioning"],
+      "level": 2,
+      "asked": "Shows you treat the API contract as something CI protects, not just documentation."
+    },
+    {
+      "id": "hr-117",
+      "q": "A team generates TypeScript types for its React app from the backend's OpenAPI spec. What does that catch?",
+      "choices": [
+        "Every runtime shape mismatch, so response validation can be skipped",
+        "Compile-time drift when the contract changes and the frontend has not",
+        "Slow endpoints, because the generator measures each operation's latency",
+        "Authorization bugs, because each generated type encodes its user roles"
+      ],
+      "answer": 1,
+      "why": "Regenerating types after a spec change makes the compiler flag every call site that no longer fits. Types still vanish at runtime, so if the server deviates from its own spec, only runtime validation or contract tests will notice.",
+      "tags": ["openapi", "typescript"],
+      "level": 2,
+      "asked": "Strong answers pair generated types with runtime validation such as Zod at the boundary."
+    },
+    {
+      "id": "hr-118",
+      "q": "In GraphQL, what is the N+1 problem and the standard fix?",
+      "choices": [
+        "Clients send N+1 queries for each page; persisted queries batch them into one request",
+        "Each nested field resolver queries the DB per parent; DataLoader batches them",
+        "The schema has N+1 types per table; code generation collapses them down",
+        "Each mutation triggers N+1 subscriptions; debouncing merges the events"
+      ],
+      "answer": 1,
+      "why": "Resolving `posts { author }` naively runs one query for posts and one per post for its author. DataLoader collects keys within a tick and issues one `WHERE id IN (...)` query, caching per request.",
+      "tags": ["graphql", "performance"],
+      "level": 2,
+      "asked": "The first GraphQL performance question most interviewers ask; naming DataLoader is the expected answer."
+    },
+    {
+      "id": "hr-119",
+      "q": "Why is HTTP caching harder for a GraphQL API than for REST?",
+      "choices": [
+        "GraphQL responses are binary, so CDNs cannot store them at all",
+        "Queries usually go as POSTs to one URL, so URL-keyed caches miss",
+        "GraphQL forbids `Cache-Control`, as every result must be live",
+        "GraphQL servers must disable ETags to support subscriptions"
+      ],
+      "answer": 1,
+      "why": "One endpoint with the query in a POST body gives caches nothing to key on. Persisted queries sent via GET (a hash in the URL) restore CDN caching; client caches such as Apollo's normalise by id instead.",
+      "tags": ["graphql", "caching"],
+      "level": 3
+    },
+    {
+      "id": "hr-120",
+      "q": "A GraphQL request partly fails: one field's resolver throws. What does the client typically receive?",
+      "choices": [
+        "HTTP 500 with no data, because any resolver error aborts the query",
+        "HTTP 200 with partial `data` and an `errors` array naming the path",
+        "HTTP 207 Multi-Status with one status code for each requested field",
+        "HTTP 400, because the query was invalid for that field's resolver"
+      ],
+      "answer": 1,
+      "why": "GraphQL over HTTP commonly returns 200 with `data` (the failed field null) plus `errors` with a `path`. Monitoring that only counts 5xx misses these failures, so GraphQL services track errors inside the body.",
+      "tags": ["graphql", "errors"],
+      "level": 2,
+      "asked": "Monitoring GraphQL correctly needs this, and REST-only candidates rarely know it."
+    },
+    {
+      "id": "hr-121",
+      "q": "What is the main reason teams pick gRPC for service-to-service calls?",
+      "choices": [
+        "Browsers can call it directly with fetch and no proxy in the middle",
+        "A Protobuf contract generates typed clients, over efficient HTTP/2",
+        "It needs no schema, so services can evolve without coordinating",
+        "It returns JSON by default, making responses easy to read in logs"
+      ],
+      "answer": 1,
+      "why": "gRPC uses `.proto` contracts to generate strongly typed clients and servers, sends compact binary messages, and supports streaming over HTTP/2. Browsers cannot speak raw gRPC, so they need gRPC-Web or Connect through a proxy.",
+      "tags": ["grpc"],
+      "level": 2,
+      "asked": "Strong answers say REST stays the default for public and browser-facing APIs."
+    },
+    {
+      "id": "hr-122",
+      "q": "In a Protobuf message used by gRPC, why must you never reuse a removed field's number?",
+      "choices": [
+        "Field numbers identify data on the wire, so old clients would misread it",
+        "Protobuf assigns numbers alphabetically, so reuse reorders every field",
+        "Reused numbers make the generated C# class fail to compile at all",
+        "gRPC caches field numbers per connection and rejects any message whose numbers changed"
+      ],
+      "answer": 0,
+      "why": "The binary encoding carries field numbers, not names; if 3 used to be `email` and now means `phone`, an old client decodes phone numbers as emails. Mark removed numbers `reserved` so the compiler blocks reuse.",
+      "tags": ["grpc", "versioning"],
+      "level": 3
+    },
+    {
+      "id": "hr-123",
+      "q": "How do server-sent events (SSE) differ from WebSockets?",
+      "choices": [
+        "SSE is one-way server to client over plain HTTP, with automatic reconnect",
+        "SSE is bidirectional but limited to binary frames rather than text",
+        "SSE needs a special protocol upgrade handshake, which most corporate proxies block outright",
+        "SSE only works over HTTP/1.1 and fails on HTTP/2 connections"
+      ],
+      "answer": 0,
+      "why": "SSE is a long-lived `text/event-stream` response consumed by `EventSource`, which reconnects and can resume with `Last-Event-ID`. It is text-only and one-way; WebSockets are bidirectional and need an upgrade. SSE works well over HTTP/2.",
+      "tags": ["realtime", "streaming"],
+      "level": 2
+    },
+    {
+      "id": "hr-124",
+      "q": "A long-lived SSE stream through nginx arrives at the browser in big delayed bursts. What is the usual cause?",
+      "choices": [
+        "The browser's `EventSource` batches events every thirty seconds",
+        "HTTP/2 multiplexing merges events from different streams together",
+        "The proxy buffers the response; disable buffering for that route",
+        "Gzip cannot compress `text/event-stream`, so the proxy stalls it"
+      ],
+      "answer": 2,
+      "why": "Reverse proxies buffer upstream responses by default; for streams you disable it (nginx `proxy_buffering off` or the `X-Accel-Buffering: no` response header) and make sure compression middleware flushes.",
+      "tags": ["streaming", "proxies"],
+      "level": 3
+    },
+    {
+      "id": "hr-125",
+      "q": "Why is `POST /api/users/42/delete` a poor design compared with `DELETE /api/users/42`?",
+      "choices": [
+        "It hides a delete behind a non-idempotent method, so tools cannot reason about it",
+        "Browsers refuse to send POST requests to any URL ending with a verb",
+        "A POST cannot carry authentication headers, so the delete ends up completely unprotected",
+        "A POST response is always cached by CDNs, so the delete would run once"
+      ],
+      "answer": 0,
+      "why": "Using the right method lets clients, gateways and retry logic know the operation is idempotent and destructive, and keeps URLs as nouns. HTML forms only support GET and POST, which is where the verb-URL habit comes from.",
+      "tags": ["rest-design", "methods"],
+      "level": 1
+    },
+    {
+      "id": "hr-126",
+      "q": "A React component fetches search results and must give up after 5 seconds. Which Node 24 / modern browser API does that most directly?",
+      "choices": [
+        "`fetch(url, { timeout: 5000 })`, the built-in fetch timeout option",
+        "`fetch(url, { signal: AbortSignal.timeout(5000) })`",
+        "`Promise.race` with a `setTimeout`, which also cancels the request",
+        "`fetch(url, { keepalive: false })`, which closes idle connections"
+      ],
+      "answer": 1,
+      "why": "`AbortSignal.timeout(ms)` aborts the request and rejects with a `TimeoutError` DOMException. `fetch` has no `timeout` option, and `Promise.race` stops you waiting but leaves the request running.",
+      "tags": ["fetch", "timeouts"],
+      "level": 2,
+      "asked": "Every HTTP client needs a timeout; strong answers also combine it with a user-cancel signal via `AbortSignal.any`."
+    },
+    {
+      "id": "hr-127",
+      "q": "What does this Node 24 code print when the request is aborted by the timeout?",
+      "code": "try {\n  await fetch('https://slow.example', { signal: AbortSignal.timeout(10) });\n} catch (e) {\n  console.log(e.name);\n}",
+      "lang": "js",
+      "choices": [
+        "AbortError",
+        "TimeoutError",
+        "TypeError",
+        "FetchError"
+      ],
+      "answer": 1,
+      "why": "A signal from `AbortSignal.timeout` rejects with a DOMException named `TimeoutError`, whereas a manual `controller.abort()` gives `AbortError`. Distinguishing them lets you show 'timed out, retry?' rather than silently ignoring a user cancel.",
+      "tags": ["fetch", "timeouts"],
+      "level": 3
+    },
+    {
+      "id": "hr-128",
+      "q": "Where should a 201 response to `POST /api/invoices` point the client to find the new invoice?",
+      "choices": [
+        "In a `Content-Location` header naming the collection URL",
+        "In a `Location` header with the new invoice's URL",
+        "In a `Link` header with `rel=\"self\"` pointing at the POST URL",
+        "In a `Refresh` header that tells the browser to reload it"
+      ],
+      "answer": 1,
+      "why": "`Location` on a 201 identifies the created resource; ASP.NET Core's `CreatedAtAction`/`Results.Created` and a manual `res.location()` in Express set it. Returning the body too saves the client a round trip.",
+      "tags": ["headers", "status-codes"],
+      "level": 1,
+      "asked": "A basic REST hygiene check that often appears in take-home code reviews."
+    },
+    {
+      "id": "hr-129",
+      "q": "How does a JSON API commonly expose 'next page' links without an envelope, for example GitHub's API?",
+      "choices": [
+        "A `Next-Page` custom header containing the next page number",
+        "A `Link` header with URLs tagged `rel=\"next\"`, `rel=\"prev\"` and so on",
+        "A `Location` header on every 200 response pointing at the next page",
+        "A `Refresh` header that makes the client fetch the next page itself"
+      ],
+      "answer": 1,
+      "why": "RFC 8288 web linking lets a response advertise related URLs with relation types; GitHub sends `Link: <...page=3>; rel=\"next\", <...>; rel=\"last\"`. Cross-origin frontends also need `Access-Control-Expose-Headers: Link` to read it.",
+      "tags": ["pagination", "headers"],
+      "level": 2
+    },
+    {
+      "id": "hr-130",
+      "q": "An HTML form uploads a file with `enctype=\"multipart/form-data\"`. What does the body look like?",
+      "choices": [
+        "A JSON object with the file encoded as a base64 string field",
+        "Parts separated by a boundary, each with its own headers and content",
+        "URL-encoded `key=value` pairs, with the file bytes percent-encoded",
+        "The raw file bytes only, with other fields moved into the query string"
+      ],
+      "answer": 1,
+      "why": "Multipart bodies use a boundary string declared in `Content-Type`; each part has `Content-Disposition` (field name, filename) and optionally its own `Content-Type`. Base64 in JSON works but inflates the payload by about a third.",
+      "tags": ["uploads", "content-type"],
+      "level": 1
+    },
+    {
+      "id": "hr-131",
+      "q": "In the browser, you POST a `FormData` with a file using fetch. Why should you NOT set the `Content-Type` header yourself?",
+      "choices": [
+        "The browser must add the boundary parameter, which a manual header lacks",
+        "Setting it triggers a CORS preflight that forms are otherwise exempt from",
+        "A manual header forces the browser to encode the file as base64 text",
+        "fetch throws a TypeError if any header is set on a FormData request"
+      ],
+      "answer": 0,
+      "why": "When the body is `FormData`, fetch writes `multipart/form-data; boundary=----...` itself. Setting `multipart/form-data` by hand omits the boundary, so the server cannot split the parts and sees an empty body.",
+      "tags": ["uploads", "fetch"],
+      "level": 2,
+      "asked": "A classic 'upload works in Postman but not in the app' bug that interviewers use to spot hands-on experience."
+    },
+    {
+      "id": "hr-132",
+      "q": "Which body format does a plain HTML `<form method=\"post\">` without `enctype` send?",
+      "choices": [
+        "`application/json`, built from the form's named inputs",
+        "`multipart/form-data`, even when there are no file inputs",
+        "`application/x-www-form-urlencoded`, as `a=1&b=2` pairs",
+        "`text/plain`, with one field per line of the request body"
+      ],
+      "answer": 2,
+      "why": "URL-encoded is the default; you opt into multipart for files. Express 5 needs `express.urlencoded()` to parse it and ASP.NET Core binds it with `[FromForm]`, whereas `express.json()` would ignore such a body.",
+      "tags": ["forms", "content-type"],
+      "level": 1
+    },
+    {
+      "id": "hr-133",
+      "q": "An Express 5 route reads `req.body.email` and it is always `undefined`, even though the client sends JSON. What is the most likely cause?",
+      "choices": [
+        "Express 5 removed `req.body`, so it must now be read from `req.json()`",
+        "JSON bodies are only parsed on PUT, so a POST route never gets them",
+        "The client omits `Content-Type: application/json`, so the parser skips it",
+        "The route handler is not `async`, so the body has not arrived yet"
+      ],
+      "answer": 2,
+      "why": "`express.json()` only parses bodies whose `Content-Type` matches, so a missing header leaves `req.body` undefined in Express 5 (it was `{}` in Express 4). Check the header in the network tab before blaming the server.",
+      "tags": ["content-type", "express"],
+      "level": 1,
+      "asked": "A debugging question: strong candidates check the request headers in DevTools first."
+    },
+    {
+      "id": "hr-134",
+      "q": "What does `Content-Type: application/json; charset=utf-8` add over `application/json`?",
+      "choices": [
+        "Nothing meaningful: JSON is defined as UTF-8, so the parameter is ignored",
+        "It enables emoji in JSON, which otherwise are escaped by the server",
+        "It tells gzip to use a UTF-8 dictionary, improving compression",
+        "It is required for browsers to parse JSON with non-ASCII characters"
+      ],
+      "answer": 0,
+      "why": "RFC 8259 requires JSON exchanged between systems to be UTF-8 and the `application/json` registration defines no charset parameter. It is harmless and common, but it matters for `text/*` types, not for JSON.",
+      "tags": ["content-type", "encoding"],
+      "level": 3
+    },
+    {
+      "id": "hr-135",
+      "q": "What is `Expect: 100-continue` used for on a large upload?",
+      "choices": [
+        "It asks the server to compress the upload as it arrives",
+        "It lets the server reject by headers before the body is sent",
+        "It tells the server to resume a partly finished upload",
+        "It tells proxies to keep the connection open for 100 seconds"
+      ],
+      "answer": 1,
+      "why": "The client sends headers and waits for a `100 Continue` interim response; if auth or size checks fail the server replies 401 or 413 straight away and the gigabyte body is never transmitted. curl does this automatically for large bodies.",
+      "tags": ["status-codes", "uploads"],
+      "level": 3
+    },
+    {
+      "id": "hr-136",
+      "q": "What is `103 Early Hints` for?",
+      "choices": [
+        "Warning the client that the final response will be an error",
+        "Sending `Link` preload headers while the server still builds the page",
+        "Telling the client to retry the request at a nearby edge server",
+        "Signalling that the response body will arrive in many small chunks"
+      ],
+      "answer": 1,
+      "why": "103 is an interim response carrying `Link: <...>; rel=preload` headers, so the browser starts fetching CSS and fonts while the origin is still rendering. CDNs often generate it from cached headers.",
+      "tags": ["status-codes", "performance"],
+      "level": 3
+    },
+    {
+      "id": "hr-137",
+      "q": "What does HTTP keep-alive (persistent connections) save?",
+      "choices": [
+        "The server's session state, which would otherwise be lost between calls",
+        "The TCP and TLS handshakes, by reusing one connection for many requests",
+        "Bandwidth, by keeping a compressed copy of each response in memory",
+        "Authentication, by remembering the first request's `Authorization` header"
+      ],
+      "answer": 1,
+      "why": "Opening a TLS connection costs several round trips; reusing it avoids that. It has nothing to do with application sessions: each request is still independent and must carry its own credentials.",
+      "tags": ["connections", "performance"],
+      "level": 1,
+      "asked": "Leads into why creating a new `HttpClient` per request in .NET exhausts sockets."
+    },
+    {
+      "id": "hr-138",
+      "q": "A .NET service creates `new HttpClient()` inside every request handler and disposes it. Under load it fails with socket errors. Why?",
+      "choices": [
+        "HttpClient is not thread-safe, so concurrent handlers corrupt it",
+        "Disposed clients leave sockets in TIME_WAIT, exhausting local ports",
+        "Each HttpClient opens a new thread, exhausting the thread pool",
+        "HttpClient caches every response in memory until it is disposed"
+      ],
+      "answer": 1,
+      "why": "Each disposal closes its connections, which linger in TIME_WAIT, so a burst uses up ephemeral ports. Use `IHttpClientFactory` (typed or named clients) or a long-lived client with `PooledConnectionLifetime` so DNS changes are still picked up.",
+      "tags": ["connections", "dotnet"],
+      "level": 2,
+      "asked": "One of the most famous .NET HTTP pitfalls; strong answers mention the DNS-staleness problem with a singleton too."
+    },
+    {
+      "id": "hr-139",
+      "q": "Is `/api/Users` the same resource as `/api/users`?",
+      "choices": [
+        "Yes, URLs are case-insensitive throughout, by the HTTP spec",
+        "Only the host is case-insensitive; the path may be case-sensitive",
+        "Yes, but only when the server runs on a Windows host machine",
+        "No, and the query string is also always compared case-sensitively"
+      ],
+      "answer": 1,
+      "why": "Scheme and host are case-insensitive; path comparison is up to the server. ASP.NET Core routing is case-insensitive by default while Express is not unless configured, and caches treat the two as separate keys. Pick lowercase and stick to it.",
+      "tags": ["urls", "rest-design"],
+      "level": 2
+    },
+    {
+      "id": "hr-140",
+      "q": "What should `GET /api/orders/abc` return when order ids are integers?",
+      "choices": [
+        "500, because the database throws when parsing `abc` as an integer",
+        "400 or 404, decided once and applied consistently across the API",
+        "200 with `null`, because no order with that id could be found",
+        "422, because the id is well-formed text but semantically wrong"
+      ],
+      "answer": 1,
+      "why": "The request is the client's fault, so it must be a 4xx; ASP.NET Core route constraints like `{id:int}` produce 404, while explicit validation often gives 400. Leaking a 500 means an unhandled parse exception reached the user.",
+      "tags": ["status-codes", "validation"],
+      "level": 1,
+      "asked": "Asked to see whether invalid input can ever surface as a 500 in your API."
+    },
+    {
+      "id": "hr-141",
+      "q": "A search endpoint's filter set is too large for a URL. What is a common pragmatic design?",
+      "choices": [
+        "Send a GET with the filters in a JSON body, which every proxy forwards",
+        "Split the filters across several GETs and intersect results on the client",
+        "`POST /orders/search` with the filters in the body, accepting weaker caching",
+        "Store filters in a cookie so every GET to the endpoint carries them along"
+      ],
+      "answer": 2,
+      "why": "POST-for-search is widely used when criteria are large or sensitive, at the cost of URL-based caching and bookmarking. Some APIs also save the search as a resource (`POST /searches` then `GET /searches/7/results`) to get a cacheable URL back.",
+      "tags": ["rest-design", "filtering"],
+      "level": 2,
+      "asked": "A pragmatic design question; the strong answer names what you give up by using POST."
+    },
+    {
+      "id": "hr-142",
+      "q": "Why should sensitive values such as an email address stay out of query strings where possible?",
+      "choices": [
+        "Query strings are sent unencrypted even when the connection uses HTTPS",
+        "URLs are logged by servers and proxies, and kept in browser history",
+        "Query strings are limited to ASCII, so most email addresses are garbled",
+        "Browsers strip query strings from cross-origin requests by default"
+      ],
+      "answer": 1,
+      "why": "TLS encrypts the full URL in transit, but URLs are written to access logs, analytics, history and sometimes `Referer` headers. Put personal data and tokens in the body or headers instead.",
+      "tags": ["urls", "security"],
+      "level": 1,
+      "asked": "Catches the myth that HTTPS leaves query strings visible on the wire, and tests where data really leaks."
+    },
+    {
+      "id": "hr-143",
+      "q": "What does `Referrer-Policy: strict-origin-when-cross-origin` (the browser default) send to other sites?",
+      "choices": [
+        "The full URL including path and query, on every cross-origin request",
+        "Only the origin, and nothing at all when going from HTTPS to HTTP",
+        "Nothing, since cross-origin requests never carry a `Referer` header",
+        "The full URL, but only when the destination is also an HTTPS site"
+      ],
+      "answer": 1,
+      "why": "Same-origin requests get the full URL; cross-origin requests get only `https://app.example/`; downgrades get nothing. That default limits leaks of paths like `/reset?token=...`, but tokens still should not live in URLs.",
+      "tags": ["headers", "security"],
+      "level": 2
+    },
+    {
+      "id": "hr-144",
+      "q": "Which headers does a cookie set with `Set-Cookie: sid=abc; HttpOnly; Secure; SameSite=Lax; Path=/` travel in afterwards?",
+      "choices": [
+        "The `Cookie` request header, on HTTPS requests matching the domain and path",
+        "The `Authorization` header, because `HttpOnly` cookies act as bearer tokens",
+        "Every response's `Set-Cookie` header, so the client can refresh its copy",
+        "The `Cookie` header on all requests, over both HTTP and HTTPS connections"
+      ],
+      "answer": 0,
+      "why": "The browser attaches matching cookies in `Cookie`; `Secure` limits it to HTTPS and `SameSite=Lax` withholds it from most cross-site subrequests. `HttpOnly` hides it from JavaScript but does not change how it is sent.",
+      "tags": ["cookies", "headers"],
+      "level": 1
+    },
+    {
+      "id": "hr-145",
+      "q": "Your API calls three downstream services per request, each with a 2-second timeout and one retry. What is the worst-case latency, and why does it matter?",
+      "choices": [
+        "2 seconds, because the retries run in parallel with the first attempts",
+        "About 12 seconds in sequence, far past a typical client or gateway timeout",
+        "6 seconds, because retries share the timeout of their first attempt",
+        "About 4 seconds, because only the slowest service's retry matters"
+      ],
+      "answer": 1,
+      "why": "Three sequential calls times two attempts times two seconds is twelve seconds, so the gateway returns 504 while your server keeps working. Budget time end to end: an overall deadline, per-call timeouts below it, and parallel calls where independent.",
+      "tags": ["timeouts", "retries"],
+      "level": 3,
+      "asked": "Tests timeout budgeting, a real production concern that separates mid-level from junior answers."
+    },
+    {
+      "id": "hr-146",
+      "q": "Which failures is it generally safe for an HTTP client to retry automatically?",
+      "choices": [
+        "Any 4xx, because the client may have sent the request slightly too early",
+        "Connection errors, 429, 502, 503 and 504 on idempotent or keyed requests",
+        "Only 500, because it is the one code meaning 'try again in a moment'",
+        "Any failure at all, as long as the client retries it within one second"
+      ],
+      "answer": 1,
+      "why": "Transient network and overload failures can succeed on retry, provided the operation is idempotent or protected by an idempotency key, with backoff and jitter. Most 4xx will fail identically; a blind 500 retry may repeat a half-done write.",
+      "tags": ["retries", "status-codes"],
+      "level": 2,
+      "asked": "A strong answer adds exponential backoff with jitter and honouring `Retry-After`."
+    },
+    {
+      "id": "hr-147",
+      "q": "A client's retry loop gets a 429 with `Retry-After: 30`, but its own backoff schedule says to wait 2 seconds. What should it do?",
+      "choices": [
+        "Wait 2 seconds, because the client's own schedule takes priority",
+        "Retry at once with a fresh idempotency key to reset the rate limit",
+        "Give up for good, because a 429 means the API key has been revoked",
+        "Wait at least 30 seconds, as the server has said when to come back"
+      ],
+      "answer": 3,
+      "why": "`Retry-After` is the server's explicit instruction and should override a shorter local backoff; retrying early just earns another 429 and may extend a penalty window. A 429 is temporary, and idempotency keys have nothing to do with rate limits.",
+      "tags": ["retries", "rate-limiting"],
+      "level": 2,
+      "asked": "Good clients respect server hints; strong answers cap the wait and surface it to the user when it is long."
+    },
+    {
+      "id": "hr-148",
+      "q": "What is a webhook's main advantage over the client polling `GET /orders?updatedSince=...` every minute?",
+      "choices": [
+        "It is more secure, because the provider authenticates with a session",
+        "Events arrive within seconds and no requests are wasted when nothing changed",
+        "It guarantees each event is delivered exactly once and in the correct order",
+        "It needs no public endpoint, because the provider opens the connection"
+      ],
+      "answer": 1,
+      "why": "Push beats poll on latency and wasted calls. But webhooks are at-least-once and may arrive out of order, and the receiver needs a public HTTPS endpoint, so a periodic reconciliation poll is still a common safety net.",
+      "tags": ["webhooks"],
+      "level": 1
+    },
+    {
+      "id": "hr-149",
+      "q": "A webhook sender waits for your endpoint's response, and your handler takes 40 seconds to process each event. What goes wrong?",
+      "choices": [
+        "Nothing, because senders wait as long as it takes for a response",
+        "The sender times out, marks the delivery failed and retries it",
+        "The sender switches to polling your API for the event instead",
+        "The sender drops the event and never tries to deliver it again"
+      ],
+      "answer": 1,
+      "why": "Providers typically time out after a few seconds and retry, so slow handlers produce duplicate deliveries and may get the endpoint disabled. Verify, store the event, return 2xx fast, then process it from a queue.",
+      "tags": ["webhooks", "timeouts"],
+      "level": 2,
+      "asked": "Shows whether you have run a webhook receiver in production, where slow handlers cause duplicate storms."
+    },
+    {
+      "id": "hr-150",
+      "q": "What is the Richardson Maturity Model level 2, which most 'REST' APIs actually reach?",
+      "choices": [
+        "One endpoint accepting RPC-style POSTs for every operation",
+        "Resources at their own URLs, used with the proper HTTP methods",
+        "Hypermedia links in every response guiding the client's next step",
+        "Separate URLs per resource, but every operation still sent via POST"
+      ],
+      "answer": 1,
+      "why": "Level 0 is one endpoint, level 1 adds resources, level 2 adds proper verbs and status codes, level 3 adds hypermedia (HATEOAS). Most production JSON APIs are level 2, which is fine for practical purposes.",
+      "tags": ["rest-design"],
+      "level": 3
+    },
+    {
+      "id": "hr-151",
+      "q": "In Express 5, what does this handler send?",
+      "code": "app.get('/health', (req, res) => {\n  res.status(204).json({ ok: true });\n});",
+      "lang": "js",
+      "choices": [
+        "A 204 with the JSON body `{\"ok\":true}` attached to it",
+        "A 204 with no body, because Express strips it for that status",
+        "A 200 with the body, because `.json()` overrides the status",
+        "A 500, because Express throws when a 204 is given a body"
+      ],
+      "answer": 1,
+      "why": "Node's HTTP layer and Express drop the body (and content headers) for 204 and 304, so the client never sees `{ ok: true }`. Use 200 when you want the health payload delivered.",
+      "tags": ["express", "status-codes"],
+      "level": 2
+    },
+    {
+      "id": "hr-152",
+      "q": "In an ASP.NET Core minimal API, which return declares both a 200 and a 404 in the OpenAPI metadata with compile-time checking?",
+      "code": "app.MapGet(\"/todos/{id}\", async Task<Results<Ok<Todo>, NotFound>> (int id, AppDb db) =>\n    await db.Todos.FindAsync(id) is { } t ? TypedResults.Ok(t) : TypedResults.NotFound());",
+      "lang": "cs",
+      "choices": [
+        "Returning `IResult`, since every `Results.*` call is described in OpenAPI",
+        "Returning `object`, which the framework inspects at runtime for status",
+        "Returning `Results<Ok<Todo>, NotFound>` with `TypedResults` factory calls",
+        "Returning `Task<Todo?>` and letting null automatically become a 404"
+      ],
+      "answer": 2,
+      "why": "The `Results<T1, T2>` union plus `TypedResults` lets the compiler check each branch and lets the OpenAPI generator list both responses. Plain `IResult` works at runtime but hides the possible outcomes, and a null `Todo` becomes 200 with `null`, not 404.",
+      "tags": ["aspnet-core", "openapi"],
+      "level": 3
+    },
+    {
+      "id": "hr-153",
+      "q": "How many requests does a CORS-preflighted `PUT /api/items/1` cost the first time?",
+      "choices": [
+        "One, since the browser attaches the preflight to the real request",
+        "Two: an OPTIONS preflight, then the PUT if the preflight allows it",
+        "Three: a HEAD, then an OPTIONS preflight, then the actual PUT",
+        "Two, but only when the request also includes cookies or credentials"
+      ],
+      "answer": 1,
+      "why": "The browser sends a separate OPTIONS with `Access-Control-Request-Method` and `-Headers`, waits for approval, then sends the PUT. That extra round trip is why `Access-Control-Max-Age` and same-origin setups matter for latency.",
+      "tags": ["cors", "performance"],
+      "level": 1,
+      "asked": "Links CORS to latency, useful when a mobile user complains that every save feels slow."
+    },
+    {
+      "id": "hr-154",
+      "q": "In `GET /api/users/42/orders?status=shipped`, which part is a path parameter and which a query parameter?",
+      "choices": [
+        "`42` identifies a resource in the path; `status=shipped` filters in the query",
+        "`orders` is the query parameter and `42` is the request body's identifier",
+        "`status` is a path parameter because it comes after the resource name",
+        "They are all query parameters, since Express exposes them together in `req.query`"
+      ],
+      "answer": 0,
+      "why": "Path segments identify which resource you mean; query parameters modify how you see a collection (filter, sort, page). Express puts them in `req.params` and `req.query` respectively; ASP.NET Core binds them from route and query.",
+      "tags": ["urls", "rest-design"],
+      "level": 1,
+      "asked": "A junior warm-up; the follow-up is usually 'where would you put pagination?'."
+    },
+    {
+      "id": "hr-155",
+      "q": "Which mapping of CRUD operations to HTTP methods is conventional?",
+      "choices": [
+        "Create = PUT, Read = GET, Update = POST, Delete = DELETE",
+        "Create = POST, Read = GET, Update = PUT or PATCH, Delete = DELETE",
+        "Create = POST, Read = POST, Update = POST, Delete = POST with a flag",
+        "Create = GET with params, Read = GET, Update = PATCH, Delete = PUT"
+      ],
+      "answer": 1,
+      "why": "POST to the collection creates with a server-assigned id; GET reads; PUT replaces and PATCH partially updates; DELETE removes. PUT can also create when the client chooses the id, which is why the mapping is a convention rather than a law.",
+      "tags": ["methods", "rest-design"],
+      "level": 1,
+      "asked": "The first REST question in many junior screens; strong answers mention PUT-to-create with client ids."
+    },
+    {
+      "id": "hr-156",
+      "q": "What do the five status code classes mean?",
+      "choices": [
+        "1xx success, 2xx redirect, 3xx client error, 4xx server error, 5xx informational",
+        "1xx informational, 2xx success, 3xx redirection, 4xx client error, 5xx server error",
+        "1xx informational, 2xx success, 3xx client error, 4xx redirection, 5xx server error",
+        "1xx debug, 2xx success, 3xx cache hit, 4xx client error, 5xx server error"
+      ],
+      "answer": 1,
+      "why": "Clients that do not recognise a specific code must treat it like the x00 of its class, which is why the first digit matters most. 4xx means fix the request; 5xx means the server failed and a retry may work.",
+      "tags": ["status-codes"],
+      "level": 1,
+      "asked": "Basic, but the 'unknown code falls back to its class' detail impresses."
+    },
+    {
+      "id": "hr-157",
+      "q": "A `POST /api/users` sends an email that already exists and emails must be unique. Which status is most informative?",
+      "choices": [
+        "500, because the database raised a unique constraint violation",
+        "404, because no user with the new email could be created",
+        "409 Conflict, because the request clashes with existing state",
+        "401, because the email is already bound to another account"
+      ],
+      "answer": 2,
+      "why": "Catch the unique-constraint violation and map it to 409 (or a 400/422 with a field error). Letting it bubble up as 500 hides a client mistake as a server fault. Consider whether the message leaks which emails are registered.",
+      "tags": ["status-codes", "validation"],
+      "level": 1,
+      "asked": "Tests whether you translate database exceptions into meaningful API responses."
+    },
+    {
+      "id": "hr-158",
+      "q": "What is an HTTP API 'endpoint' in everyday usage?",
+      "choices": [
+        "The server machine hosting the API, identified by its IP address",
+        "A method plus a URL path pattern that a handler responds to",
+        "The last middleware in the pipeline, which always sends a 404",
+        "The TCP port that the API listens on, such as 443 or 8080"
+      ],
+      "answer": 1,
+      "why": "`GET /api/orders/{id}` and `DELETE /api/orders/{id}` are two endpoints on one resource. Thinking in method-plus-path is how routers in Express and ASP.NET Core match requests.",
+      "tags": ["rest-design"],
+      "level": 1,
+      "asked": "Warm-up vocabulary that frames the rest of the API conversation."
+    },
+    {
+      "id": "hr-159",
+      "q": "What does 'stateless' NOT forbid in a REST API?",
+      "choices": [
+        "Storing data in a database that later requests will read",
+        "Keeping per-client conversation state only in server memory",
+        "Requiring request 2 to go to the same server as request 1",
+        "Relying on the previous request's in-memory context"
+      ],
+      "answer": 0,
+      "why": "Statelessness is about session context between requests, not about persistence: resource state lives in the database, and each request carries everything needed (such as a token) to be handled by any instance. Sticky in-memory sessions are what it rules out.",
+      "tags": ["rest-design"],
+      "level": 2,
+      "asked": "Catches the misunderstanding that 'stateless' means 'no database', which surprisingly many juniors hold."
+    },
+    {
+      "id": "hr-160",
+      "q": "Why should a `GET /api/products` endpoint have a default page size even if clients never ask for one?",
+      "choices": [
+        "Browsers cannot render more than a thousand JSON items in DevTools",
+        "HTTP limits JSON responses to 1 MB unless the body is chunked",
+        "CDNs refuse to cache responses that are over a certain size",
+        "An unbounded result grows with the table and eventually times out"
+      ],
+      "answer": 3,
+      "why": "A collection that is small in development can hold millions of rows in production, turning one request into a slow query, huge payload and memory spike. Default and cap the page size server-side.",
+      "tags": ["pagination", "rest-design"],
+      "level": 1,
+      "asked": "Tests production thinking; strong answers mention capping client-provided limits too."
+    },
+    {
+      "id": "hr-161",
+      "q": "What is the difference between 401 and 407?",
+      "choices": [
+        "401 is for expired sessions; 407 is for never-logged-in users",
+        "401 is the origin asking for credentials; 407 is a proxy asking",
+        "401 is for API tokens; 407 is for username and password logins",
+        "407 is the HTTP/2 version of 401 used for bearer authentication"
+      ],
+      "answer": 1,
+      "why": "407 Proxy Authentication Required comes with `Proxy-Authenticate` and is answered with `Proxy-Authorization`; it usually appears on corporate networks. Your app should essentially never send it.",
+      "tags": ["status-codes", "proxies"],
+      "level": 3,
+      "asked": "Useful when a build or package install fails behind a corporate proxy, and to spot who reads status names carefully."
+    },
+    {
+      "id": "hr-162",
+      "q": "A client receives 431 Request Header Fields Too Large on every request after logging in. What is the likely cause?",
+      "choices": [
+        "The request body exceeded the server's upload limit after login",
+        "The access token has expired and must be refreshed from the server",
+        "Cookies or a JWT have grown so big that headers exceed the server limit",
+        "The client sent too many requests and is being rate limited by headers"
+      ],
+      "answer": 2,
+      "why": "Servers cap total header size (often 8–16 KB); bloated cookies or a token stuffed with claims push past it. Fix by trimming claims, using a session id, or clearing stale cookies, rather than just raising the limit.",
+      "tags": ["status-codes", "headers"],
+      "level": 3,
+      "asked": "A real-world auth bug; strong answers mention keeping roles and permissions out of the token."
+    },
+    {
+      "id": "hr-163",
+      "q": "Your API responds 200 to `GET /reports/2026` in 12 seconds. Which alternative design helps the client most?",
+      "choices": [
+        "Increase the server timeout so that the connection never drops",
+        "Return 202 with a job URL, then a download link when it completes",
+        "Return 206 with the first rows and the remainder in later requests",
+        "Return 503 until the report is cached, and let the client retry"
+      ],
+      "answer": 1,
+      "why": "The async request-reply pattern frees the connection and survives proxies with 30–60 second timeouts. The job resource reports progress and finally links to the result. 206 is for byte ranges, and a 503 would misreport health.",
+      "tags": ["async-operations", "status-codes"],
+      "level": 2,
+      "asked": "Strong answers mention a background worker and what happens if the job fails."
+    },
+    {
+      "id": "hr-164",
+      "q": "The job-status resource `GET /jobs/7` reports that the job has finished. What is a common way to direct the client to the result?",
+      "choices": [
+        "Return 303 See Other with `Location` set to the created result resource",
+        "Return 201 Created from the status URL with the report body inline",
+        "Return 410 Gone, because the job itself no longer needs to exist",
+        "Return 304 Not Modified, since the job will not change any further"
+      ],
+      "answer": 0,
+      "why": "A 303 (or a 200 whose body contains a result link) points the client at the new resource with a GET. 201 describes a request that created something, which the status poll did not; 304 is only a caching response.",
+      "tags": ["async-operations", "redirects"],
+      "level": 3,
+      "asked": "Distinguishes people who have implemented the pattern from those who can only name it."
+    },
+    {
+      "id": "hr-165",
+      "q": "What is JSON:API or HAL, in the context of REST APIs?",
+      "choices": [
+        "Security standards for signing JSON response bodies",
+        "Conventions for structuring JSON bodies, links and relationships",
+        "Transport protocols that replace HTTP for faster JSON delivery",
+        "Compression formats designed specifically for JSON payloads"
+      ],
+      "answer": 1,
+      "why": "Both are response-format specifications: HAL adds `_links` and `_embedded`; JSON:API prescribes `data`, `relationships`, `included` and query conventions for sparse fields and includes. Adopting one saves design debates but adds verbosity.",
+      "tags": ["rest-design"],
+      "level": 2,
+      "asked": "Checks awareness that others have already solved envelope design, even if your team rolls its own."
+    },
+    {
+      "id": "hr-166",
+      "q": "How can a REST API let clients request fewer fields without switching to GraphQL?",
+      "choices": [
+        "Sparse fieldsets, such as `GET /users/7?fields=id,name,avatarUrl`",
+        "HEAD requests, which return only the fields the client specifies",
+        "Setting `Accept: application/json; fields=id,name` on the request",
+        "Range requests, which slice the JSON by byte offset to cut its size"
+      ],
+      "answer": 0,
+      "why": "A `fields` (or `select`) parameter trims the payload, and the server must allowlist which fields can be selected. HEAD returns no body at all, and byte ranges would cut JSON mid-token.",
+      "tags": ["rest-design", "performance"],
+      "level": 2,
+      "asked": "Over-fetching is the standard argument for GraphQL; strong candidates show REST can address it too."
+    },
+    {
+      "id": "hr-167",
+      "q": "A REST API supports `GET /orders/7?include=customer,items`. What problem does `include` solve?",
+      "choices": [
+        "It makes the order cacheable by marking related data as immutable",
+        "It avoids extra round trips by embedding related resources on request",
+        "It authorises access to related data the caller cannot otherwise see",
+        "It guarantees that related resources are locked for the transaction"
+      ],
+      "answer": 1,
+      "why": "Compound documents cut the waterfall of fetching the order, then its customer, then its items. The server still enforces authorization on every included resource and should cap which relations can be included.",
+      "tags": ["rest-design", "performance"],
+      "level": 2,
+      "asked": "Leads into N+1 queries on the server, since each include needs an efficient join or batch load."
+    },
+    {
+      "id": "hr-168",
+      "q": "In a .NET 9 minimal API, what does `app.MapGet(\"/items/{id:int}\", ...)` do with `GET /items/abc`?",
+      "choices": [
+        "Binds `id` as 0 and runs the handler, which then returns a 404",
+        "Returns 400 with a problem details body naming the `id` parameter",
+        "Returns 404, because the route constraint means no endpoint matches",
+        "Throws a `FormatException`, which becomes a 500 without a handler"
+      ],
+      "answer": 2,
+      "why": "Route constraints participate in matching, so `abc` fails `int` and no endpoint is selected, giving 404. Constraints are for disambiguating routes; validation that should produce a 400 belongs in the handler or a filter.",
+      "tags": ["aspnet-core", "status-codes"],
+      "level": 2,
+      "asked": "Tests whether you understand routing versus validation in ASP.NET Core."
+    },
+    {
+      "id": "hr-169",
+      "q": "What is the role of the `User-Agent` header for an API?",
+      "choices": [
+        "It authenticates the calling application, like an API key",
+        "It identifies the client software, useful for logs and support",
+        "It tells the server which response format the client wants",
+        "It is required to pass CORS checks on cross-origin requests"
+      ],
+      "answer": 1,
+      "why": "It is a self-reported client identifier, trivially spoofed, so it is useful for diagnostics and analytics but never for security. Some APIs, such as GitHub's, require a descriptive one so they can contact misbehaving integrators.",
+      "tags": ["headers"],
+      "level": 1,
+      "asked": "Checks that you do not trust client-supplied identity headers for security decisions."
+    },
+    {
+      "id": "hr-170",
+      "q": "A React app calls the API with `fetch('/api/orders', { method: 'POST', body: JSON.stringify(order) })` and the server sees an empty body. What is missing?",
+      "choices": [
+        "The `mode: 'cors'` option, without which POST bodies are stripped",
+        "A `headers: { 'Content-Type': 'application/json' }` entry",
+        "`await` before `JSON.stringify`, as serialising is asynchronous",
+        "The `credentials: 'include'` option, needed to send any body"
+      ],
+      "answer": 1,
+      "why": "With a string body, fetch defaults the content type to `text/plain;charset=UTF-8`, so JSON middleware ignores it. The fix is one header; for same-origin calls neither CORS mode nor credentials is involved.",
+      "tags": ["fetch", "content-type"],
+      "level": 1,
+      "asked": "Possibly the most common fullstack bug; the strong answer is 'check the Content-Type in the network tab'."
+    },
+    {
+      "id": "hr-171",
+      "q": "What does `mode: 'no-cors'` on a fetch actually give you?",
+      "choices": [
+        "An opaque response whose status and body JavaScript cannot read",
+        "A normal response, because the browser skips CORS checks for it",
+        "A response with all headers readable but the body hidden",
+        "A preflight-free request that returns the full body as text"
+      ],
+      "answer": 0,
+      "why": "`no-cors` lets you fire a simple request cross-origin but returns an opaque response: status 0, no readable headers or body. It is for things like caching third-party assets in a service worker, never a way to 'fix' CORS.",
+      "tags": ["cors", "fetch"],
+      "level": 2,
+      "asked": "Juniors often reach for it to silence the error; the interviewer wants you to explain why it cannot work."
+    },
+    {
+      "id": "hr-172",
+      "q": "What is `Strict-Transport-Security: max-age=31536000; includeSubDomains` for?",
+      "choices": [
+        "It encrypts cookies with a key that rotates every year",
+        "It tells browsers to use only HTTPS for this host for a year",
+        "It forces the server to renew its TLS certificate every year",
+        "It blocks mixed content by rewriting `http:` links in the page"
+      ],
+      "answer": 1,
+      "why": "HSTS makes the browser upgrade every future request to HTTPS before it leaves, closing the window where an attacker could intercept the first plain-HTTP redirect. It only takes effect after one visit over HTTPS, unless the domain is preloaded.",
+      "tags": ["headers", "security"],
+      "level": 2,
+      "asked": "Often asked alongside 'is redirecting HTTP to HTTPS enough?', where the strong answer is no."
+    },
+    {
+      "id": "hr-173",
+      "q": "What should the `Allow` header list in a 405 response for `/api/reports/9`?",
+      "choices": [
+        "The roles allowed to call the resource, such as `admin, auditor`",
+        "The origins allowed to call it cross-origin, as a CORS header",
+        "The HTTP methods that the resource does support, such as `GET, HEAD`",
+        "The content types the resource accepts, such as `application/json`"
+      ],
+      "answer": 2,
+      "why": "`Allow` advertises supported methods and is mandatory on 405. Roles have no standard header, allowed origins go in `Access-Control-Allow-Origin`, and acceptable request formats can go in `Accept-Post` or `Accept-Patch`.",
+      "tags": ["headers", "status-codes"],
+      "level": 1,
+      "asked": "Tests precise header knowledge; strong answers note frameworks add it for you."
+    },
+    {
+      "id": "hr-174",
+      "q": "Why do Node and browsers not let application code set the `Content-Length` or `Host` header on fetch?",
+      "choices": [
+        "They are forbidden headers the runtime controls, to keep the request valid",
+        "They are set by the server, not the client, so sending them does nothing",
+        "They are only defined for HTTP/1.1, and fetch always uses HTTP/2",
+        "They are deprecated in RFC 9110 and have been replaced by pseudo-headers"
+      ],
+      "answer": 0,
+      "why": "The Fetch standard's forbidden request headers (including `Host`, `Content-Length`, `Cookie`, `Origin` in browsers) are computed by the user agent so scripts cannot forge them or desync the connection. HTTP/2 does use `:authority`, but the runtime still owns it.",
+      "tags": ["fetch", "headers"],
+      "level": 3,
+      "asked": "Probes understanding of why browsers restrict what JavaScript can put on the wire."
+    },
+    {
+      "id": "hr-175",
+      "q": "A mobile client lost connectivity mid-request, so it cannot tell if its `PUT /api/profile` was applied. Is retrying the PUT safe?",
+      "choices": [
+        "No, because PUT is a write, and every write must never be retried",
+        "Only if the server returns a new ETag for every PUT it receives",
+        "No, because PUT always creates a new resource on the second call",
+        "Yes, because sending the same full replacement twice gives one end state"
+      ],
+      "answer": 3,
+      "why": "PUT is idempotent: applying the same representation twice leaves the same result, so retrying after an unknown outcome is safe. The caveat is a concurrent edit in between, which `If-Match` guards against.",
+      "tags": ["idempotency", "retries"],
+      "level": 1,
+      "asked": "Applies the idempotency definition to a realistic failure, which is what interviewers want to see."
+    },
+    {
+      "id": "hr-176",
+      "q": "Which statement about request body size limits in Express 5 is correct?",
+      "choices": [
+        "Express has no limit, so a proxy must enforce one in front of it",
+        "`express.json()` defaults to a 100 KB limit and returns 413 above it",
+        "`express.json()` rejects bodies over 1 MB with a 400 Bad Request",
+        "Limits apply only to multipart uploads, not to JSON request bodies"
+      ],
+      "answer": 1,
+      "why": "The body-parser behind `express.json()` defaults to `limit: '100kb'` and raises a 413 error when exceeded; raise it per route if you genuinely need larger bodies. ASP.NET Core's Kestrel default is about 30 MB.",
+      "tags": ["express", "uploads"],
+      "level": 2,
+      "asked": "Explains mysterious 413s after a feature starts sending bigger payloads."
+    },
+    {
+      "id": "hr-177",
+      "q": "A frontend shows a spinner forever when the API is down, because the request never settles. Which fix is correct?",
+      "choices": [
+        "Add a timeout signal and render an error state with a retry button",
+        "Wrap the call in `try/catch`, since that alone surfaces network hangs",
+        "Switch to `XMLHttpRequest`, which always fails fast when a server is down",
+        "Poll `/health` every second and hide the spinner once it responds"
+      ],
+      "answer": 0,
+      "why": "A hung connection neither resolves nor rejects, so `try/catch` never fires; a deadline turns it into an error you can show. Loading, success and error must all be modelled states in the UI.",
+      "tags": ["fetch", "timeouts"],
+      "level": 1,
+      "asked": "Links HTTP behaviour to UX, a common take-home review point."
+    },
+    {
+      "id": "hr-178",
+      "q": "What does `Connection: close` in an HTTP/1.1 response mean?",
+      "choices": [
+        "The server will close the TCP connection after this response",
+        "The client must close the browser tab that made the request",
+        "The session has ended and the user must log in again",
+        "The server is shutting down and will refuse new requests"
+      ],
+      "answer": 0,
+      "why": "HTTP/1.1 connections persist by default; `Connection: close` signals this one will not be reused. Servers send it during graceful shutdown to drain clients. HTTP/2 forbids the header and uses GOAWAY frames instead.",
+      "tags": ["connections", "headers"],
+      "level": 2,
+      "asked": "Relevant to graceful shutdown and zero-downtime deploys."
+    },
+    {
+      "id": "hr-179",
+      "q": "An API returns a list of 50 orders, and the UI then calls `GET /customers/:id` for each row. What is this pattern, and a REST-side fix?",
+      "choices": [
+        "Pagination drift; fixed by switching from offset to cursor paging",
+        "A client-side N+1; fixed with an `include` or embedded customer summary",
+        "Cache stampede; fixed by adding `stale-while-revalidate` to orders",
+        "Over-fetching; fixed by adding sparse fieldsets to the orders call"
+      ],
+      "answer": 1,
+      "why": "Fifty-one requests where one would do is N+1 over HTTP. Embed what the list screen needs (customer name), support `include=customer`, or offer a batch `GET /customers?ids=...`.",
+      "tags": ["performance", "rest-design"],
+      "level": 2,
+      "asked": "Shows you design API responses around the screens that consume them."
+    },
+    {
+      "id": "hr-180",
+      "q": "In the browser, which of these requests are CORS checks applied to?",
+      "choices": [
+        "Only `fetch` and `XMLHttpRequest` calls that JavaScript makes",
+        "Every cross-origin request, including `<img>` and `<script>` tags",
+        "Cross-origin script-read requests, and `crossorigin`-marked tags",
+        "Only requests that carry cookies or an `Authorization` header"
+      ],
+      "answer": 2,
+      "why": "CORS governs whether scripts may read cross-origin responses: fetch, XHR, fonts, and tags that opt in with the `crossorigin` attribute (so canvas can read an image, for example). Plain `<img>` and `<script src>` loads have been allowed cross-origin since long before CORS.",
+      "tags": ["cors"],
+      "level": 3,
+      "asked": "Tests whether you understand CORS protects reading, not loading."
     }
   ]
 }

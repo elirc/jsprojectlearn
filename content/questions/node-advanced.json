@@ -357,6 +357,1356 @@
       "tags": ["runtime", "modules"],
       "level": 3,
       "asked": "Checks your module-interop knowledge is current, and that you know its one remaining limit."
+    },
+    {
+      "id": "na-023",
+      "q": "A handler builds a JSON string by hand and sets `Content-Length` itself. Which value is correct for a body that may contain non-ASCII names?",
+      "choices": [
+        "`body.length`, since JSON output is always pure ASCII",
+        "`Buffer.byteLength(body)`, the UTF-8 size in bytes",
+        "`body.length * 2`, as JavaScript strings are UTF-16",
+        "`JSON.stringify(body).length`, counting the escapes"
+      ],
+      "answer": 1,
+      "why": "Content-Length is a byte count, and the body goes on the wire as UTF-8, so `Buffer.byteLength(body, 'utf8')` is right. `body.length` undercounts every multi-byte character, which truncates the response; doubling it overcounts ASCII and leaves the client waiting for bytes that never arrive.",
+      "tags": ["buffers", "http-server"],
+      "level": 2,
+      "asked": "A truncated or hanging response from a wrong Content-Length is a real bug; this checks bytes-versus-characters."
+    },
+    {
+      "id": "na-024",
+      "q": "A chunked upload handler does `body += chunk` for each Buffer chunk. Customers with names like 'José' sometimes see '�' in the stored text. Why?",
+      "choices": [
+        "A multi-byte character split across two chunks is decoded half at a time",
+        "Buffers are Latin-1 by default, so any accented character is lost",
+        "String concatenation in V8 normalises the text to NFD before storing it",
+        "The TCP layer strips the high bit from bytes above 127 on some older networks"
+      ],
+      "answer": 0,
+      "why": "`+=` converts each chunk to a string on its own, so when a two-byte character straddles a chunk boundary each half becomes a replacement character. Collect Buffers and `Buffer.concat` them once, or call `stream.setEncoding('utf8')`, which uses a StringDecoder that holds partial characters back.",
+      "tags": ["buffers", "streams"],
+      "level": 3,
+      "asked": "An intermittent corruption bug that only shows up with real data; a strong answer names StringDecoder or setEncoding."
+    },
+    {
+      "id": "na-025",
+      "q": "Which is the right way to make a random, URL-safe password-reset token in Node 24?",
+      "choices": [
+        "`Math.random().toString(36).slice(2)` repeated until it is 32 chars",
+        "`Date.now().toString(16)` hashed with SHA-256 and hex-encoded",
+        "`crypto.createHash('md5').update(email).digest('hex')`",
+        "`crypto.randomBytes(32).toString('base64url')`"
+      ],
+      "answer": 3,
+      "why": "`randomBytes` draws from the OS's cryptographically secure generator, and `base64url` output has no `+`, `/` or `=` to escape in a link. `Math.random` is predictable, a timestamp is guessable to the millisecond, and a hash of the email is the same every time.",
+      "tags": ["crypto", "security"],
+      "level": 1,
+      "asked": "Reset tokens are a classic place for guessable ids; the answer shows you reach for the CSPRNG."
+    },
+    {
+      "id": "na-026",
+      "q": "Why is `Buffer.allocUnsafe(size)` described as unsafe?",
+      "choices": [
+        "It skips bounds checks, so writing past the end corrupts the heap",
+        "It lives outside the V8 heap, so the garbage collector never frees it",
+        "Its memory is not zeroed and can hold old data until you overwrite it",
+        "It is shared between worker threads, so writes race with each other"
+      ],
+      "answer": 2,
+      "why": "`allocUnsafe` skips zero-filling for speed, so the bytes may be leftovers from earlier allocations, possibly secrets. That is fine if you fill every byte before use; sending it out partly filled leaks memory contents. Writes are still bounds-checked, and the memory is garbage-collected normally.",
+      "tags": ["buffers", "security"],
+      "level": 2,
+      "asked": "Tests whether you read the API rather than guessing, and whether you think about leaking data."
+    },
+    {
+      "id": "na-027",
+      "q": "In Node 24, `writable.write(chunk)` returns `false`. What should the producer do?",
+      "choices": [
+        "Resend the same chunk, because it was rejected and not stored",
+        "Stop writing until the stream emits 'drain', then carry on",
+        "Call writable.end() at once, since the stream is now full",
+        "Nothing, because Node blocks the next write() until ready"
+      ],
+      "answer": 1,
+      "why": "`false` means the internal buffer has passed `highWaterMark`; the chunk was accepted and buffered, but you should pause until `drain`. Ignoring it does not lose data, it grows memory without limit, which is the whole point of backpressure. `pipeline()` and `for await` handle this for you.",
+      "tags": ["streams", "backpressure"],
+      "level": 1,
+      "asked": "The basic backpressure contract; interviewers follow up with what happens if you ignore it."
+    },
+    {
+      "id": "na-028",
+      "q": "What is the default `highWaterMark` of a Readable created with `objectMode: true` in Node 24?",
+      "choices": [
+        "16 KiB of serialised object data",
+        "64 KiB, the same as fs streams",
+        "Unlimited, as objects have no size",
+        "16 objects"
+      ],
+      "answer": 3,
+      "why": "In object mode Node cannot measure bytes, so `highWaterMark` counts items, and the default is 16. If each object is a 5 MB row with a blob, 16 of them is already 80 MB, so size it for your data. Byte streams default to 16 KiB, and `fs.createReadStream` uses 64 KiB.",
+      "tags": ["streams", "backpressure"],
+      "level": 3,
+      "asked": "Matters when streaming database rows; a strong answer adjusts the mark for big objects."
+    },
+    {
+      "id": "na-029",
+      "q": "Streaming 500,000 rows to a client as NDJSON, which approach keeps memory flat in an Express 5 handler?",
+      "choices": [
+        "`res.json(await db.findAll())`, since Express streams arrays internally",
+        "`await pipeline(Readable.from(rowsFromCursor()), toNdjson, res)`",
+        "Build one big string with `rows.map(JSON.stringify).join('\\n')` first",
+        "`for (const r of await db.findAll()) res.write(JSON.stringify(r))`"
+      ],
+      "answer": 1,
+      "why": "A cursor-backed async generator yields rows as the database returns them, and `pipeline` pauses it whenever `res` is full, so only a few rows are in memory at once. The other three load every row first; the loop with `res.write` also ignores write()'s return value.",
+      "tags": ["streams", "backpressure"],
+      "level": 2,
+      "asked": "A realistic export endpoint; the answer shows you connect the database cursor to backpressure."
+    },
+    {
+      "id": "na-030",
+      "q": "An objectMode Readable of plain row objects is piped straight into an HTTP response. What happens?",
+      "choices": [
+        "Writing fails with ERR_INVALID_ARG_TYPE on the first object",
+        "Each object is sent as JSON, since res serialises objects",
+        "The objects are sent as '[object Object]' text, one per row",
+        "The response waits until all rows arrive, then sends an array"
+      ],
+      "answer": 0,
+      "why": "An HTTP response is a byte stream and accepts only strings, Buffers or typed arrays, so writing an object fails with `ERR_INVALID_ARG_TYPE`. Put a serialising stage in between that turns each row into a string, such as `JSON.stringify(row) + '\\n'`.",
+      "tags": ["streams", "http-server"],
+      "level": 2,
+      "asked": "Checks you understand object mode versus byte streams, a boundary that trips people in exports."
+    },
+    {
+      "id": "na-031",
+      "q": "How do you process a 5 GB log file one line at a time in Node 24?",
+      "choices": [
+        "`(await readFile(p, 'utf8')).split('\\n')` and loop over the array",
+        "`createReadStream(p).on('data', c => c.split('\\n'))` on each chunk",
+        "`readFileSync(p).toString().split('\\n')` inside a worker thread",
+        "`for await (const line of readline.createInterface({ input: createReadStream(p) }))`"
+      ],
+      "answer": 3,
+      "why": "`readline` over a read stream buffers partial lines across chunk boundaries and yields complete lines lazily, so memory stays small. Splitting each `data` chunk breaks lines that straddle chunks, and both whole-file reads exceed the maximum string length long before 5 GB.",
+      "tags": ["streams", "fs"],
+      "level": 1,
+      "asked": "Log processing and CSV imports are common tasks; this checks you do not read the whole file."
+    },
+    {
+      "id": "na-032",
+      "q": "What does `createGzip()` do in the middle of this chain?",
+      "code": "await pipeline(\n  createReadStream('report.csv'),\n  createGzip(),\n  createWriteStream('report.csv.gz'),\n);",
+      "lang": "js",
+      "choices": [
+        "It buffers the whole file, compresses it, then writes it all at once",
+        "It spawns the system gzip binary and pipes the file through it",
+        "It compresses chunks as they pass through, as a Transform stream",
+        "It marks the file compressed so the OS handles it when writing"
+      ],
+      "answer": 2,
+      "why": "zlib's `createGzip` is a Transform: bytes go in, compressed bytes come out, chunk by chunk, so a large file never sits in memory. The compression itself runs on libuv's thread pool, not on the main thread, and no external binary is involved.",
+      "tags": ["streams", "zlib"],
+      "level": 1,
+      "asked": "A simple test that you think of streams as composable stages."
+    },
+    {
+      "id": "na-033",
+      "q": "In a Node 24 ES module, what replaces `__dirname` for building a path next to the current file?",
+      "choices": [
+        "`import.meta.dirname`",
+        "`process.cwd()`, which is the same thing in ESM",
+        "`require('path').dirname(module.filename)`",
+        "`new URL('.', document.baseURI).pathname`"
+      ],
+      "answer": 0,
+      "why": "ES modules do not get the CommonJS wrapper variables, so `__dirname` is a ReferenceError. Node exposes `import.meta.dirname` and `import.meta.filename` instead. `process.cwd()` is where the process was started, which differs whenever you run the script from another folder.",
+      "tags": ["esm", "paths"],
+      "level": 1,
+      "asked": "A common snag when moving a project to ESM; mentioning cwd versus file location is the strong part."
+    },
+    {
+      "id": "na-034",
+      "q": "A download route checks the path and then streams the file. Why is resolving and checking with `startsWith` still the key step?",
+      "code": "const base = path.resolve('uploads');\nconst full = path.resolve(base, req.params.name);\nif (!full.startsWith(base + path.sep)) return res.sendStatus(404);\nfs.createReadStream(full).pipe(res);",
+      "lang": "js",
+      "choices": [
+        "`resolve` removes `..` segments, so the check becomes redundant",
+        "It stops symlinks inside uploads from pointing anywhere else on disk",
+        "It is only needed on Windows, where `..` works differently to POSIX",
+        "It rejects names like `../../etc/passwd` that resolve outside the base"
+      ],
+      "answer": 3,
+      "why": "`resolve` normalises `..`, which is exactly why you check the result: a traversal attempt produces a path outside `base`. The separator on the end stops `uploads-old` matching `uploads`. It does not follow symlinks; for that you need `fs.realpath` before the check.",
+      "tags": ["security", "paths"],
+      "level": 2,
+      "asked": "Path traversal is on every web security checklist; the separator and symlink details show depth."
+    },
+    {
+      "id": "na-035",
+      "q": "Why do config writers often write `settings.json.tmp` and then `fs.rename` it over `settings.json`?",
+      "choices": [
+        "rename compresses the file, so the final copy takes less disk",
+        "writeFile cannot overwrite a file that another process currently has open",
+        "rename is atomic on one filesystem, so readers never see half a file",
+        "The .tmp suffix tells the OS to skip it during a backup or a scan"
+      ],
+      "answer": 2,
+      "why": "If the process crashes or another reader looks mid-write, a direct `writeFile` can leave a truncated file. Renaming within one filesystem swaps the name in a single step, so readers see the old file or the new one. `writeFile` can overwrite an open file; the problem is the partial state.",
+      "tags": ["fs"],
+      "level": 2,
+      "asked": "A small durability pattern that shows you think about crashes, not only the happy path."
+    },
+    {
+      "id": "na-036",
+      "q": "A route does `if (!existsSync(p)) await writeFile(p, data)` to avoid overwriting uploads. Two uploads with the same name arrive together. What can happen?",
+      "choices": [
+        "Nothing bad: existsSync is synchronous, so the check is atomic",
+        "Each sees no file, each writes, and one upload silently replaces the other",
+        "The second writeFile throws EEXIST, since the first holds a lock",
+        "Node queues the two writes and appends the second after the first"
+      ],
+      "answer": 1,
+      "why": "That is a time-of-check-to-time-of-use race: the `await` lets the other request run between the check and the write. Let the filesystem decide atomically instead, with `writeFile(p, data, { flag: 'wx' })`, which fails with `EEXIST` if the file already exists.",
+      "tags": ["fs", "concurrency"],
+      "level": 3,
+      "asked": "Race conditions in async code are a mid-level differentiator; naming the wx flag is the fix."
+    },
+    {
+      "id": "na-037",
+      "q": "What does this do in Node 24?",
+      "code": "import { once } from 'node:events';\nconst [conn] = await once(server, 'connection');",
+      "lang": "js",
+      "choices": [
+        "Waits for the next 'connection' event and resolves with its args",
+        "Registers a permanent listener and returns its first argument",
+        "Returns an async iterator over every future 'connection' event",
+        "Emits 'connection' once and returns whatever the listeners returned"
+      ],
+      "answer": 0,
+      "why": "`events.once` returns a promise that resolves with an array of the event's arguments the next time it fires, then removes its listener. If the emitter emits `error` first, the promise rejects instead. `events.on` is the one that gives an async iterator.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "Bridging events to promises comes up in tests and startup code, such as waiting for 'listening'."
+    },
+    {
+      "id": "na-038",
+      "q": "What happens when this runs in Node 24?",
+      "code": "import { EventEmitter } from 'node:events';\nconst e = new EventEmitter();\ne.on('saved', async () => { throw new Error('mail failed'); });\ne.emit('saved');\nconsole.log('emitted');",
+      "lang": "js",
+      "choices": [
+        "emit() throws, so 'emitted' is never logged",
+        "It logs 'emitted' and the error is ignored",
+        "It logs 'emitted', then crashes on the rejection",
+        "emit() awaits the listener, then rethrows it"
+      ],
+      "answer": 2,
+      "why": "`emit` calls the async listener, gets a promise back and ignores it, so the code continues and logs. The rejected promise has no handler, and Node's default `--unhandled-rejections=throw` then crashes the process. Catch inside async listeners, or use `captureRejections` to route them to `error`.",
+      "tags": ["events", "errors"],
+      "level": 3,
+      "asked": "Async listeners on emitters are a common crash source; strong answers mention captureRejections."
+    },
+    {
+      "id": "na-039",
+      "q": "What is the difference between `emitter.on('x', fn)` and `emitter.once('x', fn)`?",
+      "choices": [
+        "on runs fn synchronously; once defers fn to the next tick",
+        "once removes fn after its first call; on keeps it until removed",
+        "once rejects later emits of 'x'; on lets every one through",
+        "on can have many listeners per event; once allows only one"
+      ],
+      "answer": 1,
+      "why": "Both register a listener that runs synchronously during `emit`; `once` wraps it so it unregisters itself before the first call. Other listeners and later emits are unaffected, and any number of `once` listeners can be registered for the same event.",
+      "tags": ["events"],
+      "level": 1,
+      "asked": "Basic, but listener lifetime is the root of the MaxListeners leak interviewers follow up with."
+    },
+    {
+      "id": "na-040",
+      "q": "A service sets `emitter.setMaxListeners(0)` to silence 'MaxListenersExceededWarning'. What is wrong with that fix?",
+      "choices": [
+        "It hides the warning while listeners that are never removed pile up",
+        "0 means no listeners are allowed, so every later on() call throws",
+        "It only applies to the error event, so the warning still appears",
+        "It turns every listener async, which changes the order they run in"
+      ],
+      "answer": 0,
+      "why": "0 means unlimited, so the warning disappears, but the warning was the symptom of a leak: something adds a listener per request and never removes it. The fix is removing the listener (or using `once`, or an `AbortSignal` on `addListener`), then raising the limit only if many listeners are genuinely expected.",
+      "tags": ["events", "memory"],
+      "level": 2,
+      "asked": "Tests whether you treat warnings as evidence, not noise."
+    },
+    {
+      "id": "na-041",
+      "q": "In Node 24, which is the simplest way to read a whole small JSON config file asynchronously?",
+      "choices": [
+        "`require(p)`, which returns a promise in ES modules",
+        "`fs.readFile(p).then(JSON.parse)` from node:fs",
+        "`await fetch('file://' + p).json()` with no import",
+        "`JSON.parse(await readFile(p, 'utf8'))` from node:fs/promises"
+      ],
+      "answer": 3,
+      "why": "`fs/promises` readFile with an encoding returns a string you can parse. The callback-based `fs.readFile` does not return a promise, `require` is synchronous and not available in ESM without `createRequire`, and Node's `fetch` does not support `file:` URLs.",
+      "tags": ["fs"],
+      "level": 1,
+      "asked": "Tests that you know the promise-based fs API, used in almost every Node service."
+    },
+    {
+      "id": "na-042",
+      "q": "Why prefer `fs.promises.readFile` over `fs.readFileSync` inside an HTTP handler, even for small files?",
+      "choices": [
+        "readFileSync returns a Buffer and cannot decode text files at all",
+        "readFileSync bypasses the OS page cache, so every call hits the disk",
+        "The sync call stalls the event loop, so every other request waits",
+        "Sync fs calls are removed from Node 24 and only exist in CommonJS"
+      ],
+      "answer": 2,
+      "why": "A synchronous call holds the one JavaScript thread until the disk answers, so under load every concurrent request queues behind it. The promise version hands the work to the thread pool. Sync calls are fine at startup, before the server accepts traffic.",
+      "tags": ["fs", "event-loop"],
+      "level": 1,
+      "asked": "The follow-up is usually when sync is acceptable, and startup is the right answer."
+    },
+    {
+      "id": "na-043",
+      "q": "What does `Readable.from('hello')` produce when iterated in Node 24?",
+      "choices": [
+        "Five chunks: 'h', 'e', 'l', 'l', 'o'",
+        "One chunk: the whole string 'hello'",
+        "One Buffer chunk: <Buffer 68 65 6c 6c 6f>",
+        "Nothing, as strings are not iterable streams"
+      ],
+      "answer": 1,
+      "why": "`Readable.from` special-cases strings and Buffers: it emits them as a single chunk rather than iterating character by character, which would be slow and surprising. Pass an array or generator when you want several chunks.",
+      "tags": ["streams"],
+      "level": 3,
+      "asked": "Tests familiarity with the helper's edge cases, which matter when writing stream tests."
+    },
+    {
+      "id": "na-044",
+      "q": "A service needs a SHA-256 checksum of a 2 GB upload as it is saved. What is the best approach?",
+      "choices": [
+        "Feed each chunk into one `createHash('sha256')` via update, then digest",
+        "Read the saved file into memory and hash the Buffer in one call",
+        "Hash each chunk with a new hash object and join the hex strings",
+        "Use `crypto.subtle.digest` on the stream, which accepts streams directly"
+      ],
+      "answer": 0,
+      "why": "A Hash object is incremental: `update` each chunk as it passes (or make it a pipeline stage, since Hash is a Transform), then `digest` once at the end, which gives the same result as hashing the whole file. Joining per-chunk hashes is a different, non-standard value, and `subtle.digest` needs the whole input as one buffer.",
+      "tags": ["crypto", "streams"],
+      "level": 2,
+      "asked": "Checks you can combine hashing with streaming, common in upload and storage work."
+    },
+    {
+      "id": "na-045",
+      "q": "In Node 24, what does `events.on(emitter, 'message')` return?",
+      "choices": [
+        "A promise for the next 'message' event only, then nothing",
+        "The emitter itself, so you can chain calls",
+        "An unsubscribe function for the listener",
+        "An async iterator over every 'message' event"
+      ],
+      "answer": 3,
+      "why": "`events.on` gives an async iterator, so `for await (const [msg] of on(emitter, 'message'))` processes events one at a time; breaking out removes the listener, and an `error` event throws inside the loop. Pass `{ signal }` to stop it from outside.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "Useful for consuming socket or queue messages sequentially without callback nesting."
+    },
+    {
+      "id": "na-046",
+      "q": "A stream stage is written as `new Transform({ transform(chunk, enc, cb) { cb(null, parse(chunk)); } })` and `parse` sometimes throws. What happens?",
+      "choices": [
+        "The throw is caught and the chunk is skipped silently",
+        "The error is passed to cb automatically on the next chunk",
+        "The stream is destroyed with the error and pipeline rejects",
+        "The process always crashes, since streams cannot catch throws"
+      ],
+      "answer": 2,
+      "why": "A synchronous throw inside `transform` is caught by the stream machinery and destroys the stream with that error, which `pipeline` turns into a rejection. Best practice is still `try { cb(null, parse(chunk)) } catch (e) { cb(e) }` so async work follows the same path.",
+      "tags": ["streams", "errors"],
+      "level": 3,
+      "asked": "Error paths in streaming imports are what separates a working demo from production code."
+    },
+    {
+      "id": "na-047",
+      "q": "When is `fs.createReadStream` the better choice than `readFile` for serving a file?",
+      "choices": [
+        "Only when the file is under 64 KiB, the stream's chunk size",
+        "When the file can be large or many clients download at once",
+        "Never: readFile is faster since it uses a single system call",
+        "Only for binary files, because text must be decoded in one go"
+      ],
+      "answer": 1,
+      "why": "`readFile` holds the whole file in memory per request, so ten clients downloading a 500 MB file need 5 GB. A read stream sends it in 64 KiB chunks and, piped to the response, slows to the client's pace. For small hot files, reading once and caching the Buffer is fine too.",
+      "tags": ["streams", "fs"],
+      "level": 1,
+      "asked": "Memory per request multiplied by concurrency is the reasoning interviewers want to hear."
+    },
+    {
+      "id": "na-048",
+      "q": "What does this log in Node 24?",
+      "code": "console.log(Buffer.from('é').length, 'é'.length);",
+      "lang": "js",
+      "choices": [
+        "1 1",
+        "2 2",
+        "2 1",
+        "1 2"
+      ],
+      "answer": 2,
+      "why": "`Buffer.from` encodes the string as UTF-8 by default, and `é` takes two bytes in UTF-8, while `String.length` counts UTF-16 code units, which is one here. Bytes and characters only line up for plain ASCII.",
+      "tags": ["buffers"],
+      "level": 1,
+      "asked": "Checks you know a Buffer is bytes, which matters for Content-Length, size limits and hashing."
+    },
+    {
+      "id": "na-049",
+      "q": "What does this log?",
+      "code": "import { Writable } from 'node:stream';\nconst w = new Writable({ highWaterMark: 4,\n  write(c, _e, cb) { setTimeout(cb, 10); } });\nconsole.log(w.write('12345'), w.write('678'), w.writableLength);",
+      "lang": "js",
+      "choices": [
+        "false false 8",
+        "true false 4",
+        "false false 0",
+        "false throws"
+      ],
+      "answer": 0,
+      "why": "`highWaterMark` is a threshold, not a cap: the first write already exceeds 4 bytes so it returns `false`, yet both writes are buffered and `writableLength` is 8. A producer that ignores `false` keeps queuing data in memory; nothing throws or drops it.",
+      "tags": ["streams", "backpressure"],
+      "level": 3,
+      "asked": "Separates people who think write() refuses data from those who know it only signals."
+    },
+    {
+      "id": "na-050",
+      "q": "What does this log?",
+      "code": "import { Readable, Writable } from 'node:stream';\nimport { pipeline } from 'node:stream/promises';\nconst out = [];\nawait pipeline(Readable.from(['a', 'b']),\n  async function* (src) { for await (const c of src) yield c.toUpperCase(); },\n  new Writable({ objectMode: true, write(c, _, cb) { out.push(c); cb(); } }));\nconsole.log(out);",
+      "lang": "js",
+      "choices": [
+        "[ 'a', 'b' ], unchanged",
+        "[ 'AB' ]",
+        "[ 'A', 'B' ]",
+        "TypeError: not a stream"
+      ],
+      "answer": 2,
+      "why": "`pipeline` accepts an async generator function as a stage: it receives the previous stage as an async iterable, and each `yield` becomes a chunk for the next stage, with backpressure and error propagation intact. It is often simpler than writing a Transform class.",
+      "tags": ["streams"],
+      "level": 2,
+      "asked": "Shows you know the modern, readable way to write a transform step."
+    },
+    {
+      "id": "na-051",
+      "q": "What does this log in Node 24?",
+      "code": "import path from 'node:path';\nconsole.log(path.posix.join('/a', '/b'),\n  path.posix.resolve('/a', '/b'));",
+      "lang": "js",
+      "choices": [
+        "/a/b /a/b",
+        "/a/b /b",
+        "/b /b",
+        "/b /a/b"
+      ],
+      "answer": 1,
+      "why": "`join` just concatenates segments and normalises, so a leading slash on a later segment is kept inside. `resolve` works like a sequence of `cd` commands from right to left, so an absolute segment resets the result to `/b`. Mixing the two up is a common source of wrong file paths.",
+      "tags": ["fs", "paths"],
+      "level": 1,
+      "asked": "Everyday path handling; the strong answer also mentions why neither alone stops traversal."
+    },
+    {
+      "id": "na-052",
+      "q": "What does this log in Node 24?",
+      "code": "import { once, EventEmitter } from 'node:events';\nconst e = new EventEmitter();\nsetTimeout(() => e.emit('error', new Error('x')), 5);\ntry { await once(e, 'ready'); console.log('ready'); }\ncatch (err) { console.log('failed', err.message); }",
+      "lang": "js",
+      "choices": [
+        "ready",
+        "Nothing; it hangs",
+        "The process crashes",
+        "failed x"
+      ],
+      "answer": 3,
+      "why": "`once` listens for `error` as well as the named event and rejects if `error` comes first, so the catch runs. That makes it safe for startup code such as waiting for a server's `listening` event, where a port clash should fail loudly rather than hang.",
+      "tags": ["events", "errors"],
+      "level": 2,
+      "asked": "Checks you trust the helper to handle the error path, which hand-rolled promises often forget."
+    },
+    {
+      "id": "na-053",
+      "q": "An API resizes uploaded images in JavaScript and p99 latency for every endpoint jumps while it runs. Which fix targets the cause?",
+      "choices": [
+        "Wrap the resize in an async function so it yields to other requests",
+        "Raise UV_THREADPOOL_SIZE so more requests are handled at once",
+        "Move the resize into a worker thread pool, such as Piscina",
+        "Add more `await` calls inside the resize loop to split the work"
+      ],
+      "answer": 2,
+      "why": "Pure JavaScript CPU work runs on the main thread no matter how it is wrapped; `async` and extra `await`s do not move it anywhere. A worker thread runs it on another core while the event loop keeps serving requests. The libuv pool only runs Node's own native tasks, not your JavaScript.",
+      "tags": ["worker-threads", "event-loop"],
+      "level": 1,
+      "asked": "The classic 'one slow endpoint slows everything' symptom; the answer shows you know async is not parallel."
+    },
+    {
+      "id": "na-054",
+      "q": "Which kind of work does NOT benefit from moving into a worker thread?",
+      "choices": [
+        "Hashing a large upload with a pure JavaScript hashing algorithm",
+        "Waiting on 50 concurrent database queries over the network",
+        "Parsing a 200 MB JSON payload with JSON.parse",
+        "Generating a PDF report by laying out text in JavaScript"
+      ],
+      "answer": 1,
+      "why": "Network I/O is already asynchronous: the main thread starts the query and is free until the reply arrives, so a worker adds overhead and nothing else. Workers help with CPU-bound JavaScript that would otherwise block the event loop, such as parsing, layout or hashing.",
+      "tags": ["worker-threads"],
+      "level": 1,
+      "asked": "Tests whether you understand when threads help in Node, rather than reaching for them by habit."
+    },
+    {
+      "id": "na-055",
+      "q": "In Node 24, what happens when the main thread posts this message to a worker?",
+      "code": "worker.postMessage({ when: new Date(), format: (d) => d.toISOString() });",
+      "lang": "js",
+      "choices": [
+        "postMessage throws DataCloneError because of the function",
+        "The worker receives both; functions are cloned as source text",
+        "The worker receives `when` as an ISO string and no `format`",
+        "The object is shared by reference, so both threads see changes"
+      ],
+      "answer": 0,
+      "why": "Messages are copied with the structured clone algorithm, which handles Dates, Maps and typed arrays but not functions, so `postMessage` throws `DataCloneError`. Send plain data and keep behaviour in the worker's own code. Only SharedArrayBuffer memory is actually shared.",
+      "tags": ["worker-threads"],
+      "level": 2,
+      "asked": "Checks you know threads in Node communicate by copying, not by sharing objects."
+    },
+    {
+      "id": "na-056",
+      "q": "A worker thread throws an uncaught exception. What happens in Node 24 if the main thread listens for the worker's 'error' event?",
+      "choices": [
+        "The whole process crashes, since workers share one process",
+        "The worker restarts automatically and replays its message",
+        "The exception is ignored and the worker keeps on running",
+        "The worker stops, the main thread gets 'error' then 'exit'"
+      ],
+      "answer": 3,
+      "why": "An uncaught exception terminates only that worker, and the `Worker` object in the main thread emits `error` with the exception, then `exit` with code 1. Nothing restarts it; pool libraries such as Piscina replace dead workers for you. Without an `error` listener the main thread would crash.",
+      "tags": ["worker-threads", "errors"],
+      "level": 2,
+      "asked": "Failure handling for workers; strong answers mention using a pool that replaces them."
+    },
+    {
+      "id": "na-057",
+      "q": "Why do most apps use a pool such as Piscina instead of `new Worker()` per request?",
+      "choices": [
+        "Workers can only be created at startup, before the server listens",
+        "new Worker() blocks the event loop until the worker has finished",
+        "Starting a worker costs tens of ms and memory; a pool reuses a few",
+        "Only pooled workers can use ES modules and import packages from npm"
+      ],
+      "answer": 2,
+      "why": "Each worker boots its own V8 isolate and event loop, which takes time and several MB, so one per request can cost more than the work saved and has no upper bound. A pool keeps about one worker per core, queues tasks, and bounds concurrency. Workers can be created at any time and can use ESM.",
+      "tags": ["worker-threads", "performance"],
+      "level": 2,
+      "asked": "Tests cost awareness; creating unbounded threads under load is a real production mistake."
+    },
+    {
+      "id": "na-058",
+      "q": "What does `os.availableParallelism()` give you in Node 24?",
+      "choices": [
+        "The number of libuv thread-pool threads currently free",
+        "An estimate of how many threads can run in parallel",
+        "The CPU quota Kubernetes has assigned to this container",
+        "How many worker threads the process is allowed to start"
+      ],
+      "answer": 1,
+      "why": "It returns how many CPUs the process can use, for sizing a worker pool or cluster. Prefer it over `os.cpus().length`, which can be empty on some platforms and ignores affinity. Neither reads a cgroup CPU quota, so in a container limited to 2 CPUs on a 32-core node you may still need to set the size yourself.",
+      "tags": ["worker-threads", "cluster"],
+      "level": 1,
+      "asked": "Sizing pools correctly, especially in containers, is a practical follow-up."
+    },
+    {
+      "id": "na-059",
+      "q": "What does this callback receive when the child writes 2 MB to stdout?",
+      "code": "import { exec } from 'node:child_process';\nexec('node export.js', (err, stdout) => {\n  console.log(err?.code, stdout.length);\n});",
+      "lang": "js",
+      "choices": [
+        "ERR_CHILD_PROCESS_STDIO_MAXBUFFER and a truncated stdout",
+        "undefined and 2097152, the full output",
+        "EPIPE, because the pipe closes at 64 KiB",
+        "undefined and 0, since output streams elsewhere"
+      ],
+      "answer": 0,
+      "why": "`exec` buffers all output in memory and kills the child once it passes `maxBuffer`, which defaults to 1 MiB, reporting `ERR_CHILD_PROCESS_STDIO_MAXBUFFER`. For large or unbounded output use `spawn` and consume `child.stdout` as a stream.",
+      "tags": ["child-process"],
+      "level": 2,
+      "asked": "A surprise that shows up in export and backup scripts once data grows."
+    },
+    {
+      "id": "na-060",
+      "q": "What is the main difference between `spawn` and `exec` in `node:child_process`?",
+      "choices": [
+        "spawn runs in a thread; exec runs in a separate process",
+        "spawn waits for the child to finish; exec returns straight away",
+        "spawn is for Node scripts only; exec runs any program on the host",
+        "spawn streams output and runs no shell; exec buffers it via a shell"
+      ],
+      "answer": 3,
+      "why": "`exec` runs a command string through a shell and hands you the complete stdout and stderr at the end, which is convenient but buffered and open to injection. `spawn` takes a program and an argument array, runs no shell by default, and exposes stdout and stderr as streams.",
+      "tags": ["child-process"],
+      "level": 1,
+      "asked": "Choosing the right API avoids both memory blow-ups and command injection."
+    },
+    {
+      "id": "na-061",
+      "q": "What does `child_process.fork('worker.js')` add over `spawn('node', ['worker.js'])`?",
+      "choices": [
+        "The child shares the parent's heap, so objects pass by reference",
+        "The child runs in the same event loop, so no messaging is needed",
+        "An IPC channel, so both sides can use send() and on('message')",
+        "Automatic restarts whenever the child exits with a non-zero code"
+      ],
+      "answer": 2,
+      "why": "`fork` starts a new Node process with a built-in IPC channel: `child.send(obj)` in the parent and `process.on('message')` in the child, with JSON-style serialisation. It is still a separate process with its own memory and event loop, and nothing restarts it for you.",
+      "tags": ["child-process"],
+      "level": 2,
+      "asked": "Tests the process model; fork is how cluster and many job runners are built."
+    },
+    {
+      "id": "na-062",
+      "q": "Why do teams running Node in Kubernetes often skip the `cluster` module?",
+      "choices": [
+        "cluster does not work inside Linux containers at all",
+        "They run one process per container and scale with replicas",
+        "cluster was removed in Node 22 in favour of worker threads",
+        "cluster shares memory, which containers forbid for security"
+      ],
+      "answer": 1,
+      "why": "The orchestrator already does what `cluster` does: it runs several copies, restarts crashed ones and load-balances. One process per container keeps memory limits, health checks and metrics simple. `cluster` still exists and works; it is more useful on a single VM.",
+      "tags": ["cluster", "deployment"],
+      "level": 2,
+      "asked": "Shows you understand how the platform and the runtime split responsibilities."
+    },
+    {
+      "id": "na-063",
+      "q": "A route runs `setInterval(syncPrices, 10_000)` where `syncPrices` is async and sometimes takes 30 s. What goes wrong?",
+      "choices": [
+        "Runs overlap: a new call starts every 10 s whether or not one is done",
+        "setInterval waits for the returned promise, so runs drift but never overlap",
+        "Node throws because setInterval does not accept async callbacks",
+        "The interval stops after the first slow run, as it did not resolve"
+      ],
+      "answer": 0,
+      "why": "Timers ignore the promise an async callback returns, so slow runs stack up and can hammer the upstream API or write stale data over fresh. Schedule the next run after the current one finishes, for example a loop with `await setTimeout(10_000)` from `node:timers/promises`, or use a lock.",
+      "tags": ["timers", "concurrency"],
+      "level": 2,
+      "asked": "Overlapping jobs are a common production bug; the fix shows you think in sequences."
+    },
+    {
+      "id": "na-064",
+      "q": "What does this log after about 50 ms in Node 24?",
+      "code": "import { setTimeout as sleep } from 'node:timers/promises';\nconst sig = AbortSignal.any([new AbortController().signal, AbortSignal.timeout(50)]);\ntry { await sleep(1000, null, { signal: sig }); }\ncatch (e) { console.log(e.name, sig.reason.name); }",
+      "lang": "js",
+      "choices": [
+        "TimeoutError TimeoutError",
+        "AbortError AbortError",
+        "Nothing: sleep ignores signals",
+        "AbortError TimeoutError"
+      ],
+      "answer": 3,
+      "why": "`AbortSignal.any` aborts when any input signal does, and its `reason` is the reason of that input, here the timeout's `TimeoutError`. The promisified `setTimeout` rejects with a generic `AbortError`, so check `signal.reason` to tell a timeout from a caller's cancel.",
+      "tags": ["abort-signal", "timers"],
+      "level": 3,
+      "asked": "Combining a request's cancel signal with a deadline is a real pattern in API clients."
+    },
+    {
+      "id": "na-065",
+      "q": "Why combine the incoming request's signal with a timeout using `AbortSignal.any` before calling a downstream API?",
+      "choices": [
+        "So the downstream call retries automatically when either one fires",
+        "So Node reuses the same TCP connection for both kinds of request",
+        "So the call stops if the client disconnects or the deadline passes",
+        "So the timeout only starts counting after the client disconnects"
+      ],
+      "answer": 2,
+      "why": "One signal covers both reasons to give up: nobody is waiting for the answer any more, or it is taking too long. Without it, a disconnected client still costs you a full downstream call. Signals never retry anything; retries are a separate decision.",
+      "tags": ["abort-signal", "resilience"],
+      "level": 2,
+      "asked": "Tests whether you propagate cancellation, which saves real load during incidents."
+    },
+    {
+      "id": "na-066",
+      "q": "What does `timer.unref()` do in Node 24?",
+      "choices": [
+        "Cancels the timer, the same as clearTimeout",
+        "Stops the timer alone keeping the process alive",
+        "Moves the timer callback onto a worker thread instead",
+        "Makes the timer fire once instead of repeating"
+      ],
+      "answer": 1,
+      "why": "An active timer normally keeps the event loop running. `unref()` lets the process exit when nothing else is pending, while the timer still fires if the process is alive anyway. It is how you write a shutdown watchdog or a background refresh that should not block exit.",
+      "tags": ["timers", "shutdown"],
+      "level": 2,
+      "asked": "Used in shutdown code and CLIs; checks you know what keeps a Node process alive."
+    },
+    {
+      "id": "na-067",
+      "q": "In Node 24, how do you pause an async function for one second without wrapping setTimeout yourself?",
+      "choices": [
+        "`await setTimeout(1000)` imported from node:timers/promises",
+        "`await process.sleep(1000)` from the global process object",
+        "`Atomics.wait(new Int32Array(1), 0, 0, 1000)` on the main thread",
+        "`await new Promise(setImmediate, 1000)` with no other import"
+      ],
+      "answer": 0,
+      "why": "`node:timers/promises` exports promise-returning `setTimeout`, `setImmediate` and `setInterval`, and they accept an AbortSignal. `Atomics.wait` blocks the whole thread, which freezes a server; there is no `process.sleep`.",
+      "tags": ["timers"],
+      "level": 1,
+      "asked": "A small check that you know the standard library instead of hand-rolling helpers."
+    },
+    {
+      "id": "na-068",
+      "q": "What does `server.close()` do for a Node 24 HTTP server?",
+      "choices": [
+        "Kills every open socket at once and exits the process",
+        "Sends 503 to queued clients and returns once they are gone",
+        "Drains requests, then closes pools and other open resources",
+        "Stops accepting connections and waits for active requests"
+      ],
+      "answer": 3,
+      "why": "`close()` stops listening and closes idle keep-alive sockets (since Node 19), then waits for in-flight requests before calling back. It knows nothing about your database pool, queues or timers; closing those is your shutdown code's job, after the server has drained.",
+      "tags": ["shutdown", "http-server"],
+      "level": 1,
+      "asked": "The starting point of any graceful shutdown answer."
+    },
+    {
+      "id": "na-069",
+      "q": "What is the right order of steps when a Node API receives SIGTERM during a rolling deploy?",
+      "choices": [
+        "Close the DB pool, then server.close(), then exit when both finish",
+        "Call process.exit(0) immediately, as Kubernetes retries requests",
+        "Fail readiness, server.close() to drain, close the pool, then exit",
+        "Ignore SIGTERM and wait for SIGKILL so in-flight work completes"
+      ],
+      "answer": 2,
+      "why": "Mark yourself not ready so the load balancer stops sending traffic, let in-flight requests finish, then release resources they depend on, and exit. Closing the pool first makes those in-flight requests fail. Exiting immediately drops them, and waiting for SIGKILL gives no control at all.",
+      "tags": ["shutdown", "deployment"],
+      "level": 2,
+      "asked": "A standard mid-level backend question; the order is what interviewers listen for."
+    },
+    {
+      "id": "na-070",
+      "q": "Why does a shutdown handler often include `setTimeout(() => process.exit(1), 25_000).unref()`?",
+      "choices": [
+        "To delay shutdown so the load balancer can send more requests",
+        "To force exit if draining hangs, before the platform's SIGKILL",
+        "To give garbage collection time to free memory before exiting",
+        "To retry server.close() every 25 seconds until it finally works"
+      ],
+      "answer": 1,
+      "why": "A stuck socket or a pending job can stop `server.close()` from ever calling back. A watchdog exits with a failure code shortly before the platform's grace period (30 s by default in Kubernetes) ends, so you log and exit on your terms. `unref` stops the watchdog itself from keeping the process alive.",
+      "tags": ["shutdown", "timers"],
+      "level": 2,
+      "asked": "Shows you plan for the shutdown path failing too."
+    },
+    {
+      "id": "na-071",
+      "q": "`server.close()` never calls back during shutdown, though no HTTP requests are running. What is the most likely cause?",
+      "choices": [
+        "WebSocket or SSE connections are still open and never end",
+        "A database pool is still open, which blocks the HTTP server",
+        "An unref'd timer is still pending, holding the server open",
+        "server.close() only calls back after SIGKILL on Linux hosts"
+      ],
+      "answer": 0,
+      "why": "Long-lived connections count as active, so the server waits for them indefinitely. Tell WebSocket clients to reconnect elsewhere and close them, end SSE streams, or call `server.closeAllConnections()` after a grace period. A pool does not hold the HTTP server open, and an unref'd timer never keeps anything alive.",
+      "tags": ["shutdown", "websockets"],
+      "level": 3,
+      "asked": "Realtime features complicate shutdown; this checks you have operated one."
+    },
+    {
+      "id": "na-072",
+      "q": "Behind an AWS ALB with a 60-second idle timeout, a Node API logs no errors, yet clients see occasional 502s. Which setting is the classic cause?",
+      "choices": [
+        "server.headersTimeout is 60 s, equal to the balancer's timeout",
+        "server.requestTimeout is 300 s, far longer than the balancer's 60 s",
+        "server.maxHeadersCount is 2000, so large headers get rejected",
+        "server.keepAliveTimeout is 5 s, shorter than the balancer's 60 s"
+      ],
+      "answer": 3,
+      "why": "Node closes idle keep-alive sockets after 5 s by default, while the balancer believes they are good for 60 s and may send a request just as Node closes one, which the balancer reports as 502. Set `keepAliveTimeout` above the balancer's idle timeout (and `headersTimeout` a little higher).",
+      "tags": ["http-server", "deployment"],
+      "level": 3,
+      "asked": "A famous production gotcha; knowing it signals real operational experience."
+    },
+    {
+      "id": "na-073",
+      "q": "What does an `exit` event handler in Node 24 need to know?",
+      "code": "process.on('exit', () => {\n  setTimeout(() => console.log('flushed'), 0);\n  console.log('bye');\n});",
+      "lang": "js",
+      "choices": [
+        "It logs 'bye' then 'flushed', as the timer runs before exit",
+        "It logs nothing: console is closed by the time 'exit' fires",
+        "Only synchronous work runs, so it logs 'bye' and never 'flushed'",
+        "Node waits for the timer, then fires 'exit' a second time"
+      ],
+      "answer": 2,
+      "why": "By the time `exit` fires the event loop has stopped, so timers, promises and I/O scheduled there never run. Async cleanup such as flushing logs or closing connections belongs in the SIGTERM handler or `beforeExit`, before exiting.",
+      "tags": ["shutdown", "process"],
+      "level": 2,
+      "asked": "People put async cleanup in the exit handler and wonder why it never finishes."
+    },
+    {
+      "id": "na-074",
+      "q": "Why is `process.on('uncaughtException', log)` with no exit considered dangerous?",
+      "choices": [
+        "Node ignores the handler, so the process crashes anyway",
+        "The process continues in an unknown, possibly corrupt state",
+        "It disables unhandled promise rejection tracking globally",
+        "It stops the event loop until someone restarts the server"
+      ],
+      "answer": 1,
+      "why": "The exception unwound the stack part-way through some operation, so locks, half-written state and open resources may be left inconsistent. Use the handler to log synchronously and exit with a non-zero code, and let the supervisor start a clean process.",
+      "tags": ["errors", "process"],
+      "level": 1,
+      "asked": "Crash-only design is what the question is probing."
+    },
+    {
+      "id": "na-075",
+      "q": "A route calls `sendWelcomeEmail(user)` with no `await` and no `.catch`, then responds 201. The mail API is down and the call rejects. What happens in Node 24 with default flags?",
+      "choices": [
+        "The process crashes on the unhandled rejection",
+        "The client gets a 500, as Express 5 catches it",
+        "A warning is logged and the server carries on",
+        "Nothing: it is ignored, as it would be in a browser"
+      ],
+      "answer": 0,
+      "why": "Since Node 15 the default `--unhandled-rejections=throw` turns an unhandled rejection into an uncaught exception, so the process exits with code 1 after the 201 was sent, failing every other in-flight request on that instance. Express 5 only catches promises the handler returns. Add `.catch(log)` or, better, queue the email.",
+      "tags": ["errors", "process"],
+      "level": 1,
+      "asked": "A fire-and-forget promise can take down a server; this checks you know it."
+    },
+    {
+      "id": "na-076",
+      "q": "A CLI calls `process.exit(0)` straight after writing a large report with `process.stdout.write`. Piped to a file, the report is cut short. Why?",
+      "choices": [
+        "stdout is always synchronous, so the report must be the problem",
+        "Exit code 0 tells the shell to discard any output that is still buffered",
+        "process.stdout.write has a 64 KiB limit per call, then truncates",
+        "Writes to a pipe are async; exit() quits before the buffer flushes"
+      ],
+      "answer": 3,
+      "why": "For pipes on POSIX, stdout writes are asynchronous, and `process.exit()` ends the process without waiting for pending writes. Set `process.exitCode = 0` and let the process end naturally, or exit in the write's callback.",
+      "tags": ["process", "streams"],
+      "level": 3,
+      "asked": "Shows you know exit() is abrupt, which also matters for log flushing in servers."
+    },
+    {
+      "id": "na-077",
+      "q": "`process.memoryUsage()` shows `rss` at 900 MB but `heapUsed` at 120 MB. Where is the rest likely to be?",
+      "choices": [
+        "In the V8 heap's free list, waiting to be garbage-collected",
+        "In the libuv thread pool's queue of pending file-system tasks",
+        "Outside the JS heap, in Buffers, native modules or thread stacks",
+        "In the operating system's page cache for files Node has read"
+      ],
+      "answer": 2,
+      "why": "`heapUsed` covers JavaScript objects only; `rss` is all memory the process holds, including Buffers (reported as `external` and `arrayBuffers`), native addons and stacks. A big gap points at Buffers kept alive, such as whole uploads held in memory, rather than ordinary object leaks.",
+      "tags": ["memory", "diagnostics"],
+      "level": 3,
+      "asked": "Reading memory numbers correctly is the first step in any OOM investigation."
+    },
+    {
+      "id": "na-078",
+      "q": "A dev server takes seconds to restart because each boot opens a new DB pool and the old ones are never closed. Which is the usual fix in a Node 24 service?",
+      "choices": [
+        "Set the pool size to 1 so leaked pools use fewer connections",
+        "Create the pool once and close it in the shutdown handler",
+        "Open a new client per query so nothing needs to be closed",
+        "Call global.gc() on each restart to free the old pools"
+      ],
+      "answer": 1,
+      "why": "A pool is a long-lived resource: create it at startup, share it, and call `pool.end()` during shutdown so connections are returned promptly instead of waiting for the database to time them out. A client per query pays connection setup on every request and still leaks if an error skips the close.",
+      "tags": ["shutdown", "database"],
+      "level": 1,
+      "asked": "Lifecycle of shared resources is basic backend hygiene."
+    },
+    {
+      "id": "na-079",
+      "q": "In Node 24, what must you do with a `fetch` response body you do not need, such as after checking only the status?",
+      "choices": [
+        "Consume or cancel it, or the connection may not return to the pool",
+        "Nothing: the body is freed as soon as the Response is collected",
+        "Call response.close(), which every fetch Response is required to have",
+        "Set keepalive: false, since unread bodies are then read automatically"
+      ],
+      "answer": 0,
+      "why": "Node's fetch (undici) keeps the socket busy until the body is read or cancelled, and relying on garbage collection to free it can exhaust connections under load. Call `await res.body?.cancel()` or read it. There is no `close()` on a Response.",
+      "tags": ["fetch", "http-client"],
+      "level": 3,
+      "asked": "A subtle source of connection exhaustion in services that call other APIs."
+    },
+    {
+      "id": "na-080",
+      "q": "Which statement about `fetch` in Node 24 is correct?",
+      "choices": [
+        "It needs the node-fetch package, as it is only a browser API",
+        "It is built in but only works with an --experimental flag",
+        "It is built in, but it sends cookies automatically like a browser",
+        "It is built in, implemented by undici, and needs no import"
+      ],
+      "answer": 3,
+      "why": "Global `fetch` has been stable since Node 21 and is backed by undici. Unlike a browser there is no cookie jar and no CORS, so cookies must be sent explicitly in headers. node-fetch is only needed on old versions.",
+      "tags": ["fetch", "http-client"],
+      "level": 1,
+      "asked": "A quick check of how current your Node knowledge is."
+    },
+    {
+      "id": "na-081",
+      "q": "A service calls a partner API with `fetch` and no timeout. The partner hangs during an outage. What happens to your service?",
+      "choices": [
+        "fetch times out after 30 s by default, so requests fail fast and cleanly",
+        "Node detects the hang and retries the call on a fresh connection",
+        "Requests pile up waiting, holding memory and sockets until it recovers",
+        "The event loop blocks until the partner responds or the socket dies"
+      ],
+      "answer": 2,
+      "why": "undici only gives up after its default header and body timeouts of five minutes each, so each request waits a long time while more arrive, and memory, sockets and your own clients' patience run out. Pass `signal: AbortSignal.timeout(ms)` and handle the failure. The event loop is not blocked; work just accumulates.",
+      "tags": ["fetch", "resilience"],
+      "level": 2,
+      "asked": "Timeouts on every outbound call is a core resilience habit interviewers look for."
+    },
+    {
+      "id": "na-082",
+      "q": "What does `process.exitCode = 1` do differently from `process.exit(1)`?",
+      "choices": [
+        "It exits at once but skips the 'exit' event handlers",
+        "It sets the code but lets pending work finish first",
+        "It only affects child processes, not the current one",
+        "It is ignored unless an uncaughtException is thrown"
+      ],
+      "answer": 1,
+      "why": "Setting `exitCode` changes the status Node will report when the event loop empties naturally, so pending writes and cleanup still run. `process.exit()` stops immediately, which can cut off buffered output. Both fire `exit` handlers.",
+      "tags": ["process"],
+      "level": 2,
+      "asked": "Relevant for CLIs, scripts and test runners that must report failure without losing output."
+    },
+    {
+      "id": "na-083",
+      "q": "Which Node 24 built-in is suitable for hashing user passwords with no extra package?",
+      "choices": [
+        "`crypto.scrypt` with a random salt and a stored cost",
+        "`crypto.createHash('sha256')` with a per-user salt",
+        "`crypto.createHmac('sha512', secret)` over the password",
+        "`crypto.randomUUID()` stored beside the plain password"
+      ],
+      "answer": 0,
+      "why": "Password hashing needs a deliberately slow, memory-hard function so that a stolen table is expensive to brute-force; scrypt is built in, and argon2 or bcrypt packages are the other common choices. SHA-256 and HMAC are designed to be fast, which is exactly wrong here, even with a salt.",
+      "tags": ["crypto", "security"],
+      "level": 1,
+      "asked": "Fast hashes for passwords are a classic junior mistake; naming scrypt or argon2 is the pass mark."
+    },
+    {
+      "id": "na-084",
+      "q": "A webhook handler compares signatures with `crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))`. An attacker sends a shorter signature. What happens in Node 24?",
+      "choices": [
+        "It returns false after a constant-time comparison of the prefix",
+        "It pads the shorter buffer with zeros, then compares both in full",
+        "It returns true if the shorter buffer matches the start of the other",
+        "It throws ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH, so check lengths first"
+      ],
+      "answer": 3,
+      "why": "`timingSafeEqual` requires equal-length inputs and throws otherwise, which becomes a 500 unless you check `a.length === b.length` first and return 401. The constant-time comparison matters because `===` stops at the first differing byte, leaking how much of a guess was right.",
+      "tags": ["crypto", "security"],
+      "level": 2,
+      "asked": "Webhook verification is common; this checks you know both why and the API's sharp edge."
+    },
+    {
+      "id": "na-085",
+      "q": "Why do some teams run `npm ci --ignore-scripts` in CI and allow install scripts only for listed packages?",
+      "choices": [
+        "Install scripts slow CI down but cannot do anything harmful",
+        "npm ci fails on packages that declare scripts unless this is set",
+        "A compromised dependency's postinstall can run any code at install",
+        "It stops npm from running the project's own test and build scripts"
+      ],
+      "answer": 2,
+      "why": "Lifecycle scripts such as `postinstall` run with the installing user's permissions, which in CI often includes deploy tokens; several real supply-chain attacks used exactly that. Blocking them by default and allowing known packages that need a native build narrows the attack. `npm run test` still works.",
+      "tags": ["security", "npm"],
+      "level": 2,
+      "asked": "Supply-chain attacks are front of mind for employers; this shows you know the install-time risk."
+    },
+    {
+      "id": "na-086",
+      "q": "Why do production Dockerfiles for Node add `USER node` before the CMD?",
+      "choices": [
+        "The node binary refuses to start when it is run as root",
+        "So a compromised process cannot act as root in the container",
+        "It makes npm install packages into a smaller layer on disk",
+        "It is needed for Node to bind to ports above number 1024"
+      ],
+      "answer": 1,
+      "why": "Running as root turns any remote-code-execution bug into root inside the container, which makes escaping or tampering much easier. The official Node images ship a non-root `node` user for this. Node runs as root without complaint, and ports above 1024 never need root.",
+      "tags": ["security", "docker"],
+      "level": 1,
+      "asked": "Least privilege applied to containers; an easy win interviewers expect you to know."
+    },
+    {
+      "id": "na-087",
+      "q": "A reporting feature runs admin-supplied formulas with `vm.runInNewContext(code, { data })`. Why is that not a security boundary?",
+      "choices": [
+        "vm is not a sandbox; code can escape to the host process",
+        "vm runs code on the main thread, so the formula can read files",
+        "vm contexts share the global object, so data leaks between runs",
+        "vm is safe for untrusted code only when run with --permission"
+      ],
+      "answer": 0,
+      "why": "Node's docs state plainly that `node:vm` is not a security mechanism: known tricks reach the host's `process` through the context's prototype chain. It also has no CPU limit, so `while(true){}` hangs the server. Use a real expression parser or an isolated process for untrusted input.",
+      "tags": ["security"],
+      "level": 2,
+      "asked": "Tests whether you would ship a remote-code-execution hole behind a misleading API name."
+    },
+    {
+      "id": "na-088",
+      "q": "In node-postgres, `id` comes from `req.params.id`. Which query is safe from SQL injection?",
+      "choices": [
+        "pool.query(`SELECT * FROM orders WHERE id = ${id}`)",
+        "pool.query(`SELECT * FROM orders WHERE id = '${id}'`)",
+        "pool.query('SELECT * FROM orders WHERE id = ' + Number(id))",
+        "pool.query('SELECT * FROM orders WHERE id = $1', [id])"
+      ],
+      "answer": 3,
+      "why": "A `$1` placeholder sends the value separately from the SQL text, so it can never change the statement's structure. Quoting a template literal is still injectable, and `Number(id)` is safe only for numbers and yields `NaN` for bad input, so parameters are the habit to have everywhere.",
+      "tags": ["database", "security"],
+      "level": 1,
+      "asked": "The baseline for any database code; interviewers check you reach for parameters by reflex."
+    },
+    {
+      "id": "na-089",
+      "q": "In Prisma, what is the difference between `$queryRaw` used as a tagged template and `$queryRawUnsafe`?",
+      "choices": [
+        "$queryRaw is cached and faster; $queryRawUnsafe skips the cache",
+        "$queryRaw returns typed models; Unsafe returns plain JS objects",
+        "$queryRaw turns ${} values into parameters; Unsafe pastes strings",
+        "$queryRaw runs inside a transaction; Unsafe runs outside of one"
+      ],
+      "answer": 2,
+      "why": "As a tagged template, `$queryRaw` receives the literal parts and the values separately and sends the values as bind parameters. `$queryRawUnsafe` takes a finished string, so interpolating user input into it is injection. Both return plain rows, and neither type-checks them.",
+      "tags": ["prisma", "security"],
+      "level": 2,
+      "asked": "Raw SQL escapes the ORM's safety net; this checks you know which door is locked."
+    },
+    {
+      "id": "na-090",
+      "q": "With node-postgres, why does this 'transaction' not work as intended?",
+      "code": "await pool.query('BEGIN');\nawait pool.query('UPDATE accounts SET bal = bal - 50 WHERE id = 1');\nawait pool.query('UPDATE accounts SET bal = bal + 50 WHERE id = 2');\nawait pool.query('COMMIT');",
+      "lang": "js",
+      "choices": [
+        "Postgres needs START TRANSACTION, as it does not accept BEGIN",
+        "Each pool.query may use a different connection from the pool",
+        "pool.query auto-commits, so COMMIT runs an empty transaction",
+        "The UPDATEs are reordered by the pool for better throughput"
+      ],
+      "answer": 1,
+      "why": "A transaction lives on one connection, but `pool.query` checks out any free client for each call, so the statements can land on different connections. Use `const client = await pool.connect()`, run BEGIN, the updates and COMMIT (or ROLLBACK on error) on that client, and release it in `finally`.",
+      "tags": ["database", "transactions"],
+      "level": 2,
+      "asked": "One of the most common real bugs with pg; interviewers ask it to see if you know how pools work."
+    },
+    {
+      "id": "na-091",
+      "q": "After a few hundred requests, every route that touches the database hangs, but Postgres is idle. The code uses `pool.connect()`. What is the usual cause?",
+      "choices": [
+        "A code path skips client.release(), so the pool runs out of clients",
+        "Postgres has reached max_connections and is refusing new clients",
+        "The pool's idle timeout closed every connection and cannot reopen",
+        "node-postgres limits each process to one transaction at any time"
+      ],
+      "answer": 0,
+      "why": "Every `pool.connect()` must be paired with `client.release()`, and an early return or thrown error that bypasses it leaks the client. Once all (default 10) are checked out, new requests wait forever for one. Release in `finally`, and set `connectionTimeoutMillis` so a leak fails loudly.",
+      "tags": ["database", "connection-pool"],
+      "level": 3,
+      "asked": "A leak that looks like a database outage; debugging it well shows production experience."
+    },
+    {
+      "id": "na-092",
+      "q": "In Postgres with node-postgres default settings, what is `typeof row.total` for a `NUMERIC(10,2)` column?",
+      "choices": [
+        "'number'",
+        "'bigint'",
+        "'object'",
+        "'string'"
+      ],
+      "answer": 3,
+      "why": "node-postgres returns NUMERIC and BIGINT as strings because a JavaScript number cannot hold every value exactly. Adding two totals then concatenates them, `'10.50' + '2.00'`. Convert deliberately, for money usually to integer minor units or a decimal library, or register a type parser.",
+      "tags": ["database", "money"],
+      "level": 2,
+      "asked": "A real bug in money code; the strong answer explains why the driver does it."
+    },
+    {
+      "id": "na-093",
+      "q": "A Prisma list endpoint loops over 50 orders and calls `prisma.customer.findUnique` for each. What is the better approach?",
+      "choices": [
+        "Wrap the loop in `$transaction` so it becomes one round trip",
+        "Run the 50 lookups with Promise.all so they finish at once",
+        "Fetch orders with `include: { customer: true }` in one call",
+        "Cache each customer in a Map for the rest of the process life"
+      ],
+      "answer": 2,
+      "why": "The loop is an N+1: one query for the orders plus one per order. `include` (or `select` on the relation) loads customers in a single extra query. Promise.all still sends 51 queries and can exhaust the pool, and `$transaction` does not merge queries.",
+      "tags": ["prisma", "performance"],
+      "level": 1,
+      "asked": "N+1 is the most-asked ORM question in any language."
+    },
+    {
+      "id": "na-094",
+      "q": "What is the difference between Prisma's `$transaction([a, b])` and `$transaction(async (tx) => { ... })`?",
+      "choices": [
+        "The array form runs a and b in parallel on separate connections",
+        "The callback form lets later queries depend on earlier results",
+        "The array form retries on deadlock; the callback form never does",
+        "The callback form is read-only, so it cannot write any rows at all"
+      ],
+      "answer": 1,
+      "why": "The array form sends a fixed batch of queries built up front, in one transaction. The interactive callback gets a `tx` client so you can read, decide and write, for example checking stock before decrementing it. Keep that callback short; it holds a connection and locks until it returns.",
+      "tags": ["prisma", "transactions"],
+      "level": 3,
+      "asked": "Choosing the right transaction form, and keeping it short, is a mid-to-senior signal."
+    },
+    {
+      "id": "na-095",
+      "q": "What distinguishes Drizzle ORM from Prisma for a TypeScript API?",
+      "choices": [
+        "Drizzle's schema and queries are TypeScript that reads like SQL",
+        "Drizzle only works with SQLite; Prisma supports Postgres and MySQL",
+        "Drizzle has no migrations, so schema changes must be applied by hand",
+        "Drizzle generates a client from a .prisma schema file at build time"
+      ],
+      "answer": 0,
+      "why": "Drizzle defines tables in TypeScript and offers a query builder close to SQL, with types inferred directly, so there is no generate step. Prisma uses its own schema language and a generated client with a higher-level API. Drizzle supports Postgres, MySQL and SQLite and has `drizzle-kit` for migrations.",
+      "tags": ["drizzle", "prisma"],
+      "level": 1,
+      "asked": "Teams choose between these two constantly; a balanced comparison is what is wanted."
+    },
+    {
+      "id": "na-096",
+      "q": "In development with `node --watch`, the app logs 'too many clients already' from Postgres after many restarts, though each boot creates one Prisma client. Which kind of fix applies?",
+      "choices": [
+        "Create a new PrismaClient per request so each one closes itself",
+        "Raise max_connections in Postgres to 10,000 for local work",
+        "Switch to prisma.$queryRaw, which does not hold any connection",
+        "Disconnect on shutdown, or reuse one client across hot reloads"
+      ],
+      "answer": 3,
+      "why": "Each PrismaClient owns a pool; if the old process or module instance never disconnects before the next starts, pools pile up until Postgres refuses more. Call `$disconnect()` on shutdown, or in frameworks that hot-reload modules in one process, keep a single client on `globalThis`. A client per request is far worse.",
+      "tags": ["prisma", "connection-pool"],
+      "level": 2,
+      "asked": "A common local-development annoyance that reveals whether you understand client lifecycles."
+    },
+    {
+      "id": "na-097",
+      "q": "Which Prisma command should a production deploy pipeline run to apply migrations?",
+      "choices": [
+        "`prisma migrate dev`, which applies and records migrations",
+        "`prisma db push`, which syncs the schema without history",
+        "`prisma migrate deploy`, which applies pending migrations only",
+        "`prisma migrate reset`, which rebuilds the database cleanly"
+      ],
+      "answer": 2,
+      "why": "`migrate deploy` applies committed migration files that have not run yet and never generates new ones or resets data. `migrate dev` is for development: it can prompt to reset the database. `db push` skips migration history, and `reset` drops all data.",
+      "tags": ["prisma", "migrations"],
+      "level": 1,
+      "asked": "Knowing the dev-versus-deploy split prevents data loss in production."
+    },
+    {
+      "id": "na-098",
+      "q": "What does `node:sqlite`'s `DatabaseSync` offer in Node 24?",
+      "choices": [
+        "A promise-based SQLite client that runs queries on the thread pool",
+        "A built-in synchronous SQLite API with prepared statements",
+        "A driver for Postgres that uses SQLite's syntax for queries",
+        "An in-memory cache that writes to SQLite when the process exits"
+      ],
+      "answer": 1,
+      "why": "Node now bundles SQLite: `new DatabaseSync(file)`, then `prepare(sql).run/get/all` with `?` parameters, no npm package needed. As the name says, calls block the event loop, which is fine for CLIs, tests and small local tools but needs care in a busy server.",
+      "tags": ["database", "sqlite"],
+      "level": 2,
+      "asked": "Shows you follow what Node ships and weigh the synchronous trade-off."
+    },
+    {
+      "id": "na-099",
+      "q": "Which headers and body format make a minimal server-sent events endpoint in Node?",
+      "choices": [
+        "`Content-Type: text/event-stream` and `data: ...` lines ending in a blank line",
+        "`Content-Type: application/json` and one JSON array per update",
+        "`Upgrade: websocket` and a text frame written for every update",
+        "`Transfer-Encoding: sse` and one line of plain text per update"
+      ],
+      "answer": 0,
+      "why": "SSE is plain HTTP: keep the response open with `text/event-stream`, and write each message as `data: payload` followed by an empty line. The browser's `EventSource` parses that and reconnects automatically. The Upgrade header belongs to WebSockets, and there is no `sse` transfer encoding.",
+      "tags": ["sse", "realtime"],
+      "level": 1,
+      "asked": "SSE is often the simpler answer for live updates; knowing the wire format shows you have built one."
+    },
+    {
+      "id": "na-100",
+      "q": "An Express SSE endpoint works locally, but with `app.use(compression())` enabled events arrive in delayed bursts. Why?",
+      "choices": [
+        "compression rejects text/event-stream, so the browser retries",
+        "compression converts the stream to chunked JSON, adding latency",
+        "EventSource cannot decompress data, so it waits for the stream end",
+        "gzip buffers output until it has enough, so small events wait"
+      ],
+      "answer": 3,
+      "why": "A compressor collects bytes to compress efficiently, so tiny SSE messages sit in its buffer. Call `res.flush()`, which the compression middleware adds, after each event, or skip compression for that route. Proxies such as nginx can buffer the same way, which is a separate setting.",
+      "tags": ["sse", "compression"],
+      "level": 3,
+      "asked": "A realistic 'works on my machine' streaming bug; the fix shows you understand buffering layers."
+    },
+    {
+      "id": "na-101",
+      "q": "A chat server built on `ws` runs as three instances behind a load balancer. Users on different instances cannot see each other's messages. What is the usual fix?",
+      "choices": [
+        "Enable sticky sessions, so all users end up on one instance",
+        "Have each instance open WebSockets to the other two instances",
+        "Publish messages via a shared broker such as Redis pub/sub",
+        "Move to SSE, as SSE messages are broadcast by the load balancer"
+      ],
+      "answer": 2,
+      "why": "Each instance only knows its own sockets, so a broadcast must go through something all instances subscribe to, such as Redis pub/sub or a message broker, and each instance forwards to its local clients. Sticky sessions keep one user on one instance; they do not put everyone on the same one.",
+      "tags": ["websockets", "scaling"],
+      "level": 2,
+      "asked": "Scaling stateful connections is the standard realtime follow-up question."
+    },
+    {
+      "id": "na-102",
+      "q": "Why does a `ws` server send a ping every 30 seconds and terminate sockets that did not answer the previous one?",
+      "choices": [
+        "The WebSocket protocol closes any connection idle for 60 seconds",
+        "Dead connections are not always reported; pings reveal and free them",
+        "Pings keep the client's JavaScript event loop from going to sleep",
+        "It re-authenticates each socket, since tokens expire in the middle"
+      ],
+      "answer": 1,
+      "why": "If a client vanishes without a clean close, for example on a lost mobile network, the server may keep the socket and its memory for a long time. A heartbeat detects missing pongs so you can `terminate()` it; the pings also stop proxies closing idle-looking connections. The protocol has no built-in idle timeout.",
+      "tags": ["websockets"],
+      "level": 2,
+      "asked": "Connection hygiene separates a demo chat from a server that survives a week in production."
+    },
+    {
+      "id": "na-103",
+      "q": "How should a browser client authenticate a WebSocket connection to your Node server?",
+      "choices": [
+        "Rely on the session cookie or a short-lived token, checked on upgrade",
+        "Set an Authorization header in the `new WebSocket()` options",
+        "Authenticate once after 'open'; the protocol encrypts every message",
+        "WebSockets bypass the same-origin policy, so no auth can be applied"
+      ],
+      "answer": 0,
+      "why": "The browser WebSocket API cannot set custom headers, but it sends cookies with the upgrade request, or you can pass a short-lived ticket in the URL or first message. Verify it during the HTTP upgrade and check the Origin header too, since cross-site pages can open sockets to you.",
+      "tags": ["websockets", "auth"],
+      "level": 2,
+      "asked": "A realistic gap: people assume headers work as with fetch and then leave sockets open to anyone."
+    },
+    {
+      "id": "na-104",
+      "q": "A `ws` server broadcasts price ticks to thousands of clients. Memory climbs steadily when some clients are on slow connections. What should it check?",
+      "choices": [
+        "`ws.readyState`, and reconnect clients that have fallen behind",
+        "`ws.protocol`, and switch slow clients to a compressed subprotocol",
+        "`ws.extensions`, and turn off permessage-deflate on every connection",
+        "`ws.bufferedAmount`, and skip or drop clients that are too far behind"
+      ],
+      "answer": 3,
+      "why": "`send()` never blocks; data for a slow client queues in memory, visible as `bufferedAmount`. Past a threshold, skip messages that will be stale anyway or close the connection. It is the WebSocket version of respecting `write()` returning false on a stream.",
+      "tags": ["websockets", "backpressure"],
+      "level": 3,
+      "asked": "Backpressure beyond streams; strong candidates link it to the same principle."
+    },
+    {
+      "id": "na-105",
+      "q": "Which statement about WebSocket support in Node 24 is correct?",
+      "choices": [
+        "Node has a global WebSocket server, so ws is no longer needed",
+        "Node has no WebSocket support without an experimental flag",
+        "Node has a global WebSocket client; servers still use a package",
+        "Node's WebSocket client only connects to ws:// without TLS"
+      ],
+      "answer": 2,
+      "why": "Since Node 22, a browser-compatible `WebSocket` client class is global, useful for tests and service-to-service clients. Accepting connections still needs a library such as `ws`, or a framework's integration. The client supports `wss://` like a browser.",
+      "tags": ["websockets"],
+      "level": 1,
+      "asked": "A quick currency check that also tests the client-versus-server distinction."
+    },
+    {
+      "id": "na-106",
+      "q": "In Node 24's test runner, how do you test code that waits 60 seconds on setTimeout without the test taking a minute?",
+      "code": "import { test, mock } from 'node:test';",
+      "lang": "js",
+      "choices": [
+        "Run the test with --test-timeout=0 so waits are skipped",
+        "`mock.timers.enable({ apis: ['setTimeout'] })` then `tick(60_000)`",
+        "Replace the delay with `process.nextTick`, which runs at once",
+        "Use `test.skip` on the test and cover the logic by hand instead"
+      ],
+      "answer": 1,
+      "why": "`mock.timers` replaces the timer functions with fake ones, and `tick(ms)` advances fake time and runs due callbacks synchronously. Call `mock.timers.reset()` afterwards. `--test-timeout` only changes when a test is failed for running too long.",
+      "tags": ["testing", "timers"],
+      "level": 2,
+      "asked": "Time-based logic such as retries and expiry needs fake timers; knowing the built-in one saves a dependency."
+    },
+    {
+      "id": "na-107",
+      "q": "An integration test starts the API with `app.listen(0)`. What does port 0 do?",
+      "choices": [
+        "It binds to a random free port, so parallel test files do not clash",
+        "It disables networking, so the test talks to the app in memory",
+        "It reuses port 3000 if free, otherwise the next port above it",
+        "It fails at once, so the test must set PORT in the environment"
+      ],
+      "answer": 0,
+      "why": "Port 0 asks the OS for any free port; read the real one from `server.address().port`. It lets several test files, which Node's runner runs in parallel processes, each start a server without clashing. It is still a real socket, not an in-memory shortcut.",
+      "tags": ["testing", "http-server"],
+      "level": 1,
+      "asked": "A small detail that fixes flaky 'EADDRINUSE' failures in CI."
+    },
+    {
+      "id": "na-108",
+      "q": "In `node:test`, where do you close the server and database pool that a test file opened in `before()`?",
+      "choices": [
+        "In a process.on('exit') handler at the bottom of the test file",
+        "Nowhere: the runner kills each test file's process at the end",
+        "In a finally block inside whichever test happens to run last",
+        "In after(), so they close once every test in the file has run"
+      ],
+      "answer": 3,
+      "why": "`after()` runs once after the file's tests, pass or fail, which is where async cleanup belongs. Open handles otherwise keep the test process alive, so the run hangs or reports it. `exit` handlers cannot run async code, and relying on the 'last' test breaks with filters.",
+      "tags": ["testing"],
+      "level": 1,
+      "asked": "Hanging test runs are a common CI annoyance; clean setup and teardown is the fix."
+    },
+    {
+      "id": "na-109",
+      "q": "An endpoint uses 100% CPU and responds slowly, and you do not know which function is responsible. What gives you the answer most directly?",
+      "choices": [
+        "A heap snapshot, sorted by retained size in DevTools",
+        "Setting `DEBUG=*` and reading every module's debug output",
+        "A CPU profile, such as `node --cpu-prof` shown as a flame graph",
+        "`process.memoryUsage()` logged on each request to that endpoint"
+      ],
+      "answer": 2,
+      "why": "A CPU profile samples the call stack and shows where time goes; as a flame graph the widest frames are your hot functions. Heap snapshots and memory numbers answer memory questions, and debug logging shows what ran, not how long it took.",
+      "tags": ["diagnostics", "performance"],
+      "level": 1,
+      "asked": "Knowing which tool answers which question is what interviewers want in a debugging scenario."
+    },
+    {
+      "id": "na-110",
+      "q": "What does pino gain by running transports, such as shipping logs to a service, through `pino.transport()`?",
+      "choices": [
+        "Transports run on the main thread, so logs never get out of order",
+        "Transports run in a worker thread, off the request-serving thread",
+        "Transports compress logs, so shipping them needs no network at all",
+        "Transports buffer logs until exit, then send them in one request"
+      ],
+      "answer": 1,
+      "why": "pino keeps the main thread's job minimal, serialising JSON and writing it out, and runs transports (formatting, shipping to a service) in a worker thread so they cannot slow request handling. Many teams skip transports entirely, write JSON to stdout and let the platform ship it.",
+      "tags": ["logging", "worker-threads"],
+      "level": 2,
+      "asked": "Logging overhead under load is real; this shows you know where the work happens."
     }
   ]
 }

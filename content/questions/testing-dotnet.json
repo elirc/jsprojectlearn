@@ -325,6 +325,1258 @@
       "tags": ["approval"],
       "level": 2,
       "asked": "Tests whether you know a tool beyond Assert and, more importantly, its limits."
+    },
+    {
+      "id": "td-021",
+      "q": "`SaveAsync` returns a `Task`. What is wrong with this xUnit v3 test?",
+      "code": "[Fact]\npublic void Rejects_null_order()\n{\n    Assert.ThrowsAsync<ArgumentNullException>(() => sut.SaveAsync(null!));\n}",
+      "lang": "cs",
+      "choices": [
+        "Nothing: ThrowsAsync blocks until the task finishes, so the check still happens",
+        "The returned task is never awaited, so the test ends before the check can fail",
+        "ThrowsAsync only accepts async lambdas, so the call fails with a runtime error",
+        "It passes only when SaveAsync throws synchronously, before its first await"
+      ],
+      "answer": 1,
+      "why": "`Assert.ThrowsAsync` returns a `Task` that faults if the expected exception does not arrive; if nobody awaits it, the test method returns first and the failure is lost. Make the test `async Task` and `await` the assertion (the xUnit analyzers flag this pattern).",
+      "tags": ["xunit"],
+      "level": 2,
+      "asked": "A classic silent-green test; interviewers like candidates who know un-awaited async assertions prove nothing."
+    },
+    {
+      "id": "td-022",
+      "q": "The method under test throws `ArgumentNullException`. What does this assertion do?",
+      "code": "Assert.Throws<ArgumentException>(() => Money.Parse(null!));",
+      "lang": "cs",
+      "choices": [
+        "Passes, because ArgumentNullException derives from ArgumentException anyway",
+        "Passes, but logs a warning that a more specific exception type was thrown",
+        "Fails, because Assert.Throws requires the exact exception type to be thrown",
+        "Fails at compile time, because the lambda returns a value instead of void"
+      ],
+      "answer": 2,
+      "why": "`Assert.Throws<T>` checks for exactly `T`, so a derived exception fails the assertion. Use `Assert.ThrowsAny<T>` when any subtype is acceptable, or better, assert the specific type the code promises.",
+      "tags": ["xunit"],
+      "level": 2,
+      "asked": "Checks that you have actually hit the exact-type rule rather than assuming it behaves like a catch block."
+    },
+    {
+      "id": "td-023",
+      "q": "`OrderDto` is a plain class that does not override `Equals`. Why does this assertion fail although every property matches?",
+      "code": "var expected = new OrderDto { Id = 1, Total = 42m };\nAssert.Equal(expected, service.Get(1));",
+      "lang": "cs",
+      "choices": [
+        "Assert.Equal compares the two decimal values as doubles, which loses precision",
+        "Assert.Equal only compares the first public property unless you pass a comparer",
+        "Assert.Equal falls back to reference equality, and these are two separate objects",
+        "Assert.Equal needs both objects to implement IComparable before it can compare them"
+      ],
+      "answer": 2,
+      "why": "Without an `Equals` override (or a record type), equality for a class is reference equality, so two distinct instances are unequal. Make the DTO a `record`, or use `Assert.Equivalent`, which compares public members structurally.",
+      "tags": ["xunit"],
+      "level": 1,
+      "asked": "A very common first stumble; a good answer mentions records or structural comparison as the fix."
+    },
+    {
+      "id": "td-024",
+      "q": "In xUnit, what does `Assert.Equivalent(expected, actual)` do when `actual` has extra public properties that `expected` lacks?",
+      "code": "var expected = new { Id = 1, Name = \"Ann\" };\nAssert.Equivalent(expected, customer);  // customer also has Email, CreatedAt",
+      "lang": "cs",
+      "choices": [
+        "Passes: in the default non-strict mode, extra members on actual are ignored",
+        "Fails: every public member on actual must have a match in the expected object",
+        "Fails at compile time: expected and actual must share exactly the same type",
+        "Passes only if the extra members on actual still hold their default values"
+      ],
+      "answer": 0,
+      "why": "`Assert.Equivalent` walks the members of `expected` and compares each one with the member of the same name on `actual`; with `strict: false` (the default) extra members on `actual` are allowed. Pass `strict: true` when the shapes must match exactly.",
+      "tags": ["xunit"],
+      "level": 3,
+      "asked": "Shows whether you can write focused structural assertions against anonymous objects instead of building full expected DTOs."
+    },
+    {
+      "id": "td-025",
+      "q": "Why prefer `TheoryData<string, bool>` for this member data over a property returning `IEnumerable<object[]>`?",
+      "code": "public static TheoryData<string, bool> Emails => new()\n{\n    { \"\", false },\n    { \"a@b.com\", true },\n};",
+      "lang": "cs",
+      "choices": [
+        "TheoryData runs the rows in parallel, while object arrays always run in sequence",
+        "The rows are typed, so a wrong value type is a compile error, not a runtime one",
+        "TheoryData lets the rows be computed lazily, which object arrays cannot support",
+        "Only TheoryData rows show up individually in the test explorer and in results"
+      ],
+      "answer": 1,
+      "why": "With `object[]` rows the compiler cannot check that each value fits the test's parameters, so a mistake only surfaces when xUnit tries to invoke the method. `TheoryData<...>` is strongly typed through its `Add` overloads; both forms are reported as one case per row.",
+      "tags": ["xunit"],
+      "level": 2,
+      "asked": "Tests whether you pick the type-safe way to feed theories rather than the older untyped pattern."
+    },
+    {
+      "id": "td-026",
+      "q": "What must be true of the member named in `[MemberData(nameof(Cases))]` on a theory in the same class?",
+      "choices": [
+        "It must be a public static property, field or method that returns the rows",
+        "It must be a public instance property set in the test class's constructor",
+        "It must be a private const array, so that the values are known at compile time",
+        "It must be a public method marked with [Fact] so that xUnit can discover it"
+      ],
+      "answer": 0,
+      "why": "xUnit reads member data during discovery, before any test class instance exists, so the member has to be static (and public). Instance members set in the constructor are not available at that point, and attributes cannot hold arrays of arbitrary objects, which is why MemberData exists at all.",
+      "tags": ["xunit"],
+      "level": 1,
+      "asked": "A basic check that you have written data-driven tests beyond InlineData."
+    },
+    {
+      "id": "td-027",
+      "q": "Several test classes need the same table of invalid postcodes. What does `[ClassData(typeof(InvalidPostcodes))]` give you?",
+      "choices": [
+        "A fixture instance of InvalidPostcodes that xUnit shares across the test classes",
+        "A test class whose tests xUnit runs once for every row in the postcode table",
+        "A reusable data class, enumerated by xUnit to produce one test case per row",
+        "A compile-time constant table that is copied into each class's InlineData"
+      ],
+      "answer": 2,
+      "why": "`ClassData` points a theory at a class (for example one deriving from `TheoryData<string>`) that xUnit instantiates and enumerates, so the rows live in one place and any theory can reuse them. It is not a fixture and does not parameterise a whole test class.",
+      "tags": ["xunit"],
+      "level": 1,
+      "asked": "Checks that you know the three data sources for theories and when each is the tidy choice."
+    },
+    {
+      "id": "td-028",
+      "q": "In xUnit v3, why do analyzers suggest passing `TestContext.Current.CancellationToken` to async calls in a test?",
+      "code": "var response = await client.GetAsync(\"/api/orders\",\n    TestContext.Current.CancellationToken);",
+      "lang": "cs",
+      "choices": [
+        "The token makes the HTTP request retry automatically when the test server is slow",
+        "Without a token, xUnit v3 runs async tests synchronously on the runner thread",
+        "It is cancelled when the run is aborted or times out, so slow calls stop early",
+        "The token links the request to the test's output, so the log shows its timing"
+      ],
+      "answer": 2,
+      "why": "xUnit v3 exposes the current test's cancellation token through `TestContext.Current`; it is signalled when the run is cancelled or a test timeout fires, so passing it lets awaited work stop promptly instead of hanging the run. It has nothing to do with retries or logging.",
+      "tags": ["xunit"],
+      "level": 2,
+      "asked": "Shows familiarity with what changed in xUnit v3, not just v2 habits."
+    },
+    {
+      "id": "td-029",
+      "q": "In xUnit v3, a test needs Docker and should be reported as skipped, not failed, when Docker is unavailable. What do you write?",
+      "choices": [
+        "`[Fact(Skip = \"no docker\")]`, which checks the condition when the test runs",
+        "`return;` at the start of the test, which xUnit then reports as skipped",
+        "`Assert.Skip(\"Docker not available\")` inside the test once you detect it",
+        "`Assert.Inconclusive(\"no docker\")`, which v3 reports as a skipped test"
+      ],
+      "answer": 2,
+      "why": "xUnit v3 adds dynamic skipping: `Assert.Skip` (and `SkipWhen`/`SkipUnless`) mark the running test as skipped at runtime. The `Skip` property on `[Fact]` is a fixed string that always skips, and returning early just reports a pass, which hides the missing coverage.",
+      "tags": ["xunit"],
+      "level": 2,
+      "asked": "Separates people who fake it with an early return from those who know the runner can record a genuine skip."
+    },
+    {
+      "id": "td-030",
+      "q": "Why inject `ITestOutputHelper` into an xUnit test class instead of calling `Console.WriteLine` for diagnostics?",
+      "choices": [
+        "Output is attached to that test's own result, even when tests run in parallel",
+        "Console output is blocked in test projects, so it throws when a test is running",
+        "ITestOutputHelper writes to a log file that the runner keeps between each run",
+        "It is faster, because the output is buffered and discarded when the test passes"
+      ],
+      "answer": 0,
+      "why": "xUnit captures what you write through `ITestOutputHelper` per test and shows it with that test's result, which matters when many tests run at once. Plain console output is not reliably tied to a test and, by default, is not shown with the result at all.",
+      "tags": ["xunit"],
+      "level": 1,
+      "asked": "A small practical question that shows whether you debug failing tests from the CI log."
+    },
+    {
+      "id": "td-031",
+      "q": "Integration tests carry `[Trait(\"Category\", \"Integration\")]`. Under VSTest, which command runs everything except them?",
+      "choices": [
+        "`dotnet test --filter \"Category=Integration\" --no-build`",
+        "`dotnet test --exclude-trait Integration`",
+        "`dotnet test --filter \"Category!=Integration\"`",
+        "`dotnet test --skip \"Trait=Integration\"`"
+      ],
+      "answer": 2,
+      "why": "The VSTest filter syntax matches trait names and values with `=`, `!=` and `~`, so `Category!=Integration` excludes those tests. `Category=Integration` would do the opposite and run only them; the other flags do not exist on `dotnet test`.",
+      "tags": ["xunit", "ci"],
+      "level": 1,
+      "asked": "Everyday CI knowledge: splitting fast unit tests from slow integration tests in the pipeline."
+    },
+    {
+      "id": "td-032",
+      "q": "You add `xunit.runner.json` with `\"parallelizeTestCollections\": false` to the test project, but tests still run in parallel. What is the likely cause?",
+      "choices": [
+        "The file must be named xunit.config.json for xUnit v3 to pick it up at all",
+        "The setting only applies to theories, not to plain Fact tests in collections",
+        "The file is not copied to the output folder, so the runner never reads it",
+        "Parallelisation settings are only honoured when tests run inside Visual Studio"
+      ],
+      "answer": 2,
+      "why": "The runner looks for `xunit.runner.json` next to the test assembly, so the project needs `CopyToOutputDirectory` set (for example `PreserveNewest`) on that file. Without it the settings are silently ignored; the name `xunit.runner.json` is correct.",
+      "tags": ["xunit"],
+      "level": 2,
+      "asked": "A real gotcha that shows hands-on configuration experience rather than documentation reading."
+    },
+    {
+      "id": "td-033",
+      "q": "What does `DisableParallelization = true` on a collection definition do?",
+      "code": "[CollectionDefinition(\"Stateful\", DisableParallelization = true)]\npublic class StatefulCollection { }",
+      "lang": "cs",
+      "choices": [
+        "Tests inside this collection run in parallel, but the collection runs last",
+        "The collection runs on its own, after the parallel collections have finished",
+        "Every collection in the assembly runs in sequence once this one is defined",
+        "The tests in this collection run in a random order to expose hidden coupling"
+      ],
+      "answer": 1,
+      "why": "xUnit runs the parallel-enabled collections first, then runs collections marked `DisableParallelization` with nothing else alongside them. It is the targeted tool for a few tests that touch global state, without turning parallelism off for the whole assembly.",
+      "tags": ["xunit", "flaky"],
+      "level": 3,
+      "asked": "Shows you can isolate a handful of stateful tests instead of slowing the entire suite."
+    },
+    {
+      "id": "td-034",
+      "q": "Two test classes are both marked `[Collection(\"Orders\")]`, with no fixture. How does xUnit run them relative to each other?",
+      "choices": [
+        "In parallel, because a collection without a fixture has no effect at all",
+        "In sequence, because tests in the same collection never run in parallel",
+        "In parallel, but only after each class has finished its own constructor",
+        "In sequence, but only if the collection name matches a CollectionDefinition"
+      ],
+      "answer": 1,
+      "why": "A collection is xUnit's unit of parallelism: tests inside one collection run one at a time, whatever classes they come from. A fixture is optional, and a `CollectionDefinition` is only required when you want to attach one or set options such as `DisableParallelization`.",
+      "tags": ["xunit"],
+      "level": 2,
+      "asked": "Tests whether you know how to serialise two classes that share a resource."
+    },
+    {
+      "id": "td-035",
+      "q": "xUnit has no `[SetUp]` or `[TearDown]` attributes. Where does per-test setup and cleanup go?",
+      "choices": [
+        "In a static constructor for setup and a finalizer for the cleanup work",
+        "In a class fixture, which xUnit recreates before every single test runs",
+        "In a method marked [BeforeEach], which xUnit discovers by naming convention",
+        "In the test class's constructor, and in Dispose or DisposeAsync afterwards"
+      ],
+      "answer": 3,
+      "why": "Because xUnit creates a new test class instance per test, the constructor runs before each test and `Dispose`/`DisposeAsync` (or `IAsyncLifetime`) after it. A class fixture is the opposite tool: it is created once and shared by all tests in the class.",
+      "tags": ["xunit", "fixtures"],
+      "level": 1,
+      "asked": "A quick check for people coming from NUnit or MSTest."
+    },
+    {
+      "id": "td-036",
+      "q": "Your integration tests span many classes, all needing one database container started exactly once per test run. Which xUnit v3 feature fits?",
+      "code": "[assembly: AssemblyFixture(typeof(PostgresFixture))]",
+      "lang": "cs",
+      "choices": [
+        "An assembly fixture, created once and injectable into any test class",
+        "A class fixture, which xUnit v3 now shares across the whole assembly",
+        "A static field on a base class, which xUnit v3 disposes after the run",
+        "A collection fixture, which v3 makes every test class join implicitly"
+      ],
+      "answer": 0,
+      "why": "xUnit v3 adds assembly fixtures: registered with `[assembly: AssemblyFixture(...)]`, created once, and injected into any test class constructor, without forcing every class into one collection (which would stop them running in parallel). Class fixtures remain per class, and static fields get no lifetime management.",
+      "tags": ["xunit", "fixtures"],
+      "level": 3,
+      "asked": "Checks you know the v3 option that avoids the old trick of one giant collection."
+    },
+    {
+      "id": "td-037",
+      "q": "Why does this theory fail to compile?",
+      "code": "[Theory]\n[InlineData(19.99m, 0.2m)]\npublic void Adds_vat(decimal net, decimal rate) { /* ... */ }",
+      "lang": "cs",
+      "choices": [
+        "Theory parameters must be primitive types, and decimal is not one of them",
+        "InlineData needs the values as strings, which xUnit then parses to decimal",
+        "The m suffix is not allowed inside attributes, only inside method bodies",
+        "Attribute arguments must be constants of set types, and decimal is not one"
+      ],
+      "answer": 3,
+      "why": "C# attribute arguments are limited to constants of types such as int, double, string, bool and enums; `decimal` is not allowed. Pass doubles and convert inside the test, or use `TheoryData<decimal, decimal>` with MemberData, which is the cleaner fix for money values.",
+      "tags": ["xunit"],
+      "level": 2,
+      "asked": "Money is everywhere in CRUD apps, so this limitation comes up quickly in practice."
+    },
+    {
+      "id": "td-038",
+      "q": "A test class implements `IAsyncLifetime` itself (not through a fixture). How often does `InitializeAsync` run?",
+      "choices": [
+        "Once per class, before the first test, because xUnit caches the instance",
+        "Once per test, because xUnit creates a fresh class instance for each test",
+        "Once per test run, shared by every class that implements the interface",
+        "Never: IAsyncLifetime is only honoured on fixture classes, not on test classes"
+      ],
+      "answer": 1,
+      "why": "On a test class, `IAsyncLifetime` is the async version of constructor and Dispose, so it runs for each test's new instance. For once-per-class async setup, move the work into a class fixture that implements `IAsyncLifetime`.",
+      "tags": ["xunit", "fixtures"],
+      "level": 2,
+      "asked": "Tests whether you would accidentally start an expensive resource once per test."
+    },
+    {
+      "id": "td-039",
+      "q": "Which test name best follows a common naming convention that reads well in a failure report?",
+      "choices": [
+        "`OrderService_Test1_WorksCorrectlyWithStock`",
+        "`PlaceOrder_WhenStockIsZero_ReturnsOutOfStockError`",
+        "`ShouldWorkWhenEverythingIsSetUpCorrectly`",
+        "`OrderServiceTests_PlaceOrder_Scenario3`"
+      ],
+      "answer": 1,
+      "why": "A Method_Scenario_ExpectedResult name tells you what broke from the report alone, before you open the code. Names like `ShouldWork` or a bare method name force you to read the test body to learn which behaviour failed.",
+      "tags": ["design"],
+      "level": 1,
+      "asked": "Test names are documentation, and reviewers notice when a candidate's tests describe behaviour."
+    },
+    {
+      "id": "td-040",
+      "q": "What does `Assert.Single` return, and why is that handy here?",
+      "code": "var line = Assert.Single(order.Lines);\nAssert.Equal(\"SKU-1\", line.Sku);",
+      "lang": "cs",
+      "choices": [
+        "A bool, which you can combine with other checks in a single assertion",
+        "The collection itself, so that you can chain further assertions onto it",
+        "The only element, so the next assertion can inspect it without indexing",
+        "Nothing; the second line re-reads order.Lines[0] after the check passes"
+      ],
+      "answer": 2,
+      "why": "`Assert.Single` fails unless the collection has exactly one element and then returns that element. Using the return value avoids a separate `Assert.Equal(1, ...Count)` followed by `[0]`, and gives a clearer failure message.",
+      "tags": ["xunit"],
+      "level": 1,
+      "asked": "A small idiom check that shows day-to-day xUnit fluency."
+    },
+    {
+      "id": "td-041",
+      "q": "The method under test throws `ArgumentNullException`. Does this xUnit assertion pass?",
+      "code": "Assert.Throws<ArgumentException>(() => sut.Rename(null!));",
+      "lang": "cs",
+      "choices": [
+        "Yes, because ArgumentNullException derives from ArgumentException",
+        "No: Assert.Throws demands the exact type, so use ThrowsAny for subclasses",
+        "Yes, but only when the exception message mentions the offending parameter name",
+        "No, because Throws only catches exceptions thrown from async methods"
+      ],
+      "answer": 1,
+      "why": "`Assert.Throws<T>` checks for exactly `T`; a derived exception fails the test. `Assert.ThrowsAny<T>` accepts `T` or anything derived from it. The inheritance answer is how a `catch` block behaves, which is why people expect it here.",
+      "tags": ["xunit", "assertions"],
+      "level": 2,
+      "asked": "Shows you know the assertion API precisely enough to pin the contract you actually mean."
+    },
+    {
+      "id": "td-042",
+      "q": "Why does this test fail, and what is the usual fix?",
+      "code": "Assert.Equal(0.3, 0.1 + 0.2);",
+      "lang": "cs",
+      "choices": [
+        "`0.1 + 0.2` is 0.30000000000000004; compare with a tolerance",
+        "xUnit compares doubles by reference, so two separate values never match",
+        "The arguments are reversed; the expected value must be the second one",
+        "Literal doubles are boxed to object, so Equal falls back to ToString"
+      ],
+      "answer": 0,
+      "why": "Binary floating point cannot represent 0.1 or 0.2 exactly, so the sum is a hair off 0.3. Use the overload that rounds to a number of decimal places or takes a tolerance, or use `decimal` for money. Argument order only affects the failure message, not the result.",
+      "tags": ["xunit", "assertions"],
+      "level": 1,
+      "asked": "A quick check that you have met floating-point comparison and know the assertion has an answer for it."
+    },
+    {
+      "id": "td-043",
+      "q": "What is the difference between `Assert.All` and `Assert.Collection` in xUnit?",
+      "choices": [
+        "`All` needs the items sorted first; `Collection` accepts them in any order",
+        "`All` stops at the first failing item; `Collection` reports every failing item it finds",
+        "`All` runs one check on every item; `Collection` takes one check per item, in order",
+        "`All` works on arrays only; `Collection` works on any `IEnumerable<T>`"
+      ],
+      "answer": 2,
+      "why": "`Assert.All(items, check)` applies the same action to each element and reports which ones failed. `Assert.Collection(items, first => ..., second => ...)` also asserts the exact count and lets each position have its own inspector. Neither sorts, and both take any sequence.",
+      "tags": ["xunit", "assertions"],
+      "level": 2,
+      "asked": "Collection assertions are where tests get either precise or sloppy; interviewers like to see the precise ones."
+    },
+    {
+      "id": "td-044",
+      "q": "Which statement about xUnit's `Assert.Same` and `Assert.Equal` is correct?",
+      "choices": [
+        "`Same` compares values; `Equal` checks that both references are the same object",
+        "`Same` works only on strings; `Equal` works on every type, including records",
+        "`Same` ignores property order; `Equal` compares properties in declared order",
+        "`Same` checks both references point to one object; `Equal` uses equality"
+      ],
+      "answer": 3,
+      "why": "`Assert.Same` passes only when the two references are identical, which is what you want when testing a cache or a singleton. `Assert.Equal` uses `IEquatable<T>`/`Equals` (and element-wise comparison for sequences), so two equal records pass even though they are different objects.",
+      "tags": ["xunit", "assertions"],
+      "level": 1,
+      "asked": "Checks you can say which kind of equality a test is really asserting."
+    },
+    {
+      "id": "td-045",
+      "q": "`result` is a `List<int>` holding 1, 2, 3. Does this assertion pass?",
+      "code": "Assert.Equal(new[] { 1, 2, 3 }, result);",
+      "lang": "cs",
+      "choices": [
+        "No: an array and a List are different types, so Equal always fails",
+        "Yes: xUnit compares sequences element by element, in order",
+        "Yes, but only because both collections happen to contain value types",
+        "No: Equal on collections compares references unless you pass a comparer"
+      ],
+      "answer": 1,
+      "why": "For `IEnumerable<T>` arguments xUnit compares the items one by one, so the container types do not matter while the contents and order match. If order should not matter, sort first or use `Assert.Equivalent`.",
+      "tags": ["xunit", "assertions"],
+      "level": 1,
+      "asked": "Basic, but it separates people who have written many tests from people who have read about them."
+    },
+    {
+      "id": "td-046",
+      "q": "In NSubstitute, what does this configuration return for `GetPrice(\"tea\")` and for `GetPrice(\"coffee\")`?",
+      "code": "prices.GetPrice(Arg.Any<string>()).Returns(2m);\nprices.GetPrice(\"coffee\").Returns(3m);",
+      "lang": "cs",
+      "choices": [
+        "2 for tea and 3 for coffee, because the more specific setup was added later",
+        "2 for both, because the first matching setup always takes precedence over later ones",
+        "3 for both, because the last `Returns` replaces every earlier setup",
+        "It throws, because two setups on the same member are ambiguous"
+      ],
+      "answer": 0,
+      "why": "NSubstitute checks setups from the most recent backwards and uses the first that matches, so the later `coffee` rule wins for coffee and the earlier catch-all handles everything else. Put general rules first and specific ones after; reversed, the catch-all would shadow the specific rule.",
+      "tags": ["mocking"],
+      "level": 2,
+      "asked": "Tests whether you understand how stub rules combine, which matters once setups grow."
+    },
+    {
+      "id": "td-047",
+      "q": "What does `repo.Received().Save(Arg.Any<Order>())` assert in NSubstitute?",
+      "choices": [
+        "That Save was called exactly once, with any order",
+        "That Save was called at least once, with any order",
+        "That Save was the last call made on the substitute",
+        "That Save was set up to return a value for any order"
+      ],
+      "answer": 1,
+      "why": "`Received()` with no count means at least one matching call. Use `Received(1)` to demand exactly one, and `DidNotReceive()` for zero. It checks calls made, not setups, and says nothing about ordering; `Received.InOrder` exists for that.",
+      "tags": ["mocking"],
+      "level": 1,
+      "asked": "Interaction assertions are easy to write loosely; knowing the counts shows care."
+    },
+    {
+      "id": "td-048",
+      "q": "With Moq, a mock is created as `new Mock<IOrderRepo>(MockBehavior.Strict)`. What happens when the code under test calls a member that was never set up?",
+      "choices": [
+        "It returns the default value for the return type, as a loose mock does",
+        "It throws a MockException, so any unexpected call fails the test",
+        "It records the call and fails only when `VerifyAll` is called at the end",
+        "It calls the real implementation found in the same assembly instead"
+      ],
+      "answer": 1,
+      "why": "Strict mocks throw on any call without a matching setup. The default, `MockBehavior.Loose`, returns defaults (null, 0, empty, or a completed task) instead. Strict mocks make tests brittle when harmless calls are added, which is why most teams stay loose and verify what matters.",
+      "tags": ["mocking"],
+      "level": 2,
+      "asked": "Opens a discussion about brittle tests and what a mock should really pin down."
+    },
+    {
+      "id": "td-049",
+      "q": "In a loose Moq mock with no setup, what does `await repo.Object.FindAsync(5)` return when `FindAsync` returns `Task<Order?>`?",
+      "choices": [
+        "It never completes, because no setup ever completes the task",
+        "It throws NullReferenceException, because the returned task itself is null",
+        "null, because the mock returns a completed task with a default value",
+        "A new Order with default property values, created by reflection"
+      ],
+      "answer": 2,
+      "why": "Loose Moq mocks return completed tasks for async members, carrying the default for the result type, so the await yields null for a reference type. That is convenient, but it can hide a missing setup, so assert on the outcome rather than trusting the mock.",
+      "tags": ["mocking"],
+      "level": 2,
+      "asked": "Explains a common 'why is this null?' moment when tests pass through code paths nobody intended."
+    },
+    {
+      "id": "td-050",
+      "q": "Using the common vocabulary, what is the difference between a stub and a mock?",
+      "choices": [
+        "A stub is generated by a library; a mock is always written by hand",
+        "A stub is used in unit tests; a mock only in integration tests",
+        "A stub supplies canned answers; a mock is verified for how it was called",
+        "A stub replaces a concrete class; a mock can only ever replace an interface"
+      ],
+      "answer": 2,
+      "why": "A stub feeds data into the code under test; you assert on the outcome, not on the stub. A mock is something you verify afterwards, for example that an email was sent. The same library object can play either role, so the difference is in how the test uses it.",
+      "tags": ["mocking", "design"],
+      "level": 1,
+      "asked": "Interviewers use this to see whether you think about what a test is checking, not just which library it uses."
+    },
+    {
+      "id": "td-051",
+      "q": "Why does the usual test pyramid put many unit tests at the base and few end-to-end tests at the top?",
+      "choices": [
+        "End-to-end tests cannot find real bugs, so they only confirm what unit tests found",
+        "Unit tests are fast and pinpoint failures; end-to-end tests are slow and costly",
+        "Unit tests cover the database and UI, so fewer tests are needed higher up",
+        "End-to-end tests must run manually, so a team can only afford a handful"
+      ],
+      "answer": 1,
+      "why": "Lower layers run in milliseconds and a failure names the broken unit; the top layer exercises everything but is slow, flaky-prone and vague about causes. Many teams now weight integration tests heavily for web APIs, but the cost gradient is the reason for the shape.",
+      "tags": ["design"],
+      "level": 1,
+      "asked": "A classic opener; strong answers mention cost, speed and diagnosis, and that the shape is a guideline."
+    },
+    {
+      "id": "td-052",
+      "q": "Unless a test changes it, which environment does `WebApplicationFactory<Program>` run the app in?",
+      "choices": [
+        "Production, the same default a deployed app gets",
+        "Testing, a special environment reserved for test hosts",
+        "Development, so development-only code paths run",
+        "Staging, so appsettings.Staging.json is picked up"
+      ],
+      "answer": 2,
+      "why": "The factory sets the environment to Development by default, so the developer exception page and development-only configuration apply. Call `builder.UseEnvironment(\"Testing\")` in `ConfigureWebHost` if you want a dedicated environment. A deployed app with no setting runs as Production.",
+      "tags": ["integration"],
+      "level": 2,
+      "asked": "Explains surprises such as user secrets or dev-only middleware appearing in integration tests."
+    },
+    {
+      "id": "td-053",
+      "q": "An integration test expects `/account` to answer 302 when not signed in, but the response is 200 with the login page. Why?",
+      "code": "var client = factory.CreateClient();\nvar res = await client.GetAsync(\"/account\");\nAssert.Equal(HttpStatusCode.Redirect, res.StatusCode);",
+      "lang": "cs",
+      "choices": [
+        "The test host disables authentication, so the page is served to everyone",
+        "Redirects are turned into 200 by the in-memory TestServer transport",
+        "The cookie handler returns 200 for API clients instead of redirecting",
+        "The client follows redirects by default; set AllowAutoRedirect = false"
+      ],
+      "answer": 3,
+      "why": "`CreateClient()` uses `WebApplicationFactoryClientOptions`, whose `AllowAutoRedirect` is true, so the client follows the 302 and reports the final page. Pass options with `AllowAutoRedirect = false` to assert on the redirect itself.",
+      "tags": ["integration"],
+      "level": 2,
+      "asked": "A realistic debugging question; it shows you know the test client is a real HttpClient with real defaults."
+    },
+    {
+      "id": "td-054",
+      "q": "Tests use SQLite in memory with this connection string. Why do they see 'no such table' although `EnsureCreated()` ran?",
+      "code": "options.UseSqlite(\"Data Source=:memory:\");",
+      "lang": "cs",
+      "choices": [
+        "Each connection gets its own database, which vanishes when EF closes it",
+        "SQLite in-memory databases do not support tables that declare foreign keys",
+        "`EnsureCreated()` only works with SQL Server and is ignored on SQLite",
+        "The in-memory database is cleared whenever a transaction commits"
+      ],
+      "answer": 0,
+      "why": "An in-memory SQLite database lives only as long as its connection, and EF opens and closes connections per operation. Create a `SqliteConnection`, open it, pass it to `UseSqlite(connection)` and keep it open for the test's lifetime.",
+      "tags": ["integration", "ef-core"],
+      "level": 2,
+      "asked": "A very common first-week problem; the fix shows you understand connection lifetime."
+    },
+    {
+      "id": "td-055",
+      "q": "Why do the EF Core docs discourage the EF Core in-memory provider for testing data access?",
+      "choices": [
+        "It stores data on disk, so tests leave files behind and slow the build",
+        "It is not relational: constraints, transactions and real SQL are absent",
+        "It is limited to 1,000 rows per table, which breaks realistic test data",
+        "It only runs on Windows, which makes it unusable in Linux CI agents"
+      ],
+      "answer": 1,
+      "why": "The in-memory provider is a simple object store: it does not enforce foreign keys or unique indexes, ignores transactions, and evaluates LINQ in memory rather than translating it to SQL. Tests pass that would fail on the real database. Use SQLite, or better the real engine in a container.",
+      "tags": ["integration", "ef-core"],
+      "level": 2,
+      "asked": "Knowing the limits of the in-memory provider is a quick signal of real EF Core testing experience."
+    },
+    {
+      "id": "td-056",
+      "q": "Which command collects code coverage with coverlet's data collector, which the xUnit templates reference?",
+      "code": "dotnet test --collect:\"XPlat Code Coverage\"",
+      "lang": "sh",
+      "choices": [
+        "It fails: coverage requires Visual Studio Enterprise and cannot run in CI",
+        "It runs the tests and writes a coverage file, typically Cobertura XML",
+        "It prints a coverage percentage but never writes a report to disk",
+        "It instruments only the test project, so the app code shows 0%"
+      ],
+      "answer": 1,
+      "why": "The `coverlet.collector` package plugs into `dotnet test` and writes `coverage.cobertura.xml` under TestResults, which tools like ReportGenerator or CI dashboards turn into reports. It measures the code the tests exercise, including referenced app projects.",
+      "tags": ["ci", "coverage"],
+      "level": 1,
+      "asked": "Tests whether you have wired coverage into a pipeline rather than only seen the number."
+    },
+    {
+      "id": "td-057",
+      "q": "A service reports 95% line coverage. What does that number actually tell you?",
+      "choices": [
+        "95% of the lines ran during tests, not that their behaviour was checked",
+        "95% of possible inputs were exercised, so few edge cases remain untested",
+        "95% of the tests pass, and the remaining 5% are skipped or flaky",
+        "95% of the branches were taken in both directions at least once"
+      ],
+      "answer": 0,
+      "why": "Line coverage only proves that code executed. A test with no assertions can reach 95%. Branch coverage is a separate, stricter metric. Coverage is best used to spot untested areas, not as proof of quality.",
+      "tags": ["coverage", "design"],
+      "level": 1,
+      "asked": "Interviewers want to hear that you treat coverage as a map of gaps, not a target."
+    },
+    {
+      "id": "td-058",
+      "q": "What does a mutation testing tool such as Stryker.NET measure?",
+      "choices": [
+        "How often tests fail when run many times in random order",
+        "How many lines the tests execute, weighted by complexity",
+        "Whether tests fail when small changes are made to the code",
+        "How long each test takes, to find ones that should be split"
+      ],
+      "answer": 2,
+      "why": "Stryker makes small edits (flipping `>` to `>=`, removing a call) and reruns the tests; a surviving mutant means no test noticed the change. It finds weak assertions that coverage misses, at the cost of long runs.",
+      "tags": ["coverage", "design"],
+      "level": 2,
+      "asked": "A good follow-up to a coverage question; it shows you know how to judge test strength."
+    },
+    {
+      "id": "td-059",
+      "q": "A class takes `IOptions<SmtpOptions>` in its constructor. What is the simplest way to build one in a unit test?",
+      "choices": [
+        "Build a full host with `Host.CreateApplicationBuilder()` and resolve the options",
+        "Substitute `IOptions<SmtpOptions>` and set up its Value property to return them",
+        "Write an appsettings.json file into the test output folder and load it",
+        "Wrap an instance: `Options.Create(new SmtpOptions { ... })`"
+      ],
+      "answer": 3,
+      "why": "`Microsoft.Extensions.Options.Options.Create` wraps an instance in an `IOptions<T>` with no container or configuration. Substituting works but is noisier, and building a host or reading files turns a unit test into an integration test.",
+      "tags": ["design", "mocking"],
+      "level": 1,
+      "asked": "Small but practical; it shows you keep unit tests free of infrastructure."
+    },
+    {
+      "id": "td-060",
+      "q": "Why is it awkward to assert on logging with an NSubstitute substitute of `ILogger<T>`, and what helps?",
+      "choices": [
+        "`LogWarning` is an extension over `Log<TState>`; use `FakeLogger<T>`",
+        "`ILogger<T>` is sealed, so it cannot be substituted; write a custom logging provider",
+        "Logging runs on a background thread, so assertions race; add a short delay first",
+        "Substitutes swallow log calls by design; enable them with `Configure()` first"
+      ],
+      "answer": 0,
+      "why": "`LogWarning` and friends are extension methods, so you cannot assert on them directly; you would have to match the generic `Log<TState>` call with its formatter. `FakeLogger<T>` from Microsoft.Extensions.Diagnostics.Testing records entries you can inspect, such as `logger.Collector.LatestRecord`.",
+      "tags": ["mocking", "logging"],
+      "level": 2,
+      "asked": "Shows you have hit the extension-method trap and know the supported way around it."
+    },
+    {
+      "id": "td-061",
+      "q": "You unit test this minimal API handler directly. How do you check it returned 404?",
+      "code": "static async Task<Results<Ok<Order>, NotFound>> Get(int id, IOrderRepo repo) =>\n    await repo.FindAsync(id) is { } o ? TypedResults.Ok(o) : TypedResults.NotFound();\n\nvar result = await Get(99, repo);",
+      "lang": "cs",
+      "choices": [
+        "Serialise `result` to JSON and check that the body is empty",
+        "`Assert.IsType<NotFound>(result.Result)` on the wrapped result",
+        "Call `result.ExecuteAsync(null)` and read the status it returns",
+        "It cannot be done without a TestServer, because results need HttpContext"
+      ],
+      "answer": 1,
+      "why": "`Results<T1, T2>` exposes the concrete result through its `Result` property, and typed results are plain objects, so a unit test can inspect them without a server. `ExecuteAsync` needs a real `HttpContext`, and JSON serialisation says nothing about the status code.",
+      "tags": ["design", "aspnet"],
+      "level": 2,
+      "asked": "One of the practical benefits of TypedResults; interviewers like candidates who know why they were added."
+    },
+    {
+      "id": "td-062",
+      "q": "A controller action returns `ActionResult<Order>` and ends with `return order;`. What does a unit test find on the result?",
+      "choices": [
+        "`Result` holds an `OkObjectResult` and `Value` is null",
+        "`Result` holds an `ObjectResult` with status 200 and `Value` is null",
+        "`Value` holds the order and `Result` is null",
+        "Neither is set until MVC executes the result"
+      ],
+      "answer": 2,
+      "why": "The implicit conversion from `T` sets `ActionResult<T>.Value` and leaves `Result` null; MVC turns it into a 200 later. Returning `Ok(order)` instead sets `Result` to an `OkObjectResult`. Tests must check the right property for the style the action uses.",
+      "tags": ["design", "aspnet"],
+      "level": 2,
+      "asked": "Catches people who assert on `Result` for every action and get a confusing null."
+    },
+    {
+      "id": "td-063",
+      "q": "What does the Arrange-Act-Assert pattern ask of a test?",
+      "choices": [
+        "Set up inputs, perform one action, then check its outcome",
+        "Arrange mocks first, then assert each call as soon as it is made in the test",
+        "Run every test three times: once to arrange, once to act, once to assert",
+        "Place all asserts in a shared helper so tests contain only arrange and act"
+      ],
+      "answer": 0,
+      "why": "AAA keeps a test readable: the reader sees the context, the single behaviour under test, and the expectations. Several asserts about one outcome are fine; several acts in one test usually mean it should be split.",
+      "tags": ["design"],
+      "level": 1,
+      "asked": "A baseline structure question; strong answers mention one behaviour per test."
+    },
+    {
+      "id": "td-064",
+      "q": "Why might a team use a test data builder or a library like Bogus instead of constructing entities inline in every test?",
+      "choices": [
+        "Inline construction is slower because the compiler cannot optimise it",
+        "Builders make tests deterministic, while inline objects are randomised",
+        "Tests set only the fields that matter; the rest get valid defaults",
+        "xUnit refuses to run tests whose arrange section is over ten lines long"
+      ],
+      "answer": 2,
+      "why": "A builder or generator supplies sensible defaults, so each test states only what matters to it and survives new required properties. Random generators such as Bogus should be seeded so failures reproduce.",
+      "tags": ["design"],
+      "level": 1,
+      "asked": "Shows you care about test maintenance as the model grows."
+    },
+    {
+      "id": "td-065",
+      "q": "How does NUnit's default lifecycle differ from xUnit's for fields on a test class?",
+      "choices": [
+        "NUnit creates one instance per test, just like xUnit does",
+        "NUnit shares one instance per fixture; xUnit creates one per test",
+        "NUnit creates one instance per assembly, xUnit one per test collection",
+        "NUnit clears all fields between tests using reflection, xUnit does not"
+      ],
+      "answer": 1,
+      "why": "NUnit reuses a single fixture instance by default, so state left in fields leaks between tests unless `[SetUp]` resets it (or you opt into instance-per-test). xUnit builds a fresh instance for every test, which is why it has no `[SetUp]`.",
+      "tags": ["xunit", "fixtures"],
+      "level": 2,
+      "asked": "Useful when a team moves between frameworks; shared state is a classic cause of order-dependent failures."
+    },
+    {
+      "id": "td-066",
+      "q": "Tests pass alone but fail intermittently in the full run. They all use a static `InMemoryOrderStore.Orders` list. What is the likely cause?",
+      "choices": [
+        "Parallel test collections read and write the same static list at once",
+        "xUnit reorders assertions inside a test when running in parallel",
+        "Static lists are reset by the runner between test classes, losing data",
+        "The garbage collector frees static lists while tests are running"
+      ],
+      "answer": 0,
+      "why": "Static state is shared by every test in the process, and xUnit runs collections in parallel, so one test sees another's data and `List<T>` itself is not thread-safe. Give each test its own instance, or put the tests in one collection if sharing is unavoidable.",
+      "tags": ["flaky", "xunit"],
+      "level": 2,
+      "asked": "Flaky tests are a real cost; this checks you can reason from symptoms to shared state."
+    },
+    {
+      "id": "td-067",
+      "q": "How do you usually unit test the loop inside a `BackgroundService` without waiting on real timers?",
+      "choices": [
+        "Call `ExecuteAsync` directly from the test through reflection",
+        "Start the whole host and poll the database until the effect shows",
+        "Move one iteration into a public method and test it with fakes",
+        "Mark the service `[Fact]`, so xUnit drives the loop synchronously"
+      ],
+      "answer": 2,
+      "why": "Keep `ExecuteAsync` a thin loop and put the work of one tick in a method you can call directly, with injected fakes and a `FakeTimeProvider` if timing matters. Reflection couples tests to internals, and polling a full host belongs in a slower integration test.",
+      "tags": ["design", "time"],
+      "level": 3,
+      "asked": "Tests whether you design hosted services for testability rather than fighting them afterwards."
+    },
+    {
+      "id": "td-068",
+      "q": "Integration tests reset data by opening a transaction and rolling it back at the end. Why can this miss data written by the API under test?",
+      "choices": [
+        "Rollbacks are ignored by PostgreSQL when the transaction used savepoints",
+        "The API's own DbContext uses a different connection, outside that transaction",
+        "EF Core commits automatically whenever `SaveChangesAsync` is called",
+        "TestServer runs the app in a separate process, which a transaction cannot span"
+      ],
+      "answer": 1,
+      "why": "A transaction belongs to one connection. Requests through `WebApplicationFactory` resolve their own scoped DbContext and connection, so their writes commit independently. The rollback trick works when the test controls the connection; for API-level tests, reset with a tool such as Respawn or recreate data.",
+      "tags": ["integration", "fixtures"],
+      "level": 3,
+      "asked": "A deep one: it shows you understand transactions are per connection, not per test."
+    },
+    {
+      "id": "td-069",
+      "q": "What problem do consumer-driven contract tests, for example with Pact, address?",
+      "choices": [
+        "They replace unit tests by recording production traffic for replay",
+        "They verify a database schema matches the EF Core model snapshot",
+        "They load-test an API to confirm it meets the agreed latency targets",
+        "They check a provider API still meets what each consumer relies on"
+      ],
+      "answer": 3,
+      "why": "Each consumer records the requests it makes and the responses it needs; the provider's build replays them and fails if it breaks one. That catches breaking API changes without a shared end-to-end environment. It is about compatibility, not performance or schema.",
+      "tags": ["integration", "design"],
+      "level": 3,
+      "asked": "Relevant once services multiply; a strong answer contrasts it with brittle end-to-end suites."
+    },
+    {
+      "id": "td-070",
+      "q": "Which NuGet package provides `WebApplicationFactory<TEntryPoint>` for ASP.NET Core integration tests?",
+      "choices": [
+        "Microsoft.AspNetCore.TestHost.Factory",
+        "Microsoft.AspNetCore.Mvc.Testing",
+        "Microsoft.Extensions.Hosting.Testing",
+        "xunit.aspnetcore.integration"
+      ],
+      "answer": 1,
+      "why": "`Microsoft.AspNetCore.Mvc.Testing` contains the factory, copies the app's deps file and sets the content root; it builds on `Microsoft.AspNetCore.TestHost`, which provides the in-memory `TestServer`. The name says Mvc, but it works for minimal APIs too.",
+      "tags": ["integration"],
+      "level": 1,
+      "asked": "A warm-up that confirms you have set up an integration test project yourself."
+    },
+    {
+      "id": "td-071",
+      "q": "In an integration test, what is the tidiest way to turn a JSON response body into an `OrderDto`?",
+      "choices": [
+        "`await res.Content.ReadFromJsonAsync<OrderDto>()` from System.Net.Http.Json",
+        "Read the body as a string and split it on commas to find each property",
+        "Cast `res.Content` to `OrderDto`, since TestServer keeps the original object",
+        "Call `JsonConvert.DeserializeObject` from Newtonsoft, the only option in .NET"
+      ],
+      "answer": 0,
+      "why": "`ReadFromJsonAsync<T>` uses System.Text.Json with web defaults (camelCase, case-insensitive), matching what ASP.NET Core writes. TestServer still serialises the response, so there is no original object to cast, and Newtonsoft is optional, not required.",
+      "tags": ["integration"],
+      "level": 1,
+      "asked": "A small practical check that you have written API tests end to end."
+    },
+    {
+      "id": "td-072",
+      "q": "What does xUnit report for a test marked like this?",
+      "code": "[Fact(Skip = \"Flaky until the queue fake is fixed (#412)\")]\npublic void Retries_failed_messages() { /* ... */ }",
+      "lang": "cs",
+      "choices": [
+        "It runs the test but ignores a failure, reporting it as passed",
+        "It fails the build, because skipped tests count as errors in CI",
+        "It is reported as skipped, with its reason; the body never runs",
+        "It runs the test only when the debugger is attached to the runner"
+      ],
+      "answer": 2,
+      "why": "A non-null `Skip` reason marks the test skipped without running it, and the reason shows in the report. Link a ticket in the reason so skipped tests are not forgotten; a pile of silent skips is a smell.",
+      "tags": ["xunit"],
+      "level": 1,
+      "asked": "Opens a conversation about how you handle flaky tests without deleting them."
+    },
+    {
+      "id": "td-073",
+      "q": "Under VSTest, what does this command run?",
+      "code": "dotnet test --filter \"FullyQualifiedName~OrderServiceTests\"",
+      "lang": "sh",
+      "choices": [
+        "Only a class whose full name is exactly `OrderServiceTests`",
+        "Every test whose full name contains `OrderServiceTests`",
+        "Every test except those in classes named `OrderServiceTests`",
+        "Tests tagged with a trait whose value is `OrderServiceTests`"
+      ],
+      "answer": 1,
+      "why": "`~` means contains and `=` means equals, so this matches every test in that class and in any class whose name contains the text. `!~` would exclude, and traits are matched by their own names such as `Category=Integration`.",
+      "tags": ["ci", "xunit"],
+      "level": 1,
+      "asked": "Handy for day-to-day work and CI; it shows you run tests from the command line, not only the IDE."
+    },
+    {
+      "id": "td-074",
+      "q": "A class has a complex private method. How should its behaviour normally be tested?",
+      "choices": [
+        "Through the public methods that use it, asserting on their outcomes",
+        "Make it public so a test can call it directly, then make it private again",
+        "Call it through reflection so the class keeps its private surface",
+        "Leave it untested, because private code is covered by code review"
+      ],
+      "answer": 0,
+      "why": "Tests should pin behaviour, not structure, so they survive refactoring. If a private method is so complex it needs its own tests, that often means it wants to be its own class with a public API. Reflection couples tests to names that can change freely.",
+      "tags": ["design"],
+      "level": 1,
+      "asked": "Reveals whether you test behaviour or implementation, a recurring interview theme."
+    },
+    {
+      "id": "td-075",
+      "q": "Which assertion gives the most useful failure message when `total` is 40 instead of 42?",
+      "choices": [
+        "`Assert.True(total == 42);`",
+        "`Assert.Equal(42, total);`",
+        "`Assert.False(total != 42);`",
+        "`Assert.NotNull(total == 42 ? total : null);`"
+      ],
+      "answer": 1,
+      "why": "`Assert.Equal` reports both values: expected 42, actual 40. `Assert.True` can only say that false was not true, so you rerun under a debugger to find out why. Pick the assertion that states your intent.",
+      "tags": ["xunit", "assertions"],
+      "level": 1,
+      "asked": "Tiny but telling: good tests fail with messages that explain themselves."
+    },
+    {
+      "id": "td-076",
+      "q": "What does `Assert.Contains(\"not found\", message)` check when `message` is a string?",
+      "choices": [
+        "That `message` equals \"not found\", ignoring upper and lower case",
+        "That `message` starts with \"not found\" followed by more text",
+        "That `message` contains \"not found\", matched case-sensitively",
+        "That `message` holds each word of \"not found\" in any order"
+      ],
+      "answer": 2,
+      "why": "The string overload checks for an ordinal substring. There is an overload taking a `StringComparison` for case-insensitive checks, and `Assert.StartsWith` for prefixes. Asserting on a fragment keeps tests from breaking when wording is polished.",
+      "tags": ["xunit", "assertions"],
+      "level": 1,
+      "asked": "Checks you pick assertions that are strict enough without being brittle."
+    },
+    {
+      "id": "td-077",
+      "q": "An integration test posts a new product. What should it assert to prove the endpoint follows REST conventions for creation?",
+      "code": "var res = await client.PostAsJsonAsync(\"/products\", new { name = \"Tea\", price = 3 });",
+      "lang": "cs",
+      "choices": [
+        "Status 200 and a body that echoes exactly the JSON that was sent",
+        "Status 204 and an empty body, as the resource now exists on the server",
+        "Status 202 and a Retry-After header telling the client when to poll",
+        "Status 201 and a Location header that points at the new product"
+      ],
+      "answer": 3,
+      "why": "A successful create returns 201 Created with a `Location` to the new resource, usually with its representation in the body. A follow-up GET on that URL makes the test stronger. 202 is for accepted-but-not-done work, and 204 carries no body.",
+      "tags": ["integration"],
+      "level": 1,
+      "asked": "Combines HTTP knowledge with testing; interviewers like tests that check the contract, not just 'no exception'."
+    },
+    {
+      "id": "td-078",
+      "q": "With Moq, how do you make an async method return a value?",
+      "code": "var repo = new Mock<IOrderRepo>();\nrepo.Setup(r => r.FindAsync(7)) /* ??? */;",
+      "lang": "cs",
+      "choices": [
+        "`.Returns(order)`, since Moq wraps any value in a task for you here",
+        "`.ReturnsAsync(order)`, which wraps the value in a completed Task",
+        "`.Callback(() => order)`, which becomes the method's return value",
+        "`.Awaits(order)`, the Moq method designed for async members"
+      ],
+      "answer": 1,
+      "why": "`ReturnsAsync(value)` is shorthand for `Returns(Task.FromResult(value))`. A plain `Returns(order)` does not compile for a `Task<Order>` member, and `Callback` runs side effects without setting the return value.",
+      "tags": ["mocking"],
+      "level": 1,
+      "asked": "Everyday mocking syntax; stumbling here suggests little hands-on test writing."
+    },
+    {
+      "id": "td-079",
+      "q": "A common guideline says 'don't mock types you don't own'. What does it suggest for code that calls a third-party payment SDK?",
+      "choices": [
+        "Mock the SDK's concrete classes, since they are the real dependency",
+        "Wrap the SDK behind your own small interface and fake that in tests",
+        "Call the SDK's live sandbox from every unit test to be realistic",
+        "Skip testing that code, because vendor SDKs are already tested"
+      ],
+      "answer": 1,
+      "why": "Mocking a vendor API encodes your guesses about its behaviour and breaks when it changes. An adapter you own gives unit tests a simple seam, and a few integration tests against the vendor sandbox check the adapter itself.",
+      "tags": ["mocking", "design"],
+      "level": 2,
+      "asked": "Shows you think about seams and ownership rather than mocking everything in sight."
+    },
+    {
+      "id": "td-080",
+      "q": "One test needs a different `IEmailSender` from the rest of the class. What does this do?",
+      "code": "var client = factory.WithWebHostBuilder(b =>\n    b.ConfigureTestServices(s => s.AddSingleton<IEmailSender>(fake)))\n  .CreateClient();",
+      "lang": "cs",
+      "choices": [
+        "It swaps the sender for every test that shares the class fixture",
+        "It fails, because services can no longer change once the factory exists",
+        "It adds a second sender, and the app picks one of the two at random",
+        "It builds a separate server with the fake; other tests are unaffected"
+      ],
+      "answer": 3,
+      "why": "`WithWebHostBuilder` returns a new factory that layers extra configuration over the original and starts its own server. It is flexible but each one costs a host start-up, so share factories where tests agree on configuration.",
+      "tags": ["integration"],
+      "level": 2,
+      "asked": "Tests whether you can tailor one test without leaking changes into others."
+    },
+    {
+      "id": "td-081",
+      "q": "How can a `WebApplicationFactory` point the app at a test database connection string without editing appsettings files?",
+      "choices": [
+        "Call `builder.UseSetting(\"ConnectionStrings:Default\", ...)` in ConfigureWebHost",
+        "Change `Environment.CurrentDirectory` so the app loads appsettings from another folder",
+        "Pass the connection string as the first argument to `CreateClient()`",
+        "Edit the compiled appsettings.json in the bin folder before each run"
+      ],
+      "answer": 0,
+      "why": "`UseSetting` (or `ConfigureAppConfiguration` adding an in-memory source) feeds values into configuration, which the app then binds as usual. `CreateClient` takes client options, not configuration, and editing build output is fragile.",
+      "tags": ["integration", "configuration"],
+      "level": 2,
+      "asked": "Configuration overrides are the usual way to wire containers and fakes into a test host."
+    },
+    {
+      "id": "td-082",
+      "q": "Why do Testcontainers setups usually pin an image tag such as `postgres:17.5` rather than `postgres:latest`?",
+      "choices": [
+        "The `latest` tag is refused by Testcontainers for security reasons",
+        "Tagged images are cached forever, while `latest` downloads every run",
+        "A pinned tag keeps tests stable and on the version production runs",
+        "Only tagged images expose the database port to the test process"
+      ],
+      "answer": 2,
+      "why": "`latest` moves when a new major ships, so tests can break or pass for reasons unrelated to your change, and may drift from the version you run in production. Pin the version and bump it deliberately alongside production.",
+      "tags": ["integration", "flaky"],
+      "level": 2,
+      "asked": "Shows you think about reproducibility, a big part of trustworthy integration tests."
+    },
+    {
+      "id": "td-083",
+      "q": "A test creates `new FakeTimeProvider()` and reads `GetUtcNow()` twice, a second apart in real time. What does it see?",
+      "choices": [
+        "Two times one real second apart, as the fake tracks the system clock",
+        "The same value both times, because fake time moves only when told to",
+        "The current real time first, then a time far in the future",
+        "An exception, because the start time must be set before reading it"
+      ],
+      "answer": 1,
+      "why": "`FakeTimeProvider` holds a fixed time that changes only through `Advance`, `SetUtcNow`, or its optional `AutoAdvanceAmount`. That is what makes time-based tests deterministic. It starts at a fixed default date unless you pass one.",
+      "tags": ["time"],
+      "level": 2,
+      "asked": "Checks that you understand why fake clocks remove timing flakiness."
+    },
+    {
+      "id": "td-084",
+      "q": "How do you make an NSubstitute substitute throw from an async method so the caller sees a faulted task?",
+      "code": "store.SaveAsync(Arg.Any<Order>())\n     /* ??? */;",
+      "lang": "cs",
+      "choices": [
+        "`.Returns(Task.FromException(new TimeoutException()))`",
+        "`.Returns(new TimeoutException())`, which NSubstitute throws for you",
+        "`.When(...).Do(...)` only works for void methods, so it cannot be done",
+        "`.Received().Throws<TimeoutException>()` on the same call"
+      ],
+      "answer": 0,
+      "why": "Returning a faulted task matches how a real async method fails, so `await` throws inside the caller. NSubstitute's `ThrowsAsync` extension does the same more tidily. Returning an exception object does not throw it, and `Received` checks calls rather than configuring them.",
+      "tags": ["mocking"],
+      "level": 2,
+      "asked": "Testing failure paths is where many suites are thin; this checks you can drive them."
+    },
+    {
+      "id": "td-085",
+      "q": "You test retry logic. Which Moq setup makes the first call fail and the second succeed?",
+      "choices": [
+        "`Setup(...).Throws(ex).Returns(ok)`, chained on a single setup",
+        "Two separate `Setup` calls; Moq plays them one after another in order",
+        "`SetupSequence(...).ThrowsAsync(ex).ReturnsAsync(ok)`",
+        "`Setup(...).Callback(retry).Returns(ok)`, which counts the calls for you"
+      ],
+      "answer": 2,
+      "why": "`SetupSequence` returns a different outcome on each successive call. Two plain setups with the same arguments do not queue; the later one simply replaces the earlier. Assert the final outcome and, if it matters, the number of calls.",
+      "tags": ["mocking", "resilience"],
+      "level": 2,
+      "asked": "Retry code is easy to get wrong; this checks you can simulate transient failures."
+    },
+    {
+      "id": "td-086",
+      "q": "A typed client should call `GET /rates?base=GBP`. How does a unit test check the request it sent?",
+      "choices": [
+        "Substitute `HttpClient` and assert that `GetAsync` received the URL",
+        "Read `client.DefaultRequestHeaders` after the call to find the URL",
+        "Point the client at a public test API and inspect its request logs",
+        "Have the fake handler record the request message, then assert on it"
+      ],
+      "answer": 3,
+      "why": "Every request passes through the handler's `SendAsync`, so a fake handler can capture the message and return a canned response. `GetAsync` is not virtual, so substituting `HttpClient` does not intercept it, and default headers do not include the URL.",
+      "tags": ["mocking", "httpclient"],
+      "level": 2,
+      "asked": "A natural follow-up to faking handlers: asserting the outgoing request, not only the parsing."
+    },
+    {
+      "id": "td-087",
+      "q": "How do you unit test a FluentValidation validator for `CreateUser`?",
+      "choices": [
+        "Post invalid JSON to the running API and check the 400 response body",
+        "`TestValidate(model).ShouldHaveValidationErrorFor(x => x.Email)`",
+        "Substitute `IValidator<CreateUser>` and assert that Validate was called",
+        "Annotate `CreateUser` with `[Required]` and let xUnit check it for you"
+      ],
+      "answer": 1,
+      "why": "FluentValidation's TestHelper extensions run the rules directly and let you assert on specific properties, fast and without a server. Substituting the validator tests nothing about its rules, and an API test is a slower integration check.",
+      "tags": ["validation", "design"],
+      "level": 2,
+      "asked": "Validation rules are business logic; interviewers like them tested cheaply and directly."
+    },
+    {
+      "id": "td-088",
+      "q": "An integration test for a failed lookup should confirm the API returns RFC 9457 problem details. What should it check?",
+      "choices": [
+        "Status 404, `application/problem+json`, and the `title` and `status`",
+        "Status 404 and an empty body, since problem details are only for 500 errors",
+        "Status 200 and a body whose `success` property is false",
+        "Status 404 and a `text/html` page, the ASP.NET Core default for errors"
+      ],
+      "answer": 0,
+      "why": "Problem details responses use `application/problem+json` and carry `type`, `title`, `status` and optionally `detail` and extensions. Reading the body with `ReadFromJsonAsync<ProblemDetails>()` lets the test check them. Clients depend on this shape, so it deserves a test.",
+      "tags": ["integration", "errors"],
+      "level": 2,
+      "asked": "Checks you test error contracts, which clients rely on as much as success responses."
+    },
+    {
+      "id": "td-089",
+      "q": "A test asserting `price.ToString(\"C\")` equals `£3.00` passes locally but fails on the Linux CI agent. What is the likely cause?",
+      "choices": [
+        "Linux formats decimals with more places, so it prints £3.000",
+        "The CI agent runs a different current culture, such as en-US",
+        "Currency formatting is not supported by .NET on Linux at all",
+        "The test runner on CI converts all output strings to ASCII"
+      ],
+      "answer": 1,
+      "why": "`ToString(\"C\")` uses `CultureInfo.CurrentCulture`, which comes from the machine or container. Pass an explicit culture, such as `CultureInfo.GetCultureInfo(\"en-GB\")`, in the code or the test. Some minimal containers also run in globalisation-invariant mode, which changes the output again.",
+      "tags": ["flaky", "ci"],
+      "level": 2,
+      "asked": "A very real CI failure; it shows you look for hidden environment inputs."
+    },
+    {
+      "id": "td-090",
+      "q": "An integration test needs a customer in the database before calling the API. How can it seed one through the app's own services?",
+      "code": "using var scope = factory.Services.CreateScope();\nvar db = scope.ServiceProvider.GetRequiredService<AppDbContext>();",
+      "lang": "cs",
+      "choices": [
+        "This fails, because `factory.Services` is only available inside requests",
+        "Resolving DbContext here gives the same instance every request uses",
+        "Add the customer to `db`, call `SaveChangesAsync`, then call the API",
+        "Add the customer to `db`; requests see it without SaveChanges"
+      ],
+      "answer": 2,
+      "why": "`factory.Services` is the app's root provider, and a scope gives you a fresh scoped DbContext to insert data with. Requests use their own contexts, so the data must be saved to the database before they can see it.",
+      "tags": ["integration", "fixtures"],
+      "level": 2,
+      "asked": "Seeding through the real model keeps test data valid as the schema evolves."
+    },
+    {
+      "id": "td-091",
+      "q": "Why can `[InternalsVisibleTo(\"Shop.Tests\")]` be useful, and what is its cost?",
+      "choices": [
+        "Tests can reach internal types, but then depend on less stable details",
+        "It makes internal types public for everyone, which weakens encapsulation",
+        "It speeds up tests by skipping JIT compilation for internal classes",
+        "It lets tests call private methods, which removes the need for reflection"
+      ],
+      "answer": 0,
+      "why": "The attribute grants the named assembly access to `internal` members only, not `private` ones, and does not change visibility for anyone else. It helps test internal building blocks, but tests bound to internals break more often during refactoring.",
+      "tags": ["design"],
+      "level": 2,
+      "asked": "A pragmatic trade-off question: strong answers mention testing through public APIs first."
+    },
+    {
+      "id": "td-092",
+      "q": "In xUnit v3, what is different about how a test project is built and run compared with v2?",
+      "choices": [
+        "Tests must be written as scripts that `dotnet test` interprets at runtime",
+        "Test projects are class libraries loaded into a shared runner process",
+        "Tests run inside the IDE only, and `dotnet test` is no longer supported",
+        "Test projects compile to executables that can run on their own"
+      ],
+      "answer": 3,
+      "why": "xUnit v3 test projects have `OutputType` Exe, so each is a self-contained program you can run directly, and it works with both VSTest and Microsoft.Testing.Platform through `dotnet test`. v2 projects were libraries loaded by a runner.",
+      "tags": ["xunit", "ci"],
+      "level": 3,
+      "asked": "Useful when upgrading from v2; it shows you follow how the tooling has changed."
+    },
+    {
+      "id": "td-093",
+      "q": "A singleton captures a scoped service. Production never complains, yet the integration test host throws at start-up. Why?",
+      "choices": [
+        "TestServer uses a different DI container that forbids singletons",
+        "`WebApplicationFactory` turns on strict mode for every environment",
+        "Tests resolve services in parallel, which exposes the captive dependency at once",
+        "The factory runs in Development, which switches on scope validation"
+      ],
+      "answer": 3,
+      "why": "In Development the default host enables `ValidateScopes` and `ValidateOnBuild`, so resolving a scoped service from a singleton throws. The factory defaults to Development, so the test exposes a real bug that production silently tolerates, usually as stale or shared state.",
+      "tags": ["integration", "di"],
+      "level": 3,
+      "asked": "A good sign of depth: connecting host defaults to why a test fails where production does not."
+    },
+    {
+      "id": "td-094",
+      "q": "How can you unit test a resource-based authorisation handler without a web server?",
+      "code": "public class OwnerHandler\n    : AuthorizationHandler<OwnerRequirement, Document> { /* ... */ }",
+      "lang": "cs",
+      "choices": [
+        "Build a handler context for a test user, call `HandleAsync`, check `HasSucceeded`",
+        "Call `HandleRequirementAsync` directly; it is public on every authorisation handler",
+        "It needs a running server, because handlers read the user from HttpContext",
+        "Substitute `IAuthorizationService` and assert that the handler was called"
+      ],
+      "answer": 0,
+      "why": "Handlers work on a principal, the requirements and the resource, all plain objects. Create the context with the user's claims, call the public `HandleAsync`, and assert `context.HasSucceeded`. `HandleRequirementAsync` is protected, and substituting the service would skip the handler entirely.",
+      "tags": ["auth", "design"],
+      "level": 3,
+      "asked": "Authorisation rules are high-stakes logic; testing them directly shows maturity."
+    },
+    {
+      "id": "td-095",
+      "q": "A Verify snapshot of an API response changes on every run because it contains a new Guid and a timestamp. What does Verify do about that by default?",
+      "choices": [
+        "It fails every run, so you must remove Guids and dates from responses",
+        "It ignores the whole response when it spots any non-deterministic value",
+        "It scrubs Guids and dates it recognises into placeholders such as `Guid_1`",
+        "It rounds timestamps to the nearest minute and drops every Guid from the file"
+      ],
+      "answer": 2,
+      "why": "Verify replaces Guid and DateTime values it recognises with numbered placeholders, keeping the snapshot stable while still showing where values repeat. You can add custom scrubbers for other volatile data such as tokens.",
+      "tags": ["approval"],
+      "level": 3,
+      "asked": "Shows you know how snapshot tests stay stable, the main objection people raise to them."
+    },
+    {
+      "id": "td-096",
+      "q": "How would an integration test prove that an update endpoint rejects a stale edit with 409?",
+      "choices": [
+        "Send two PUTs carrying the same row version; expect 409 on the second",
+        "Send the same PUT twice in parallel and assert that both succeed",
+        "Mock the DbContext so it throws `DbUpdateConcurrencyException` on every save",
+        "Lower the isolation level to Read Uncommitted and read the row twice"
+      ],
+      "answer": 0,
+      "why": "The first PUT changes the row version; the second still carries the old one, so EF Core's concurrency check fails and the API should map that to 409 Conflict. Mocking the exception only tests the mapping, not that the token is really checked.",
+      "tags": ["integration", "ef-core"],
+      "level": 3,
+      "asked": "Concurrency handling is often claimed and rarely tested; a concrete test plan stands out."
+    },
+    {
+      "id": "td-097",
+      "q": "Several test collections run in parallel against one shared database. Which approach keeps them from interfering?",
+      "choices": [
+        "Delete all rows at the start of every test, whichever collection runs it",
+        "Give each collection its own database, or data with unique keys it owns",
+        "Wrap each test in a lock statement on a static object in the base class",
+        "Add `Thread.Sleep(100)` between tests so their writes do not overlap"
+      ],
+      "answer": 1,
+      "why": "Resetting a shared database while another collection is mid-test causes random failures, and locks or sleeps throw away the parallelism. A database per collection (easy with containers) or strictly owned data keeps runs independent.",
+      "tags": ["integration", "flaky"],
+      "level": 3,
+      "asked": "Parallelism and shared state is where integration suites get slow or flaky; this checks you can design around it."
+    },
+    {
+      "id": "td-098",
+      "q": "A factory subclass starts a Postgres container in `InitializeAsync` and uses its connection string in `ConfigureWebHost`. Why does that ordering work?",
+      "choices": [
+        "`ConfigureWebHost` is called by xUnit only after every fixture has started",
+        "The factory copies the connection string again before each request is sent",
+        "Testcontainers blocks the constructor until the container port is open",
+        "The host is built lazily, on first use such as `CreateClient()`"
+      ],
+      "answer": 3,
+      "why": "`WebApplicationFactory` builds the server the first time you touch `Server`, `Services` or `CreateClient`. xUnit awaits `InitializeAsync` before tests run, so the container is ready by the time the host reads configuration.",
+      "tags": ["integration", "fixtures"],
+      "level": 3,
+      "asked": "Understanding the lazy start explains how containers and test hosts fit together."
+    },
+    {
+      "id": "td-099",
+      "q": "Before refactoring an untested legacy pricing class, what does writing characterisation tests mean?",
+      "choices": [
+        "Tests describing how the code ought to behave according to the spec",
+        "Tests that record what it does now, bugs included, as a safety net",
+        "Tests on each character of the output string, one assertion per char",
+        "Tests generated by a tool from the class's XML doc comments"
+      ],
+      "answer": 1,
+      "why": "Characterisation tests capture current behaviour so a refactor can prove nothing changed; known bugs are pinned deliberately and fixed later in a separate change. Snapshot tools often help here.",
+      "tags": ["design", "approval"],
+      "level": 3,
+      "asked": "Legacy code is the norm on real teams; this shows you can change it safely."
+    },
+    {
+      "id": "td-100",
+      "q": "An API call returns 202 and then queues work in the background. A test that waits `Task.Delay(500)` before checking the result is flaky. What is better?",
+      "choices": [
+        "Raise the delay to five seconds so slow CI agents always have enough time",
+        "Poll for the expected state with a short interval and an overall timeout",
+        "Mark the test `[Fact(Skip = ...)]` because background work cannot be tested",
+        "Run the test alone with parallelisation turned off for the whole assembly"
+      ],
+      "answer": 1,
+      "why": "A fixed sleep is either too short on a slow agent or wastes time everywhere. Polling until the condition holds, failing after a generous timeout, is fast when things work and reliable when they are slow. Better still, expose a hook or a fake queue you can drain directly.",
+      "tags": ["flaky", "integration"],
+      "level": 3,
+      "asked": "Asynchronous assertions are the top source of flaky tests; this checks you know the fix."
     }
   ]
 }

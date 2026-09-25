@@ -303,6 +303,1206 @@
       "tags": ["flow"],
       "level": 3,
       "asked": "Links batch size to risk, which is the argument behind CI and trunk-based development."
+    },
+    {
+      "id": "ag-021",
+      "q": "What is the product backlog in Scrum?",
+      "choices": [
+        "The stories the team has committed to finishing during the current sprint only",
+        "An ordered list of all possible work on the product, owned by the product owner",
+        "A queue of bugs reported after the last release that are waiting to be fixed",
+        "The tickets a developer has started but not yet moved into code review"
+      ],
+      "answer": 1,
+      "why": "The product backlog is the single ordered source of future work for the product, and the product owner is accountable for its order. The stories chosen for one sprint form the sprint backlog, which is the usual mix-up; bugs are just one kind of backlog item.",
+      "tags": ["tickets", "roles"],
+      "level": 1,
+      "asked": "A vocabulary check; strong candidates add who owns the order and how often it changes."
+    },
+    {
+      "id": "ag-022",
+      "q": "What is the sprint backlog in Scrum?",
+      "choices": [
+        "The stories chosen for this sprint plus the team's plan for delivering them",
+        "Every item the product owner has written so far, ordered by business value",
+        "Stories left unfinished last sprint, carried forward into this one by default",
+        "The bug tickets that must be fixed before the sprint's features can ship"
+      ],
+      "answer": 0,
+      "why": "The sprint backlog is the sprint goal, the items selected for it and the developers' plan, and it belongs to the developers. The full ordered list is the product backlog. Unfinished work goes back to the product backlog to be re-prioritised rather than rolling over automatically.",
+      "tags": ["tickets", "ceremonies"],
+      "level": 1,
+      "asked": "Interviewers use it to see whether you know who owns which list, not just the names."
+    },
+    {
+      "id": "ag-023",
+      "q": "What is a sprint goal?",
+      "choices": [
+        "The total number of story points the team promises to finish by the last day",
+        "A personal target each developer sets at planning and reports on at the retro",
+        "The release date agreed with stakeholders, after which the scope is frozen",
+        "A one-line outcome for the sprint, which gives the chosen stories a purpose"
+      ],
+      "answer": 3,
+      "why": "A sprint goal states the outcome, such as 'customers can pay by card', so the team can renegotiate individual stories and still deliver what matters. A points target measures output rather than outcome and invites padding; personal targets are not part of it.",
+      "tags": ["ceremonies"],
+      "level": 1,
+      "asked": "The follow-up is what you do when the goal is at risk mid-sprint, which tests whether you use it."
+    },
+    {
+      "id": "ag-024",
+      "q": "What is backlog refinement (sometimes called grooming)?",
+      "choices": [
+        "A clean-up in which the product owner deletes every story older than three months",
+        "The planning meeting where stories are handed out to individual developers by name",
+        "An ongoing session to clarify, split and roughly size the upcoming stories",
+        "The end-of-sprint session where finished stories are demonstrated to stakeholders"
+      ],
+      "answer": 2,
+      "why": "Refinement keeps the top of the backlog ready to pull, so planning is about choosing rather than discovering what the work is. Handing out work is not its job, pruning is only a small part of it, and demonstrating finished work is the sprint review.",
+      "tags": ["tickets", "ceremonies"],
+      "level": 1,
+      "asked": "Teams that skip refinement have two-hour planning meetings; interviewers like hearing you know why."
+    },
+    {
+      "id": "ag-025",
+      "q": "In the INVEST checklist for user stories, what does the 'I' (independent) ask of a story?",
+      "choices": [
+        "That a single developer can build it alone without help from anyone on the team",
+        "That it can be built and shipped without waiting for another story to land first",
+        "That it uses no third-party libraries or external services anywhere in its code",
+        "That each team member estimates it independently before the group discusses it"
+      ],
+      "answer": 1,
+      "why": "Independent stories can be reordered and shipped in any sequence, which is what gives the product owner real choices. It says nothing about who builds the story or which libraries it uses; private estimating belongs to planning poker.",
+      "tags": ["tickets"],
+      "level": 2,
+      "asked": "Checks whether you can spot a dependency chain in a backlog before it blocks a sprint."
+    },
+    {
+      "id": "ag-026",
+      "q": "In the story template 'As a <user>, I want <goal>, so that <reason>', what is the 'so that' clause for?",
+      "choices": [
+        "It records the benefit, so the team can weigh other ways to meet the need",
+        "It names the acceptance test QA will run before the story can be closed",
+        "It describes the technical approach the developer is expected to take",
+        "It sets the story's priority relative to the others in the backlog"
+      ],
+      "answer": 0,
+      "why": "The reason is what lets a developer say 'a CSV export would do this in a day instead of the dashboard you asked for'. Without it the team can only build the literal request. Acceptance tests live in the criteria, and priority comes from the backlog order.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "Shows whether you treat stories as problems to solve or as specifications to type in."
+    },
+    {
+      "id": "ag-027",
+      "q": "What is an epic?",
+      "choices": [
+        "A story estimated at the very top of the team's points scale, such as 21 or 40",
+        "A bug affecting every user that must be fixed before any other work can start",
+        "A long-running branch that gathers features until they can be released together",
+        "A large piece of work split into smaller stories that ship over several sprints"
+      ],
+      "answer": 3,
+      "why": "An epic is a container for related stories, such as 'saved addresses', that is too big to deliver in one go. A story at the top of the scale is a sign it should be split, not a different artefact, and long-lived feature branches are a delivery anti-pattern.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "A basic term; the follow-up is usually how you would split one."
+    },
+    {
+      "id": "ag-028",
+      "q": "Who owns the order of the product backlog in Scrum?",
+      "choices": [
+        "The scrum master, who facilitates the team's events and removes its blockers",
+        "The developers, who vote on the stories at each planning session to set it",
+        "The product owner, who is accountable for maximising the value delivered",
+        "The engineering manager, who assigns work according to people's skills"
+      ],
+      "answer": 2,
+      "why": "One accountable person orders the backlog so that priorities do not change depending on who shouted last. Developers influence it with estimates and risks, and the scrum master coaches the process, but neither owns the order.",
+      "tags": ["roles", "tickets"],
+      "level": 1,
+      "asked": "Interviewers want to know you will take priority questions to the right person."
+    },
+    {
+      "id": "ag-029",
+      "q": "Which of these is the scrum master's responsibility rather than the product owner's?",
+      "choices": [
+        "Deciding which feature the team builds next, based on customer value",
+        "Coaching the team on its process and helping to remove impediments",
+        "Writing acceptance criteria for the stories at the top of the backlog",
+        "Accepting or rejecting finished stories at the end of each sprint"
+      ],
+      "answer": 1,
+      "why": "The scrum master serves the team's way of working: facilitating, coaching and clearing blockers. What to build, what 'done' looks like for a story and whether it is accepted are all product owner decisions, which is why mixing the roles causes conflict.",
+      "tags": ["roles"],
+      "level": 1,
+      "asked": "A role check; a strong answer mentions that many teams have neither role formally and share the duties."
+    },
+    {
+      "id": "ag-030",
+      "q": "What is the sprint review for?",
+      "choices": [
+        "Demonstrating the work to stakeholders and reordering the backlog from feedback",
+        "Checking every pull request merged in the sprint for naming and style problems",
+        "Discussing how the team worked together and picking one process change to try",
+        "Rating each developer by how many story points they personally finished"
+      ],
+      "answer": 0,
+      "why": "The review inspects the product: stakeholders see working software and the backlog changes in response. Inspecting the team's process is the retrospective, the most common confusion. Scoring individuals by points turns estimates into targets.",
+      "tags": ["ceremonies"],
+      "level": 1,
+      "asked": "Mixing up review and retrospective is a common junior slip that this catches."
+    },
+    {
+      "id": "ag-031",
+      "q": "What is a Scrum team's velocity?",
+      "choices": [
+        "How fast a single story moves from started to done, measured in calendar days",
+        "The number of production deploys per week, used to rank teams against each other",
+        "The rate at which new bugs arrive compared with the rate they are being fixed",
+        "The story points a team typically completes per sprint, used for forecasting"
+      ],
+      "answer": 3,
+      "why": "Velocity is a team's own recent throughput in points, so it answers 'roughly how much fits in a sprint'. The time for one item is cycle time, and deploy frequency is a DORA metric; neither is velocity.",
+      "tags": ["estimation", "flow"],
+      "level": 1,
+      "asked": "The follow-up is usually why velocity should not be a target, so have that ready."
+    },
+    {
+      "id": "ag-032",
+      "q": "Your manager wants to compare velocity across two teams to see which is more productive. What is the main problem with that?",
+      "choices": [
+        "Velocity only counts bug fixes, so feature-heavy teams will look slower than they are",
+        "Only Kanban teams can measure velocity reliably, because Scrum resets every sprint",
+        "Each team calibrates points to its own history, so the numbers are not comparable",
+        "The comparison is fine as long as both teams use the Fibonacci scale for estimates"
+      ],
+      "answer": 2,
+      "why": "A point means whatever a team's reference stories make it mean, so one team's 40 and another's 20 can be the same work. Comparing them rewards inflation, which quickly destroys the value of the number for planning. A shared scale does not fix a different baseline.",
+      "tags": ["estimation"],
+      "level": 2,
+      "asked": "Tests whether you can push back on a metric misuse politely and with a reason."
+    },
+    {
+      "id": "ag-033",
+      "q": "What does a sprint burndown chart show?",
+      "choices": [
+        "Each developer's finished points, so the lowest contributor can be given coaching",
+        "Remaining work in the sprint against the days left, next to an ideal straight line",
+        "The number of production incidents that happened in the sprint, by severity level",
+        "The total points delivered by the team in each past sprint, drawn as a bar chart"
+      ],
+      "answer": 1,
+      "why": "A burndown tracks remaining work within one sprint so the team can see early whether the goal is at risk. Totals across past sprints are a velocity chart, and splitting it by person turns a team tool into surveillance.",
+      "tags": ["flow", "ceremonies"],
+      "level": 1,
+      "asked": "Basic vocabulary; the interesting follow-up is reading a flat or rising line."
+    },
+    {
+      "id": "ag-034",
+      "q": "Halfway through a sprint the burndown line has been flat for four days. What is the most useful first reading?",
+      "choices": [
+        "Work is started but not reaching done, so look for blocked or oversized items",
+        "The team estimated too generously, so remaining stories should be re-pointed lower",
+        "The tool is broken, since remaining work normally falls a little on every day",
+        "The sprint is on track, because the line is meant to stay flat until the end"
+      ],
+      "answer": 0,
+      "why": "A burndown only drops when items finish, so a flat line usually means many things in progress and nothing done: blockers, stories too big, or waiting on review. Re-pointing hides the signal, and a healthy line steps down as items complete.",
+      "tags": ["flow"],
+      "level": 2,
+      "asked": "Interviewers want to hear that you would act on the chart, not just maintain it."
+    },
+    {
+      "id": "ag-035",
+      "q": "What is capacity planning at the start of a sprint?",
+      "choices": [
+        "Deciding how many servers production needs to handle the sprint's expected traffic",
+        "Averaging the last three velocities to set the sprint's minimum required scope",
+        "Setting each developer's points target so that workloads are exactly equal",
+        "Scaling the sprint's scope to fit holidays, on-call duty and other known absences"
+      ],
+      "answer": 3,
+      "why": "Velocity assumes a normal sprint, so the team adjusts for the days people are actually available, including on-call and support rotas. Per-person point targets and minimum scope turn a forecast into a quota, and server capacity is a different meaning of the word.",
+      "tags": ["estimation", "ceremonies"],
+      "level": 2,
+      "asked": "Shows you think about the team's real availability, which is where most sprint misses come from."
+    },
+    {
+      "id": "ag-036",
+      "q": "In planning poker the cards come back 3, 3, 3 and 13. What should happen next?",
+      "choices": [
+        "Take the average, about 5, and move on to the next story to keep planning short",
+        "Take the majority value of 3, since three of the four estimators agreed on it",
+        "The 13 and a 3 explain their thinking, as the outlier may know of a hidden risk",
+        "Take 13 to be safe, because the most cautious estimate is usually the right one"
+      ],
+      "answer": 2,
+      "why": "The point of estimating together is to surface different understandings: the 13 may know about a legacy integration the others missed, or may have misread the story. Averaging or voting throws away that information; defaulting to the highest pads every estimate.",
+      "tags": ["estimation"],
+      "level": 2,
+      "asked": "Tests whether you understand that estimation is for shared understanding, not for the number."
+    },
+    {
+      "id": "ag-037",
+      "q": "When is t-shirt sizing (S, M, L, XL) a better fit than story points?",
+      "choices": [
+        "Sprint planning for a mature team that needs exact numbers to calculate velocity",
+        "Rough sizing of many epics for a roadmap, when precision would be false confidence",
+        "Estimating bugs, because the Scrum Guide says bugs cannot be given story points",
+        "Performance reviews, because sizes are simpler for managers to compare fairly"
+      ],
+      "answer": 1,
+      "why": "Coarse buckets match the precision you really have when looking months ahead at large pieces of work. Sprint planning benefits from finer relative sizes, the Scrum Guide does not mention story points at all, and neither scale should be used to rate people.",
+      "tags": ["estimation"],
+      "level": 2,
+      "asked": "Shows you pick an estimation tool to fit the decision it supports."
+    },
+    {
+      "id": "ag-038",
+      "q": "What is the 'cone of uncertainty' in software estimation?",
+      "choices": [
+        "Early estimates can be off by a large factor, narrowing as the work is understood",
+        "The risk that a feature is cancelled, which grows the longer it sits in the backlog",
+        "The range of values planning poker cards allow, from a single point up to 100",
+        "A chart of which team members are least confident about a story's requirements"
+      ],
+      "answer": 0,
+      "why": "At the idea stage an estimate may be several times too high or too low; the range narrows as requirements, design and code make the unknowns known. It is why early dates should be ranges and why teams re-estimate after a spike.",
+      "tags": ["estimation"],
+      "level": 2,
+      "asked": "Gives you language for refusing a single date early without sounding evasive."
+    },
+    {
+      "id": "ag-039",
+      "q": "A stakeholder asks when an export feature will be done; it has not been broken down yet. Which reply is most honest and useful?",
+      "choices": [
+        "A single date padded by half again, so the team is sure to hit its commitment",
+        "No answer until the work is fully designed, as anything earlier is a guess",
+        "The date they want, then adding more people to the team if it begins to slip",
+        "A range with how sure you are, plus when a short spike will let you narrow it"
+      ],
+      "answer": 3,
+      "why": "A range with a confidence level and a plan to narrow it gives the stakeholder something to plan with and sets up an update. Padding hides uncertainty until it bites; refusing gives them nothing; and adding people late usually slows a project down.",
+      "tags": ["estimation", "communication"],
+      "level": 3,
+      "asked": "Interviewers want to see you manage expectations without either overpromising or stonewalling."
+    },
+    {
+      "id": "ag-040",
+      "q": "What is a definition of ready?",
+      "choices": [
+        "The checklist a story must satisfy before it counts as complete and releasable",
+        "The date by which the product owner must submit stories for the next planning",
+        "Checks a story must pass before a sprint can take it on, e.g. written criteria",
+        "A signal from QA that a test environment is ready to receive a new build"
+      ],
+      "answer": 2,
+      "why": "It stops half-understood stories entering a sprint: criteria written, dependencies known, small enough to finish. The checklist for complete is the definition of done. Made too strict it becomes a hand-off gate, so many teams keep it short.",
+      "tags": ["tickets"],
+      "level": 2,
+      "asked": "Good candidates mention the trade-off: a useful filter versus a mini-waterfall gate."
+    },
+    {
+      "id": "ag-041",
+      "q": "What is a 'three amigos' session?",
+      "choices": [
+        "A pairing rotation in which three developers take turns at the keyboard hourly",
+        "Product, development and testing perspectives reviewing a story before work starts",
+        "The three approvals a pull request needs before it is allowed to merge into main",
+        "A meeting of three teams to agree the order of their shared dependencies"
+      ],
+      "answer": 1,
+      "why": "Having someone who knows the business need, someone who will build it and someone who will try to break it read the story together catches missing cases while they are cheap to fix. It is a conversation before development, not an approval rule or a pairing format.",
+      "tags": ["tickets", "ceremonies"],
+      "level": 2,
+      "asked": "Shows you know how teams catch ambiguity before it becomes rework."
+    },
+    {
+      "id": "ag-042",
+      "q": "What does a Given/When/Then acceptance criterion describe?",
+      "choices": [
+        "A starting state, an action, and the observable outcome that proves it works",
+        "The deadline, the release, and the rollback plan agreed with the product owner",
+        "The developer, the reviewer and the tester who each sign off the finished story",
+        "The input types, the function signature and the return type of the new code"
+      ],
+      "answer": 0,
+      "why": "Given sets the context, When is the user's action, Then is what they should observe, which makes the criterion testable and often automatable. It describes behaviour, not people, dates or code structure.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "Writing one on the spot is a common follow-up; practise with a login or checkout example."
+    },
+    {
+      "id": "ag-043",
+      "q": "What is pair programming?",
+      "choices": [
+        "Two developers building the frontend and backend of a feature on separate branches",
+        "Two teams sharing a backlog so that they can swap stories when either is blocked",
+        "A senior developer reviewing a junior's pull request line by line once it is opened",
+        "Two developers on one task at one screen, one typing while the other reviews live"
+      ],
+      "answer": 3,
+      "why": "Pairing puts review and design discussion inside the work, with the driver typing and the navigator thinking ahead, and the roles switch often. Splitting a feature across two people is parallel work, and reviewing afterwards is ordinary code review.",
+      "tags": ["pairing"],
+      "level": 1,
+      "asked": "Interviewers often ask whether you have paired and what you got out of it."
+    },
+    {
+      "id": "ag-044",
+      "q": "What is mob (or ensemble) programming?",
+      "choices": [
+        "Everyone on the team reviewing each pull request before it is allowed to merge",
+        "Several developers each writing a separate part of a feature at the same time",
+        "The whole team on one task at one screen, rotating the typist every few minutes",
+        "An open-source practice where any contributor can push straight to the main branch"
+      ],
+      "answer": 2,
+      "why": "The whole team works on the same thing at the same time, rotating the keyboard, so decisions and knowledge are shared as they are made. Parallel work on separate parts is ordinary development, and mass review happens after the fact.",
+      "tags": ["pairing"],
+      "level": 2,
+      "asked": "A less common practice; knowing when it pays off (onboarding, hard incidents) is the strong answer."
+    },
+    {
+      "id": "ag-045",
+      "q": "Which task most justifies pairing rather than working solo?",
+      "choices": [
+        "A routine copy change to a button label that already has a clear ticket and a test",
+        "A tricky change in code only one person understands, where knowledge must spread",
+        "Any task larger than one point, since pairing is always faster than working alone",
+        "A task nobody wants to do, so that the unpleasant work is shared out more fairly"
+      ],
+      "answer": 1,
+      "why": "Pairing costs two people's time, so it pays off when the knowledge transfer or the risk is high. A trivial change does not need two people, and pairing is not faster on every task; it trades speed for quality and shared understanding.",
+      "tags": ["pairing"],
+      "level": 2,
+      "asked": "Shows you treat pairing as a tool with costs, not a ritual."
+    },
+    {
+      "id": "ag-046",
+      "q": "What is the 'bus factor' of a system?",
+      "choices": [
+        "The number of people who could leave before nobody understands it",
+        "The number of services that fail if the main message bus goes down",
+        "The ratio of bugs reported to bugs fixed across recent releases",
+        "How many deploys a day it can take before the pipeline slows down"
+      ],
+      "answer": 0,
+      "why": "A bus factor of one means a single person's absence stops work on that system. It is a knowledge-risk measure, raised by pairing, rotation and reviews, and has nothing to do with message buses or deploy throughput.",
+      "tags": ["pairing", "communication"],
+      "level": 1,
+      "asked": "A light question that usually leads into how you share knowledge on a team."
+    },
+    {
+      "id": "ag-047",
+      "q": "Only one developer understands the billing service. Which action most raises the bus factor within a month?",
+      "choices": [
+        "Ask that developer to write one long document covering every part of the service",
+        "Route all billing work to that developer from now on, so nothing goes wrong",
+        "Add more code comments to the billing service during the next hardening sprint",
+        "Have others make the next billing changes, with that developer pairing on them"
+      ],
+      "answer": 3,
+      "why": "People learn a system by changing it with help, so the next real tickets are the cheapest training available. A big document goes stale and is rarely read; routing all work to one person lowers the bus factor further; comments help but do not create a second expert.",
+      "tags": ["pairing", "communication"],
+      "level": 2,
+      "asked": "Interviewers like hearing a concrete plan for knowledge silos, a problem every team has."
+    },
+    {
+      "id": "ag-048",
+      "q": "What is a runbook?",
+      "choices": [
+        "A list of each service's start command, used by CI to launch them during tests",
+        "The script the pipeline runs to build, test and publish the application",
+        "Step-by-step instructions for handling a known operational task or alert",
+        "A log of past incidents, recording each date and who was on call at the time"
+      ],
+      "answer": 2,
+      "why": "A runbook lets whoever is paged at 3 a.m. act without being the expert: what the alert means, how to check it, how to mitigate. A build script is automation for CI, and an incident log is history rather than instructions.",
+      "tags": ["on-call", "incidents"],
+      "level": 1,
+      "asked": "The follow-up is often whether you have written one, and what made it usable under pressure."
+    },
+    {
+      "id": "ag-049",
+      "q": "What does an on-call escalation policy define?",
+      "choices": [
+        "That every incident must be reported to the CTO within fifteen minutes of the page",
+        "Who is paged next, and after how long, if the first responder does not answer",
+        "The order in which support passes customer complaints to engineering",
+        "How much extra pay engineers receive for each night spent on call"
+      ],
+      "answer": 1,
+      "why": "Escalation makes sure an alert never dies with one missed page: primary, then secondary after a few minutes, then a manager or specialist. Notification rules for executives and support workflows are separate concerns.",
+      "tags": ["on-call"],
+      "level": 2,
+      "asked": "Shows you have thought about what happens when on-call goes wrong, not just when it goes right."
+    },
+    {
+      "id": "ag-050",
+      "q": "What is an error budget?",
+      "choices": [
+        "The unreliability an SLO allows: 99.9% leaves about 43 minutes a month",
+        "The money set aside each quarter to compensate customers for outages",
+        "The number of bugs a team may ship per sprint before releases are blocked",
+        "The log storage allowance for errors, after which old entries are deleted"
+      ],
+      "answer": 0,
+      "why": "If the target is 99.9% availability, the other 0.1% (about 43 minutes in 30 days) is budget the team can spend on risky releases and incidents. It turns 'how reliable is reliable enough' into a number both product and engineering can plan with. It is not money or a bug quota.",
+      "tags": ["on-call", "metrics"],
+      "level": 3,
+      "asked": "A mid-to-senior concept; knowing the arithmetic makes the answer credible."
+    },
+    {
+      "id": "ag-051",
+      "q": "A service has used its whole error budget for the month. Under a typical error-budget policy, what happens?",
+      "choices": [
+        "Every deploy needs sign-off from the CTO, but feature work continues as normal",
+        "The SLO is lowered for the rest of the month so that the service is back on target",
+        "Nothing changes, since the error budget is a reporting number with no effect on plans",
+        "Feature releases pause and reliability work takes priority until the budget recovers"
+      ],
+      "answer": 3,
+      "why": "The policy is the point of the budget: overspending it shifts the team's time from features to reliability until the service is back within target. Moving the SLO to fit the outage defeats it, and a budget with no consequence is just a dashboard.",
+      "tags": ["on-call", "metrics"],
+      "level": 3,
+      "asked": "Tests whether you understand error budgets as an agreement between product and engineering."
+    },
+    {
+      "id": "ag-052",
+      "q": "What does MTTR (mean time to restore) measure?",
+      "choices": [
+        "How long, on average, a service runs between one failure and the next",
+        "How long a bug report waits before someone starts working on its fix",
+        "How long, on average, it takes to restore service after a failure starts",
+        "How long a deploy takes from merge to being live for every user"
+      ],
+      "answer": 2,
+      "why": "MTTR measures recovery; the time between failures is MTBF. Teams that ship small changes often can improve MTTR more cheaply than preventing every failure, which is why it appears in the DORA metrics. Bug wait time and deploy duration are different measures.",
+      "tags": ["incidents", "metrics"],
+      "level": 2,
+      "asked": "A metrics question that often leads into how your team handles incidents."
+    },
+    {
+      "id": "ag-053",
+      "q": "Which list gives the four classic DORA metrics for software delivery?",
+      "choices": [
+        "Velocity, story points completed, bug count and code coverage per sprint",
+        "Deploy frequency, lead time for changes, change failure rate, time to restore",
+        "Uptime, response time, error rate and throughput at the load balancer",
+        "Lines of code, commits per developer, PRs merged and review comments per week"
+      ],
+      "answer": 1,
+      "why": "Two metrics measure speed (how often you deploy, how long a commit takes to reach production) and two measure stability (how often a deploy breaks something, how fast you recover). Recent DORA reports call the last one failed deployment recovery time. The other lists are sprint, runtime or vanity metrics.",
+      "tags": ["metrics"],
+      "level": 3,
+      "asked": "Interviewers at teams with mature delivery use this to see whether you think about the whole pipeline."
+    },
+    {
+      "id": "ag-054",
+      "q": "What does 'change failure rate' measure?",
+      "choices": [
+        "The share of deploys that cause a failure needing a fix, rollback or hotfix",
+        "The share of pull requests that reviewers reject before they can be merged",
+        "The share of tests that fail on the first CI run of a new pull request",
+        "The share of sprint stories whose scope changes after planning is over"
+      ],
+      "answer": 0,
+      "why": "It counts production outcomes: of all the changes deployed, how many degraded service. Rejected PRs and failing CI runs are caught before production, which is the system working, so they do not count.",
+      "tags": ["metrics"],
+      "level": 2,
+      "asked": "Shows whether you know the difference between catching problems early and shipping them."
+    },
+    {
+      "id": "ag-055",
+      "q": "What makes a postmortem 'blameless'?",
+      "choices": [
+        "No names are recorded anywhere, so the cause of the outage is never pinned down",
+        "It is held only when the outage had no human cause, such as a hardware fault",
+        "The manager writes it up alone, to spare the team the time of a meeting",
+        "It asks how the system allowed the failure, rather than who should be punished"
+      ],
+      "answer": 3,
+      "why": "People who fear punishment hide details, and the details are what let you fix the system. Blameless does not mean anonymous or vague: the timeline still says who did what, but the question is why that action was possible and reasonable at the time.",
+      "tags": ["incidents"],
+      "level": 2,
+      "asked": "Interviewers want to hear that you can talk about mistakes, yours included, without defensiveness."
+    },
+    {
+      "id": "ag-056",
+      "q": "What is the '5 whys' technique for?",
+      "choices": [
+        "Checking five reasons a feature is needed before it enters the backlog",
+        "Keeping a postmortem to five questions so it finishes within an hour",
+        "Asking why repeatedly to get from the symptom to a fixable deeper cause",
+        "Having five people explain the outage and then taking the majority view"
+      ],
+      "answer": 2,
+      "why": "Each answer becomes the next question: the site was down, because the disk filled, because logs were not rotated, because the rotation job failed silently. The useful fix is usually several whys deep. The number five is a rule of thumb, not a limit.",
+      "tags": ["incidents"],
+      "level": 2,
+      "asked": "Often asked alongside a real incident you were part of; walk through the chain."
+    },
+    {
+      "id": "ag-057",
+      "q": "A postmortem concludes 'root cause: the engineer ran the wrong command'. What should a good facilitator push for?",
+      "choices": [
+        "A formal warning for the engineer, so everyone sees mistakes have consequences",
+        "Why the system let one command do that damage, and what guard would stop it",
+        "Closing the review, since a human error needs no technical follow-up at all",
+        "Removing production access from every engineer below senior level permanently"
+      ],
+      "answer": 1,
+      "why": "Human error is where the investigation starts, not where it ends: why was the command so easy to run against production, why was there no confirmation, why did recovery take so long. Punishment teaches people to hide mistakes; blanket access removal slows everyone without fixing the gap.",
+      "tags": ["incidents"],
+      "level": 3,
+      "asked": "Tests whether you would make the same mistake impossible rather than just rarer."
+    },
+    {
+      "id": "ag-058",
+      "q": "What is the difference between a bug's severity and its priority?",
+      "choices": [
+        "Severity is how bad the impact is; priority is how soon it will be fixed",
+        "Severity is its estimate in points; priority is its position in the sprint",
+        "Severity is set by developers; priority is set by the testers who found it",
+        "They are the same field, named differently depending on the tracker used"
+      ],
+      "answer": 0,
+      "why": "Severity describes the damage when the bug occurs; priority is a business decision about when to fix it. They often differ: a rare data-loss bug is high severity, while a typo on the home page is low severity but may be high priority.",
+      "tags": ["tickets", "incidents"],
+      "level": 1,
+      "asked": "A triage basic; the strong answer gives an example where the two disagree."
+    },
+    {
+      "id": "ag-059",
+      "q": "Treating severity and priority separately, how should a typo in the company name on the login page be classified?",
+      "choices": [
+        "High severity and high priority, since anything on the login page is critical",
+        "Low severity and low priority, since it does not stop anyone from signing in",
+        "High severity but low priority, since it looks bad yet breaks no real feature",
+        "Low severity but high priority, since every visitor sees it and it hurts trust"
+      ],
+      "answer": 3,
+      "why": "Nothing is broken, so the impact on function is low, but it is seen by everyone and is trivial to fix, so it goes near the front of the queue. Calling it high severity inflates the scale; calling it low priority ignores how visible it is.",
+      "tags": ["tickets"],
+      "level": 2,
+      "asked": "Shows you can triage with two dimensions rather than one gut feeling."
+    },
+    {
+      "id": "ag-060",
+      "q": "What should a pull request description give the reviewer, beyond a link to the ticket?",
+      "choices": [
+        "A list of every file changed, so the reviewer knows which ones to open first",
+        "The author's estimate of how long the review should take the reviewer",
+        "Why the change is needed, what approach it takes and how it was tested",
+        "A summary of the commit history, including the fixup commits along the way"
+      ],
+      "answer": 2,
+      "why": "The diff shows what changed; only the description can say why, which alternatives were rejected and how the author checked it, including screenshots for UI work. The file list is already in the tool, and fixup history is noise once squashed.",
+      "tags": ["code-review"],
+      "level": 1,
+      "asked": "Reviewers judge a candidate's collaboration by their PRs; interviewers ask what yours look like."
+    },
+    {
+      "id": "ag-061",
+      "q": "Judged by how well reviewers catch defects, which pull request is best to open?",
+      "choices": [
+        "One 1,500-line PR with the whole feature, so the reviewer sees the full picture",
+        "A 200-line PR doing one thing, with the refactor split into its own earlier PR",
+        "A 400-line PR mixing a refactor and a feature, since both touch the same files",
+        "Several PRs opened at once for the same feature, each touching every layer"
+      ],
+      "answer": 1,
+      "why": "Review quality falls sharply as diff size grows; past a few hundred lines reviewers skim and approve. Separating a pure refactor from a behaviour change lets each be checked for one thing. A huge PR 'for the full picture' is the pattern that gets rubber-stamped.",
+      "tags": ["code-review"],
+      "level": 1,
+      "asked": "Small PRs are the single habit reviewers notice most in a new hire."
+    },
+    {
+      "id": "ag-062",
+      "q": "What is a draft pull request for?",
+      "choices": [
+        "Sharing unfinished work for early feedback, without a formal review",
+        "Merging code to main without review, as long as it is behind a feature flag",
+        "Storing experimental code that will never be merged into the main branch",
+        "Letting CI skip its tests until the author marks the pull request finished"
+      ],
+      "answer": 0,
+      "why": "A draft signals 'look at the direction, not the details', so you can check an approach before investing more time, and reviewers are not asked to approve it yet. It does not bypass review or tests; CI still runs on drafts in most setups.",
+      "tags": ["code-review"],
+      "level": 1,
+      "asked": "Knowing when to ask for early feedback is a sign of a developer who does not waste days."
+    },
+    {
+      "id": "ag-063",
+      "q": "Before requesting review, what is the point of reviewing your own diff in the PR tool?",
+      "choices": [
+        "It is required before the tool will let you add any other reviewers",
+        "It re-runs the continuous integration checks with coverage turned on",
+        "It counts as one of the approvals needed, so the reviewer's job is lighter",
+        "It catches debug output, stray files and unclear code before others do"
+      ],
+      "answer": 3,
+      "why": "Reading your change in the same view the reviewer will use catches leftover logging, unrelated edits and confusing bits, and lets you leave comments that explain tricky lines. It is a courtesy and a quality step, not a tool rule or an approval.",
+      "tags": ["code-review"],
+      "level": 1,
+      "asked": "A habit question; it separates people who respect reviewers' time from those who do not."
+    },
+    {
+      "id": "ag-064",
+      "q": "What does a CODEOWNERS file do on GitHub or GitLab?",
+      "choices": [
+        "Grants write access to the repository only to the people it lists",
+        "Records who wrote each line, as a faster replacement for git blame",
+        "Requests review from the listed owners of any changed paths",
+        "Assigns open issues to developers based on the labels they carry"
+      ],
+      "answer": 2,
+      "why": "Paths map to people or teams, who are requested as reviewers when those files change, and branch protection can require their approval. It does not grant access or track authorship, and it has nothing to do with issues.",
+      "tags": ["code-review"],
+      "level": 2,
+      "asked": "Common in team repos; knowing it shows you have worked somewhere with shared ownership."
+    },
+    {
+      "id": "ag-065",
+      "q": "As a reviewer, which comment best raises a design concern without blocking unnecessarily?",
+      "choices": [
+        "'This is wrong, please use the repository pattern like everywhere else.'",
+        "'Could this query run per row? If so, a join may avoid N+1. Happy to pair.'",
+        "'Why did you do it like this? It is not how I would have written it.'",
+        "'Approved, but I have some thoughts I will share with you at some point.'"
+      ],
+      "answer": 1,
+      "why": "A good comment names the concrete risk, suggests a direction and offers help, and phrasing it as a question leaves room for context the reviewer lacks. 'This is wrong' gives no reason, 'not how I would do it' is taste, and deferred vague thoughts help nobody.",
+      "tags": ["code-review", "communication"],
+      "level": 2,
+      "asked": "Interviewers often ask for an example review comment you have written; this is the shape they want."
+    },
+    {
+      "id": "ag-066",
+      "q": "What are 'conventional comments' in code review?",
+      "choices": [
+        "Labels such as 'suggestion:', 'issue:' or 'question:' that state intent",
+        "Comments that follow the language's official style guide word for word",
+        "Code comments written above each function using the JSDoc or XML format",
+        "Comments that the linter adds automatically to every failed rule"
+      ],
+      "answer": 0,
+      "why": "A label up front tells the author whether a comment blocks merging, is optional or is just curiosity, removing a lot of guesswork and tension. It is a review convention, not a code documentation format or linter output.",
+      "tags": ["code-review"],
+      "level": 2,
+      "asked": "Shows you have thought about how review comments are received, not just what they say."
+    },
+    {
+      "id": "ag-067",
+      "q": "A reviewer has approved your PR but left three non-blocking suggestions. What is the expected etiquette?",
+      "choices": [
+        "Merge immediately and ignore them, since the approval has already been given",
+        "Ask the reviewer to make the changes themselves in a commit on your branch",
+        "Re-request a full review after every change, however small, before merging",
+        "Apply or answer each, then merge; bigger ideas can become tickets"
+      ],
+      "answer": 3,
+      "why": "Approval with comments means 'fine to merge once you have considered these': take the ones you agree with, answer the others, and move bigger ideas to a ticket. Ignoring them silently erodes trust, and re-requesting review for trivial changes wastes a reviewer's time.",
+      "tags": ["code-review"],
+      "level": 1,
+      "asked": "Small etiquette questions reveal whether you have worked in a real review culture."
+    },
+    {
+      "id": "ag-068",
+      "q": "What does 'rubber-stamp' reviewing mean, and why is it a problem?",
+      "choices": [
+        "Requiring a formal stamp from QA, which slows merges down by days",
+        "Rejecting every PR on its first round, so authors expect rework",
+        "Approving without really reading, so review gives false confidence",
+        "Reviewing only the tests, trusting the tests to cover the code"
+      ],
+      "answer": 2,
+      "why": "An approval without reading tells everyone the change was checked when it was not, which is worse than no review because people stop looking. It usually shows up when PRs are too big or reviewers are overloaded, so the fix is often smaller PRs.",
+      "tags": ["code-review"],
+      "level": 2,
+      "asked": "Interviewers want to know you will read carefully, and that you know what causes skimming."
+    },
+    {
+      "id": "ag-069",
+      "q": "What is the 'Ship / Show / Ask' model for changes?",
+      "choices": [
+        "Ship means deploy to staging, Show means demo to QA, Ask means release to users",
+        "Merge tiny changes directly, merge then share notable ones, ask on risky ones",
+        "Every change goes through all three steps in order, each with its own approver",
+        "Ship is for bug fixes, Show is for features, and Ask is only for database changes"
+      ],
+      "answer": 1,
+      "why": "It matches the review to the risk: tiny safe changes go straight in, changes others should know about are merged then shown, and uncertain changes wait for review. It needs strong tests and trunk-based habits, which is why it is not the default on every team.",
+      "tags": ["code-review", "flow"],
+      "level": 3,
+      "asked": "A mature-team concept; it shows you can think about review as a cost, not a ritual."
+    },
+    {
+      "id": "ag-070",
+      "q": "Which working habit does trunk-based development most directly discourage?",
+      "choices": [
+        "Opening a pull request for review before merging a change into main",
+        "Running the full test suite in CI on every push to a short-lived branch",
+        "Feature branches that stay open for weeks before being merged to main",
+        "Tagging the commit on main that is deployed to production as a release"
+      ],
+      "answer": 2,
+      "why": "Trunk-based development means integrating small changes into main at least daily, so long-lived feature branches, which pile up merge conflicts and hide integration bugs, are exactly what it replaces. Short-lived PR branches with review and CI fit it well, and tagging releases is unaffected.",
+      "tags": ["flow"],
+      "level": 1,
+      "asked": "Tells the interviewer how you expect to integrate, which affects everything from reviews to releases."
+    },
+    {
+      "id": "ag-071",
+      "q": "In trunk-based development, how does a half-built feature reach main without users seeing it?",
+      "choices": [
+        "It stays on a feature branch until complete and is then merged in one go",
+        "It is deployed to a separate server that users are not able to reach",
+        "It is committed with its tests disabled so the pipeline does not fail on it",
+        "It is merged behind a feature flag that is off until the feature is ready"
+      ],
+      "answer": 3,
+      "why": "A flag decouples deploying code from releasing a feature: the code ships dark, is tested in production by the team, and is turned on when ready. Waiting on a branch is what trunk-based development avoids, and disabled tests hide real breakage.",
+      "tags": ["flow"],
+      "level": 2,
+      "asked": "The follow-up is usually about removing old flags, so mention flag clean-up."
+    },
+    {
+      "id": "ag-072",
+      "q": "What is a hotfix in a typical release process?",
+      "choices": [
+        "Any fix for a bug that was found during the current sprint's testing phase",
+        "A change made directly on the production server without a commit in git",
+        "An urgent fix released outside the normal cycle for a production fault",
+        "A patch applied by the hosting provider to the operating system underneath"
+      ],
+      "answer": 2,
+      "why": "A hotfix skips the wait for the next release, but it should still go through version control, review and the pipeline, just faster. Editing production by hand is how drift and repeat incidents happen, and in-sprint bug fixes follow the normal flow.",
+      "tags": ["incidents", "flow"],
+      "level": 1,
+      "asked": "Interviewers listen for whether you would still review and test a hotfix."
+    },
+    {
+      "id": "ag-073",
+      "q": "A release breaks checkout and the cause is unclear. Judged by time to restore service, what should the team do first?",
+      "choices": [
+        "Debug in production until the faulty line is found, then ship a patch",
+        "Roll back to the last good version, then investigate the cause calmly",
+        "Write a failing test that reproduces the bug before changing anything",
+        "Wait for the next scheduled release and include a fix in it then"
+      ],
+      "answer": 1,
+      "why": "Rolling back is usually the fastest way to get customers paying again, and the investigation can happen without users suffering. A failing test is the right way to fix it afterwards, not the first move during an outage. Rollback is harder when a migration changed data, which is why expand-and-contract migrations matter.",
+      "tags": ["incidents"],
+      "level": 2,
+      "asked": "Tests whether you prioritise mitigation over diagnosis when customers are affected."
+    },
+    {
+      "id": "ag-074",
+      "q": "What is technical debt, in the sense most teams use it?",
+      "choices": [
+        "Shortcuts or dated design that make later changes slow or risky",
+        "Any code written by developers who have since left the company",
+        "The money owed to vendors for software licences that are overdue",
+        "Bugs that are known about but have been marked as will-not-fix"
+      ],
+      "answer": 0,
+      "why": "Like financial debt, it can be a sensible trade to ship sooner, but it charges interest: every change in that area takes longer or breaks more. Old code is not automatically debt, and debt is about the cost of change, not a list of known bugs.",
+      "tags": ["tech-debt"],
+      "level": 1,
+      "asked": "The follow-up is how you would convince a product owner to pay some of it down."
+    },
+    {
+      "id": "ag-075",
+      "q": "You want time to fix technical debt in the orders module. Which pitch is most likely to get it prioritised?",
+      "choices": [
+        "'The code is ugly and embarrassing, and every good engineer would agree.'",
+        "'We need a full rewrite in a newer framework before we can move forward.'",
+        "'Fixing debt is best practice, so it should just be part of every sprint.'",
+        "'Order changes take about 3 days instead of 1; two days' cleanup fixes that.'"
+      ],
+      "answer": 3,
+      "why": "Product owners trade off in terms of time, risk and money, so tie the debt to a cost they feel (slower delivery, incidents) and give a bounded fix. Appeals to taste or 'best practice' do not compete with features, and a full rewrite is the riskiest option.",
+      "tags": ["tech-debt", "communication"],
+      "level": 2,
+      "asked": "Interviewers want to see you can make a technical case in business terms."
+    },
+    {
+      "id": "ag-076",
+      "q": "What is the 'boy scout rule' (leave the campground cleaner than you found it) in coding?",
+      "choices": [
+        "Refactor the whole module every time you open any file inside it",
+        "Delete any code without tests the moment you come across it",
+        "Make small improvements to the code you touch as part of normal work",
+        "Only a senior engineer may clean up code written by somebody else"
+      ],
+      "answer": 2,
+      "why": "Small, related tidy-ups (a clearer name, an extracted function, a missing test) pay debt down steadily without needing a special project. Rewriting whole modules on the way past makes PRs huge and risky, which is the opposite of the intent.",
+      "tags": ["tech-debt"],
+      "level": 1,
+      "asked": "A values question; the strong answer mentions keeping the tidy-ups small and in separate commits."
+    },
+    {
+      "id": "ag-077",
+      "q": "What is a team working agreement?",
+      "choices": [
+        "The employment contract each developer signs when they join the company",
+        "Rules the team sets for itself, such as review turnaround or core hours",
+        "A service-level agreement promised to customers about uptime and support",
+        "The list of tools and frameworks the architecture board has approved"
+      ],
+      "answer": 1,
+      "why": "A working agreement is written by the team, for the team, about how they collaborate: when stand-up is, how fast reviews happen, how to signal focus time. It is revisited in retrospectives. Contracts, customer SLAs and tool lists come from elsewhere.",
+      "tags": ["ceremonies", "communication"],
+      "level": 2,
+      "asked": "Shows you think about team norms explicitly rather than assuming them."
+    },
+    {
+      "id": "ag-078",
+      "q": "What is an RFC or design doc used for before a larger change?",
+      "choices": [
+        "Getting written feedback on an approach before the expensive work starts",
+        "Recording the finished design after the code has already shipped to users",
+        "Replacing the ticket, so the story no longer needs acceptance criteria",
+        "Asking the manager for formal permission to begin writing any code"
+      ],
+      "answer": 0,
+      "why": "Writing the problem, options and proposed approach lets people who are not in the room spot problems while changing course is cheap. After-the-fact records are closer to ADRs, and a design doc sits alongside tickets rather than replacing them.",
+      "tags": ["communication"],
+      "level": 2,
+      "asked": "Mid-level candidates are expected to have written or reviewed one; bring an example."
+    },
+    {
+      "id": "ag-079",
+      "q": "You are blocked waiting on another team's API change. By the criterion of keeping your own sprint moving, what should you do first?",
+      "choices": [
+        "Wait quietly and pick the story back up once their change has shipped",
+        "Mark the story done and log the dependency as a bug for their team",
+        "Make the change in their repository yourself without telling them",
+        "Flag it on the ticket and at stand-up, then build against a stub"
+      ],
+      "answer": 3,
+      "why": "Making the blocker visible gets it escalated, and agreeing the contract lets you build and test against a stub while you wait. Waiting silently wastes days, changing another team's code unannounced breaks trust, and marking unfinished work done hides the risk.",
+      "tags": ["communication", "flow"],
+      "level": 1,
+      "asked": "Dependency handling is where junior developers lose most time; interviewers want to see initiative."
+    },
+    {
+      "id": "ag-080",
+      "q": "Mid-sprint, a stakeholder asks you directly to add 'one small extra' to the story you are building. Judged by protecting the sprint's commitment, what is the best response?",
+      "choices": [
+        "Add it quietly, since it is small and the stakeholder will be pleased",
+        "Refuse outright, since the sprint scope is fixed and cannot be changed",
+        "Note it, then take it to the product owner to trade against other work",
+        "Add it, but leave the tests for it until the next sprint to save time"
+      ],
+      "answer": 2,
+      "why": "Scope decisions belong to the product owner, who can swap it for something of equal size or schedule it next. Quiet additions are how sprints slip without anyone knowing why; a flat refusal damages the relationship when a conversation would do.",
+      "tags": ["tickets", "communication"],
+      "level": 1,
+      "asked": "Tests whether you can handle scope creep without being either a pushover or a gatekeeper."
+    },
+    {
+      "id": "ag-081",
+      "q": "At the end of a sprint one story is 80% done. What should normally happen to it?",
+      "choices": [
+        "Count 80% of its points towards velocity, since most of the work is done",
+        "It returns to the product backlog unfinished and is re-prioritised there",
+        "Mark it done and raise a new story for the remaining 20% next sprint",
+        "Extend the sprint by a couple of days until the story is fully finished"
+      ],
+      "answer": 1,
+      "why": "Unfinished work earns no points and goes back for the product owner to re-order, which keeps velocity honest. Splitting it after the fact to claim credit inflates velocity, and stretching the sprint breaks the fixed cadence that makes forecasting work.",
+      "tags": ["ceremonies", "estimation"],
+      "level": 2,
+      "asked": "Shows whether you understand why partial credit makes forecasts worse."
+    },
+    {
+      "id": "ag-082",
+      "q": "What is swarming on a Kanban or Scrum board?",
+      "choices": [
+        "Several people helping finish a stuck item before starting more",
+        "Starting as many new tickets as possible when the sprint begins",
+        "Assigning each ticket to several developers so there is always backup",
+        "Moving all tickets into review at once at the end of the sprint"
+      ],
+      "answer": 0,
+      "why": "Swarming applies 'stop starting, start finishing': when an item is stuck, people help it over the line instead of pulling new work. It cuts cycle time and work in progress. Starting everything at once is the behaviour it corrects.",
+      "tags": ["flow"],
+      "level": 2,
+      "asked": "Interviewers use it to see whether you think about team throughput or just your own tickets."
+    },
+    {
+      "id": "ag-083",
+      "q": "What is lead time, as distinct from cycle time, on a delivery board?",
+      "choices": [
+        "They are two names for the same measure, used by different tools",
+        "Lead time is what the tech lead estimates; cycle time is what it took",
+        "Lead time covers only the review stage; cycle time covers only coding",
+        "Lead time runs from request to delivery; cycle time from start to done"
+      ],
+      "answer": 3,
+      "why": "Lead time is what the customer experiences, including all the time a request waits in the backlog; cycle time starts when someone begins work. A long lead time with a short cycle time points at the queue, not the developers.",
+      "tags": ["flow", "metrics"],
+      "level": 2,
+      "asked": "Understanding the difference helps you diagnose where delay really comes from."
+    },
+    {
+      "id": "ag-084",
+      "q": "According to Little's law, what happens to average cycle time if a team doubles its work in progress while throughput stays the same?",
+      "choices": [
+        "It halves, because more items are moving through the system at once",
+        "It stays the same, because throughput has not changed at all",
+        "It doubles, because cycle time equals WIP divided by throughput",
+        "It becomes unpredictable, because the law only applies to Scrum"
+      ],
+      "answer": 2,
+      "why": "Average cycle time = average WIP / average throughput, so with throughput fixed, twice as many items in progress means each takes twice as long. It is the arithmetic behind WIP limits and applies to any stable flow system, not just Kanban or Scrum.",
+      "tags": ["flow", "metrics"],
+      "level": 3,
+      "asked": "Rare but impressive; it turns 'limit WIP' from a slogan into a reason."
+    },
+    {
+      "id": "ag-085",
+      "q": "What does a cumulative flow diagram show?",
+      "choices": [
+        "The total story points delivered in each sprint, as a series of bars",
+        "The count of items in each board column over time, as stacked bands",
+        "The number of defects found after each release, per severity level",
+        "Each developer's open tickets, so managers can balance the workload"
+      ],
+      "answer": 1,
+      "why": "Each band is a column (to do, in progress, review, done); a band that widens means work is piling up there, such as a review bottleneck. Points per sprint is a velocity chart, and splitting by person is not what it is for.",
+      "tags": ["flow", "metrics"],
+      "level": 3,
+      "asked": "Shows you can read a board's health from data rather than feeling."
+    },
+    {
+      "id": "ag-086",
+      "q": "Your team uses Kanban and a stakeholder wants a date for 30 items. Which forecasting approach fits best?",
+      "choices": [
+        "Use past weekly throughput to simulate a range of likely dates",
+        "Estimate each item in hours and add them up, then add a buffer",
+        "Take the date the stakeholder needs and work backwards from it",
+        "Wait until all 30 items are started to see how long each takes"
+      ],
+      "answer": 0,
+      "why": "Historical throughput already includes interruptions, reviews and bugs, and sampling it many times (a Monte Carlo forecast) gives a date with a confidence level, such as 85% by 12 June. Summing hour estimates ignores all the non-coding time and tends to be optimistic.",
+      "tags": ["estimation", "flow"],
+      "level": 3,
+      "asked": "A mature-team technique; mentioning it shows you know estimates can come from data."
+    },
+    {
+      "id": "ag-087",
+      "q": "What is a minimum viable product (MVP)?",
+      "choices": [
+        "The cheapest version of the product, built with the fewest developers",
+        "The first release containing every feature in the original specification",
+        "A prototype built for investors that never goes to real users",
+        "The smallest release that tests whether an idea is worth pursuing"
+      ],
+      "answer": 3,
+      "why": "An MVP is a learning tool: the least you can build to test a real assumption with real users. It is not about cost or head count, and it is deliberately not the full specification. A prototype that never meets users cannot validate anything.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "A shared vocabulary check; the follow-up is what you would cut from a given feature."
+    },
+    {
+      "id": "ag-088",
+      "q": "What is a 'walking skeleton' at the start of a project?",
+      "choices": [
+        "A detailed architecture diagram agreed before any code is written",
+        "A set of empty classes and interfaces for every planned part of the domain",
+        "A thin end-to-end slice that builds, deploys and runs through every layer",
+        "A mock-up of the user interface with no backend behind it at all"
+      ],
+      "answer": 2,
+      "why": "Getting one trivial request through UI, API, database and the deploy pipeline early flushes out integration and infrastructure problems while they are cheap. A diagram or empty classes deliver nothing that runs, and a UI mock tests only one layer.",
+      "tags": ["tickets", "flow"],
+      "level": 2,
+      "asked": "Shows you would de-risk a new project by proving the path to production first."
+    },
+    {
+      "id": "ag-089",
+      "q": "A spike's time box has run out without a clear answer. What should happen?",
+      "choices": [
+        "Keep going until the answer is found, since the time box was a guess",
+        "Report what was learned, then decide if a second short spike is worth it",
+        "Treat the spike's prototype as production code and start building on it",
+        "Abandon the feature, since the spike proved it cannot be estimated"
+      ],
+      "answer": 1,
+      "why": "The time box caps the cost of learning; when it ends the team decides with what it now knows, which may be a second, narrower spike or a decision to proceed with risk noted. Open-ended spikes defeat the point, and prototype code rarely has the tests or design to ship.",
+      "tags": ["tickets", "estimation"],
+      "level": 3,
+      "asked": "Tests whether you respect time boxes and turn research into a decision."
+    },
+    {
+      "id": "ag-090",
+      "q": "What is an onboarding buddy for a new developer?",
+      "choices": [
+        "A teammate who answers day-to-day questions and pairs on early tasks",
+        "An HR contact who handles contracts, equipment and payroll questions",
+        "A manager who reviews the new hire's work at the end of probation",
+        "An external mentor from another company, met once a month"
+      ],
+      "answer": 0,
+      "why": "A named teammate lowers the cost of asking 'silly' questions, which is what slows new hires down most, and pairing on the first tickets spreads unwritten knowledge. Performance review, HR logistics and outside mentoring are different jobs.",
+      "tags": ["communication"],
+      "level": 1,
+      "asked": "Often asked as 'how would you help a new joiner?', which is a mid-level expectation."
+    },
+    {
+      "id": "ag-091",
+      "q": "What should an on-call handover include when your shift ends?",
+      "choices": [
+        "Only incidents that were fully resolved, so the next person starts fresh",
+        "Nothing, since the monitoring system will page the next person anyway",
+        "A list of every alert that fired, copied from the monitoring tool",
+        "Open issues, anything still being watched, and changes that might misbehave"
+      ],
+      "answer": 3,
+      "why": "The next responder needs context the dashboards do not have: what is half-mitigated, which deploy looked suspicious, which alert is known noise. Resolved items are history, and a raw alert dump gives no judgement about what matters.",
+      "tags": ["on-call"],
+      "level": 2,
+      "asked": "A small operational habit that tells interviewers you have really been on call, or will be good at it."
+    },
+    {
+      "id": "ag-092",
+      "q": "During an outage, what should a status page update for customers contain?",
+      "choices": [
+        "The stack trace and the name of the service that is failing",
+        "An apology only, until the root cause has been fully confirmed",
+        "What is affected, what is being done, and when to expect an update",
+        "A promise of the exact time the service will be working again"
+      ],
+      "answer": 2,
+      "why": "Customers need to know whether it affects them, that someone is on it, and when to check back; a committed update time stops them refreshing and filing tickets. Internal details confuse them, and a guaranteed fix time is usually broken.",
+      "tags": ["incidents", "communication"],
+      "level": 2,
+      "asked": "Shows you can communicate to non-engineers under pressure."
+    },
+    {
+      "id": "ag-093",
+      "q": "In a retrospective, what is the 'start, stop, continue' format for?",
+      "choices": [
+        "Deciding which stories to start, stop or continue in the next sprint",
+        "Collecting practices to try, drop and keep, then choosing one to act on",
+        "Reviewing each developer's performance under three separate headings",
+        "Planning the order of deploys for the next release across three stages"
+      ],
+      "answer": 1,
+      "why": "It structures the process conversation into what to add, remove and keep, and the output should be one or two owned actions. It is about how the team works, not which stories to build, and never a performance review.",
+      "tags": ["ceremonies"],
+      "level": 1,
+      "asked": "A basic format; interviewers usually follow with a change your team made after a retro."
+    },
+    {
+      "id": "ag-094",
+      "q": "The last three retrospectives were quiet and produced no actions. By the criterion of getting honest input, what is the best first change?",
+      "choices": [
+        "Collect items anonymously first, then vary the format and facilitator",
+        "Have the manager run them and assign improvement actions directly",
+        "Cancel retros, since the team clearly has nothing to improve",
+        "Make them longer so that people have more time to think of things"
+      ],
+      "answer": 0,
+      "why": "Silence usually means people do not feel safe or the format has gone stale, so anonymous input and a fresh facilitator lower the cost of speaking up. Cancelling hides the problem, and a manager assigning actions makes people even less likely to raise issues.",
+      "tags": ["ceremonies", "communication"],
+      "level": 3,
+      "asked": "Tests your understanding of psychological safety, which interviewers increasingly ask about."
+    },
+    {
+      "id": "ag-095",
+      "q": "What is psychological safety on a team?",
+      "choices": [
+        "A guarantee that nobody will ever be let go from the team",
+        "A policy that only managers may give feedback to developers",
+        "An agreement that nobody criticises anyone else's code in review",
+        "Confidence that admitting mistakes or asking questions is safe"
+      ],
+      "answer": 3,
+      "why": "Teams where people can say 'I broke it' or 'I do not understand' surface problems early, which is why it predicts team performance. It is not the absence of criticism: honest review is easier when people feel safe, not harder.",
+      "tags": ["communication"],
+      "level": 2,
+      "asked": "Interviewers ask how you have contributed to it, for example by admitting your own mistakes first."
+    },
+    {
+      "id": "ag-096",
+      "q": "What should a good bug report include so that a developer can act on it?",
+      "choices": [
+        "A title in capitals and a severity of critical, so it gets noticed",
+        "The name of the developer who most likely wrote the broken code",
+        "Steps to reproduce, expected and actual result, and environment",
+        "A suggested fix, since developers prefer not to investigate bugs"
+      ],
+      "answer": 2,
+      "why": "Reproduction steps and the expected/actual difference let someone see the bug for themselves, and the environment (browser, version, account type) explains why it may not happen everywhere. Shouting and blame do not help anyone fix it.",
+      "tags": ["tickets"],
+      "level": 1,
+      "asked": "You will file and receive many bug reports; interviewers check you know what makes one useful."
+    },
+    {
+      "id": "ag-097",
+      "q": "You pick up a bug you cannot reproduce. Judged by making progress without guessing, what is the best next step?",
+      "choices": [
+        "Close it as cannot-reproduce straight away and move to the next ticket",
+        "Gather logs and environment details from the reporter, and add logging",
+        "Ship a speculative fix for the most likely cause and see if reports stop",
+        "Rewrite the feature from scratch, since the bug could be anywhere"
+      ],
+      "answer": 1,
+      "why": "Differences in data, browser, account or timing usually explain it, so collect details and add targeted logging or telemetry to catch the next occurrence. Closing loses the report, speculative fixes cannot be verified, and a rewrite adds new bugs.",
+      "tags": ["tickets", "incidents"],
+      "level": 2,
+      "asked": "Shows a systematic debugging mindset, which interviewers probe with 'it works on my machine' scenarios."
+    },
+    {
+      "id": "ag-098",
+      "q": "Your team shares a service with another team and you disagree about who fixes its bugs. What is the most durable fix?",
+      "choices": [
+        "Agree and record ownership, for example in CODEOWNERS and docs",
+        "Each team fixes only the bugs its own customers report, case by case",
+        "Whoever notices the bug first must fix it, whatever part of the code",
+        "Escalate every disputed bug to the managers of both teams to decide"
+      ],
+      "answer": 0,
+      "why": "Recorded ownership stops the same argument recurring and makes reviews, alerts and tickets go to the right place automatically. Case-by-case rules and escalating every bug keep the ambiguity alive and waste managers' time.",
+      "tags": ["communication", "code-review"],
+      "level": 3,
+      "asked": "Tests whether you fix the process that causes a recurring conflict, not just the conflict."
+    },
+    {
+      "id": "ag-099",
+      "q": "Judged by keeping reviews focused on behaviour, which PR should include the new or changed tests?",
+      "choices": [
+        "Only PRs touching business logic; UI changes never need tests",
+        "None of them, since QA writes the tests after each sprint finishes",
+        "A separate PR opened after the feature has been merged and released",
+        "The same PR as the change, so the reviewer can see what it proves"
+      ],
+      "answer": 3,
+      "why": "Tests in the same PR show the reviewer what behaviour the author intended and prove it works, and they stop the change landing untested. Deferring tests to later PRs or to QA means they often never arrive, and UI logic benefits from tests too.",
+      "tags": ["code-review"],
+      "level": 1,
+      "asked": "Interviewers use it to check you treat tests as part of the change, not an afterthought."
+    },
+    {
+      "id": "ag-100",
+      "q": "What does Goodhart's law warn about when a team adopts metrics such as velocity or test coverage?",
+      "choices": [
+        "The more metrics a team tracks, the more accurate its forecasts will become",
+        "Metrics should be reviewed once a quarter, so they are not looked at too often",
+        "A measure that becomes a target stops being a good measure, as people game it",
+        "Only metrics collected automatically by tools can be trusted for decisions"
+      ],
+      "answer": 2,
+      "why": "Once coverage or velocity is rewarded, people raise the number rather than the thing it stood for: trivial tests to hit 80%, inflated points to look faster. Use metrics to ask questions, and track several that pull against each other, such as speed with change failure rate. Automatic collection does not stop gaming.",
+      "tags": ["metrics"],
+      "level": 3,
+      "asked": "A strong answer names a metric you have seen gamed and what the team did instead."
     }
   ]
 }

@@ -362,6 +362,1420 @@
       "tags": ["assets", "caching"],
       "level": 2,
       "asked": "It is the second half of the immutable-assets pattern, and confusing `no-cache` with `no-store` is one of the most common HTTP caching mistakes."
+    },
+    {
+      "id": "wp-024",
+      "q": "LCP is often broken into four sub-parts. Which list is correct, in order?",
+      "choices": [
+        "DNS lookup, TCP connect, TLS handshake, and first byte of the HTML",
+        "TTFB, resource load delay, resource load duration, element render delay",
+        "First paint, first contentful paint, speed index, and time to interactive",
+        "Parse HTML, build CSSOM, run JavaScript, and composite the final layers"
+      ],
+      "answer": 1,
+      "why": "TTFB is time to the first byte of HTML; load delay is the gap before the LCP resource starts downloading; load duration is its download; render delay is the gap until it paints. Breaking LCP down tells you whether to fix the server, discovery, bytes or main-thread blocking. The first option is all inside TTFB.",
+      "tags": ["vitals", "lcp"],
+      "level": 2,
+      "asked": "The sub-part breakdown turns \"LCP is slow\" into a specific fix, which is what interviewers want to hear."
+    },
+    {
+      "id": "wp-025",
+      "q": "The LCP element is a hero image set with `background-image` in a stylesheet. Why is its resource load delay large?",
+      "code": ".hero { background-image: url(/img/hero.avif); }",
+      "lang": "css",
+      "choices": [
+        "Background images are always decoded on the main thread, unlike `<img>`",
+        "Background images never count as LCP candidates, so LCP falls back late",
+        "The preload scanner cannot see CSS images; they wait for CSS and style",
+        "Browsers download CSS images at the lowest priority after every script"
+      ],
+      "answer": 2,
+      "why": "The preload scanner finds `<img src>` in the HTML immediately, but a CSS background is only requested after the stylesheet downloads and a matching element gets styled. Use an `<img>` (with `fetchpriority=\"high\"`) or preload it. CSS background images can be LCP candidates.",
+      "tags": ["vitals", "lcp", "images"],
+      "level": 2,
+      "asked": "Tests understanding of resource discovery, the most overlooked part of LCP."
+    },
+    {
+      "id": "wp-026",
+      "q": "A client-rendered React SPA has a slow LCP even though the hero image is small and cached on a CDN. What is the most likely cause?",
+      "choices": [
+        "The image does not exist until the JS bundle loads, runs and renders",
+        "CDNs serve images with lower priority to SPAs than to server-rendered pages",
+        "LCP always includes JavaScript parse time, whatever the page's element is",
+        "React replaces `<img>` with canvas drawing, which paints only after idle"
+      ],
+      "answer": 0,
+      "why": "With client-side rendering the HTML is an empty shell, so the `<img>` does not exist until the bundle has loaded and rendered, pushing resource load delay and render delay up. Server rendering or static HTML for the shell, or preloading the image, puts it back on the fast path.",
+      "tags": ["vitals", "lcp", "javascript"],
+      "level": 2,
+      "asked": "Connects rendering strategy to Web Vitals, a common SSR-vs-CSR discussion point."
+    },
+    {
+      "id": "wp-027",
+      "q": "Which `<link>` lets the preload scanner fetch a responsive LCP image early, choosing the same candidate as the `<img>` will?",
+      "choices": [
+        "`<link rel=\"prefetch\" href=\"/hero-800.avif\">` for the middle size",
+        "`<link rel=\"preload\" as=\"image\" imagesrcset imagesizes>`",
+        "`<link rel=\"preconnect\" href=\"/img/hero.avif\" as=\"image\">` early on",
+        "`<link rel=\"modulepreload\" href=\"/img/hero.avif\">` in the head"
+      ],
+      "answer": 1,
+      "why": "`imagesrcset` and `imagesizes` mirror `srcset` and `sizes`, so the preload picks the same file the `<img>` will use and nothing is downloaded twice. `prefetch` is low priority for future navigations, `preconnect` takes an origin not a file, and `modulepreload` is for JS modules.",
+      "tags": ["lcp", "images", "loading"],
+      "level": 3,
+      "asked": "Preloading one fixed size of a responsive image wastes bytes; interviewers like candidates who know this variant."
+    },
+    {
+      "id": "wp-028",
+      "q": "INP is made up of three phases for each interaction. Which list is right?",
+      "choices": [
+        "Input delay, processing duration, and presentation delay",
+        "Network time, parse time, and time to first byte of data",
+        "Hover delay, focus delay, and the paint of the next frame",
+        "Script evaluation, garbage collection, and GPU compositing"
+      ],
+      "answer": 0,
+      "why": "Input delay is waiting for the main thread to be free; processing is running your event handlers; presentation delay is the style, layout and paint work before the next frame. Long tasks cause the first, heavy handlers the second, and large DOM updates the third.",
+      "tags": ["vitals", "inp"],
+      "level": 2,
+      "asked": "Knowing the phases lets you say which fix targets which part, which is the real interview test."
+    },
+    {
+      "id": "wp-029",
+      "q": "Which of these user actions is NOT measured by INP?",
+      "choices": [
+        "Clicking a \"Save\" button with the mouse",
+        "Tapping a checkbox on a phone touchscreen",
+        "Pressing Enter in a search field to submit it",
+        "Scrolling the page with the mouse wheel"
+      ],
+      "answer": 3,
+      "why": "INP observes clicks, taps and key presses. Scrolling and hovering are not interactions for INP, because they are usually handled off the main thread by the compositor. A janky scroll is still bad, but it will not show up in INP.",
+      "tags": ["vitals", "inp"],
+      "level": 1,
+      "asked": "A quick check that you know what the metric actually observes."
+    },
+    {
+      "id": "wp-030",
+      "q": "A visit has 120 interactions. Roughly which one does INP report?",
+      "choices": [
+        "The very first interaction, as First Input Delay did before it",
+        "The mean of all 120 interaction latencies over the whole visit",
+        "Near the worst, ignoring one outlier per 50 interactions",
+        "The median interaction latency, to smooth out one-off slow events"
+      ],
+      "answer": 2,
+      "why": "INP takes the longest interaction, but on pages with many interactions it discards one outlier for every 50, so here it reports about the third longest. That keeps one freak event from dominating while still reflecting the slow tail. FID looked only at the first input's delay.",
+      "tags": ["vitals", "inp"],
+      "level": 3,
+      "asked": "A detail that shows you have read how the metric is computed rather than just its threshold."
+    },
+    {
+      "id": "wp-031",
+      "q": "A search field filters 2,000 rows on every keystroke and INP is poor. Which change reduces processing duration most directly?",
+      "code": "input.addEventListener('input', (e) => {\n  renderRows(filterRows(allRows, e.target.value));\n});",
+      "lang": "js",
+      "choices": [
+        "Move the listener from `input` to `keyup`, which fires less often",
+        "Wrap `renderRows` in `requestAnimationFrame` to run it after paint",
+        "Change the handler to `async`, so that the filtering runs in parallel",
+        "Update the input at once and debounce the filter and render work"
+      ],
+      "answer": 3,
+      "why": "The field already shows the typed character natively; debouncing the expensive filter and render means most keystrokes do little work and the next frame paints quickly. `async` does not create parallelism, `keyup` fires just as often, and `requestAnimationFrame` runs before the next paint, not after it.",
+      "tags": ["inp", "runtime"],
+      "level": 2,
+      "asked": "The canonical INP fix; the rAF distractor catches people who think it means \"later\"."
+    },
+    {
+      "id": "wp-032",
+      "q": "Which API shows you which scripts caused slow frames in the field, with attribution to source URLs and functions?",
+      "choices": [
+        "The Long Animation Frames API (`long-animation-frame` entries)",
+        "The Navigation Timing API (`navigation` entries in the buffer)",
+        "The Resource Timing API (`resource` entries for each download)",
+        "The Paint Timing API (`first-contentful-paint` entry only)"
+      ],
+      "answer": 0,
+      "why": "LoAF (Chrome 123+) reports frames longer than 50 ms with script attribution such as `sourceURL`, `invoker` and duration, so field INP data can be tied to a specific script. The older Long Tasks API had almost no attribution. The web-vitals attribution build uses LoAF.",
+      "tags": ["inp", "measuring"],
+      "level": 3,
+      "asked": "Field attribution is how teams actually fix INP at scale; knowing LoAF marks recent hands-on work."
+    },
+    {
+      "id": "wp-033",
+      "q": "Why can a page with a huge DOM (say 15,000 nodes) have a poor INP even when its event handlers are fast?",
+      "choices": [
+        "Large DOMs stop the browser from dispatching events to handlers",
+        "Style recalculation and layout after each update take a long time",
+        "INP counts every node the handler reads as a separate interaction",
+        "Garbage collection runs before each click on pages above 10,000 nodes"
+      ],
+      "answer": 1,
+      "why": "After handlers run, the browser must recalculate styles and lay out affected nodes before it can paint, and that cost scales with DOM size, showing up as presentation delay. Virtualising long lists or `content-visibility: auto` for off-screen sections reduces it.",
+      "tags": ["inp", "runtime"],
+      "level": 2,
+      "asked": "Moves the conversation past \"make the handler faster\" to rendering cost, which strong candidates raise unprompted."
+    },
+    {
+      "id": "wp-034",
+      "q": "What does `content-visibility: auto` on long, below-the-fold sections do?",
+      "choices": [
+        "Hides the sections from screen readers until they are scrolled into view",
+        "Lazy-loads the sections' HTML from the server when they approach the view",
+        "Lets the browser skip layout and paint for sections until they near view",
+        "Moves the sections to a separate GPU layer so scrolling them is smoother"
+      ],
+      "answer": 2,
+      "why": "Off-screen sections with `content-visibility: auto` skip rendering work, which cuts initial rendering time and the cost of later updates. Pair it with `contain-intrinsic-size` so the scrollbar does not jump. Content stays in the DOM and accessibility tree, and nothing is fetched.",
+      "tags": ["runtime", "inp"],
+      "level": 3,
+      "asked": "A modern CSS lever for rendering cost; mentioning `contain-intrinsic-size` shows you have used it."
+    },
+    {
+      "id": "wp-035",
+      "q": "How does CLS group layout shifts into a single score for a page visit?",
+      "choices": [
+        "It sums every layout shift from load until the page is finally unloaded",
+        "It takes the worst window of shifts (under 1 s apart, 5 s at most)",
+        "It records the single largest shift that happens during the whole visit",
+        "It averages all shifts that occur within the first five seconds of load"
+      ],
+      "answer": 1,
+      "why": "Shifts are grouped into session windows (a window ends after a 1 s gap or at 5 s long), and CLS is the largest window's total. That stopped long-lived SPAs from accumulating ever-growing scores. It still covers the whole visit, not just loading.",
+      "tags": ["vitals", "cls"],
+      "level": 3,
+      "asked": "Explains why CLS can be bad on a page that loads cleanly, if something shifts later."
+    },
+    {
+      "id": "wp-036",
+      "q": "An expanding panel animates its `height` and pushes content below. A toast slides in using `transform: translateY()`. Which one can produce layout shifts?",
+      "choices": [
+        "The toast, since any `transform` counts as moving the element's layout",
+        "Neither, because animations are always excluded from CLS measurement",
+        "The height animation, if it runs without recent input from the user",
+        "Each of them, since each one changes what is painted on the screen"
+      ],
+      "answer": 2,
+      "why": "Layout-affecting properties like `height`, `top` and `margin` move other elements, which counts as a shift unless it follows user input within 500 ms. `transform` moves pixels without changing layout, so it is never a layout shift and is also cheaper to animate.",
+      "tags": ["cls", "runtime"],
+      "level": 2,
+      "asked": "Tests whether you know why \"animate transform and opacity\" is standard advice."
+    },
+    {
+      "id": "wp-037",
+      "q": "A web font loads late and the text reflows because the fallback font is wider. Which CSS reduces that shift without hiding text?",
+      "code": "@font-face {\n  font-family: 'Brand Fallback';\n  src: local('Arial');\n  ???\n}",
+      "lang": "css",
+      "choices": [
+        "`font-display: block;` so text stays invisible until the web font arrives",
+        "`size-adjust` with `ascent-override` so the fallback matches the metrics",
+        "`unicode-range: U+0000-00FF;` so only Latin glyphs are ever downloaded",
+        "`font-weight: 100 900;` so that the fallback covers every weight used"
+      ],
+      "answer": 1,
+      "why": "Metric overrides (`size-adjust`, `ascent-override`, `descent-override`, `line-gap-override`) make a local fallback occupy nearly the same space as the web font, so the swap barely moves anything. Frameworks such as Next.js generate these automatically. `block` hides text and still shifts when it swaps.",
+      "tags": ["cls", "fonts"],
+      "level": 3,
+      "asked": "The modern fix for font CLS; interviewers who have fought it will recognise the term."
+    },
+    {
+      "id": "wp-038",
+      "q": "A cookie consent banner is inserted at the top of `<body>` after load and pushes the page down. What is the CLS-friendly alternative?",
+      "choices": [
+        "Insert it after a `setTimeout` of five seconds so the shift is ignored",
+        "Insert it just above the footer so the shift happens below the viewport",
+        "Overlay it with `position: fixed`, or reserve its space up front",
+        "Insert it with `opacity: 0`, then fade it in so the move is not counted"
+      ],
+      "answer": 2,
+      "why": "A fixed-position overlay does not move other content, and space reserved in the initial HTML means nothing shifts when it appears. Delaying the insert still shifts, and an invisible element that takes space shifts content when it is inserted, not when it becomes visible.",
+      "tags": ["cls"],
+      "level": 1,
+      "asked": "Banners and ads are real CLS sources; interviewers expect \"reserve space or overlay\"."
+    },
+    {
+      "id": "wp-039",
+      "q": "A page is restored from the back/forward cache (bfcache). What happens to its Core Web Vitals in the field?",
+      "choices": [
+        "The visit is discarded from CrUX, since no network requests were made",
+        "It counts as a new page view with near-instant LCP, helping p75",
+        "It reuses the metrics from the original visit without any new entry",
+        "It counts as a failed page load, because `load` does not fire again"
+      ],
+      "answer": 1,
+      "why": "bfcache restores are treated as separate page views (the web-vitals library reports them via `pageshow` with `persisted`), with LCP and CLS near zero, so enabling bfcache improves field numbers. Avoid `unload` listeners, which make pages ineligible.",
+      "tags": ["vitals", "caching", "measuring"],
+      "level": 3,
+      "asked": "bfcache eligibility is a cheap field win that many teams miss; knowing `unload` blocks it is the key detail."
+    },
+    {
+      "id": "wp-040",
+      "q": "Which of these makes a page ineligible for the back/forward cache in Chrome?",
+      "choices": [
+        "Registering a `pagehide` listener that saves a draft to storage",
+        "Registering an `unload` event listener anywhere on the page",
+        "Serving the HTML with `Cache-Control: max-age=0` and an ETag",
+        "Loading scripts with `type=\"module\"` rather than classic scripts"
+      ],
+      "answer": 1,
+      "why": "`unload` listeners block bfcache in Chrome and are being deprecated. `pagehide` and `visibilitychange` are the reliable replacements and are bfcache-friendly. Normal revalidation headers and module scripts do not matter; open connections such as WebSockets can also block it.",
+      "tags": ["caching", "runtime"],
+      "level": 2,
+      "asked": "A practical one; DevTools' Application panel has a bfcache test that lists exactly these blockers."
+    },
+    {
+      "id": "wp-041",
+      "q": "TTFB for your HTML is 1.8 s at p75. Why does fixing it matter for LCP?",
+      "choices": [
+        "It does not; TTFB is a network metric, and LCP only measures rendering",
+        "Every LCP sub-part starts after TTFB, so it sets a floor for LCP",
+        "LCP subtracts TTFB, so a slow server makes LCP look better than it is",
+        "TTFB only affects INP, because the first interaction waits for HTML"
+      ],
+      "answer": 1,
+      "why": "Nothing can be discovered or painted until the HTML starts arriving, so TTFB is the first slice of every LCP. At 1.8 s you have used most of the 2.5 s budget before the browser sees a single tag. Server caching, a CDN, fewer redirects or streaming the head early all help.",
+      "tags": ["vitals", "lcp"],
+      "level": 1,
+      "asked": "Checks that you look at the backend when LCP is slow rather than only at images."
+    },
+    {
+      "id": "wp-042",
+      "q": "What does sending a `103 Early Hints` response do for a slow-to-render HTML page?",
+      "code": "HTTP/1.1 103 Early Hints\nLink: </css/app.css>; rel=preload; as=style\n\nHTTP/1.1 200 OK\nContent-Type: text/html",
+      "lang": "http",
+      "choices": [
+        "The browser can fetch critical assets while the server builds the HTML",
+        "It tells the browser the HTML is cached, so the 200 response can be skipped",
+        "It downgrades the connection to HTTP/1.1 so that preloads can be multiplexed",
+        "It pushes the stylesheet body inside the 103 response, like HTTP/2 Server Push"
+      ],
+      "answer": 0,
+      "why": "A 103 is an interim response carrying `Link` headers, so the browser can preconnect or preload during server think-time before the 200 arrives. Unlike the retired HTTP/2 Server Push, it sends hints rather than bodies, so the browser's cache is respected. It needs CDN or server support.",
+      "tags": ["loading", "lcp"],
+      "level": 3,
+      "asked": "A good answer contrasts it with Server Push and explains why hints beat pushed bytes."
+    },
+    {
+      "id": "wp-043",
+      "q": "Which navigation hint lets Chrome fully render the likely next page in the background so it appears instantly on click?",
+      "code": "<script type=\"speculationrules\">\n{ \"prerender\": [{ \"where\": { \"href_matches\": \"/orders/*\" },\n                  \"eagerness\": \"moderate\" }] }\n</script>",
+      "lang": "html",
+      "choices": [
+        "The Speculation Rules API with `prerender`, as shown here",
+        "A `<link rel=\"preload\">` for the next page's HTML document URL",
+        "A `<link rel=\"dns-prefetch\">` for the origin of the next page",
+        "A service worker that caches `/orders/*` responses on install"
+      ],
+      "answer": 0,
+      "why": "Speculation rules can prefetch or prerender same-site pages; `moderate` eagerness triggers on hover or pointer down. Prerendering runs the page, so avoid it for URLs with side effects and count analytics carefully. `preload` is for subresources of the current page, and a service worker cache still has to render on click.",
+      "tags": ["loading", "navigation"],
+      "level": 3,
+      "asked": "A Chromium feature teams use for near-instant multi-page navigations; knowing the side-effect caveat matters."
+    },
+    {
+      "id": "wp-044",
+      "q": "Your field data shows good LCP on desktop but poor LCP on mobile. Which fix is most likely to target the mobile gap?",
+      "choices": [
+        "Adding more CPU cores to the server that renders the page HTML",
+        "Right-sized images via `srcset`, so phones download less",
+        "Minifying the HTML, which is usually most of a page's weight",
+        "Increasing the CDN cache TTL from one day to one full year"
+      ],
+      "answer": 1,
+      "why": "Phones have slower networks and CPUs and often receive the same desktop-sized hero image. Responsive images cut bytes on the LCP resource directly. Server CPU would affect both device classes, HTML is rarely the heavy part, and TTL changes affect cache hit rates, not device differences.",
+      "tags": ["lcp", "images"],
+      "level": 1,
+      "asked": "Checks that you segment field data by device before choosing a fix."
+    },
+    {
+      "id": "wp-045",
+      "q": "What is the \"good\" threshold for Time to First Byte recommended by web.dev?",
+      "choices": [
+        "0.8 seconds or less at the 75th percentile",
+        "2.5 seconds or less at the 75th percentile",
+        "200 milliseconds or less at the median",
+        "100 milliseconds or less for every request"
+      ],
+      "answer": 0,
+      "why": "TTFB is not a Core Web Vital, but 0.8 s is the suggested good threshold because it leaves room for the rest of LCP within 2.5 s. 2.5 s is the LCP threshold and 200 ms the INP threshold, which is where the distractors come from.",
+      "tags": ["vitals", "measuring"],
+      "level": 1,
+      "asked": "Knowing thresholds by heart lets you read a PageSpeed report quickly in a pairing exercise."
+    },
+    {
+      "id": "wp-046",
+      "q": "The LCP element is a paragraph in a web font with `font-display: block`, and the font loads slowly. What happens to LCP?",
+      "choices": [
+        "It paints at once in the fallback font, and LCP records that paint time",
+        "It is hidden for up to about 3 s, and LCP waits for the visible text",
+        "It is excluded from LCP, since text in web fonts never counts as content",
+        "It paints in the web font from the HTTP cache on every visit, even cold"
+      ],
+      "answer": 1,
+      "why": "`block` gives the font a short block period (about 3 s) during which text is invisible, so text-based LCP waits for the font or the timeout. `swap` or `optional` paint fallback text immediately. Text in web fonts is a normal LCP candidate.",
+      "tags": ["lcp", "fonts"],
+      "level": 2,
+      "asked": "Connects font loading to LCP, not just CLS, which many candidates miss."
+    },
+    {
+      "id": "wp-047",
+      "q": "What is the difference between `defer` and `async` on a classic `<script src>` in the `<head>`?",
+      "choices": [
+        "`defer` runs after parsing, in document order; `async` runs on arrival, in any order",
+        "`defer` downloads after parsing finishes; `async` downloads while the HTML parses",
+        "`defer` runs before `DOMContentLoaded` only in Chrome; `async` is the standard form",
+        "`defer` keeps blocking the parser while it runs; `async` never touches the main thread"
+      ],
+      "answer": 0,
+      "why": "Both download in parallel with parsing. `defer` scripts execute after the document is parsed, in the order they appear, before `DOMContentLoaded`; `async` scripts execute as soon as each arrives, pausing the parser and in no guaranteed order. Neither delays the download itself.",
+      "tags": ["javascript", "loading"],
+      "level": 1,
+      "asked": "A classic screening question; a strong answer says which one you'd use for app code (defer) and which for independent analytics (async)."
+    },
+    {
+      "id": "wp-048",
+      "q": "How does `<script type=\"module\" src=\"/app.js\">` behave by default with respect to parsing?",
+      "choices": [
+        "It blocks the parser like a classic script until it has run",
+        "It runs as soon as it downloads, like a classic `async` script",
+        "It is deferred: fetched in parallel and run after parsing completes",
+        "It is fetched only when the page becomes idle after the `load` event"
+      ],
+      "answer": 2,
+      "why": "Module scripts are deferred by default, so adding `defer` does nothing. Adding `async` makes them run as soon as they and their imports are ready. They never block the parser the way a plain classic script does.",
+      "tags": ["javascript", "loading"],
+      "level": 2,
+      "asked": "Checks whether you know what Vite's default output does to the critical path without extra attributes."
+    },
+    {
+      "id": "wp-049",
+      "q": "Your hero `<img>` has `srcset` with 400w, 800w and 1600w files but no `sizes` attribute. What goes wrong on a phone where the image is 360 CSS px wide?",
+      "choices": [
+        "The browser ignores `srcset` entirely and downloads the fallback `src` file instead",
+        "The browser assumes `100vw`, which here is close, so nothing goes wrong",
+        "The browser downloads all three files and keeps the best one for later",
+        "Without `sizes` the browser assumes `100vw`, which is only right if full-width"
+      ],
+      "answer": 3,
+      "why": "With `w` descriptors and no `sizes`, the browser assumes the image is `100vw` wide. That is fine for a full-width hero but oversizes images shown in a narrow column; it never downloads every candidate. The trap is thinking `srcset` alone is enough for images in a grid or sidebar.",
+      "tags": ["images"],
+      "level": 2,
+      "asked": "Responsive image markup is often copied without `sizes`; interviewers want you to know what the default does."
+    },
+    {
+      "id": "wp-050",
+      "q": "Why should every `<img>` have `width` and `height` attributes, even when CSS makes it responsive?",
+      "code": "<img src=\"/card.webp\" width=\"640\" height=\"360\" alt=\"...\">\n<style>img { width: 100%; height: auto; }</style>",
+      "lang": "html",
+      "choices": [
+        "They force the browser to download the image file at exactly 640 by 360 pixels",
+        "They give the browser an aspect ratio, so it reserves space before loading",
+        "They override the CSS, so the image never scales below 640 pixels wide",
+        "They let the browser skip decoding, as the dimensions are already known"
+      ],
+      "answer": 1,
+      "why": "Modern browsers map the attributes to a default `aspect-ratio`, so with `height: auto` the box is sized correctly before a single byte arrives and nothing below it shifts. The attributes do not control which file is downloaded and CSS still wins for the rendered size.",
+      "tags": ["cls", "images"],
+      "level": 1,
+      "asked": "The single most common CLS fix; interviewers expect it immediately after \"what causes layout shift?\"."
+    },
+    {
+      "id": "wp-051",
+      "q": "What does `decoding=\"async\"` on an `<img>` change?",
+      "choices": [
+        "It downloads the image on a background thread instead of the main thread",
+        "It defers the download until the image scrolls near the viewport",
+        "It lets the browser present other content before this image is decoded",
+        "It switches the image to a progressive format the browser decodes faster"
+      ],
+      "answer": 2,
+      "why": "`decoding` is a hint about whether the image's decode may be done off the critical path of presenting other content; it has nothing to do with when the download starts. Lazy downloading is `loading=\"lazy\"`, and format is decided by the file itself.",
+      "tags": ["images"],
+      "level": 3,
+      "asked": "A deeper image question; strong candidates add that the gain is small and that `loading` and `fetchpriority` matter far more."
+    },
+    {
+      "id": "wp-052",
+      "q": "Which images on a long product listing page should get `loading=\"lazy\"`?",
+      "choices": [
+        "Every image on the page, including the first row, for the smallest payload",
+        "Only images inside `<picture>`, because a plain `<img>` ignores the attribute",
+        "Only the LCP image, so that it does not compete with scripts for bandwidth",
+        "Images below the first screenful, but not those likely to be in the viewport"
+      ],
+      "answer": 3,
+      "why": "Native lazy loading defers off-screen images until the user scrolls near them, saving bytes. Applied to images in the initial viewport it delays them (and often LCP) because the browser must lay out the page before it knows they are visible. It works on plain `<img>` and `<iframe>`.",
+      "tags": ["images", "loading"],
+      "level": 1,
+      "asked": "Tests whether you apply lazy loading with judgement rather than as a blanket rule."
+    },
+    {
+      "id": "wp-053",
+      "q": "A landing page auto-plays a 6 MB animated GIF. What is the usual performance fix?",
+      "choices": [
+        "Convert it to a muted, looping MP4 or WebM `<video>` with a poster image",
+        "Convert it to an animated SVG, which the browser can rasterise on the GPU",
+        "Keep the GIF but add `loading=\"lazy\"` so it downloads after the `load` event",
+        "Split it into frames and animate them with `setInterval` in JavaScript"
+      ],
+      "answer": 0,
+      "why": "GIF is a very inefficient format for motion; the same clip as H.264 or AV1 video is often 5–20 times smaller and decodes in hardware. `autoplay muted loop playsinline` reproduces GIF behaviour. Lazy loading only moves the cost, and SVG is for vector drawings, not photographic frames.",
+      "tags": ["images"],
+      "level": 1,
+      "asked": "A quick win question; interviewers like hearing the attribute list that makes a video behave like a GIF."
+    },
+    {
+      "id": "wp-054",
+      "q": "Which is the right way to preload a self-hosted WOFF2 font used on the first screen?",
+      "choices": [
+        "`<link rel=\"preload\" href=\"/f/inter.woff2\" as=\"font\">` without other attributes",
+        "`<link rel=\"preload\" href=\"/f/inter.woff2\" as=\"font\" type=\"font/woff2\" crossorigin>`",
+        "`<link rel=\"prefetch\" href=\"/f/inter.woff2\" as=\"font\" crossorigin>` in the head",
+        "`<link rel=\"preconnect\" href=\"/f/inter.woff2\" crossorigin>` before the CSS"
+      ],
+      "answer": 1,
+      "why": "Fonts are always fetched in CORS mode, even same-origin, so a preload without `crossorigin` does not match the real request and the font downloads twice. `prefetch` is a low-priority hint for future navigations and `preconnect` takes an origin, not a file.",
+      "tags": ["fonts", "loading"],
+      "level": 2,
+      "asked": "The missing `crossorigin` double download is a well-known bug; spotting it shows real DevTools experience."
+    },
+    {
+      "id": "wp-055",
+      "q": "Your site ships a 400 KB font file covering Latin, Cyrillic and Greek, but serves only English content. What is the most effective fix?",
+      "choices": [
+        "Add `font-display: optional`, which also stops the unused glyphs downloading",
+        "Convert the TTF to WOFF, since WOFF compresses glyph tables most tightly",
+        "Subset the font to the Latin range and declare it with `unicode-range`",
+        "Inline the whole font as base64 in the CSS to save the extra HTTP request"
+      ],
+      "answer": 2,
+      "why": "Subsetting removes glyphs you never render, often cutting the file by 70–90%, and `unicode-range` lets the browser fetch other subsets only if those characters appear. `font-display` changes rendering, not bytes; WOFF2 (not WOFF) is the best compression; base64 inflates the size by about a third and blocks CSS.",
+      "tags": ["fonts"],
+      "level": 2,
+      "asked": "Shows you look at what is inside an asset rather than only how it is delivered."
+    },
+    {
+      "id": "wp-056",
+      "q": "What does `font-display: optional` trade off compared with `swap`?",
+      "choices": [
+        "It shows fallback text at once and only uses the web font if it is ready almost immediately",
+        "It hides text for up to 3 s, then swaps to the web font whenever the file finally arrives",
+        "It loads the font only when the user opts in through the browser's font settings",
+        "It downloads the web font only on fast connections, which the browser detects"
+      ],
+      "answer": 0,
+      "why": "`optional` has a tiny block period (about 100 ms) and no swap period: if the font is not ready, the fallback stays for that page view, so there is no late reflow. The font still downloads and is cached for the next view. `swap` always switches later, which can cause a layout shift.",
+      "tags": ["fonts", "cls"],
+      "level": 2,
+      "asked": "Interviewers use it to see whether you can choose between brand fidelity and layout stability."
+    },
+    {
+      "id": "wp-057",
+      "q": "What does `<link rel=\"preconnect\" href=\"https://cdn.example.com\" crossorigin>` do?",
+      "choices": [
+        "It downloads the CDN's root document so later requests are served from cache",
+        "It opens DNS, TCP and TLS to that origin early, before any request needs it",
+        "It tells the CDN to push the page's assets over the current HTTP/2 connection",
+        "It resolves only the DNS name, leaving the TCP and TLS handshakes for later"
+      ],
+      "answer": 1,
+      "why": "`preconnect` warms up a full connection (DNS, TCP and TLS) so the first real request saves one or more round trips; `dns-prefetch` does only the DNS part. Nothing is downloaded, and HTTP/2 server push has been removed from Chrome.",
+      "tags": ["loading", "network"],
+      "level": 1,
+      "asked": "Checks you know the hint family: preconnect, dns-prefetch, preload, prefetch, and when each fits."
+    },
+    {
+      "id": "wp-058",
+      "q": "A developer adds `preconnect` hints for eleven third-party origins \"to be safe\". What is the likely effect?",
+      "choices": [
+        "No effect at all, because browsers ignore more than three preconnect hints",
+        "Faster loading overall, because every idle connection is effectively free",
+        "A CSP violation, because preconnect needs a matching `connect-src` entry",
+        "Wasted handshakes that compete with critical requests; most go unused"
+      ],
+      "answer": 3,
+      "why": "Each preconnect costs CPU and bandwidth for the handshake and the connection is closed if not used within about 10 s. Preconnect to the one or two origins used in the critical path and use `dns-prefetch` for the rest. Browsers do not have a fixed cap of three.",
+      "tags": ["loading", "network"],
+      "level": 2,
+      "asked": "Tests whether you treat hints as trade-offs rather than free speed."
+    },
+    {
+      "id": "wp-059",
+      "q": "You preload six scripts, three fonts and four images in the `<head>`. Why might LCP get worse?",
+      "choices": [
+        "Preloads are high priority, so too many compete with the LCP image for bandwidth",
+        "Preloaded resources are never cached, so the browser fetches each one twice",
+        "Browsers stop parsing the HTML until every preloaded resource has fully downloaded",
+        "Preloads run only after the `load` event, which pushes back the whole page"
+      ],
+      "answer": 0,
+      "why": "Preload moves a resource to the front of the queue; if everything is preloaded, nothing is prioritised and the truly critical request waits behind the rest. Preloads do not block parsing and are cached normally, although an unused preload wastes bandwidth and triggers a console warning.",
+      "tags": ["loading", "lcp"],
+      "level": 2,
+      "asked": "Overusing preload is a common regression; interviewers want to hear \"preload only what is late-discovered and critical\"."
+    },
+    {
+      "id": "wp-060",
+      "q": "What is \"critical CSS\" and why do teams inline it?",
+      "choices": [
+        "The CSS for above-the-fold content, inlined so first paint need not wait for a stylesheet",
+        "The CSS rules that use `!important`, inlined so that no later stylesheet can override them",
+        "The CSS generated by a framework at build time, inlined to avoid a hydration mismatch",
+        "The CSS for error states, inlined so the page still renders if the CDN fails"
+      ],
+      "answer": 0,
+      "why": "External stylesheets are render-blocking, so the first screen cannot paint until they download. Inlining the small set of rules needed for the first screen in a `<style>` tag lets it paint after the HTML alone, with the full stylesheet loaded without blocking. The cost is extra HTML bytes on every page and duplicated rules.",
+      "tags": ["css", "loading"],
+      "level": 2,
+      "asked": "A follow-up to \"why is CSS render-blocking?\"; a strong answer mentions the cache trade-off."
+    },
+    {
+      "id": "wp-061",
+      "q": "What does `media=\"print\"` on this stylesheet link change about loading?",
+      "code": "<link rel=\"stylesheet\" href=\"/print.css\" media=\"print\">",
+      "lang": "html",
+      "choices": [
+        "The file is not downloaded at all unless the user actually prints the page",
+        "The file downloads at low priority and does not block rendering on screen",
+        "The file blocks rendering exactly as a normal stylesheet does on screen",
+        "The file is applied to the screen too, but only after the `load` event"
+      ],
+      "answer": 1,
+      "why": "Browsers still download stylesheets whose media query does not match, but at low priority and without blocking first paint. That is why `media` is the correct way to split print or wide-screen styles, and why the old `media=\"print\" onload` trick loads CSS asynchronously.",
+      "tags": ["css", "loading"],
+      "level": 2,
+      "asked": "Shows you understand render-blocking as a per-media decision, not a property of every `<link>`."
+    },
+    {
+      "id": "wp-062",
+      "q": "What is the purpose of splitting a React SPA's bundle by route with dynamic `import()`?",
+      "choices": [
+        "It makes each component render faster, because smaller files parse quicker",
+        "It removes unused exports from each module, which static imports cannot do",
+        "It lets the browser cache the whole app for a year, whatever changes later",
+        "Users download only the code for the page they visit, plus shared chunks"
+      ],
+      "answer": 3,
+      "why": "Dynamic `import()` creates a split point, so the bundler emits a separate chunk loaded on demand; the first page then needs far less JavaScript to download, parse and run. Removing unused exports is tree shaking, which works on static imports, and render speed per component does not change.",
+      "tags": ["bundling", "javascript"],
+      "level": 1,
+      "asked": "Code splitting is the first answer to \"our bundle is too big\"; interviewers then ask where you would split."
+    },
+    {
+      "id": "wp-063",
+      "q": "In React 19 you wrap a route in `lazy()`. What must also be present so the app does not crash on first navigation?",
+      "code": "const Reports = lazy(() => import('./Reports'));\n// <Route path=\"/reports\" element={<Reports />} />",
+      "lang": "tsx",
+      "choices": [
+        "A `useEffect` that calls `import('./Reports')` again once the route mounts",
+        "A `<Suspense fallback>` boundary above it to show while the chunk loads",
+        "A `\"use client\"` directive at the top of `Reports.tsx` for the chunk to split",
+        "A `React.memo` around `Reports`, so the chunk loads only once per session"
+      ],
+      "answer": 1,
+      "why": "A lazy component suspends while its chunk downloads, and React needs a `Suspense` boundary above it to show the fallback. `\"use client\"` is a Server Components directive, and `memo` has nothing to do with loading code.",
+      "tags": ["bundling", "react"],
+      "level": 1,
+      "asked": "Basic but practical; interviewers may follow up on where to place the boundary so the whole layout does not flash."
+    },
+    {
+      "id": "wp-064",
+      "q": "Why does this import defeat tree shaking in a Vite or webpack production build?",
+      "code": "import _ from 'lodash';\nexport const slug = (s: string) => _.kebabCase(s);",
+      "lang": "ts",
+      "choices": [
+        "Default imports are always stripped out in production builds by the minifier",
+        "TypeScript compiles `import` to `require`, which bundlers cannot analyse",
+        "`lodash` is CommonJS with one default object, so the whole library is kept",
+        "Tree shaking only removes code from your files, never from `node_modules`"
+      ],
+      "answer": 2,
+      "why": "The `lodash` package is CommonJS and exposes a single object; the bundler cannot prove which properties are unused, so all of it ships. Use `lodash-es` with named imports or the per-method package. Tree shaking does work on ES module packages in `node_modules`.",
+      "tags": ["bundling", "tree-shaking"],
+      "level": 2,
+      "asked": "A realistic bundle review question; the strong answer names the ESM alternative and how you would verify with a visualiser."
+    },
+    {
+      "id": "wp-065",
+      "q": "Which change typically shrinks a production bundle that includes Moment.js with all its locales?",
+      "choices": [
+        "Enable gzip on the dev server, which the bundle analyser measures",
+        "Switch to `Intl.DateTimeFormat` or a modular library such as date-fns",
+        "Mark `moment` as a `devDependency` so the bundler leaves it out",
+        "Add `\"type\": \"module\"` to package.json so Moment becomes tree-shakeable"
+      ],
+      "answer": 1,
+      "why": "Moment is large, mutable and not tree-shakeable, and its locale files are pulled in wholesale. The built-in `Intl` APIs handle most formatting for zero bytes, and date-fns imports per function. Whether a package is a devDependency has no effect on what the bundler includes if you import it.",
+      "tags": ["bundling"],
+      "level": 1,
+      "asked": "Interviewers want to hear that you check whether the platform already does the job before adding a dependency."
+    },
+    {
+      "id": "wp-066",
+      "q": "What does a `browserslist` target of only modern browsers usually save in a Vite 7 build?",
+      "choices": [
+        "Nothing measurable, because Vite always outputs ES5 for compatibility",
+        "Image bytes, because modern targets let Vite convert all images to AVIF",
+        "Server time, because modern browsers skip the TLS handshake on revisit",
+        "Transpilation and polyfills, so less JavaScript ships to every user"
+      ],
+      "answer": 3,
+      "why": "When the target supports native syntax such as classes, async functions and optional chaining, the compiler does not down-level it and no polyfills are injected, so bundles are smaller and faster to parse. Vite's default target is already modern browsers; it does not emit ES5 unless you add the legacy plugin.",
+      "tags": ["bundling", "javascript"],
+      "level": 2,
+      "asked": "Shows you know build targets are a performance setting, not just a compatibility one."
+    },
+    {
+      "id": "wp-067",
+      "q": "A long list view renders 10,000 rows and scrolling stutters. What is the standard fix?",
+      "choices": [
+        "Virtualise the list so only the rows near the viewport exist in the DOM",
+        "Wrap each row in `React.memo` so none of them ever needs to render",
+        "Move the rows into an `<iframe>` so that they paint on a separate thread",
+        "Add `will-change: transform` to every row so the GPU draws them all"
+      ],
+      "answer": 0,
+      "why": "Virtualisation (windowing) keeps the DOM small by rendering only visible rows plus a buffer, so style, layout and paint stay cheap. `memo` avoids re-renders but the 10,000 nodes still exist; `will-change` on thousands of elements creates thousands of layers and uses a lot of memory.",
+      "tags": ["rendering", "dom"],
+      "level": 1,
+      "asked": "Common in CRUD admin apps; interviewers may ask about the accessibility and find-in-page cost of virtualising."
+    },
+    {
+      "id": "wp-068",
+      "q": "Why is this loop slow?",
+      "code": "for (const el of items) {\n  el.style.width = box.offsetWidth + 'px';\n}",
+      "lang": "js",
+      "choices": [
+        "`style.width` must be set with `setProperty`, or it triggers a full repaint",
+        "Reading `offsetWidth` after each write forces a fresh synchronous layout",
+        "`for...of` over a NodeList copies every element into a new array first",
+        "String concatenation in a loop allocates enough to trigger garbage collection"
+      ],
+      "answer": 1,
+      "why": "Each write invalidates layout and the next `offsetWidth` read forces the browser to recalculate it immediately; this is layout thrashing (forced synchronous layout). Read once before the loop, then do all the writes. `setProperty` and `style.width` behave the same.",
+      "tags": ["rendering", "dom"],
+      "level": 2,
+      "asked": "The canonical forced-reflow question; DevTools flags it as \"Forced reflow\" and interviewers like hearing that."
+    },
+    {
+      "id": "wp-069",
+      "q": "Which CSS properties can be animated without triggering layout or paint on each frame?",
+      "choices": [
+        "`width` and `height`, because their values are already known to the layout engine",
+        "`top` and `left`, because absolutely positioned boxes skip the layout stage",
+        "`transform` and `opacity`, which the compositor can apply on its own",
+        "`margin` and `padding`, because they change spacing but not the content"
+      ],
+      "answer": 2,
+      "why": "`transform` and `opacity` changes can be handled by the compositor on an existing layer, so the main thread does no layout or paint per frame. Animating `top`, `left`, `width` or `margin` triggers layout every frame, even for positioned elements.",
+      "tags": ["rendering", "animation"],
+      "level": 1,
+      "asked": "Interviewers use it to check whether you can reason about the pixel pipeline, not just remember a rule."
+    },
+    {
+      "id": "wp-070",
+      "q": "What does `will-change: transform` do, and when is it harmful?",
+      "choices": [
+        "It animates `transform` automatically; harmful if the element has no transition",
+        "It hints a layer should be created ahead of time; harmful when overused",
+        "It disables layout for the element; harmful if its size ever needs to change",
+        "It makes `transform` changes synchronous; harmful on low-end mobile devices"
+      ],
+      "answer": 1,
+      "why": "`will-change` tells the browser to prepare for a change, typically by promoting the element to its own compositor layer. Each layer costs GPU memory, so applying it to many elements or leaving it on permanently can slow things down. It triggers nothing by itself and does not disable layout.",
+      "tags": ["rendering", "animation"],
+      "level": 3,
+      "asked": "A deeper rendering question; strong answers mention adding it just before an animation and removing it afterwards."
+    },
+    {
+      "id": "wp-071",
+      "q": "What is `requestAnimationFrame` for in visual updates?",
+      "choices": [
+        "Running a callback on a worker thread so it never blocks the main thread",
+        "Running a callback after every task, so the UI updates as soon as possible",
+        "Running a callback when the browser is idle and has nothing else to do",
+        "Running a callback just before the next frame's style, layout and paint"
+      ],
+      "answer": 3,
+      "why": "rAF callbacks run once per frame right before rendering, so DOM writes made there are batched into that frame and visual updates line up with the display refresh. It runs on the main thread; idle work is `requestIdleCallback`, and rAF is paused in background tabs.",
+      "tags": ["rendering", "javascript"],
+      "level": 1,
+      "asked": "A foundation for questions about animation jank and scheduling work in the browser."
+    },
+    {
+      "id": "wp-072",
+      "q": "A CSV import parses a 30 MB file in the browser and the page freezes for 4 s. What is the best fix?",
+      "choices": [
+        "Move parsing into a Web Worker and post the results back to the page",
+        "Wrap the parsing in `async`/`await` so it runs concurrently with the UI",
+        "Parse the file inside `requestAnimationFrame` so it matches the frame rate",
+        "Use `setTimeout(parse, 0)` so the parsing runs after the click has finished"
+      ],
+      "answer": 0,
+      "why": "A worker runs on a separate thread, so the main thread stays free to handle input and paint. Marking a function `async` does not move CPU work off the main thread, and `setTimeout(0)` only delays the same 4-second block; rAF would block a frame instead.",
+      "tags": ["javascript", "inp"],
+      "level": 2,
+      "asked": "Separates people who know `async` is not parallelism from those who don't."
+    },
+    {
+      "id": "wp-073",
+      "q": "What does this Node 24 snippet print, and what does it show about long tasks?",
+      "code": "setTimeout(() => console.log('timer'), 0);\nconst end = Date.now() + 200;\nwhile (Date.now() < end) {}\nconsole.log('loop done');",
+      "lang": "js",
+      "choices": [
+        "`timer` then `loop done`: a 0 ms timer interrupts the running loop",
+        "`loop done` then `timer`: a timer waits until the current task finishes",
+        "`loop done` only: a timer is silently dropped once it is overdue by 200 ms",
+        "`timer` and `loop done` together, as the timer runs on another thread"
+      ],
+      "answer": 1,
+      "why": "JavaScript is single-threaded per event loop: the timer callback is queued but cannot run until the synchronous loop returns, so it fires about 200 ms late. In a browser, a click handler would be delayed the same way, which is the input delay part of INP.",
+      "tags": ["javascript", "inp"],
+      "level": 1,
+      "asked": "The event-loop basis of every responsiveness question; interviewers expect you to link it to input delay."
+    },
+    {
+      "id": "wp-074",
+      "q": "What does Total Blocking Time (TBT) in a Lighthouse report measure?",
+      "choices": [
+        "The total duration of every task on the main thread during page load",
+        "The time from navigation until the page responds to its first input",
+        "The sum of each long task's time over 50 ms between FCP and interactive",
+        "The time the HTML parser spent blocked on render-blocking scripts alone, in total"
+      ],
+      "answer": 2,
+      "why": "TBT adds up the part of each task beyond 50 ms between First Contentful Paint and Time to Interactive, so a 120 ms task contributes 70 ms. It is a lab proxy for INP, which Lighthouse cannot measure without real interactions.",
+      "tags": ["measuring", "lighthouse"],
+      "level": 2,
+      "asked": "Interviewers ask it to check you know TBT is the lab stand-in for INP, not a Core Web Vital itself."
+    },
+    {
+      "id": "wp-075",
+      "q": "What does `Cache-Control: no-cache` mean on an HTML response?",
+      "choices": [
+        "The browser must not store the response anywhere, not even in memory",
+        "The browser may store it but must revalidate it before each reuse",
+        "The browser may use it for up to one minute, then must drop it",
+        "Only CDNs may cache the response; browsers must always refetch"
+      ],
+      "answer": 1,
+      "why": "`no-cache` allows storage but requires revalidation with the server (for example via `ETag` and `If-None-Match`) every time; a `304 Not Modified` then costs a round trip but no body. Forbidding storage entirely is `no-store`. The names are famously misleading.",
+      "tags": ["caching", "http"],
+      "level": 1,
+      "asked": "Almost everyone confuses `no-cache` and `no-store`; getting it right signals real HTTP experience."
+    },
+    {
+      "id": "wp-076",
+      "q": "An API response is served with `Cache-Control: max-age=60, stale-while-revalidate=300`. What happens on a request 2 minutes after it was cached?",
+      "choices": [
+        "The browser blocks until it has fetched a fresh copy from the server",
+        "The browser returns an error because the cached copy has fully expired",
+        "The stale copy is used at once and refreshed in the background",
+        "The stale copy is used for five more minutes with no network request"
+      ],
+      "answer": 2,
+      "why": "After `max-age` (60 s) the response is stale, but within the extra 300 s window the cache may serve it immediately while revalidating asynchronously, so the user never waits. The next request gets the refreshed copy. After 360 s it must revalidate before use.",
+      "tags": ["caching", "http"],
+      "level": 2,
+      "asked": "SWR is a common CDN and browser pattern; interviewers want the timeline explained, not just the name."
+    },
+    {
+      "id": "wp-077",
+      "q": "Why do content hashes in asset filenames (such as `app.3f9a1c.js`) matter for cache busting?",
+      "choices": [
+        "Browsers compare the hash with the file's bytes and refuse tampered files",
+        "A changed file gets a new URL, so long-cached old copies are never reused",
+        "The hash tells the CDN to purge the previous version of the file at once",
+        "The hash lets the server compress the file once and reuse the result"
+      ],
+      "answer": 1,
+      "why": "Caches key on URL, so when content changes the hash (and therefore the URL) changes, and the HTML simply references the new file; old copies can stay cached for a year without harm. Integrity checking is the separate `integrity` (SRI) attribute, and nothing is purged.",
+      "tags": ["caching", "bundling"],
+      "level": 1,
+      "asked": "Explains why the long `immutable` cache is safe; interviewers pair it with the HTML caching question."
+    },
+    {
+      "id": "wp-078",
+      "q": "What main problem does HTTP/2 multiplexing solve compared with HTTP/1.1?",
+      "choices": [
+        "It encrypts requests, which HTTP/1.1 had no standard way to do",
+        "It compresses response bodies, which HTTP/1.1 could not compress",
+        "It lets the server push every asset before the browser has asked for it",
+        "It runs many requests over one connection without head-of-line waits"
+      ],
+      "answer": 3,
+      "why": "HTTP/1.1 allows one in-flight request per connection, so browsers opened about six per origin and requests queued behind each other. HTTP/2 interleaves many streams on one connection. HTTP/1.1 already supported gzip and TLS, and server push has been removed from Chrome.",
+      "tags": ["network", "http"],
+      "level": 1,
+      "asked": "Sets up the follow-up on why old tricks like domain sharding and sprite sheets matter less today."
+    },
+    {
+      "id": "wp-079",
+      "q": "Which advantage does HTTP/3 over QUIC give on a lossy mobile network compared with HTTP/2 over TCP?",
+      "choices": [
+        "A lost packet stalls only its own stream, not every stream on the connection",
+        "Responses are smaller, because QUIC compresses bodies better than brotli",
+        "It removes the need for TLS, so connections are set up with no handshake at all",
+        "It allows browsers to open unlimited connections to the same origin at once"
+      ],
+      "answer": 0,
+      "why": "TCP delivers bytes in order, so one lost packet blocks every HTTP/2 stream until it is retransmitted (transport-level head-of-line blocking). QUIC runs over UDP with per-stream ordering. QUIC has TLS 1.3 built in and combines the handshakes, but encryption is still mandatory.",
+      "tags": ["network", "http"],
+      "level": 3,
+      "asked": "A deeper networking question; strong candidates also mention connection migration when a phone changes network."
+    },
+    {
+      "id": "wp-080",
+      "q": "A third-party chat widget adds 600 KB of JavaScript, but most visitors never open it. What is the standard pattern?",
+      "choices": [
+        "Load it with `async` at the top of the `<head>` so it starts downloading first",
+        "Load it in a Web Worker so its DOM changes happen off the main thread",
+        "Show a lightweight facade and load the real widget on the first interaction",
+        "Self-host a copy of the script and give it a one-year `max-age` cache header"
+      ],
+      "answer": 2,
+      "why": "A facade is a static button that looks like the widget; the real script loads only when the user clicks or hovers, so most visitors pay nothing. `async` still downloads and runs it on every page, workers cannot touch the DOM, and self-hosting a vendor script breaks their updates.",
+      "tags": ["third-party", "javascript"],
+      "level": 2,
+      "asked": "Lighthouse suggests facades for chat and video embeds; interviewers like a concrete example such as a YouTube embed."
+    },
+    {
+      "id": "wp-081",
+      "q": "Why are Core Web Vitals judged at the 75th percentile rather than the average?",
+      "choices": [
+        "The average is dominated by bots, which the 75th percentile filters out",
+        "It reflects what most users get while not being skewed by a few outliers",
+        "Google only stores the slowest quarter of visits, so p75 is all that exists",
+        "The 75th percentile is always lower than the mean, so pages pass more often"
+      ],
+      "answer": 1,
+      "why": "A percentile says \"three in four visits were at least this good\", which covers most users including slower devices, while ignoring the extreme tail. Averages hide a bimodal distribution and are pulled around by outliers; p75 is not guaranteed to be lower than the mean.",
+      "tags": ["measuring", "vitals"],
+      "level": 1,
+      "asked": "Interviewers want to hear that you think in distributions, not averages, when reading performance data."
+    },
+    {
+      "id": "wp-082",
+      "q": "You use the `web-vitals` library to collect field data. Why send the metric with `navigator.sendBeacon` rather than `fetch` in a `then`?",
+      "code": "onINP((m) => navigator.sendBeacon('/rum', JSON.stringify(m)));",
+      "lang": "js",
+      "choices": [
+        "`sendBeacon` is the only API the `web-vitals` callbacks are allowed to call",
+        "`sendBeacon` compresses the body with brotli, which `fetch` cannot do",
+        "INP is often reported as the page is hidden, and a beacon survives unload",
+        "`sendBeacon` waits for a response, so you know the metric was stored"
+      ],
+      "answer": 2,
+      "why": "INP and CLS are only final when the page is hidden or unloaded, which is when the library fires the callback; a normal request may be cancelled then, while a beacon is queued by the browser and sent anyway. `fetch` with `keepalive: true` is the equivalent; a beacon gives you no response at all.",
+      "tags": ["measuring", "rum"],
+      "level": 2,
+      "asked": "A practical RUM detail; interviewers like candidates who know why field data goes missing."
+    },
+    {
+      "id": "wp-083",
+      "q": "What does `buffered: true` do in this PerformanceObserver call?",
+      "code": "new PerformanceObserver((list) => {\n  for (const e of list.getEntries()) log(e);\n}).observe({ type: 'largest-contentful-paint', buffered: true });",
+      "lang": "js",
+      "choices": [
+        "It batches entries and delivers them once, when the page is unloaded",
+        "It also delivers entries recorded before the observer was registered",
+        "It stores entries in `localStorage` so they survive a page reload",
+        "It delays the callback until the main thread is idle after `load`"
+      ],
+      "answer": 1,
+      "why": "Your analytics script usually loads after the LCP candidate has already been painted; `buffered: true` replays entries the browser buffered before `observe` was called. Without it you would miss early entries. It does not persist anything or change when the callback runs.",
+      "tags": ["measuring", "rum"],
+      "level": 3,
+      "asked": "Shows you have written or debugged RUM code, not just read a dashboard."
+    },
+    {
+      "id": "wp-084",
+      "q": "What does a `Server-Timing` response header give you?",
+      "code": "Server-Timing: db;dur=182, render;dur=41, cache;desc=\"miss\"",
+      "lang": "http",
+      "choices": [
+        "It tells the browser how long to cache the response for each named server layer",
+        "It makes the server cancel the request if a stage exceeds its duration",
+        "It sets a timeout the browser should apply when it retries the request",
+        "It exposes server-side timings in DevTools and to RUM scripts in the page"
+      ],
+      "answer": 3,
+      "why": "The metrics appear in the DevTools Network panel's Timing tab and in `PerformanceResourceTiming.serverTiming`, so a slow TTFB can be split into database, rendering and cache time from real users. It is purely informational; it controls neither caching nor timeouts.",
+      "tags": ["measuring", "ttfb"],
+      "level": 2,
+      "asked": "Connects front-end metrics to back-end causes, which interviewers value in full-stack candidates."
+    },
+    {
+      "id": "wp-085",
+      "q": "Your RUM script reads Resource Timing for images on `cdn.example.com`, but `transferSize` and most phases are 0. Why?",
+      "choices": [
+        "The CDN must send `Timing-Allow-Origin` to expose cross-origin detail",
+        "Resource Timing only records resources loaded from the page's own origin",
+        "The images came from the memory cache, which is never recorded",
+        "Resource Timing only works for scripts and stylesheets, not images"
+      ],
+      "answer": 0,
+      "why": "Cross-origin resources are recorded, but sizes and detailed phases are zeroed unless the response opts in with `Timing-Allow-Origin`. Images are recorded like any other resource type. A zero `transferSize` can also mean a cache hit, but that would not zero the other phases for same-origin files.",
+      "tags": ["measuring", "rum"],
+      "level": 3,
+      "asked": "An edge case that trips up teams building their own RUM; knowing it shows hands-on experience."
+    },
+    {
+      "id": "wp-086",
+      "q": "Lighthouse scores for the same page vary between 72 and 88 across runs. What is the sound response?",
+      "choices": [
+        "Take the single best run, since it shows what the page is capable of",
+        "Run it several times, use the median, and control the test machine",
+        "Switch from mobile to desktop mode, which has no throttling and no variance",
+        "Ignore Lighthouse entirely, since lab data cannot be used to find regressions"
+      ],
+      "answer": 1,
+      "why": "Lab runs vary with CPU load, network and third-party responses; the median of several runs on a consistent machine is the recommended way to compare. Desktop mode still varies, and lab data remains useful for catching regressions in CI as long as you allow for noise.",
+      "tags": ["lighthouse", "measuring"],
+      "level": 1,
+      "asked": "Tests whether you treat a single Lighthouse number as truth; the right answer mentions medians and field data."
+    },
+    {
+      "id": "wp-087",
+      "q": "Why can PageSpeed Insights show field data for a popular site but \"no data\" for a new internal admin app?",
+      "choices": [
+        "It comes from CrUX, which needs enough opted-in Chrome users of public pages",
+        "Field data is only collected for sites that add Google Analytics to every page",
+        "Field data is available only once the site has passed a Lighthouse audit",
+        "Field data comes from Search Console, which ignores apps that use a SPA router"
+      ],
+      "answer": 0,
+      "why": "CrUX aggregates real Chrome users who have opted in, over a rolling 28 days, and only for publicly discoverable origins with enough traffic. Logged-in internal tools rarely qualify, so they need their own RUM. It has nothing to do with Google Analytics or Lighthouse results.",
+      "tags": ["measuring", "rum"],
+      "level": 2,
+      "asked": "Interviewers want to hear what you would do instead: collect RUM with `web-vitals` and send it to your own backend."
+    },
+    {
+      "id": "wp-088",
+      "q": "You fix a CLS bug and deploy it today. When will PageSpeed Insights' field data fully reflect the fix?",
+      "choices": [
+        "Immediately, because PageSpeed Insights re-runs the page on every request",
+        "After the next Lighthouse run in CI updates the Chrome UX Report dataset",
+        "After roughly 28 days, as CrUX reports a rolling 28-day window of visits",
+        "After Google re-crawls the page, which usually happens within an hour"
+      ],
+      "answer": 2,
+      "why": "CrUX field data is a rolling 28-day aggregate, so old visits leave the window gradually and a fix shows fully about four weeks later. The lab section updates immediately, but it is a separate simulated run. Your own RUM shows the change the same day.",
+      "tags": ["measuring", "rum"],
+      "level": 1,
+      "asked": "A practical expectation-setting question; strong answers say you would verify with your own RUM first."
+    },
+    {
+      "id": "wp-089",
+      "q": "What does `performance.measure` add over logging `Date.now()` differences?",
+      "code": "performance.mark('filter-start');\napplyFilters();\nperformance.measure('filter', 'filter-start');",
+      "lang": "js",
+      "choices": [
+        "It runs the measured code on a background thread so the timing is exact",
+        "It sends the measurement to CrUX so it appears in PageSpeed Insights",
+        "It pauses the garbage collector, so the measurement excludes GC pauses",
+        "It uses a high-resolution clock and shows up in the DevTools timeline"
+      ],
+      "answer": 3,
+      "why": "User Timing marks and measures use `performance.now()`'s monotonic high-resolution clock and appear in the Performance panel's Timings track, so you can see your code's phases alongside tasks and paints; a RUM script can also read them. They do not affect how code runs or report to CrUX.",
+      "tags": ["measuring", "devtools"],
+      "level": 2,
+      "asked": "Shows you instrument your own code instead of guessing where time goes."
+    },
+    {
+      "id": "wp-090",
+      "q": "What does this Node 24 snippet print?",
+      "code": "const t0 = performance.now();\nawait Promise.all([\n  new Promise((r) => setTimeout(r, 300)),\n  new Promise((r) => setTimeout(r, 300)),\n]);\nconsole.log(Math.round((performance.now() - t0) / 100) * 100);",
+      "lang": "js",
+      "choices": [
+        "600, because the two timers still run one after the other",
+        "300, because both timers were started before either finished",
+        "0, because `Promise.all` resolves as soon as its array is created",
+        "900, because `Promise.all` adds a timer tick for each promise"
+      ],
+      "answer": 1,
+      "why": "Both promises are created (and their timers started) immediately, then `Promise.all` waits for the slower one, so the total is about 300 ms. Awaiting each in turn would take about 600 ms. That is the same reason independent API calls on page load should be started together.",
+      "tags": ["javascript", "network"],
+      "level": 1,
+      "asked": "The request-waterfall question in disguise; interviewers expect the link to data fetching on page load."
+    },
+    {
+      "id": "wp-091",
+      "q": "A page's component tree fetches the user, then the user's team, then the team's projects, each in a child's effect. What is the core performance problem?",
+      "choices": [
+        "A request waterfall: each fetch waits for the previous render and response",
+        "React batches the three fetches into one request, which the server rejects",
+        "The browser limits a page to one in-flight request per component",
+        "Effects run on the server first, so every request is made twice"
+      ],
+      "answer": 0,
+      "why": "Fetching in child effects means each request starts only after its parent has rendered with the previous response, so latency adds up. Fix it by fetching in parallel at the route level, adding an API that returns what the page needs, or using a router/data library that loads ahead of rendering.",
+      "tags": ["network", "react"],
+      "level": 2,
+      "asked": "One of the most common real SPA slowdowns; interviewers want a concrete fix, not only the diagnosis."
+    },
+    {
+      "id": "wp-092",
+      "q": "An orders endpoint returns every order (about 40,000 rows, 18 MB of JSON) and the table filters on the client. What is the main fix?",
+      "choices": [
+        "Enable brotli so the 18 MB compresses, which removes the parse cost too",
+        "Cache the whole response in `localStorage` so it downloads only once",
+        "Paginate and filter on the server so the client receives one page",
+        "Switch from JSON to XML, which browsers parse faster on the main thread"
+      ],
+      "answer": 2,
+      "why": "Server-side pagination and filtering bound the payload, the database work and the client's parse and render time. Compression shrinks the transfer but the browser still parses 18 MB; `localStorage` is small, synchronous and goes stale; XML is not faster to parse.",
+      "tags": ["network", "api"],
+      "level": 1,
+      "asked": "Every CRUD interview touches on pagination; tying it to performance on both ends is a strong signal."
+    },
+    {
+      "id": "wp-093",
+      "q": "What does `Cache-Control: public, max-age=0, s-maxage=300` tell caches?",
+      "choices": [
+        "Browsers may cache it for 300 s and shared caches must always revalidate",
+        "Browsers and CDNs may both cache it for 300 s, and it is then discarded",
+        "It is only cached when the request contains no cookies or auth headers",
+        "Browsers must revalidate each time; shared caches may keep it for 300 s"
+      ],
+      "answer": 3,
+      "why": "`s-maxage` applies only to shared caches and overrides `max-age` there, so a CDN can serve the page for five minutes while browsers revalidate. That lets you absorb traffic at the edge and still purge or roll out changes quickly. Cookies alone do not change these directives.",
+      "tags": ["caching", "cdn"],
+      "level": 2,
+      "asked": "Separating browser and CDN lifetimes is a standard caching design question."
+    },
+    {
+      "id": "wp-094",
+      "q": "An API returns per-user data. Which header stops a CDN from serving one user's response to another?",
+      "choices": [
+        "`Cache-Control: private, max-age=60`",
+        "`Cache-Control: public, max-age=60`",
+        "`Cache-Control: immutable, max-age=60`",
+        "`Cache-Control: s-maxage=60, public`"
+      ],
+      "answer": 0,
+      "why": "`private` allows only the user's own browser cache to store it, so shared caches must not. `public` and `s-maxage` explicitly permit shared caching, and `immutable` only says the body will not change during its lifetime. For sensitive data, `no-store` is safer still.",
+      "tags": ["caching", "cdn"],
+      "level": 1,
+      "asked": "Caching personal data at the edge is a real incident class; interviewers check you know the guard."
+    },
+    {
+      "id": "wp-095",
+      "q": "Your server varies the body by `Accept-Encoding` (brotli or gzip). Which header must the response include so a CDN caches it correctly?",
+      "choices": [
+        "`Content-Encoding: identity`",
+        "`Vary: Accept-Encoding`",
+        "`Accept-Ranges: bytes`",
+        "`Transfer-Encoding: chunked`"
+      ],
+      "answer": 1,
+      "why": "`Vary` tells caches which request headers were used to choose the response, so they keep a brotli and a gzip copy and serve each to matching clients. Without it a cache might hand brotli bytes to a client that cannot decode them. The other headers describe the body or transfer, not cache keys.",
+      "tags": ["caching", "http"],
+      "level": 2,
+      "asked": "A subtle caching bug; strong candidates also warn against `Vary: User-Agent` fragmenting the cache."
+    },
+    {
+      "id": "wp-096",
+      "q": "Why do builds often pre-compress static assets with brotli at level 11 instead of compressing on each request?",
+      "choices": [
+        "Level 11 is the only brotli level that all browsers are able to decode",
+        "Pre-compressed files are served with no `Content-Encoding` header",
+        "Level 11 is too slow per request, but at build time it costs nothing",
+        "On-the-fly compression breaks the file's content hash in its URL"
+      ],
+      "answer": 2,
+      "why": "Brotli's highest levels give the smallest files but are far too slow to run per request; static files can be compressed once at build time and served as `.br`. Dynamic responses use a fast level (around 4–5). Browsers decode every level, and the header is still sent.",
+      "tags": ["network", "compression"],
+      "level": 3,
+      "asked": "Shows you know compression is a CPU-versus-bytes trade-off that differs for static and dynamic responses."
+    },
+    {
+      "id": "wp-097",
+      "q": "What should an image already in JPEG or WebP format get from the server's compression settings?",
+      "choices": [
+        "Nothing: it is already compressed, so gzip or brotli gains little",
+        "Brotli at level 11, which usually halves the size of photographic images",
+        "Gzip, since browsers cannot decode brotli on binary responses",
+        "Gzip and then brotli applied in turn, for the smallest possible file"
+      ],
+      "answer": 0,
+      "why": "JPEG, WebP, AVIF, WOFF2 and video are already compressed, so a generic compressor saves almost nothing and wastes CPU. Text formats (HTML, CSS, JS, JSON, SVG) are what brotli and gzip are for. Browsers decode brotli for any content type.",
+      "tags": ["network", "images"],
+      "level": 1,
+      "asked": "A quick check that you know where compression pays off."
+    },
+    {
+      "id": "wp-098",
+      "q": "How does an image CDN typically serve AVIF only to browsers that support it, from a single URL?",
+      "choices": [
+        "It sniffs the `User-Agent` and hard-codes a list of supporting browsers",
+        "It sends AVIF to everyone, relying on browsers to convert it to JPEG",
+        "It reads the `Accept` header and responds with `Vary: Accept`",
+        "It serves AVIF only over HTTP/3, which every AVIF browser supports"
+      ],
+      "answer": 2,
+      "why": "Browsers list the image formats they accept in the request's `Accept` header, so the CDN can negotiate the format and must send `Vary: Accept` so caches keep one copy per format. User-agent lists go stale, browsers do not transcode, and format support is unrelated to protocol.",
+      "tags": ["images", "cdn"],
+      "level": 3,
+      "asked": "Contrasts server-side negotiation with `<picture>`; strong answers mention the cache-key implication."
+    },
+    {
+      "id": "wp-099",
+      "q": "What is the main trade-off of AVIF compared with WebP for photos?",
+      "choices": [
+        "AVIF has no alpha channel, so it cannot replace PNG with transparency",
+        "AVIF files are usually smaller, but encoding is slower and costlier",
+        "AVIF decodes on the GPU only, so it is not shown on older phones",
+        "AVIF files are larger, but they always decode faster than WebP"
+      ],
+      "answer": 1,
+      "why": "AVIF usually beats WebP on size at the same visual quality, but it is much slower to encode, which matters for on-the-fly image services, and can be slower to decode. It supports transparency and HDR, and baseline browser support is now broad.",
+      "tags": ["images"],
+      "level": 2,
+      "asked": "Interviewers want a format choice justified with trade-offs, not a blanket \"always use AVIF\"."
+    },
+    {
+      "id": "wp-100",
+      "q": "An ad slot loads after the article text and pushes it down. Which fix addresses the CLS?",
+      "choices": [
+        "Load the ad script with `defer` instead of `async` so it runs later",
+        "Give the slot `display: none` until the ad arrives, then show it",
+        "Put the ad inside an `<iframe>`, which never contributes to layout shift",
+        "Reserve the slot's space with `min-height` for the likely ad size"
+      ],
+      "answer": 3,
+      "why": "Reserving space means the ad fills an existing box instead of creating one, so nothing moves. Changing when the script runs or toggling `display` still inserts a box after content has painted, and an iframe that grows shifts content just like any other element.",
+      "tags": ["cls"],
+      "level": 1,
+      "asked": "A standard CLS fix; strong answers mention choosing the most common size, or showing a placeholder when no ad fills."
+    },
+    {
+      "id": "wp-101",
+      "q": "What does the CSS `aspect-ratio` property help with in a card grid of embedded videos?",
+      "code": ".embed { width: 100%; aspect-ratio: 16 / 9; }",
+      "lang": "css",
+      "choices": [
+        "It crops the video to 16:9 so the player downloads fewer pixels",
+        "It sizes the box from its width, reserving space before the iframe loads",
+        "It tells the browser to pick a 16:9 video rendition from the server",
+        "It stops the browser from painting the embed until it has fully loaded"
+      ],
+      "answer": 1,
+      "why": "With a width and `aspect-ratio`, the browser can calculate the height immediately, so the iframe loads into a correctly sized box and no content shifts. It does not crop media, choose renditions or delay painting; it replaces the old padding-top percentage hack.",
+      "tags": ["cls", "css"],
+      "level": 1,
+      "asked": "Checks you know the modern CSS tool for reserving space for things that are not `<img>` tags."
+    },
+    {
+      "id": "wp-102",
+      "q": "A search box calls the API on every keystroke. Which technique cuts the requests without making typing feel slower?",
+      "choices": [
+        "Throttle to one request per second, sending the first keystroke only",
+        "Disable the input while each request is in flight to avoid overlap",
+        "Debounce so a request fires only after a short pause in typing",
+        "Cache every response in `sessionStorage` before sending the request"
+      ],
+      "answer": 2,
+      "why": "Debouncing (typically 200–300 ms) waits until the user pauses, so \"laptop\" costs one request rather than six, and cancelling stale requests avoids out-of-order results. Throttling sends intermediate queries and may drop the final one if not set up carefully; disabling the input blocks typing.",
+      "tags": ["javascript", "network"],
+      "level": 1,
+      "asked": "Interviewers often follow up with \"and how do you stop an earlier slow response overwriting a later one?\"."
+    },
+    {
+      "id": "wp-103",
+      "q": "Why use `IntersectionObserver` instead of a `scroll` listener that calls `getBoundingClientRect()` to trigger infinite scrolling?",
+      "choices": [
+        "It is the only way to detect scrolling inside an element with `overflow: auto`",
+        "It runs in a Web Worker, so none of its callbacks use the main thread",
+        "It fetches the next page by itself when the sentinel element is visible",
+        "The browser computes visibility itself, so there is no layout work per scroll"
+      ],
+      "answer": 3,
+      "why": "A scroll handler runs many times per second and each `getBoundingClientRect()` can force layout; `IntersectionObserver` lets the browser track intersections off that hot path and calls you only when visibility changes. The callback still runs on the main thread and you still write the fetch yourself.",
+      "tags": ["javascript", "rendering"],
+      "level": 2,
+      "asked": "A common implementation question for lazy loading and infinite lists."
+    },
+    {
+      "id": "wp-104",
+      "q": "What does `{ passive: true }` on a `touchstart` or `wheel` listener promise the browser?",
+      "choices": [
+        "That it will not call `preventDefault()`, so scrolling need not wait for it",
+        "That the handler runs only once and is then removed automatically",
+        "That the handler may run on a background thread, well off the main thread",
+        "That the handler will fire only after the scroll gesture has finished"
+      ],
+      "answer": 0,
+      "why": "Scrolling on touch and wheel normally has to wait for listeners in case they cancel it; a passive listener promises not to, so the compositor scrolls immediately. `once: true` is the auto-remove option, and handlers always run on the main thread.",
+      "tags": ["javascript", "inp"],
+      "level": 2,
+      "asked": "Lighthouse flags non-passive listeners; interviewers want to know you understand why."
+    },
+    {
+      "id": "wp-105",
+      "q": "What does a Service Worker's stale-while-revalidate strategy do for a request?",
+      "choices": [
+        "It always goes to the network first and uses the cache only when offline",
+        "It serves the cached copy at once and updates the cache from the network",
+        "It serves only from the cache and never contacts the network again",
+        "It races the cache and network and discards whichever loses"
+      ],
+      "answer": 1,
+      "why": "The response comes from the cache immediately while a network request refreshes the cache for next time, so users get speed at the cost of seeing a one-visit-old copy. Network-first uses the cache only as a fallback; cache-only never updates.",
+      "tags": ["caching", "service-worker"],
+      "level": 2,
+      "asked": "Interviewers ask you to pick a strategy per resource type, for example cache-first for hashed assets and network-first for HTML."
+    },
+    {
+      "id": "wp-106",
+      "q": "Why does server-side rendering usually improve LCP but can hurt INP on a React page?",
+      "choices": [
+        "SSR skips hydration, so event handlers are attached only on first click",
+        "SSR sends HTML only after all data loads, which delays every interaction",
+        "SSR moves all rendering to the server, so the client can no longer update",
+        "HTML shows early, but hydration is a long task during which clicks wait"
+      ],
+      "answer": 3,
+      "why": "The server's HTML lets content paint without waiting for JavaScript, but the client still has to download the bundle and hydrate, and interactions during that long task are delayed. Streaming, selective hydration and shipping less JavaScript (such as Server Components) reduce the cost.",
+      "tags": ["rendering", "react"],
+      "level": 2,
+      "asked": "Tests whether you see rendering strategies as metric trade-offs rather than a free win."
+    },
+    {
+      "id": "wp-107",
+      "q": "A Node 24 API server shows TTFB of 2 s for the product page, but the CPU is idle. Which is the most likely cause to check first?",
+      "choices": [
+        "Sequential database or HTTP calls, each awaited one after the other",
+        "The HTML is too large, so the first byte waits for gzip to finish first",
+        "Node's event loop cannot run more than one request at a time",
+        "The response is missing `Cache-Control`, so the browser keeps refetching"
+      ],
+      "answer": 0,
+      "why": "An idle CPU with a slow response means the server is waiting on I/O; the common cause is awaiting independent queries in series, or an N+1 pattern. Measure with tracing or `Server-Timing`, then parallelise, batch or cache. Node handles many concurrent requests while awaiting I/O.",
+      "tags": ["ttfb", "node"],
+      "level": 2,
+      "asked": "A full-stack question that checks you can move from a front-end metric to a back-end cause."
+    },
+    {
+      "id": "wp-108",
+      "q": "Which is a sensible bundle budget to enforce in CI for a React SPA's initial route?",
+      "choices": [
+        "A limit on the total size of `node_modules` on the build machine",
+        "A limit on the number of npm packages listed in package.json",
+        "A limit on the compressed JavaScript loaded for the first route",
+        "A limit on the uncompressed size of the source files in `src/`"
+      ],
+      "answer": 2,
+      "why": "What users pay for is the JavaScript the first route actually downloads and parses, so budgets are set per entry or route, usually on the compressed (and sometimes parsed) size, with tools like size-limit. Dependency counts and source size correlate poorly with what ships.",
+      "tags": ["budgets", "bundling"],
+      "level": 2,
+      "asked": "Interviewers want to hear what you would measure and where in the pipeline it would fail the build."
+    },
+    {
+      "id": "wp-109",
+      "q": "A PR's size check fails: the initial chunk grew by 90 KB after adding a date picker used only on the settings page. What is the best fix?",
+      "choices": [
+        "Raise the budget by 90 KB, since the date picker is a legitimate feature",
+        "Lazy-load the settings route or the picker so it leaves the initial chunk",
+        "Minify the picker twice, which removes the extra whitespace that it adds",
+        "Move the picker to `devDependencies` so the bundler skips it"
+      ],
+      "answer": 1,
+      "why": "The code is needed only on one page, so a dynamic import moves it into a chunk loaded when that page opens and the initial route stays within budget. Raising the budget hides the regression; minifiers are idempotent; `devDependencies` does not affect what imported code the bundler includes.",
+      "tags": ["budgets", "bundling"],
+      "level": 1,
+      "asked": "Shows you treat a budget failure as a design prompt rather than an obstacle."
+    },
+    {
+      "id": "wp-110",
+      "q": "What is a vendor chunk, and why can splitting it out help repeat visits?",
+      "choices": [
+        "A chunk for third-party ads, so they load from the vendor's own CDN",
+        "A chunk that is inlined into the HTML so it never needs a separate request",
+        "A chunk built without minification so vendors can debug their code",
+        "Rarely changing libraries in their own hashed file, cached across deploys"
+      ],
+      "answer": 3,
+      "why": "When libraries like React are in a separate chunk, deploying a change to your app code changes only the app chunk's hash, so returning users re-download just that. Too many tiny chunks add requests and hurt compression, so bundlers group by change frequency.",
+      "tags": ["bundling", "caching"],
+      "level": 2,
+      "asked": "Links bundling to caching; interviewers like the point that fewer bytes on repeat visits is the real goal."
+    },
+    {
+      "id": "wp-111",
+      "q": "Which tool gives you a treemap of what is inside your production bundle?",
+      "choices": [
+        "`rollup-plugin-visualizer` for Vite, or `source-map-explorer` on the output",
+        "`npm ls --all`, which lists every installed package along with its version",
+        "`tsc --listFiles`, which prints each file that the TypeScript compiler reads",
+        "`npm audit`, which lists every dependency the build pulls in"
+      ],
+      "answer": 0,
+      "why": "Visualisers read the bundle (or its source maps) and show how many bytes each module contributes after tree shaking and minification. `npm ls` lists installed packages, not what ships; `tsc --listFiles` shows type-checking inputs; `npm audit` reports vulnerabilities.",
+      "tags": ["bundling", "tooling"],
+      "level": 1,
+      "asked": "The first step of any bundle-size investigation; interviewers want to know you measure before you change."
+    },
+    {
+      "id": "wp-112",
+      "q": "A detached DOM node keeps growing in a heap snapshot after each modal open and close. What usually causes it?",
+      "choices": [
+        "The modal uses CSS animations, which keep every frame in memory",
+        "The browser caches closed modals in the bfcache for later reuse",
+        "A listener or variable still references the removed modal's elements",
+        "React keeps a copy of each unmounted tree so that DevTools can inspect it"
+      ],
+      "answer": 2,
+      "why": "Removed elements stay in memory while anything reachable references them: a `window` listener not removed on close, a module-level array or a closure in a timer. Clean up in the effect's return function or with an `AbortController`. The bfcache stores whole pages, not elements.",
+      "tags": ["memory", "devtools"],
+      "level": 3,
+      "asked": "Memory leaks in long-lived SPAs are a real support issue; interviewers look for the cleanup habit."
+    },
+    {
+      "id": "wp-113",
+      "q": "What does `contain: layout` on a widget tell the browser?",
+      "choices": [
+        "The widget is hidden until it is scrolled into view, then laid out",
+        "Layout inside the widget does not affect anything outside it",
+        "The widget's layout is computed on the GPU instead of the CPU",
+        "The widget may not be larger than its parent's content box"
+      ],
+      "answer": 1,
+      "why": "Layout containment lets the browser limit relayout to the widget's subtree when something inside it changes, which helps on large pages with frequently updating components. Skipping off-screen rendering is `content-visibility: auto`, and layout never moves to the GPU.",
+      "tags": ["css", "rendering"],
+      "level": 3,
+      "asked": "A deeper rendering question; strong answers relate it to `content-visibility` and when each applies."
+    },
+    {
+      "id": "wp-114",
+      "q": "Why do inline SVG icons repeated 200 times in a table cost more than using `<use>` with a sprite?",
+      "choices": [
+        "Inline SVG is always rasterised on the CPU, while sprites use the GPU",
+        "Inline SVG cannot be cached, whereas `<use>` references are cached by URL",
+        "Each inline copy duplicates the path data in the HTML and the DOM",
+        "Browsers download a separate file for each inline SVG in the page"
+      ],
+      "answer": 2,
+      "why": "Every inline copy adds its full path data to the HTML payload and to the DOM, which grows parse, style and memory costs; a `<symbol>` referenced by `<use>` defines it once. Inline SVG needs no extra request and both forms are painted the same way.",
+      "tags": ["images", "dom"],
+      "level": 3,
+      "asked": "Relevant to icon-heavy CRUD tables; interviewers like candidates who notice DOM size as a cost."
+    },
+    {
+      "id": "wp-115",
+      "q": "Which is the better first step when a stakeholder says \"the app feels slow\"?",
+      "choices": [
+        "Upgrade the framework to its latest major version, which is usually faster",
+        "Rewrite the slowest-looking component with `useMemo` and `useCallback`",
+        "Add a CDN in front of everything, since network is almost always the cause",
+        "Find which page and interaction is slow, and measure it with field data"
+      ],
+      "answer": 3,
+      "why": "\"Slow\" could mean slow load (LCP), laggy clicks (INP), jumping content (CLS) or a slow API; each has a different fix. Identify the page and metric from RUM or a reproduction, profile it, then change one thing and re-measure. Upgrading or memoising blindly rarely fixes the real bottleneck.",
+      "tags": ["measuring"],
+      "level": 1,
+      "asked": "An open-ended question where the method matters more than any specific technique."
     }
   ]
 }

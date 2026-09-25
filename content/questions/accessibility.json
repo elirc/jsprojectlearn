@@ -396,6 +396,1540 @@
       "tags": ["visual", "wcag"],
       "level": 2,
       "asked": "Zoom users are a large group, and the question checks you connect responsive design to an actual AA criterion rather than to phones only."
+    },
+    {
+      "id": "a11y-026",
+      "q": "A code review shows a close button inside an off-canvas panel that has `aria-hidden=\"true\"` while the panel is closed but still rendered. What bug does a keyboard and screen reader user hit?",
+      "code": "<aside class=\"drawer\" aria-hidden=\"true\">\n  <button>Close</button>\n  <a href=\"/settings\">Settings</a>\n</aside>",
+      "lang": "html",
+      "choices": [
+        "The links are removed from the tab order, so the drawer can never be opened",
+        "Tab still reaches the button and link, which the reader cannot describe",
+        "The browser moves `aria-hidden` onto the button, so it announces as disabled",
+        "Nothing, because `aria-hidden` also hides the content visually from everyone"
+      ],
+      "answer": 1,
+      "why": "`aria-hidden` removes content from the accessibility tree but does nothing to focus or rendering, so keyboard users tab into invisible or unnamed controls: a \"ghost\" focus stop. Hide a closed drawer with `hidden`, `display: none` or `inert`, which remove it from both the tab order and the tree.",
+      "tags": ["aria", "focus"],
+      "level": 2,
+      "asked": "axe flags this as `aria-hidden-focus`; interviewers want you to know that ARIA changes what is announced, never what is focusable."
+    },
+    {
+      "id": "a11y-027",
+      "q": "A modal is open and you want everything behind it to be unreachable by Tab and invisible to screen readers. In a 2026 browser, which single attribute on the page wrapper does both?",
+      "choices": [
+        "`aria-modal=\"true\"`, placed on the wrapper element behind the dialog",
+        "`aria-hidden=\"true\"`, which also removes descendants from the tab order",
+        "`inert`, which blocks focus, clicks and the accessibility tree together",
+        "`tabindex=\"-1\"`, which cascades to every focusable descendant element"
+      ],
+      "answer": 2,
+      "why": "`inert` (Baseline since 2023) makes a subtree non-focusable, non-clickable and hidden from assistive technology in one go. `aria-hidden` only affects the accessibility tree; `tabindex` does not cascade to children; `aria-modal` belongs on the dialog itself and only hints to screen readers. `showModal()` applies the same inertness automatically.",
+      "tags": ["aria", "focus", "dialogs"],
+      "level": 2,
+      "asked": "A modern-knowledge check: candidates who still hand-roll `aria-hidden` plus a focus trap have not seen `inert` or `showModal()`."
+    },
+    {
+      "id": "a11y-028",
+      "q": "What does a screen reader announce for this control?",
+      "code": "<div aria-label=\"Order summary\">\n  <p>3 items, £42.00</p>\n</div>",
+      "lang": "html",
+      "choices": [
+        "\"Order summary\" in place of the paragraph text inside the div",
+        "\"Order summary, region\" followed by the paragraph as a landmark",
+        "\"Order summary, group\" because a labelled div becomes a group",
+        "Just the paragraph; `aria-label` is ignored on a plain div"
+      ],
+      "answer": 3,
+      "why": "A `<div>` has the `generic` role, and ARIA 1.2 prohibits naming generic elements, so most screen readers ignore the label entirely. Give it a role that supports a name (for example `role=\"region\"`, or use `<section aria-labelledby>`) or make the heading visible text instead.",
+      "tags": ["aria", "names"],
+      "level": 2,
+      "asked": "Separates people who know `aria-label` only works on elements with a role from those who sprinkle it as a comment."
+    },
+    {
+      "id": "a11y-029",
+      "q": "A \"Bold\" button in a text editor toolbar toggles formatting on and off. Which markup gives screen reader users the current state correctly?",
+      "choices": [
+        "`<button aria-pressed=\"true\">Bold</button>`, flipping the value on each click",
+        "`<button aria-selected=\"true\">Bold</button>`, flipping the value on each click",
+        "`<button aria-checked=\"true\">Bold</button>`, keeping the implicit button role",
+        "`<button>Bold (on)</button>`, rewriting the text between on and off each time"
+      ],
+      "answer": 0,
+      "why": "`aria-pressed` turns a button into a toggle button, announced as \"Bold, toggle button, pressed\". `aria-selected` belongs to tabs, options and grid cells, and `aria-checked` to checkboxes, radios and switches, so on a plain button they are ignored or invalid. Rewriting the label works but loses the toggle semantics.",
+      "tags": ["aria", "states"],
+      "level": 1,
+      "asked": "Checks that you pick the state attribute that matches the role, which is where most ARIA misuse comes from."
+    },
+    {
+      "id": "a11y-030",
+      "q": "A mute button's label changes from \"Mute\" to \"Unmute\" when clicked. Should it also get `aria-pressed`?",
+      "choices": [
+        "Yes, because every button that changes state needs `aria-pressed` for screen readers",
+        "No, because a changing label already conveys state and \"Unmute, pressed\" contradicts it",
+        "Yes, but only `aria-pressed=\"mixed\"`, as the audio might be partly muted by the OS",
+        "No, because `aria-pressed` is only valid on `<input type=\"checkbox\">` in current ARIA"
+      ],
+      "answer": 1,
+      "why": "Pick one way to express state: either a fixed label with `aria-pressed`, or a label that changes. Doing both makes a screen reader say \"Unmute, toggle button, pressed\", which is ambiguous about whether sound is on. `aria-pressed` is valid on buttons, and `mixed` is for tri-state toggles.",
+      "tags": ["aria", "states"],
+      "level": 2,
+      "asked": "APG explicitly warns about this; a strong answer explains why a double signal confuses users rather than just citing the rule."
+    },
+    {
+      "id": "a11y-031",
+      "q": "Which attribute tells a screen reader that a link in the main navigation points at the page the user is already on?",
+      "choices": [
+        "`aria-selected=\"true\"`, the state used for the chosen item in a set",
+        "`aria-current=\"page\"`, which is announced as \"current page\"",
+        "`aria-pressed=\"true\"`, since the link is effectively switched on",
+        "`class=\"active\"`, which screen readers expose as a selected state"
+      ],
+      "answer": 1,
+      "why": "`aria-current=\"page\"` exists for exactly this, and screen readers append \"current page\" to the link. `aria-selected` is not supported on links, `aria-pressed` would change the role to a toggle button, and CSS classes are invisible to assistive technology.",
+      "tags": ["aria", "navigation"],
+      "level": 1,
+      "asked": "An easy one that shows whether you know that visual styling like an active class conveys nothing to a screen reader."
+    },
+    {
+      "id": "a11y-032",
+      "q": "A \"Delete\" button is disabled until a checkbox is ticked. The designer wants keyboard users to still be able to focus it and hear why it is unavailable. Which approach fits?",
+      "choices": [
+        "The `disabled` attribute, since it keeps the button focusable and announced",
+        "`aria-disabled=\"true\"` with a hint in `aria-describedby`, and a guard in the handler",
+        "`tabindex=\"-1\"` with a greyed style, so the button is skipped until it is enabled",
+        "`aria-hidden=\"true\"` until enabled, then remove it once the checkbox is ticked"
+      ],
+      "answer": 1,
+      "why": "`disabled` removes the button from the tab order, so the user may never discover it. `aria-disabled` keeps it focusable and announced as \"dimmed\" or \"unavailable\", but it does not block clicks, so your handler must ignore activation while it is set. `aria-hidden` on a focusable control creates a ghost focus stop.",
+      "tags": ["aria", "states", "forms"],
+      "level": 2,
+      "asked": "Interviewers use this to see whether you know `aria-disabled` is announce-only and needs a behavioural guard."
+    },
+    {
+      "id": "a11y-033",
+      "q": "What is the practical difference between `aria-labelledby` and `aria-describedby` on a form field?",
+      "choices": [
+        "`labelledby` sets the accessible name; `describedby` adds a hint read after it",
+        "`labelledby` is read after a pause; `describedby` replaces the visible label",
+        "`labelledby` accepts one id; `describedby` is the only one that accepts several",
+        "`labelledby` is for inputs only; `describedby` works only on landmark regions"
+      ],
+      "answer": 0,
+      "why": "The name is what identifies the control (\"Email\"); the description is supplementary (\"We'll only use this for receipts\") and is usually read after the name, role and state, sometimes after a pause. Both take a space-separated list of ids and work on any element that supports naming.",
+      "tags": ["aria", "names", "forms"],
+      "level": 1,
+      "asked": "Checks you know which text belongs in the name and which in the description, which matters for voice control and verbosity."
+    },
+    {
+      "id": "a11y-034",
+      "q": "What is the accessible name of this input?",
+      "code": "<label for=\"q\">Search</label>\n<input id=\"q\" aria-label=\"Find products\"\n       placeholder=\"e.g. kettle\" title=\"Search the catalogue\">",
+      "lang": "html",
+      "choices": [
+        "\"Search\", because a native `<label>` wins over every ARIA attribute",
+        "\"Search the catalogue\", because `title` is checked before labels",
+        "\"Find products\", because `aria-label` outranks the `<label>`",
+        "\"e.g. kettle\", because the placeholder is the text visible in the field"
+      ],
+      "answer": 2,
+      "why": "Name computation checks `aria-labelledby`, then `aria-label`, then the native label, then `title` and placeholder as last resorts. So the visible \"Search\" is overridden, which also breaks WCAG 2.5.3 Label in Name: a voice user saying \"click Search\" misses. Delete the `aria-label`.",
+      "tags": ["names", "aria"],
+      "level": 2,
+      "asked": "The name-computation order is a favourite deep question; the strong answer also spots the Label in Name failure."
+    },
+    {
+      "id": "a11y-035",
+      "q": "A visible label reads \"Postcode\", but a developer added `aria-label=\"Enter your ZIP or postal code here\"`. Which WCAG 2.2 criterion does this fail, and who notices first?",
+      "choices": [
+        "1.4.3 Contrast, noticed first by low-vision users who zoom",
+        "2.5.3 Label in Name, noticed first by voice-control users",
+        "2.4.7 Focus Visible, noticed first by keyboard-only users",
+        "1.3.5 Input Purpose, noticed first by autofill in the browser"
+      ],
+      "answer": 1,
+      "why": "2.5.3 (Level A) requires the accessible name to contain the visible label text. A Dragon or Voice Control user says \"click Postcode\" and nothing matches because the name is different. Keep the visible words at the start of the name, or just drop the `aria-label`.",
+      "tags": ["names", "wcag"],
+      "level": 2,
+      "asked": "Voice control is the forgotten assistive technology; mentioning it marks you out."
+    },
+    {
+      "id": "a11y-036",
+      "q": "An icon-only button uses an inline SVG. Which markup gives it a clean accessible name?",
+      "code": "<button class=\"icon-btn\">\n  <svg viewBox=\"0 0 24 24\"><path d=\"...\"/></svg>\n</button>",
+      "lang": "html",
+      "choices": [
+        "Add `title=\"Delete\"` to the SVG path so the icon itself carries the name",
+        "Add `role=\"img\"` to the SVG and leave the button text empty for brevity",
+        "Add `alt=\"Delete\"` to the `<svg>` element, the same way you would on `<img>`",
+        "Add `aria-label=\"Delete\"` to the button and `aria-hidden=\"true\"` to the SVG"
+      ],
+      "answer": 3,
+      "why": "Naming the button and hiding the decorative SVG gives \"Delete, button\" with no stray graphic announcement. `alt` is not an SVG attribute, `role=\"img\"` without a name leaves the button unnamed, and `title` on a path is unreliable across screen readers and shows a tooltip only on hover.",
+      "tags": ["names", "images"],
+      "level": 1,
+      "asked": "Icon buttons are in every CRUD table; interviewers expect this pattern without hesitation."
+    },
+    {
+      "id": "a11y-037",
+      "q": "Which `alt` value is right for a purely decorative divider image next to a heading?",
+      "code": "<img src=\"/img/swirl.svg\" ...>",
+      "lang": "html",
+      "choices": [
+        "`alt=\"\"`, so screen readers skip the image entirely",
+        "No `alt` attribute at all, which means decorative",
+        "`alt=\"decorative swirl\"`, so users know to ignore it",
+        "`alt=\"image\"`, the shortest value that passes axe"
+      ],
+      "answer": 0,
+      "why": "An empty `alt` marks the image as presentational and it is dropped from the accessibility tree. Omitting `alt` entirely is a failure: many screen readers then read the file name (\"swirl dot svg\"). Describing decoration or saying \"image\" adds noise.",
+      "tags": ["images"],
+      "level": 1,
+      "asked": "Basic, but candidates often think missing `alt` and empty `alt` are the same thing."
+    },
+    {
+      "id": "a11y-038",
+      "q": "An image is the only content of a link to the home page. What should its `alt` say?",
+      "code": "<a href=\"/\"><img src=\"/logo.svg\" alt=\"?\"></a>",
+      "lang": "html",
+      "choices": [
+        "A description of the logo artwork, such as \"blue triangle wordmark\"",
+        "Empty, because the link's `href` already tells users where it goes",
+        "The destination, such as \"Acme home\", since it is the link's name",
+        "\"Link to home page\", so the role is repeated clearly for the user"
+      ],
+      "answer": 2,
+      "why": "When an image is a link's only content, its `alt` becomes the link's accessible name, so it must say where the link goes. Empty `alt` leaves an unnamed link, and many screen readers then read the URL. The role is already announced, so \"link to\" is repeated noise.",
+      "tags": ["images", "names"],
+      "level": 1,
+      "asked": "Tests that you understand `alt` as a function, not a description, whenever the image does something."
+    },
+    {
+      "id": "a11y-039",
+      "q": "What does `role=\"presentation\"` do to this data table, and when is it appropriate?",
+      "code": "<table role=\"presentation\">\n  <tr><th>Order</th><th>Total</th></tr>\n  <tr><td>1042</td><td>£42</td></tr>\n</table>",
+      "lang": "html",
+      "choices": [
+        "It adds a caption role, which suits any table without a `<caption>`",
+        "It strips table semantics, so it is only right for layout tables",
+        "It hides the table from screen readers, which suits summary data",
+        "It marks the table as read-only, which suits reports and exports"
+      ],
+      "answer": 1,
+      "why": "`presentation` (or `none`) removes the table, row and header semantics, so users lose \"row 2, column Total\" navigation and header announcements. The content is still read as plain text. It exists for legacy layout tables; a table of orders is data and must keep its semantics.",
+      "tags": ["aria", "tables"],
+      "level": 2,
+      "asked": "Shows whether you know that removing a role removes the navigation screen reader users rely on, not the content."
+    },
+    {
+      "id": "a11y-040",
+      "q": "A sortable orders table must tell screen reader users which column is sorted. Where does the state go?",
+      "choices": [
+        "`aria-sort=\"ascending\"` on the `<table>` element, naming the column",
+        "`aria-sort=\"ascending\"` on the sorted column's `<th>` element only",
+        "`aria-selected=\"true\"` on every `<td>` in the sorted table column",
+        "`aria-pressed=\"true\"` on the header, plus an arrow icon in its text"
+      ],
+      "answer": 1,
+      "why": "`aria-sort` belongs on the one column header that is currently sorted, and should be absent from the others. Put a `<button>` inside the `<th>` to make it operable. `aria-selected` on cells means cell selection in a grid, and `aria-sort` on the table is invalid.",
+      "tags": ["aria", "tables"],
+      "level": 2,
+      "asked": "Every CRUD app has a sortable table; the strong answer also mentions the button inside the header for keyboard access."
+    },
+    {
+      "id": "a11y-041",
+      "q": "Which CSS hides extra helper text visually while keeping it available to screen readers?",
+      "choices": [
+        "`display: none`, since screen readers read the DOM rather than the page layout",
+        "`visibility: hidden`, since the element keeps its space and so stays in the tree",
+        "`opacity: 0; height: 0`, since the text remains in normal flow at zero height",
+        "`position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)`"
+      ],
+      "answer": 3,
+      "why": "The \"visually hidden\" pattern shrinks the element to one clipped pixel so it stays in the accessibility tree. `display: none` and `visibility: hidden` remove content from that tree. Zero height with opacity 0 is inconsistently read and can still be focused invisibly.",
+      "tags": ["visual", "semantics"],
+      "level": 1,
+      "asked": "A standard utility (`sr-only` in Tailwind); interviewers check you know why `display: none` is not the same thing."
+    },
+    {
+      "id": "a11y-042",
+      "q": "The text that labels a field lives in an element with the `hidden` attribute. Does `aria-labelledby` pointing at it still produce a name?",
+      "code": "<span id=\"lbl\" hidden>Quantity for order 1042</span>\n<input aria-labelledby=\"lbl\" type=\"number\">",
+      "lang": "html",
+      "choices": [
+        "No, hidden elements are removed from the tree, so the name is empty",
+        "Yes, `aria-labelledby` may reference hidden content to build a name",
+        "Only if the span also has `aria-hidden=\"false\"` to re-expose its text",
+        "Only in Chromium, which is the one engine that ignores the `hidden` flag"
+      ],
+      "answer": 1,
+      "why": "The accessible name algorithm follows `aria-labelledby` and `aria-describedby` references even into hidden content, by design, so authors can supply off-screen labels. The span itself is not announced as content. Prefer visible labels, but this is valid and consistent across engines.",
+      "tags": ["names", "aria"],
+      "level": 3,
+      "asked": "A deep name-computation detail; knowing it shows you have read the spec rather than guessed from symptoms."
+    },
+    {
+      "id": "a11y-043",
+      "q": "What is wrong with using `role=\"menu\"` for a website's main navigation list of links?",
+      "choices": [
+        "It is fine; `menu` is the correct role for any list of links",
+        "`menu` announces an app menu expecting arrow keys and `menuitem` children",
+        "`menu` hides the links from search engines, which hurts SEO",
+        "`menu` is deprecated in ARIA 1.2 and replaced by `navigation`"
+      ],
+      "answer": 1,
+      "why": "`role=\"menu\"` promises desktop-application behaviour: arrow-key navigation, one tab stop, type-ahead and `menuitem` children. Screen readers switch to focus mode, so users who expected links get a widget that ignores their normal keys. Site navigation is `<nav>` with a list of links.",
+      "tags": ["aria", "keyboard", "navigation"],
+      "level": 2,
+      "asked": "The single most common ARIA misuse on real sites; interviewers want you to say \"use `<nav>` and links\"."
+    },
+    {
+      "id": "a11y-044",
+      "q": "A \"More actions\" button opens a disclosure panel of ordinary links. Which attribute pair describes it without over-promising?",
+      "choices": [
+        "`aria-haspopup=\"menu\"` and `aria-expanded`, which suit any popup panel",
+        "`aria-expanded` alone, toggled on the button, with the panel shown or hidden",
+        "`aria-haspopup=\"true\"` alone, since expanded state is announced automatically",
+        "`aria-owns` pointing at the panel, which tells the reader that it can open"
+      ],
+      "answer": 1,
+      "why": "A disclosure only needs `aria-expanded` on its button. `aria-haspopup=\"true\"` or `\"menu\"` tells screen readers a `role=\"menu\"` is coming, with arrow-key behaviour, which a panel of links does not have. `aria-owns` rewrites the tree and is not how you express open or closed.",
+      "tags": ["aria", "states"],
+      "level": 2,
+      "asked": "Checks whether you choose the simplest accurate pattern (disclosure) over the fancy one (menu)."
+    },
+    {
+      "id": "a11y-045",
+      "q": "When is `role=\"application\"` justified on a region of a web page?",
+      "choices": [
+        "On any single-page app root, so screen readers treat it as software",
+        "On forms with more than ten fields, so users stay in forms mode",
+        "Rarely: only for a widget like a canvas editor that handles every key itself",
+        "On navigation bars, so arrow keys move between links in the bar"
+      ],
+      "answer": 2,
+      "why": "`application` turns off the screen reader's browse-mode shortcuts inside the region, passing every key to your script. That is only acceptable when you implement complete keyboard interaction and announcements yourself, such as a drawing canvas. Putting it on an app root breaks heading and landmark navigation everywhere.",
+      "tags": ["aria", "screen-readers"],
+      "level": 3,
+      "asked": "A question about restraint; wrapping a React root in `role=\"application\"` is a classic audit finding."
+    },
+    {
+      "id": "a11y-046",
+      "q": "A search results count updates after each query. Which markup announces \"24 results\" politely without moving focus?",
+      "code": "<p id=\"count\" ???>24 results</p>",
+      "lang": "html",
+      "choices": [
+        "`role=\"alert\"`, since the user needs to know the number straight away",
+        "`aria-live=\"off\"`, since the region only changes after a user action",
+        "`role=\"status\"`, rendered on load and with its text updated in place",
+        "`tabindex=\"0\"`, so screen readers read it when the text is replaced"
+      ],
+      "answer": 2,
+      "why": "`role=\"status\"` is an implicit polite, atomic live region, so the new count is read at the next pause. The element must exist before the text changes. `alert` interrupts whatever the user is hearing, `aria-live=\"off\"` suppresses announcements, and `tabindex` only makes it focusable.",
+      "tags": ["live-regions"],
+      "level": 1,
+      "asked": "Live regions are the core of 4.1.3 Status Messages; the follow-up is usually \"why must it exist before the update?\""
+    },
+    {
+      "id": "a11y-047",
+      "q": "A basket region reads \"2 items, total £30\" and only the number changes. Screen readers announce just \"3\". Which attribute makes them read the whole sentence?",
+      "code": "<div aria-live=\"polite\">\n  <span id=\"n\">3</span> items, total <span id=\"t\">£45</span>\n</div>",
+      "lang": "html",
+      "choices": [
+        "`aria-atomic=\"true\"` on the live region",
+        "`aria-relevant=\"all\"` on each of the spans",
+        "`aria-busy=\"false\"` on the live region",
+        "`role=\"log\"` in place of the live region"
+      ],
+      "answer": 0,
+      "why": "By default a live region announces only the changed node. `aria-atomic=\"true\"` makes the screen reader read the whole region whenever any part changes. `aria-relevant` controls which kinds of change count (additions, removals, text), `aria-busy` defers announcements, and `log` is for appended history like chat.",
+      "tags": ["live-regions"],
+      "level": 2,
+      "asked": "Tests whether you understand live regions beyond \"add aria-live\"; `role=\"status\"` sets atomic for you."
+    },
+    {
+      "id": "a11y-048",
+      "q": "A data table refreshes in stages over two seconds and a live region inside it chatters through every intermediate update. What is the intended ARIA tool for this?",
+      "choices": [
+        "`aria-live=\"assertive\"`, so only the final update gets spoken",
+        "`aria-hidden=\"true\"` on the table until all the rows have loaded",
+        "`role=\"alert\"`, so the updates are merged into one announcement",
+        "`aria-busy=\"true\"` while updating, set back to `false` when done"
+      ],
+      "answer": 3,
+      "why": "`aria-busy=\"true\"` tells assistive technology the region is mid-update so it can hold announcements until `aria-busy` is removed or set to false. Support varies, so also keep live regions small. `assertive` and `alert` interrupt more, not less, and `aria-hidden` hides the whole table, including rows the user may be reading.",
+      "tags": ["live-regions", "aria"],
+      "level": 3,
+      "asked": "Knowing `aria-busy` exists, and that support is uneven, is the kind of nuance that separates mid from senior answers."
+    },
+    {
+      "id": "a11y-049",
+      "q": "Your SPA shows a toast \"Invoice sent\" that disappears after 3 seconds. What is the accessibility problem with the 3-second timeout?",
+      "choices": [
+        "None, since toasts are decorative and do not need to be accessible at all",
+        "It is too long, as WCAG requires status messages to clear within 1 second",
+        "Screen readers ignore any content that is removed within five seconds of first display",
+        "Slow readers and magnifier users may miss it; keep it longer or let them dismiss"
+      ],
+      "answer": 3,
+      "why": "Magnifier users may not be looking at the toast's corner, and slow readers need time. A polite live region announces the text, but the visual message also has to last long enough (or persist until dismissed) under 2.2.1 Timing Adjustable. Never put actions only inside auto-dismissing toasts.",
+      "tags": ["live-regions", "wcag"],
+      "level": 2,
+      "asked": "Toasts are everywhere in CRUD apps; strong candidates mention both the announcement and the timing."
+    },
+    {
+      "id": "a11y-050",
+      "q": "A progress bar for a CSV import is built from divs. Which markup exposes its value to assistive technology?",
+      "choices": [
+        "`<div role=\"progressbar\" aria-valuenow=\"40\" aria-valuemin=\"0\" aria-valuemax=\"100\">`",
+        "`<div role=\"status\" aria-valuenow=\"40\" aria-valuemax=\"100\">`, so each change is read",
+        "`<div role=\"slider\" aria-valuenow=\"40\">`, with its thumb styled to look like a bar",
+        "`<div aria-label=\"40%\" class=\"bar\">`, updated with the percentage on every tick"
+      ],
+      "answer": 0,
+      "why": "`progressbar` with value attributes is the ARIA equivalent of `<progress value=\"40\" max=\"100\">`, which is the better choice if you can use it. `slider` implies the user can change it, `status` does not support value attributes, and a label on a generic div is ignored. Give it a name too.",
+      "tags": ["aria", "semantics"],
+      "level": 1,
+      "asked": "Usually asked as \"what native element would you use instead?\", and the answer is `<progress>`."
+    },
+    {
+      "id": "a11y-051",
+      "q": "In the WAI-ARIA tabs pattern, what does the Tab key do when focus is on the active tab?",
+      "choices": [
+        "Moves focus to the next tab in the tablist, wrapping round at the end",
+        "Activates the next tab and moves focus into its newly shown panel",
+        "Leaves the tablist and moves focus into the active tab's panel",
+        "Does nothing, since only the arrow keys work while inside a tablist"
+      ],
+      "answer": 2,
+      "why": "A tablist is one tab stop: arrow keys move between tabs and Tab moves on to the panel (or the first focusable thing after the tablist). Making every tab a Tab stop forces keyboard users through all of them to reach the content, which is the bug the pattern exists to avoid.",
+      "tags": ["keyboard", "tabs"],
+      "level": 1,
+      "asked": "The one-tab-stop rule for composite widgets is the heart of every keyboard-pattern question."
+    },
+    {
+      "id": "a11y-052",
+      "q": "Your tabs switch panels instantly with data already in memory. Which activation model does the ARIA Authoring Practices Guide recommend?",
+      "choices": [
+        "Manual: arrows move focus and Enter or Space shows the panel",
+        "Automatic: moving focus with the arrows also shows the panel",
+        "Hover: the panel shows when the pointer rests on a tab label",
+        "Deferred: the panel shows after focus rests for 500 ms on a tab"
+      ],
+      "answer": 1,
+      "why": "APG recommends automatic activation when panels can be displayed without noticeable latency, because it saves a keystroke per tab. Use manual activation when showing a panel triggers a slow fetch, so arrowing across five tabs does not fire five requests.",
+      "tags": ["keyboard", "tabs"],
+      "level": 2,
+      "asked": "A good answer names both models and the latency trade-off that picks between them."
+    },
+    {
+      "id": "a11y-053",
+      "q": "What does a tab's markup need so a screen reader says \"Invoices, tab, 2 of 4, selected\"?",
+      "choices": [
+        "`<a role=\"tab\" class=\"active\">` inside a `<nav>` element with `aria-current`",
+        "`<li role=\"tab\" aria-expanded=\"true\">` inside a plain `<ul>` list of tabs",
+        "`<button aria-pressed=\"true\">` inside a `<div role=\"toolbar\">` container",
+        "`<button role=\"tab\" aria-selected=\"true\">` inside a `role=\"tablist\"` element"
+      ],
+      "answer": 3,
+      "why": "Position (\"2 of 4\") comes from the tabs being owned by a `tablist`, and \"selected\" comes from `aria-selected`. Each tab should also have `aria-controls` pointing at its `role=\"tabpanel\"`, which is labelled by the tab. `aria-expanded` is for disclosures, and `aria-pressed` makes toggle buttons.",
+      "tags": ["aria", "tabs"],
+      "level": 2,
+      "asked": "Builds on the tabs question; interviewers often ask you to sketch this markup from memory."
+    },
+    {
+      "id": "a11y-054",
+      "q": "This roving-tabindex handler moves focus between four tabs. Which input breaks it?",
+      "code": "function nextIndex(i, n, key) {\n  if (key === 'ArrowRight') return (i + 1) % n;\n  if (key === 'ArrowLeft') return (i - 1) % n;\n  if (key === 'Home') return 0;\n  return n - 1; // End\n}",
+      "lang": "js",
+      "choices": [
+        "`nextIndex(3, 4, 'ArrowRight')`, which returns 4 and runs off the end",
+        "`nextIndex(0, 4, 'ArrowLeft')`, which returns -1, not 3",
+        "`nextIndex(2, 4, 'Home')`, which returns 2 because Home is ignored here",
+        "`nextIndex(1, 4, 'End')`, which returns 4 since `n - 1` is evaluated late"
+      ],
+      "answer": 1,
+      "why": "In JavaScript `%` keeps the sign of the dividend, so `(0 - 1) % 4` is `-1` and `tabs[-1]` is undefined. Use `(i - 1 + n) % n`. ArrowRight from the last tab correctly wraps to 0, and Home and End return 0 and 3.",
+      "tags": ["keyboard", "roving-tabindex"],
+      "level": 2,
+      "asked": "A tiny bug that ships in hand-rolled keyboard handlers; interviewers like it because it tests both JS and the pattern."
+    },
+    {
+      "id": "a11y-055",
+      "q": "What is \"roving tabindex\"?",
+      "choices": [
+        "Setting `tabindex=\"0\"` on every item so each one is reachable with Tab",
+        "Giving items rising positive `tabindex` values so Tab follows visual order",
+        "One item has `tabindex=\"0\"` and the rest `-1`; arrows move the 0 and focus",
+        "Keeping DOM focus on the container and pointing at the item with an ARIA id"
+      ],
+      "answer": 2,
+      "why": "Only the current item is in the tab sequence; the arrow-key handler sets the old item to `-1`, the new one to `0`, and calls `focus()` on it. That makes the widget a single tab stop that remembers the last item. The last option describes `aria-activedescendant`, the alternative technique.",
+      "tags": ["keyboard", "roving-tabindex"],
+      "level": 1,
+      "asked": "Every composite widget uses this or activedescendant; interviewers ask you to name both and pick one."
+    },
+    {
+      "id": "a11y-056",
+      "q": "When would you choose `aria-activedescendant` over roving tabindex?",
+      "choices": [
+        "When DOM focus must stay in a text input, as in a combobox",
+        "When the widget has fewer than ten items and every item can be focused",
+        "When you need the browser to scroll the active item into view for free",
+        "When the items are links that must remain in the page's Tab sequence"
+      ],
+      "answer": 0,
+      "why": "With `aria-activedescendant` the container (or input) keeps real focus and the attribute names the \"virtually focused\" item's id, so the user can keep typing in a combobox while arrowing through suggestions. You must scroll the item into view and style it yourself, because the browser does not treat it as focused.",
+      "tags": ["keyboard", "aria", "combobox"],
+      "level": 3,
+      "asked": "Knowing why the combobox needs activedescendant is a reliable sign of having built one."
+    },
+    {
+      "id": "a11y-057",
+      "q": "Per the ARIA Authoring Practices Guide, which keys open a menu button's menu and put focus on the first item?",
+      "choices": [
+        "Tab or Shift+Tab, which move into the menu once it has rendered",
+        "Enter, Space or Down Arrow, focusing the first item",
+        "Only a mouse click; keyboard users use the page's shortcut keys",
+        "Right Arrow, which opens the menu the same way as in a menubar"
+      ],
+      "answer": 1,
+      "why": "A menu button opens on Enter, Space or Down Arrow and moves focus to the first `menuitem` (Up Arrow may open it on the last). Inside, arrows move between items, Escape closes and returns focus to the button, and Tab closes the menu and moves on.",
+      "tags": ["keyboard", "menus"],
+      "level": 2,
+      "asked": "Menu buttons are the \"row actions\" button in every table; interviewers expect these keys."
+    },
+    {
+      "id": "a11y-058",
+      "q": "A row-actions menu is open and the user presses Escape. Where should focus go?",
+      "choices": [
+        "To the top of the page, so the user starts again from a known point",
+        "To the first item in the table row, which is the closest landmark",
+        "Nowhere in particular; the menu closing is enough for the keyboard user",
+        "Back to the menu button that opened it, with the menu now closed"
+      ],
+      "answer": 3,
+      "why": "Escape closes the menu and returns focus to its trigger, so the user continues from where they were. If focus is left on a removed menu item it falls to `<body>`, and a keyboard user has to tab from the start of the page again.",
+      "tags": ["keyboard", "menus", "focus"],
+      "level": 1,
+      "asked": "The same \"return focus to the trigger\" rule applies to dialogs, menus and popovers; interviewers check you generalise it."
+    },
+    {
+      "id": "a11y-059",
+      "q": "In a `role=\"menu\"` of ten actions, the user types the letter \"d\". What does APG expect?",
+      "choices": [
+        "Nothing, since letter keys are reserved for the screen reader's quick navigation",
+        "Focus moves to the next item whose label starts with \"d\", such as \"Duplicate\"",
+        "The item labelled \"Delete\" is activated immediately as a keyboard accelerator",
+        "The menu closes and the letter is typed into the page's search box instead"
+      ],
+      "answer": 1,
+      "why": "Menus, listboxes and trees support type-ahead: a printable character moves focus to the next item starting with it, without activating it. Screen readers are in focus mode inside a menu, so letters reach your handler. Activating on a single letter would be a dangerous shortcut.",
+      "tags": ["keyboard", "menus"],
+      "level": 3,
+      "asked": "Few candidates mention type-ahead, so it is a good differentiator in a \"build a menu\" discussion."
+    },
+    {
+      "id": "a11y-060",
+      "q": "In an ARIA 1.2 combobox with a suggestions list, where does `role=\"combobox\"` go?",
+      "code": "<label for=\"city\">City</label>\n<input id=\"city\" ??? aria-controls=\"city-list\"\n       aria-expanded=\"false\" aria-autocomplete=\"list\">\n<ul id=\"city-list\" role=\"listbox\" hidden></ul>",
+      "lang": "html",
+      "choices": [
+        "On a wrapping `<div>` that contains both the input and the listbox",
+        "On the `<ul>`, replacing `role=\"listbox\"` on the suggestions list",
+        "On the `<label>`, so the name and role are announced together",
+        "On the `<input>` itself, which keeps focus while the list is open"
+      ],
+      "answer": 3,
+      "why": "ARIA 1.2 moved `combobox` onto the focusable input, with `aria-controls` and `aria-expanded` describing the popup. The older ARIA 1.1 wrapper pattern was poorly supported and is now obsolete. The list keeps `role=\"listbox\"` with `option` children.",
+      "tags": ["aria", "combobox"],
+      "level": 3,
+      "asked": "Many tutorials still show the 1.1 wrapper pattern; knowing the current one shows recent, first-hand work."
+    },
+    {
+      "id": "a11y-061",
+      "q": "A combobox's suggestions are open and the user presses Down Arrow. With `aria-activedescendant`, what changes in the DOM?",
+      "choices": [
+        "`document.activeElement` becomes the first `<li role=\"option\">` in the list",
+        "The input's `aria-activedescendant` is set to the first option's id",
+        "The input's value is replaced by the first option's text straight away",
+        "The listbox gets `tabindex=\"0\"` and becomes the focused element"
+      ],
+      "answer": 1,
+      "why": "Focus stays in the input so typing still works; the input's `aria-activedescendant` points at the highlighted option, which you also style and mark `aria-selected=\"true\"`. Filling the input is optional (inline autocomplete) and usually happens on Enter, not on arrowing.",
+      "tags": ["keyboard", "combobox"],
+      "level": 3,
+      "asked": "Walks through the combobox mechanics; interviewers follow up with \"and what does Escape do?\""
+    },
+    {
+      "id": "a11y-062",
+      "q": "A user has typed \"Man\" in a city combobox and the list is open. What should the first press of Escape do?",
+      "choices": [
+        "Close the list, keeping \"Man\" and focus in the input",
+        "Clear the input, close the list and move focus to the next field",
+        "Submit the form with \"Man\" as the typed value for the city field",
+        "Move focus back to the label so the user can hear the question"
+      ],
+      "answer": 0,
+      "why": "Per APG, Escape first dismisses the popup without touching the typed text; if the list is already closed, Escape may clear the input. Clearing or moving focus on the first press throws away the user's work.",
+      "tags": ["keyboard", "combobox"],
+      "level": 2,
+      "asked": "Escape semantics are consistent across popups; getting them right is what makes a custom widget feel native."
+    },
+    {
+      "id": "a11y-063",
+      "q": "Why do many teams choose a headless library such as React Aria, Radix or Ark UI for comboboxes and date pickers?",
+      "choices": [
+        "They are the only way to pass an automated axe scan on complex widgets",
+        "They supply tested keyboard and ARIA behaviour; you own the styles",
+        "WCAG 2.2 requires certified components for comboboxes and date pickers",
+        "They render to canvas, which screen readers read more reliably than DOM"
+      ],
+      "answer": 1,
+      "why": "A correct combobox involves dozens of keyboard, focus and announcement details that differ across screen readers. Headless libraries encode that behaviour and test it with real assistive technology, while leaving markup styling to you. axe can pass a broken hand-rolled widget, and WCAG has no certification.",
+      "tags": ["combobox", "testing"],
+      "level": 1,
+      "asked": "The pragmatic answer interviewers want: build simple things by hand, use a proven library for complex widgets."
+    },
+    {
+      "id": "a11y-064",
+      "q": "An accordion header should be announced as a heading and be operable. Which structure is right?",
+      "choices": [
+        "`<h3 role=\"button\" aria-expanded=\"false\">Delivery</h3>` with a click handler",
+        "`<button><h3>Delivery</h3></button>`, so the heading sits inside the button",
+        "`<div role=\"heading\" tabindex=\"0\" onclick=\"...\">Delivery</div>` for styling",
+        "`<h3><button aria-expanded=\"false\">Delivery</button></h3>` with the panel after"
+      ],
+      "answer": 3,
+      "why": "The button goes inside the heading so both semantics survive: heading navigation finds \"Delivery\", and the button is focusable with Enter and Space and exposes `aria-expanded`. `role=\"button\"` on the `<h3>` erases the heading role, and headings are not allowed inside buttons.",
+      "tags": ["keyboard", "semantics"],
+      "level": 2,
+      "asked": "Tests whether you understand that a role replaces another role, so nesting is how you keep both."
+    },
+    {
+      "id": "a11y-065",
+      "q": "Which HTML element gives you an accessible disclosure widget with no JavaScript?",
+      "choices": [
+        "`<details>` with a `<summary>`",
+        "`<dialog>` with the `open` attribute",
+        "`<section>` with `aria-expanded`",
+        "`<menu>` with a `<li>` for each item"
+      ],
+      "answer": 0,
+      "why": "`<summary>` is focusable, toggles with Enter or Space, and is announced with its expanded state. Since 2024 the `name` attribute groups several `<details>` into an exclusive accordion. `<dialog open>` is a non-modal dialog, and `<menu>` is just a list.",
+      "tags": ["semantics", "keyboard"],
+      "level": 1,
+      "asked": "Reaching for native `<details>` before writing JS is the answer that impresses."
+    },
+    {
+      "id": "a11y-066",
+      "q": "A delete confirmation opens with `role=\"alertdialog\"`. Which element should receive focus when it opens?",
+      "choices": [
+        "The \"Delete\" button, since it is the primary action being confirmed",
+        "The dialog's heading, with `tabindex=\"-1\"`, so the title is read first",
+        "The \"Cancel\" button, the least destructive way out of the dialog",
+        "The first link in the page behind it, so the user keeps their place"
+      ],
+      "answer": 2,
+      "why": "APG advises focusing the least destructive control in a confirmation, so an accidental Enter does not delete. The `alertdialog` role plus `aria-describedby` makes screen readers read the message on open. For long content, focusing a static element at the top is the alternative.",
+      "tags": ["dialogs", "focus"],
+      "level": 2,
+      "asked": "Initial focus is a design decision; interviewers want the reasoning, not just \"the first button\"."
+    },
+    {
+      "id": "a11y-067",
+      "q": "You open a native `<dialog>` with `showModal()`. Which of these do you still have to implement yourself?",
+      "choices": [
+        "Closing on Escape, which native dialogs do not handle by default",
+        "Making the rest of the page inert for keyboard and screen readers",
+        "Giving the dialog an accessible name with `aria-labelledby`",
+        "Moving focus into the dialog when it opens for the first time"
+      ],
+      "answer": 2,
+      "why": "`showModal()` handles focus on open, Escape (via the `cancel` event), inertness of the page behind and the top layer. It cannot invent a name: point `aria-labelledby` at the dialog's heading so screen readers announce \"Delete order, dialog\" rather than just \"dialog\".",
+      "tags": ["dialogs", "names"],
+      "level": 2,
+      "asked": "Checks you know what the platform gives you and what it cannot, which is the practical `<dialog>` question."
+    },
+    {
+      "id": "a11y-068",
+      "q": "What is the difference between `dialog.show()` and `dialog.showModal()` for keyboard users?",
+      "choices": [
+        "`show()` traps focus inside the dialog; `showModal()` does not trap it",
+        "`show()` is non-modal, so Tab can leave; `showModal()` makes the page inert",
+        "`show()` ignores Escape unless it is handled; `showModal()` ignores it too",
+        "There is none; the two differ only in whether a `::backdrop` gets painted"
+      ],
+      "answer": 1,
+      "why": "`show()` opens a non-modal dialog: the rest of the page stays interactive and Escape does not close it by default. `showModal()` puts it in the top layer, makes everything else inert, closes on Escape and draws `::backdrop`. Pick based on whether the user must deal with the dialog first.",
+      "tags": ["dialogs", "keyboard"],
+      "level": 2,
+      "asked": "Many candidates know `showModal()` but not what `show()` is for; the non-modal case is a real design choice."
+    },
+    {
+      "id": "a11y-069",
+      "q": "A tooltip appears on hover and on keyboard focus of an info icon. Under WCAG 1.4.13 Content on Hover or Focus, which behaviour is required?",
+      "choices": [
+        "The tooltip must be dismissible with Escape without moving focus or pointer",
+        "The tooltip must disappear after five seconds so that it cannot block content",
+        "The tooltip must be opened only by a click, never by hover or by focus alone",
+        "The tooltip must use the `title` attribute so every browser styles it natively"
+      ],
+      "answer": 0,
+      "why": "1.4.13 (AA) requires hover/focus content to be dismissible (Escape), hoverable (the pointer can move onto it without it vanishing) and persistent (it stays until dismissed or no longer relevant). Auto-hiding fails persistence, and the `title` tooltip fails hoverability and keyboard access.",
+      "tags": ["keyboard", "wcag"],
+      "level": 2,
+      "asked": "Tooltips are a classic hidden failure; the three words dismissible, hoverable, persistent are what interviewers listen for."
+    },
+    {
+      "id": "a11y-070",
+      "q": "Where should essential information such as \"Password must be 12+ characters\" live, rather than only in a hover tooltip?",
+      "choices": [
+        "In a `title` attribute on the input, which every screen reader reads out",
+        "In visible hint text linked to the input with `aria-describedby`",
+        "In the placeholder, which screen readers announce as the input's name",
+        "In an HTML comment beside the input, which assistive technology reads"
+      ],
+      "answer": 1,
+      "why": "Touch users cannot hover and many keyboard users never trigger tooltips, so required information should be visible and programmatically linked. `aria-describedby` makes it part of the field's description. `title` is inconsistently announced and invisible on touch, and placeholders vanish while typing.",
+      "tags": ["forms", "names"],
+      "level": 1,
+      "asked": "Checks that you design for touch and keyboard, not only for a mouse."
+    },
+    {
+      "id": "a11y-071",
+      "q": "A group of shipping-speed radio buttons shares `name=\"speed\"`. How does the keyboard move between them natively?",
+      "choices": [
+        "Tab moves to each radio in turn and Space selects the focused one",
+        "Tab enters the group; arrows move and check the next radio",
+        "Tab enters the group; arrows move focus and Enter confirms a choice",
+        "Only a mouse can change the choice once one of the radios is checked"
+      ],
+      "answer": 1,
+      "why": "A same-named radio group is one tab stop (landing on the checked radio, or the first if none is), and arrow keys move focus and check the radio in one step. That native behaviour is what custom radio-card components must reproduce, so prefer real inputs styled with CSS.",
+      "tags": ["keyboard", "forms"],
+      "level": 1,
+      "asked": "Custom \"radio cards\" often break this; knowing the native behaviour tells you what to test."
+    },
+    {
+      "id": "a11y-072",
+      "q": "A kanban board lets users reorder cards by dragging. What does WCAG 2.2 require, and what fits best?",
+      "choices": [
+        "Nothing, since drag and drop is an essential function exempt from WCAG",
+        "Keyboard drag with Space to lift and arrows to move is enough to comply",
+        "A single-pointer alternative, such as a \"Move to…\" menu on each card",
+        "A tooltip saying \"drag to reorder\", so the gesture is at least explained"
+      ],
+      "answer": 2,
+      "why": "2.5.7 Dragging Movements (AA) requires that anything done by dragging can also be done with single clicks or taps, which also helps tremor and switch users. Keyboard dragging helps keyboard users but does not satisfy a pointer-only user who cannot hold and drag. A \"Move to…\" menu serves both.",
+      "tags": ["keyboard", "wcag"],
+      "level": 2,
+      "asked": "New in WCAG 2.2 and directly relevant to kanban-style CRUD screens."
+    },
+    {
+      "id": "a11y-073",
+      "q": "Your app adds single-letter shortcuts: \"n\" for new invoice and \"d\" to delete. Which WCAG criterion constrains this, and how?",
+      "choices": [
+        "2.1.1 Keyboard: every shortcut must also appear in the visible menus",
+        "2.4.3 Focus Order: shortcuts must follow the DOM order of their buttons",
+        "3.2.1 On Focus: shortcuts may only work after the page has fully loaded",
+        "2.1.4 Character Key Shortcuts: users must be able to disable or remap"
+      ],
+      "answer": 3,
+      "why": "2.1.4 (Level A) exists because speech-input users trigger single-letter shortcuts by accident when dictating. You must allow turning them off, remapping to include a modifier, or limiting them to when a component has focus. Shortcuts that use Ctrl or Alt are not affected.",
+      "tags": ["keyboard", "wcag"],
+      "level": 3,
+      "asked": "A lesser-known criterion; bringing it up in a design discussion about shortcuts shows genuine depth."
+    },
+    {
+      "id": "a11y-074",
+      "q": "A list uses `aria-activedescendant` to highlight the active option, but sighted keyboard users cannot see which option is active. Why?",
+      "choices": [
+        "The browser applies `:focus-visible` to the option but the CSS reset removed it",
+        "The option is not focused, so you must style it yourself, e.g. `[aria-selected=true]`",
+        "`aria-activedescendant` only works with `tabindex=\"-1\"` on each option in the list",
+        "Screen readers draw their own highlight, which is hidden from sighted users"
+      ],
+      "answer": 1,
+      "why": "Real focus stays on the container, so `:focus` and `:focus-visible` never match the option. You must add a visible style keyed to the active id or `aria-selected`, and scroll it into view. Without that, the widget fails 2.4.7 Focus Visible even though the screen reader works.",
+      "tags": ["keyboard", "focus", "combobox"],
+      "level": 3,
+      "asked": "A subtle trade-off of activedescendant; spotting it shows you have tested with your eyes as well as a screen reader."
+    },
+    {
+      "id": "a11y-075",
+      "q": "A \"Load more\" button appends 20 rows to a list. Where should keyboard focus be after the click?",
+      "choices": [
+        "On the first new row, or a heading just before it, so reading continues",
+        "Left on \"Load more\", which has now moved beneath the twenty new rows",
+        "On the top of the page, so the user can re-read the whole list from the start",
+        "On the browser's address bar, the default when the DOM has changed a lot"
+      ],
+      "answer": 0,
+      "why": "Moving focus to the first new item (made focusable with `tabindex=\"-1\"` if needed) lets keyboard and screen reader users continue from the new content. Leaving focus on a button that is now below the new rows forces them to navigate backwards to find what just loaded.",
+      "tags": ["keyboard", "focus"],
+      "level": 2,
+      "asked": "Pagination and \"load more\" are CRUD staples; interviewers use this to test focus-management instincts."
+    },
+    {
+      "id": "a11y-076",
+      "q": "A delivery form asks \"Preferred day\" with five radio buttons. How should the question itself be associated with the group?",
+      "choices": [
+        "Wrap the radios in `<fieldset>` with the question in its `<legend>`",
+        "Put the question in an `<h3>` directly above the first radio button",
+        "Give every radio `aria-label` repeating the question before its day",
+        "Put the question in a `<label>` whose `for` names the first radio"
+      ],
+      "answer": 0,
+      "why": "`<fieldset>` and `<legend>` create a named group, so screen readers announce \"Preferred day, group\" when entering, then each option's own label. A heading is not programmatically tied to the inputs, a `<label>` can only label one control, and repeating the question in every name is verbose.",
+      "tags": ["forms", "semantics"],
+      "level": 1,
+      "asked": "Radio groups without a legend are among the commonest form failures in audits."
+    },
+    {
+      "id": "a11y-077",
+      "q": "Which attribute lets browsers and password managers autofill a user's email, and satisfies WCAG 1.3.5 Identify Input Purpose?",
+      "code": "<label for=\"em\">Email</label>\n<input id=\"em\" type=\"email\" ???>",
+      "lang": "html",
+      "choices": [
+        "`name=\"email\"`, since autofill keys on the field's submitted name",
+        "`inputmode=\"email\"`, which tells the browser what the value means",
+        "`autocomplete=\"email\"`, one of the standard input-purpose tokens",
+        "`aria-label=\"email\"`, which exposes the purpose to assistive tech"
+      ],
+      "answer": 2,
+      "why": "`autocomplete` tokens such as `email`, `given-name`, `street-address` and `one-time-code` declare what the field collects, which drives autofill and lets assistive tools add familiar icons. `inputmode` only picks a virtual keyboard, and `name` heuristics are unreliable.",
+      "tags": ["forms", "wcag"],
+      "level": 1,
+      "asked": "Autofill helps motor and cognitive disabilities as much as convenience; the token list is worth knowing."
+    },
+    {
+      "id": "a11y-078",
+      "q": "The login form blocks paste in the password field \"for security\". Which WCAG 2.2 criterion does that undermine?",
+      "choices": [
+        "3.3.7 Redundant Entry, because the password must be typed twice",
+        "3.3.8 Accessible Authentication, since it stops password managers",
+        "2.1.1 Keyboard, because Ctrl+V is a keyboard shortcut in the field",
+        "1.4.3 Contrast, since the masked dots fail the minimum contrast"
+      ],
+      "answer": 1,
+      "why": "3.3.8 (AA, new in 2.2) says login must not rely on a cognitive function test such as recalling a password unless there is help, and allowing paste and password managers is that help. Blocking paste adds no real security and forces memorisation and retyping.",
+      "tags": ["forms", "wcag"],
+      "level": 2,
+      "asked": "A WCAG 2.2 addition that touches every auth screen; also a chance to show you know blocking paste is security theatre."
+    },
+    {
+      "id": "a11y-079",
+      "q": "A checkout asks for the billing address after the user already entered a delivery address. What does WCAG 2.2 criterion 3.3.7 Redundant Entry expect?",
+      "choices": [
+        "Pre-fill it, or offer \"Same as delivery address\"",
+        "Hide the billing address step completely for keyboard-only users",
+        "Require the user to type it again to confirm it is still accurate",
+        "Show the delivery address as placeholder text in the billing fields"
+      ],
+      "answer": 0,
+      "why": "Within one process, information the user already gave must be auto-populated or selectable, unless re-entry is essential (such as confirming a new password). That helps users with memory or motor impairments. Placeholder text is not an entered value and disappears as they type.",
+      "tags": ["forms", "wcag"],
+      "level": 2,
+      "asked": "Maps directly to real checkout and onboarding flows; interviewers like candidates who know the 2.2 additions."
+    },
+    {
+      "id": "a11y-080",
+      "q": "A form validates each field on every keystroke and shows \"Invalid email\" as soon as the user types the first letter. What is the better timing?",
+      "choices": [
+        "Validate only on submit, never during entry, to avoid all interruptions",
+        "Validate on every keystroke, but announce errors with `role=\"alert\"`",
+        "Validate on blur, or on submit, then re-check on input once shown",
+        "Validate every two seconds on a timer while the field has focus"
+      ],
+      "answer": 2,
+      "why": "Showing an error before the user has finished typing is noise, and with a live region it interrupts a screen reader user on every key. Validate when they leave the field or submit; once an error is showing, re-validate as they type so it clears promptly. Submit-only works but gives late feedback on long forms.",
+      "tags": ["forms", "live-regions"],
+      "level": 2,
+      "asked": "Validation timing is a UX and accessibility question at once; the \"reward early, punish late\" answer is what interviewers want."
+    },
+    {
+      "id": "a11y-081",
+      "q": "Which error message best meets WCAG 3.3.3 Error Suggestion for a date field?",
+      "choices": [
+        "\"Invalid input.\" shown in red text under the date field",
+        "\"Error 422: validation failed\" shown at the top of the page",
+        "A red border around the date field, with no text alongside it",
+        "\"Enter the date as DD/MM/YYYY, for example 07/03/2026.\""
+      ],
+      "answer": 3,
+      "why": "3.3.3 (AA) asks that, when you know how to fix an error, you say so. Naming the expected format with an example tells users how to recover. A generic message or status code does not, and a border alone also fails 1.4.1 Use of Colour.",
+      "tags": ["forms", "wcag"],
+      "level": 1,
+      "asked": "Error copy is part of accessibility; interviewers often ask you to rewrite a bad message on the spot."
+    },
+    {
+      "id": "a11y-082",
+      "q": "A required field is marked only with a red asterisk. What does a screen reader user miss, and what is the fix?",
+      "code": "<label for=\"n\">Name <span class=\"req\">*</span></label>\n<input id=\"n\">",
+      "lang": "html",
+      "choices": [
+        "Nothing; screen readers announce red text as \"required\" by convention",
+        "It hears \"star\" but the field is not flagged; add `required`",
+        "The label is lost entirely; move the asterisk into the placeholder text",
+        "The asterisk is fine, but the input needs `aria-invalid=\"true\"` from load"
+      ],
+      "answer": 1,
+      "why": "Colour means nothing to a screen reader, and \"star\" may or may not be understood. `required` (or `aria-required=\"true\"`) makes the field announce \"required\". Explain the asterisk at the top of the form for sighted users, and never set `aria-invalid` before the user has tried.",
+      "tags": ["forms", "aria"],
+      "level": 1,
+      "asked": "Basic but frequently wrong in production forms; shows whether you think in terms of what is programmatically exposed."
+    },
+    {
+      "id": "a11y-083",
+      "q": "A field shows an error below it after a failed submit. Which pair of attributes connects them so the error is read with the field?",
+      "code": "<input id=\"qty\" ??? >\n<p id=\"qty-err\">Quantity must be at least 1</p>",
+      "lang": "html",
+      "choices": [
+        "`aria-invalid=\"true\" aria-describedby=\"qty-err\"`",
+        "`aria-invalid=\"true\" aria-labelledby=\"qty-err\"`",
+        "`aria-live=\"polite\" aria-controls=\"qty-err\"`",
+        "`required aria-owns=\"qty-err\"` on the text input"
+      ],
+      "answer": 0,
+      "why": "`aria-invalid` sets the \"invalid entry\" state and `aria-describedby` makes the message the field's description, so focusing it reads \"Quantity, invalid entry, Quantity must be at least 1\". Using `aria-labelledby` would replace the field's name with the error text.",
+      "tags": ["forms", "aria"],
+      "level": 1,
+      "asked": "The core error wiring; the follow-up is often \"what about `aria-errormessage`?\""
+    },
+    {
+      "id": "a11y-084",
+      "q": "Why do many teams still use `aria-describedby` rather than `aria-errormessage` for field errors in 2026?",
+      "choices": [
+        "`aria-errormessage` was removed from ARIA 1.2 and is now invalid",
+        "`aria-errormessage` only works on `<form>`, not individual inputs",
+        "Screen reader support for `aria-errormessage` is still uneven",
+        "`aria-describedby` is required by WCAG, and the other one is AAA"
+      ],
+      "answer": 2,
+      "why": "`aria-errormessage` is valid ARIA and is exposed only while `aria-invalid=\"true\"`, which is elegant, but support across screen reader and browser pairs has lagged. `aria-describedby` works everywhere. WCAG does not mandate either attribute.",
+      "tags": ["forms", "aria", "screen-readers"],
+      "level": 3,
+      "asked": "Shows you choose attributes by real support, not by what the spec says should work."
+    },
+    {
+      "id": "a11y-085",
+      "q": "A form submission fails server-side with a 422 and three field errors. What should the client do for keyboard and screen reader users?",
+      "choices": [
+        "Show each error by its field and leave focus on the submit button",
+        "Show the errors, then focus the first bad field or a summary",
+        "Show a native `alert()` listing all errors, then reload the form empty",
+        "Show the errors as a toast that vanishes after four seconds on screen"
+      ],
+      "answer": 1,
+      "why": "Mapping the 422 body back to fields is half the job; the other half is moving focus so the user hears and reaches the problem. Leaving focus on the button means a screen reader user hears nothing. Clearing the form or hiding errors in a timed toast destroys their work or the information.",
+      "tags": ["forms", "focus"],
+      "level": 2,
+      "asked": "Joins the API side (RFC 9457 problem details) with the UI side; fullstack interviewers like that link."
+    },
+    {
+      "id": "a11y-086",
+      "q": "A session times out after 15 minutes and the user loses their half-finished form. What does WCAG 2.2.1 Timing Adjustable require?",
+      "choices": [
+        "Nothing, since security-driven timeouts are always exempt from WCAG",
+        "The timeout must be at least 60 minutes on any form that has fields",
+        "The form must save to `localStorage` on every keystroke as a backup",
+        "Warn before expiry and let the user extend with a simple action"
+      ],
+      "answer": 3,
+      "why": "2.2.1 (Level A) requires that users can turn off, adjust or extend a time limit, typically by a warning with at least 20 seconds to press \"Stay signed in\". There are exceptions for real-time events and limits over 20 hours, but not a blanket security exemption.",
+      "tags": ["forms", "wcag"],
+      "level": 2,
+      "asked": "Session timeouts are a backend decision with an accessibility cost; interviewers like candidates who connect the two."
+    },
+    {
+      "id": "a11y-087",
+      "q": "Changing a \"Sort by\" `<select>` immediately reloads the page with the new order. Which WCAG criterion does this risk failing?",
+      "choices": [
+        "3.2.2 On Input: changing a setting causes a context change",
+        "2.4.4 Link Purpose, because the options do not describe their destinations",
+        "1.3.1 Info and Relationships, because the select has no visible legend",
+        "2.5.8 Target Size, because native option lists render below 24 pixels"
+      ],
+      "answer": 0,
+      "why": "Keyboard users arrow through options, and each arrow press changes the value, so a navigate-on-change select can reload before they reach the option they want. Either add an Apply button or warn users beforehand. Re-sorting in place without navigating or moving focus is fine.",
+      "tags": ["forms", "wcag", "keyboard"],
+      "level": 2,
+      "asked": "A classic auto-submit bug; interviewers ask it to see if you think about keyboard users arrowing through options."
+    },
+    {
+      "id": "a11y-088",
+      "q": "A link colour inside paragraphs is distinguishable from body text only by hue, with no underline. What does WCAG require?",
+      "choices": [
+        "Nothing, because links are exempt from 1.4.1 Use of Colour",
+        "A 4.5:1 contrast between the link text and the page background",
+        "An underline, or 3:1 contrast with text plus a hover/focus cue",
+        "A `title` attribute on each link so the difference is announced"
+      ],
+      "answer": 2,
+      "why": "Under 1.4.1, colour alone cannot mark a link in a block of text. Underlines are the simple fix. The documented alternative is 3:1 contrast between link and surrounding text plus a non-colour cue on hover and focus. Links in navigation bars are identifiable by position, so this is about inline links.",
+      "tags": ["visual", "wcag"],
+      "level": 2,
+      "asked": "Designers often remove underlines; interviewers want you to know the rule and the negotiated alternative."
+    },
+    {
+      "id": "a11y-089",
+      "q": "What minimum contrast does WCAG 2.2 AA require for a text input's border against the page background?",
+      "choices": [
+        "4.5:1, the same as the body text inside the input",
+        "7:1, because form controls fall under the AAA rule",
+        "No minimum, as borders are decorative in WCAG",
+        "3:1, under 1.4.11 Non-text Contrast"
+      ],
+      "answer": 3,
+      "why": "1.4.11 requires 3:1 for visual information needed to identify a component and its states, such as input borders, checkbox outlines, icons and focus indicators. Pale grey borders on white often fail. Text inside the input still needs 4.5:1.",
+      "tags": ["visual", "wcag"],
+      "level": 1,
+      "asked": "Light grey form borders are a design-system staple that often fails; knowing 1.4.11 lets you push back with the rule."
+    },
+    {
+      "id": "a11y-090",
+      "q": "Which of these is exempt from WCAG 1.4.3 contrast requirements?",
+      "choices": [
+        "Placeholder text that tells the user the expected format",
+        "Text on a disabled button that cannot currently be used",
+        "Error text shown in red under an invalid form field",
+        "Text in a table footer summing the order totals"
+      ],
+      "answer": 1,
+      "why": "Text in inactive (disabled) components, pure decoration and logos are exempt. Placeholder text still conveys information, so it needs 4.5:1, which is one reason pale placeholders fail. Error and footer text are ordinary content.",
+      "tags": ["visual", "wcag"],
+      "level": 2,
+      "asked": "Designers ask this constantly; knowing the exemptions stops pointless arguments about greyed-out buttons."
+    },
+    {
+      "id": "a11y-091",
+      "q": "White text sits on a hero photo. Contrast varies from 9:1 over the dark sky to 2:1 over the beach. How do you make it pass reliably?",
+      "choices": [
+        "Measure the average colour of the photo and check against that",
+        "Add a text shadow, which contrast tools always count as passing",
+        "Add a semi-opaque dark overlay or backing box behind the text",
+        "Pass it, since text over images is exempt from contrast checks"
+      ],
+      "answer": 2,
+      "why": "Contrast is judged against the actual pixels behind every part of the text, so the worst area counts, not the average. A scrim or solid backing guarantees the ratio as images change. Text over images is not exempt, and a thin shadow may help but is hard to verify.",
+      "tags": ["visual", "contrast"],
+      "level": 2,
+      "asked": "Marketing pages break this constantly; the strong answer mentions the worst-case pixels and a guaranteed backing."
+    },
+    {
+      "id": "a11y-092",
+      "q": "How do you honour a user's OS setting to reduce motion for a page-transition animation?",
+      "code": "/* page transition */\n.page { animation: slide-in 400ms ease-out; }",
+      "lang": "css",
+      "choices": [
+        "`@media (prefers-reduced-motion: reduce) { .page { animation: fade 200ms; } }`",
+        "`@media (prefers-color-scheme: dark) { .page { animation: none; } }` for night",
+        "`@media (hover: none) { .page { animation: none; } }`, to target touch devices",
+        "`@media (max-width: 600px) { .page { animation: none; } }`, for small screens"
+      ],
+      "answer": 0,
+      "why": "`prefers-reduced-motion: reduce` reflects the OS \"reduce motion\" setting used by people with vestibular disorders. Swap movement for a gentle fade rather than removing all feedback. Colour scheme, hover capability and width say nothing about motion sensitivity.",
+      "tags": ["visual", "motion"],
+      "level": 1,
+      "asked": "The follow-up is usually \"and in JavaScript?\", where the answer is `matchMedia` with the same query."
+    },
+    {
+      "id": "a11y-093",
+      "q": "A scroll-to-top button uses `window.scrollTo({ top: 0, behavior: 'smooth' })`. How do you respect reduced motion in JavaScript?",
+      "choices": [
+        "Check `navigator.reducedMotion`, which returns true when the OS setting is on",
+        "Read `matchMedia('(prefers-reduced-motion: reduce)').matches` then `'auto'`",
+        "Wrap the call in `requestAnimationFrame`, which skips animation automatically",
+        "Nothing: browsers ignore `behavior: 'smooth'` when the OS setting is enabled"
+      ],
+      "answer": 1,
+      "why": "Scripts see the setting through `matchMedia`, and can listen for its `change` event. `navigator.reducedMotion` does not exist, and browsers do not reliably drop smooth scrolling for you in script calls. Also guard CSS `scroll-behavior: smooth` behind the media query.",
+      "tags": ["visual", "motion"],
+      "level": 2,
+      "asked": "Shows you can apply the preference in both CSS and JS, which JS-heavy animation libraries need."
+    },
+    {
+      "id": "a11y-094",
+      "q": "A promo carousel auto-advances every 4 seconds and loops forever. What does WCAG 2.2.2 Pause, Stop, Hide require?",
+      "choices": [
+        "A visible way to pause or stop it, as it moves for over 5 seconds",
+        "Nothing, as long as each slide stays visible for at least 3 seconds",
+        "Moving it into an `aria-live=\"assertive\"` region so changes are heard",
+        "Disabling the carousel on mobile screens, where it is hardest to read"
+      ],
+      "answer": 0,
+      "why": "Content that moves automatically, lasts more than five seconds and sits alongside other content needs a pause, stop or hide mechanism. A live region on a rotating carousel makes things worse by announcing every slide. Pausing on hover and focus is good practice, but a visible pause button is what satisfies the criterion.",
+      "tags": ["visual", "motion", "wcag"],
+      "level": 2,
+      "asked": "Carousels are a perennial audit finding; the live-region distractor catches people who over-apply ARIA."
+    },
+    {
+      "id": "a11y-095",
+      "q": "In Windows forced colours (high contrast) mode, a button's custom focus style `box-shadow: 0 0 0 3px #4a90e2` disappears. What fixes it?",
+      "choices": [
+        "Add `!important` to the box-shadow so the forced palette cannot override it",
+        "Also set `outline: 2px solid transparent`, which forced colours repaint",
+        "Swap the box-shadow for a `background-image` gradient ring round the button",
+        "Nothing; forced colours mode users are expected to rely on the caret instead"
+      ],
+      "answer": 1,
+      "why": "Forced colours mode removes box-shadows and replaces author colours with the user's palette, but it keeps outlines and recolours them, so a transparent outline becomes a visible ring. `!important` does not beat forced colours, and background images behind text are dropped.",
+      "tags": ["visual", "focus", "forced-colors"],
+      "level": 3,
+      "asked": "Forced colours is where many design systems fail silently; the transparent-outline trick is a known senior tell."
+    },
+    {
+      "id": "a11y-096",
+      "q": "Which media query lets you adjust styles specifically for Windows high contrast and other forced palettes?",
+      "choices": [
+        "`@media (prefers-contrast: more)`",
+        "`@media (forced-colors: active)`",
+        "`@media (inverted-colors: inverted)`",
+        "`@media (color-gamut: srgb)` for low gamut"
+      ],
+      "answer": 1,
+      "why": "`forced-colors: active` matches when the user agent enforces a limited palette, and you can use system colours such as `CanvasText` and `Highlight` inside it. `prefers-contrast: more` is a softer preference that does not force colours. Use `forced-color-adjust: none` only for things like colour swatches.",
+      "tags": ["visual", "forced-colors"],
+      "level": 3,
+      "asked": "Distinguishing `prefers-contrast` from `forced-colors` shows real exposure to high-contrast testing."
+    },
+    {
+      "id": "a11y-097",
+      "q": "A sticky footer bar covers the bottom 80px of the viewport, so tabbing to a link near the bottom hides it completely behind the bar. Which WCAG 2.2 AA criterion fails, and what is a CSS fix?",
+      "choices": [
+        "2.4.7 Focus Visible; add `outline-offset: 80px` to push the ring clear",
+        "1.4.10 Reflow; replace the bar with a hamburger menu on small screens",
+        "2.4.11 Focus Not Obscured (Minimum); add `scroll-padding-bottom: 80px`",
+        "2.4.3 Focus Order; set a positive `tabindex` on the footer bar controls"
+      ],
+      "answer": 2,
+      "why": "2.4.11 (new in 2.2) requires a focused element not to be entirely hidden by author content such as sticky headers, footers or cookie banners. `scroll-padding` on the scroll container makes the browser scroll focused elements clear of the bar. Positive tabindex breaks focus order.",
+      "tags": ["focus", "wcag"],
+      "level": 2,
+      "asked": "Sticky headers and cookie banners are everywhere; knowing `scroll-padding` turns an audit finding into a one-line fix."
+    },
+    {
+      "id": "a11y-098",
+      "q": "A row of 16×16px icon buttons sits in a dense table toolbar. What does WCAG 2.2 criterion 2.5.8 Target Size (Minimum) require?",
+      "choices": [
+        "Targets at least 44×44 CSS px with no exceptions for tables",
+        "Targets at least 24×24 CSS px, or spaced well enough apart",
+        "Targets at least 16×16 CSS px, which these icon buttons meet",
+        "Targets of any size, provided that a tooltip names each icon"
+      ],
+      "answer": 1,
+      "why": "2.5.8 (AA) sets 24×24 CSS pixels, with an exception if a 24px circle centred on each target does not overlap another target, plus exceptions for inline links and equivalents. 44×44 is the AAA criterion 2.5.5 and a platform guideline. Padding the buttons is usually the easiest fix.",
+      "tags": ["visual", "wcag"],
+      "level": 1,
+      "asked": "Commonly asked since 2.2; many candidates still quote 44px as the AA rule."
+    },
+    {
+      "id": "a11y-099",
+      "q": "A SPA route change swaps the main content but the tab still reads \"Dashboard | Acme\". What is the accessibility problem?",
+      "choices": [
+        "Nothing; titles only matter for search engines, not for people",
+        "Screen readers use the title to set the page's language and voice",
+        "The browser blocks history navigation until the title is updated",
+        "Users hear the stale title and cannot tell which page they are on"
+      ],
+      "answer": 3,
+      "why": "2.4.2 Page Titled covers each view: screen readers announce the title on navigation, and users with many tabs rely on it. Set `document.title` on every route change alongside moving focus to the new `<h1>`. Language comes from `lang`, not the title.",
+      "tags": ["semantics", "spa"],
+      "level": 1,
+      "asked": "Framework routers often forget this; interviewers pair it with the \"where does focus go on route change?\" question."
+    },
+    {
+      "id": "a11y-100",
+      "q": "A British English site includes a paragraph quoted in French. What markup makes screen readers pronounce both correctly?",
+      "code": "<html ???>\n  ...\n  <blockquote ???>Je ne regrette rien.</blockquote>",
+      "lang": "html",
+      "choices": [
+        "`<meta charset=\"fr\">` in the head, and no attribute on the blockquote",
+        "`translate=\"no\"` on the blockquote so it is kept in the original text",
+        "`<html lang=\"en-GB\">` on the root, and `lang=\"fr\"` on the blockquote",
+        "`dir=\"fr\"` on the blockquote so the reader knows to switch its accent"
+      ],
+      "answer": 2,
+      "why": "`lang` on `<html>` meets 3.1.1 Language of Page (A), and `lang` on a passage meets 3.1.2 Language of Parts (AA), letting the screen reader switch voice. `charset` is encoding, `dir` is text direction, and `translate` only stops translation tools.",
+      "tags": ["semantics", "wcag"],
+      "level": 1,
+      "asked": "A missing `lang` makes a screen reader read English with the wrong voice; it is one of axe's most common findings."
+    },
+    {
+      "id": "a11y-101",
+      "q": "You develop on Windows and want a free screen reader for a quick smoke test. Which pairing reflects how real users commonly run it?",
+      "choices": [
+        "JAWS with Safari, the combination most screen reader users rely on",
+        "VoiceOver with Edge, which ships with Windows 11 out of the box",
+        "TalkBack with Firefox, the default reader for desktop Windows",
+        "NVDA with Chrome or Firefox, both widely used with it in surveys"
+      ],
+      "answer": 3,
+      "why": "NVDA is free, open source and one of the most used desktop screen readers, typically with Chrome or Firefox. JAWS is commercial and Windows-only (usually with Chrome), VoiceOver is Apple's and pairs with Safari, TalkBack is Android's. Windows' built-in reader is Narrator, best with Edge.",
+      "tags": ["screen-readers", "testing"],
+      "level": 1,
+      "asked": "Interviewers check you know which reader goes with which browser, because bugs are often pair-specific."
+    },
+    {
+      "id": "a11y-102",
+      "q": "In NVDA's browse mode, what does pressing the H key do?",
+      "choices": [
+        "Jumps to the next heading on the page",
+        "Types \"h\" into the currently focused input",
+        "Opens NVDA's help for the current element",
+        "Hides the current element from the reader"
+      ],
+      "answer": 0,
+      "why": "In browse mode single letters are quick-navigation keys: H for headings, D for landmarks, K for links, F for form fields, T for tables. That is why a sensible heading structure matters so much. In focus mode (inside an input) letters go to the page instead.",
+      "tags": ["screen-readers"],
+      "level": 1,
+      "asked": "Knowing how screen reader users actually move around explains why headings and landmarks matter."
+    },
+    {
+      "id": "a11y-103",
+      "q": "Your custom listbox handles ArrowDown in a `keydown` listener. With NVDA in browse mode, pressing Down Arrow reads the next line of text instead. Why?",
+      "choices": [
+        "NVDA disables JavaScript `keydown` listeners on every web page",
+        "`keydown` does not fire for arrow keys in Chromium-based browsers",
+        "Browse mode eats arrows; a widget role switches it to focus mode",
+        "The listener must be registered on `window`, not on the listbox element"
+      ],
+      "answer": 2,
+      "why": "In browse mode the screen reader intercepts keys for its own virtual cursor. Focusing an element with a widget role such as `listbox`, `menu`, `grid` or `tablist` makes NVDA and JAWS switch to focus (forms) mode and pass arrows through. A styled `<div>` with no role never triggers that switch.",
+      "tags": ["screen-readers", "keyboard", "aria"],
+      "level": 3,
+      "asked": "Explains the \"works with keyboard, broken with screen reader\" bug that puzzles many developers."
+    },
+    {
+      "id": "a11y-104",
+      "q": "Where in Chrome DevTools do you check the computed accessible name and role of an element?",
+      "choices": [
+        "Elements panel, its Accessibility sidebar pane",
+        "Network panel, the Headers tab of the page request",
+        "Application panel, the Frames section for the page",
+        "Performance panel, the Interactions track at the top"
+      ],
+      "answer": 0,
+      "why": "The Accessibility pane shows the element's computed name, role, states and where the name came from, and can switch the Elements tree to a full accessibility tree view. Firefox has a dedicated Accessibility Inspector with similar data and colour-deficiency simulation.",
+      "tags": ["testing", "names"],
+      "level": 1,
+      "asked": "Checking the computed name is faster than launching a screen reader for most naming bugs."
+    },
+    {
+      "id": "a11y-105",
+      "q": "On macOS, what is the VoiceOver rotor useful for during a quick developer test?",
+      "choices": [
+        "Changing the speech rate while a page is being read aloud to you",
+        "Listing headings, links, landmarks and form controls to spot gaps",
+        "Recording a transcript of everything VoiceOver said for the report",
+        "Emulating TalkBack so that one test covers Android devices as well"
+      ],
+      "answer": 1,
+      "why": "The rotor (VO+U) lists page elements by type, which is how many users skim. A heading list with \"Untitled\" entries or links all called \"Edit\" shows problems in seconds. It changes neither speech output logging nor emulates other readers.",
+      "tags": ["screen-readers", "testing"],
+      "level": 2,
+      "asked": "Describing a two-minute rotor check shows you actually test with VoiceOver, not just read about it."
+    },
+    {
+      "id": "a11y-106",
+      "q": "A table has twenty rows each with a link reading \"Edit\". What does a screen reader user hear in a list of links, and what is the fix?",
+      "choices": [
+        "Twenty \"Edit\" links; add visually hidden context such as \"Edit order 1042\"",
+        "The row text, since links in tables are named from their row automatically",
+        "Nothing, as links inside tables are never listed in link navigation lists",
+        "Twenty \"Edit\" links; rename them \"Click here to edit\" so they are clearer"
+      ],
+      "answer": 0,
+      "why": "Link and button lists strip context, so twenty identical names are useless. Add hidden context (\"Edit <span class=\"sr-only\">order 1042</span>\") or `aria-labelledby` pointing at the button and the row's key cell. \"Click here\" adds words without meaning.",
+      "tags": ["names", "tables", "screen-readers"],
+      "level": 2,
+      "asked": "Identical row actions are in every CRUD table; this is 2.4.4 Link Purpose applied to real screens."
+    },
+    {
+      "id": "a11y-107",
+      "q": "Headings on a settings page go `h1` → `h4` → `h2` because the designer liked the h4 size. What is the problem?",
+      "choices": [
+        "Browsers refuse to render an `h4` that follows an `h1` element",
+        "Search engines drop pages that have headings out of numeric order",
+        "Level is structure; size it with CSS and keep the outline",
+        "None; screen readers ignore heading levels and only list the text"
+      ],
+      "answer": 2,
+      "why": "Screen reader users navigate by heading level, and skipped or inverted levels suggest missing or misplaced sections. Choose the level from the outline, then style it with a class. Browsers render any order, and the SEO effect is negligible.",
+      "tags": ["semantics", "screen-readers"],
+      "level": 1,
+      "asked": "Tests the separation of structure from presentation, which runs through all accessibility work."
+    },
+    {
+      "id": "a11y-108",
+      "q": "A complex data table has two header rows. What makes each data cell announce the right headers?",
+      "choices": [
+        "`<th scope>` for simple headers; `id` plus `headers` for complex ones",
+        "`role=\"grid\"` on the table so screen readers compute headers from the layout",
+        "`aria-label` on every `<td>` repeating its column and row header names in full",
+        "Bold text in the first row, which screen readers treat as a header row"
+      ],
+      "answer": 0,
+      "why": "`scope` handles simple row and column headers; for multi-level headers, `headers=\"id1 id2\"` on each cell lists exactly which headers apply. `role=\"grid\"` adds interactive keyboard expectations without fixing associations, and bold styling conveys nothing to assistive technology.",
+      "tags": ["tables", "semantics"],
+      "level": 3,
+      "asked": "Reports and dashboards produce complex tables; knowing `headers` shows depth beyond basic `<th>`."
+    },
+    {
+      "id": "a11y-109",
+      "q": "An embedded map is an `<iframe>` with no attributes other than `src`. What does a screen reader announce when reaching it?",
+      "choices": [
+        "\"Map, frame\", since browsers infer a name from the embedded URL",
+        "Nothing; screen readers never enter iframes, so a name is optional",
+        "\"Frame\", or the embedded page's title; give it a `title`",
+        "The alt text of the map image, which the frame passes up to the page"
+      ],
+      "answer": 2,
+      "why": "An iframe needs an accessible name, conventionally `title=\"Store locations map\"`, so users know what the frame contains before entering it. Screen readers do enter frames. Without a title the announcement is vague or depends on the embedded document.",
+      "tags": ["names", "semantics"],
+      "level": 1,
+      "asked": "Embeds (maps, payment fields, videos) are common in CRUD apps and axe flags unnamed frames constantly."
+    },
+    {
+      "id": "a11y-110",
+      "q": "A product video has speech and no captions. Which WCAG AA requirements apply to pre-recorded video with audio?",
+      "choices": [
+        "A transcript alone, which covers every requirement for video",
+        "Captions, plus audio description where visuals carry meaning",
+        "Nothing, provided the page has a text summary of the video",
+        "Sign language interpretation in a corner of every video frame"
+      ],
+      "answer": 1,
+      "why": "1.2.2 Captions (A) and 1.2.5 Audio Description (AA) apply to pre-recorded synchronised media; a transcript can stand in for audio description only at Level A. Sign language is AAA. Use `<track kind=\"captions\">` with WebVTT for captions.",
+      "tags": ["wcag", "media"],
+      "level": 2,
+      "asked": "Media rules are a common gap; knowing captions and audio description are separate things is the key point."
+    },
+    {
+      "id": "a11y-111",
+      "q": "What does axe's \"incomplete\" (needs review) result category mean in an automated test run?",
+      "choices": [
+        "The rule crashed, so the results for that page cannot be trusted",
+        "The rule found something it cannot decide, and a human must check it",
+        "The rule was skipped because it only applies to WCAG AAA criteria",
+        "The rule passed on some elements, so the page is partially compliant"
+      ],
+      "answer": 1,
+      "why": "axe returns `violations`, `passes`, `inapplicable` and `incomplete`. Incomplete means it could not determine the outcome, for example contrast over a background image or gradient. Failing only on `violations` is standard, but someone should review incomplete items.",
+      "tags": ["testing", "ci"],
+      "level": 2,
+      "asked": "Shows you have read axe's output rather than just a green tick."
+    },
+    {
+      "id": "a11y-112",
+      "q": "You run axe with jest-axe or vitest-axe on a component rendered in jsdom. Which class of issue can it not detect there?",
+      "choices": [
+        "Missing form labels, since jsdom does not model the label element",
+        "Invalid ARIA attributes, since jsdom strips unknown attributes",
+        "Missing `alt` on images, since jsdom never loads the image files",
+        "Colour contrast, since jsdom does no layout or rendering at all"
+      ],
+      "answer": 3,
+      "why": "jsdom has no layout engine, so it cannot compute rendered colours, sizes or overlap; the contrast rule is disabled or unreliable there. Labels, ARIA validity and `alt` are DOM checks that work fine. Run axe in a real browser (Playwright) for contrast and layout-dependent rules.",
+      "tags": ["testing", "ci", "contrast"],
+      "level": 2,
+      "asked": "Tells the interviewer you know which layer each test belongs in, not just that \"we run axe\"."
+    },
+    {
+      "id": "a11y-113",
+      "q": "An end-to-end test runs axe with Playwright on the orders page as it first loads. Which bug is it most likely to miss?",
+      "choices": [
+        "A missing `lang` attribute on the page's root `<html>` element",
+        "An unlabelled input in a delete dialog that is closed on load",
+        "Low contrast on the table's body text, visible when the page loads",
+        "Duplicate `id` values on elements rendered in the initial page"
+      ],
+      "answer": 1,
+      "why": "axe only scans the DOM that exists when you call it, so closed dialogs, menus and error states are never checked. Drive the UI into each state (open the dialog, submit an invalid form) and run the scan again. The other issues are all present on load.",
+      "tags": ["testing", "ci"],
+      "level": 2,
+      "asked": "The practical follow-up to \"we run axe in CI\": which states do you scan?"
+    },
+    {
+      "id": "a11y-114",
+      "q": "A team wants axe in CI to check WCAG 2.2 AA only. Which configuration of `@axe-core/playwright`'s `AxeBuilder` expresses that?",
+      "choices": [
+        "`.withRules(['wcag22aa'])`, since rules and tags are the same identifiers",
+        "`.options({ level: 'AA' })`, the built-in conformance level switch",
+        "`.withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa'])`",
+        "`.include('wcag22aa')`, which filters rules by their WCAG version"
+      ],
+      "answer": 2,
+      "why": "axe tags rules by standard and level, and each WCAG version's tag only covers criteria new in that version, so AA conformance to 2.2 needs the A and AA tags of 2.0, 2.1 and 2.2. `include` takes CSS selectors for page regions, and `withRules` takes rule ids such as `color-contrast`.",
+      "tags": ["testing", "ci"],
+      "level": 3,
+      "asked": "Getting the tag list right is a detail that shows hands-on set-up rather than copy-paste."
+    },
+    {
+      "id": "a11y-115",
+      "q": "A third-party chat widget causes axe violations you cannot fix. What is the responsible way to keep your CI check useful?",
+      "choices": [
+        "Disable axe in CI until the vendor fixes the widget in a future release",
+        "Exclude the widget's container and log the issue with the vendor",
+        "Set the test to pass whenever the violation count stays below twenty",
+        "Remove `aria-*` attributes from the widget at runtime to silence the rules"
+      ],
+      "answer": 1,
+      "why": "`.exclude('#chat-widget')` keeps the rest of the page gated, and the known gap is tracked instead of hidden. Disabling the whole check lets your own regressions through, a count threshold hides new bugs behind old ones, and stripping ARIA usually makes the widget worse.",
+      "tags": ["testing", "ci"],
+      "level": 2,
+      "asked": "A realistic trade-off question; interviewers want scoped exceptions, not an off switch."
+    },
+    {
+      "id": "a11y-116",
+      "q": "Your team adds `eslint-plugin-jsx-a11y`. Which bug can a lint rule catch that a runtime scan might miss?",
+      "choices": [
+        "A `<div onClick>` with no key handler or role, anywhere in source",
+        "Text over a photo whose contrast falls below 4.5:1 on some screens",
+        "Focus that lands behind a sticky footer when the user presses Tab",
+        "A live region that is inserted at the same time as its message"
+      ],
+      "answer": 0,
+      "why": "Static analysis sees every component in the codebase, including states and pages no test renders, so it catches patterns like click handlers on non-interactive elements. It cannot see rendered colours, layout or timing, which is what the other three need.",
+      "tags": ["testing", "ci"],
+      "level": 2,
+      "asked": "Checks that you think of lint, component tests, E2E scans and manual testing as layers with different reach."
+    },
+    {
+      "id": "a11y-117",
+      "q": "A Testing Library test calls `screen.getByRole('button', { name: 'Save order' })` and it fails, though a Save button is visible. What does that usually tell you?",
+      "choices": [
+        "The test needs `getByText`, since role queries only find native buttons",
+        "The button's accessible name differs, or it lacks a button role",
+        "The button is rendered in a portal, which role queries cannot reach",
+        "Role queries ignore buttons until `userEvent.setup()` has been called"
+      ],
+      "answer": 1,
+      "why": "`getByRole` queries the accessibility tree, so a failure often means an icon-only button with no name, a `<div>` with no role, or a name that differs from the visible text. Switching to `getByText` hides the bug. Portals render into `document.body`, which `screen` covers.",
+      "tags": ["testing"],
+      "level": 2,
+      "asked": "Role-based queries are free accessibility tests; interviewers like candidates who treat a failing query as a finding."
+    },
+    {
+      "id": "a11y-118",
+      "q": "Playwright can snapshot a page region's accessibility tree with `toMatchAriaSnapshot`. What kind of regression does that guard against?",
+      "choices": [
+        "Pixel-level visual changes in fonts, colours and spacing",
+        "Slower page loads caused by extra JavaScript in the bundle",
+        "Changed roles, names or structure, such as a lost heading",
+        "Server errors on API calls made while the page is loading"
+      ],
+      "answer": 2,
+      "why": "An ARIA snapshot records roles and names in a YAML-like tree, so a refactor that turns a button into a div or drops a heading shows up as a diff. It is not a screenshot test and says nothing about speed or network errors.",
+      "tags": ["testing", "ci"],
+      "level": 3,
+      "asked": "A 2025-era Playwright feature; mentioning it shows you keep up with accessibility tooling."
+    },
+    {
+      "id": "a11y-119",
+      "q": "A Lighthouse accessibility score of 100 is posted in the team channel as proof the app is accessible. What is the accurate response?",
+      "choices": [
+        "It proves WCAG 2.2 AA conformance for every page that was scanned",
+        "It proves Level A conformance, and AA needs a separate audit on top",
+        "It means no tested rule failed, which is a subset of what WCAG needs",
+        "It is meaningless, since Lighthouse does not run any accessibility rules"
+      ],
+      "answer": 2,
+      "why": "Lighthouse runs a weighted subset of axe rules on one page state. A perfect score means none of those failed; it cannot judge keyboard flows, focus order, meaningful alt text or whether errors make sense. It is useful, just not a conformance claim.",
+      "tags": ["testing", "lighthouse"],
+      "level": 1,
+      "asked": "A common misunderstanding; the strong answer names specific things only a human can check."
+    },
+    {
+      "id": "a11y-120",
+      "q": "What does a sensible accessibility test pyramid for a React CRUD app look like?",
+      "choices": [
+        "Only manual audits once a year by an external accessibility vendor",
+        "Only Lighthouse in CI, failing the build below a score of 90",
+        "Only screen reader tests, recorded and replayed in the pipeline",
+        "Lint, then axe in component and E2E tests, then manual key-flow passes"
+      ],
+      "answer": 3,
+      "why": "Each layer catches different things: lint finds patterns early, axe catches rule violations in rendered states, and manual keyboard and screen reader passes catch usability that no tool understands. Annual audits alone find problems months late. Automated screen reader replay is not a mainstream practice.",
+      "tags": ["testing", "ci"],
+      "level": 2,
+      "asked": "Interviewers use this open question to hear whether you have an actual process."
+    },
+    {
+      "id": "a11y-121",
+      "q": "A screen reader announces \"clickable\" on a `<div>` that has a click handler and nothing else. What does that tell you?",
+      "choices": [
+        "The div is accessible, because the reader has found and announced it",
+        "It saw a listener, but there is no role, name or keyboard access",
+        "The div is focusable, because a click handler adds it to the Tab order",
+        "The div has `role=\"button\"` added automatically by the browser engine"
+      ],
+      "answer": 1,
+      "why": "Some readers expose \"clickable\" from the presence of a listener, which helps a little in browse mode, but the element has no role, is not in the Tab order and does not respond to Enter or Space. Use a `<button>`.",
+      "tags": ["screen-readers", "semantics"],
+      "level": 2,
+      "asked": "Tests whether you treat \"it announces something\" as success, which is a common false positive in manual tests."
+    },
+    {
+      "id": "a11y-122",
+      "q": "A heading uses `text-transform: uppercase` in CSS versus typing \"ORDER HISTORY\" in capitals in the HTML. Why prefer the CSS?",
+      "choices": [
+        "Some screen readers spell typed capitals out, like an acronym",
+        "CSS uppercase text meets higher contrast ratios than the typed capitals",
+        "Typed capitals fail the WCAG 2.2 rule that bans all-caps body content",
+        "Search engines ignore any heading text that has been typed in capitals"
+      ],
+      "answer": 0,
+      "why": "Screen readers read the DOM text, so typed \"ORDER\" may be read letter by letter or with odd emphasis in some reader and voice combinations, while CSS changes only the rendering. It also makes copy easier to change. WCAG has no all-caps rule.",
+      "tags": ["screen-readers", "visual"],
+      "level": 3,
+      "asked": "A small detail that shows you understand screen readers read source text, not pixels."
+    },
+    {
+      "id": "a11y-123",
+      "q": "In Safari with VoiceOver, a `<ul>` styled with `list-style: none` is no longer announced as a list. What is the usual fix?",
+      "choices": [
+        "Replace the list with `<div>` elements, since lists add no information",
+        "Add `role=\"list\"` to the `<ul>` to restore list semantics explicitly",
+        "Add `aria-live` to the list so each item is announced when it appears",
+        "Set `display: list-item` on each `<li>` with the markers hidden in CSS"
+      ],
+      "answer": 1,
+      "why": "WebKit deliberately drops list semantics from unstyled lists in many contexts, reasoning that not every styled list is meaningful. Adding `role=\"list\"` restores \"list, 5 items\" where the grouping matters, such as a product grid. It is a known redundant-looking role that is actually needed.",
+      "tags": ["screen-readers", "semantics"],
+      "level": 3,
+      "asked": "A known WebKit quirk; it explains a redundant-looking `role=\"list\"` in code review."
+    },
+    {
+      "id": "a11y-124",
+      "q": "What does a five-minute screen reader smoke test of a new \"Create invoice\" form cover, as a developer rather than a specialist?",
+      "choices": [
+        "Checking colour contrast of every label with the screen reader running",
+        "Checking the page renders identically in NVDA, JAWS and VoiceOver",
+        "Tab through, listen for each name, role, state and error, then submit",
+        "Checking that every paragraph is read at the default speech speed"
+      ],
+      "answer": 2,
+      "why": "The fast, high-value check is whether every control has a sensible name and role, required and invalid states are announced, and errors and success messages are heard after submit. Screen readers do not measure contrast, and full cross-reader testing is a specialist audit.",
+      "tags": ["screen-readers", "testing"],
+      "level": 1,
+      "asked": "Interviewers want to hear a concrete, repeatable routine rather than \"we test with screen readers\"."
+    },
+    {
+      "id": "a11y-125",
+      "q": "A loading spinner shows while an orders table fetches. What should screen reader users get?",
+      "choices": [
+        "The spinner SVG's `alt` text, read every time the animation loops",
+        "Nothing, since loading states are purely visual and brief by nature",
+        "A `role=\"alert\"` saying \"Loading\" each time a request is made",
+        "A polite status such as \"Loading orders\", then \"24 orders loaded\""
+      ],
+      "answer": 3,
+      "why": "A persistent `role=\"status\"` region can announce the start and the result so users know something happened and when it finished. `alert` is too aggressive for routine loading, and an animated icon has nothing meaningful to repeat. Keep messages brief to avoid chatter on fast loads.",
+      "tags": ["live-regions"],
+      "level": 2,
+      "asked": "Loading states are in every CRUD screen; the answer shows whether you think about what silence means to a blind user."
     }
   ]
 }

@@ -456,6 +456,1819 @@
       "tags": ["events", "navigation"],
       "level": 2,
       "asked": "Analytics and autosave both hit this, and naming `sendBeacon` plus the reason `unload` is unreliable shows real mobile experience."
+    },
+    {
+      "id": "jsb-030",
+      "q": "In a current browser, the user clicks the `<span>` inside `#btn`, which sits inside `#outer`. In what order do the logs appear?",
+      "code": "outer.addEventListener('click', () => log('outer bubble'));\nouter.addEventListener('click', () => log('outer capture'), true);\nbtn.addEventListener('click', () => log('btn bubble'));\nbtn.addEventListener('click', () => log('btn capture'), true);",
+      "lang": "js",
+      "choices": [
+        "outer bubble, outer capture, btn bubble, btn capture",
+        "btn bubble, btn capture, outer capture, outer bubble",
+        "outer capture, btn capture, btn bubble, outer bubble",
+        "outer capture, btn bubble, btn capture, outer bubble"
+      ],
+      "answer": 2,
+      "why": "Capture runs from the window down to the target, then bubble runs back up, so `#outer` capture comes first and `#outer` bubble last. `#btn` is an ancestor of the real target (the span), so its capture listener runs on the way down; even on the target itself, current browsers run capture listeners before bubble ones rather than in registration order.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "Interviewers use it to see whether you know the three phases as a sequence, not just the word \"bubbling\"."
+    },
+    {
+      "id": "jsb-031",
+      "q": "Two listeners are on the same button, and the body also listens for clicks. What runs when the button is clicked?",
+      "code": "btn.addEventListener('click', (e) => {\n  log('A');\n  e.stopImmediatePropagation();\n});\nbtn.addEventListener('click', () => log('B'));\ndocument.body.addEventListener('click', () => log('body'));",
+      "lang": "js",
+      "choices": [
+        "A and B, but not body, since only bubbling to ancestors is stopped",
+        "Only A: later listeners on the button and all ancestors are skipped",
+        "A and body, since only listeners on the same element are skipped",
+        "A, B and body, since the call only affects the default action"
+      ],
+      "answer": 1,
+      "why": "`stopImmediatePropagation` stops the event reaching any ancestor and also skips the remaining listeners on the current element. Plain `stopPropagation` is the one that lets B run and only blocks the trip to the body; neither touches the default action, which is `preventDefault`'s job.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "It separates people who have debugged a third-party widget swallowing clicks from people who only know `stopPropagation`."
+    },
+    {
+      "id": "jsb-032",
+      "q": "How many times does `onClick` run when the button is clicked once?",
+      "code": "btn.addEventListener('click', onClick);\nbtn.addEventListener('click', onClick);\nbtn.addEventListener('click', onClick, { capture: true });",
+      "lang": "js",
+      "choices": ["Three times, once for each call", "Twice", "Once, as duplicates are always dropped", "Four times"],
+      "answer": 1,
+      "why": "A listener is identified by type, callback and the capture flag. The second bubble-phase registration is a duplicate and ignored, but the capture registration is a distinct listener, so the function runs twice. Other options such as `once` or `passive` do not form part of that identity.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "It explains a class of \"handler fires twice\" bugs and why the capture flag matters when removing listeners."
+    },
+    {
+      "id": "jsb-033",
+      "q": "Why does the button still log after the cleanup code runs?",
+      "code": "btn.addEventListener('click', () => console.log('hi'));\n// later, during cleanup\nbtn.removeEventListener('click', () => console.log('hi'));",
+      "lang": "js",
+      "choices": [
+        "Listeners can only be removed with an AbortController signal",
+        "The second arrow is a different function, so nothing matches it",
+        "Arrow functions are bound at creation and so can never be removed",
+        "Removal only takes effect after the next click has been dispatched"
+      ],
+      "answer": 1,
+      "why": "`removeEventListener` looks for the exact same function reference, and two identical-looking arrows are two separate objects. Keep the handler in a variable, or register with `{ signal }` and abort the controller; arrows are removable like any function when you hold the reference.",
+      "tags": ["events", "memory"],
+      "level": 1,
+      "asked": "A common leak and duplicate-handler bug in vanilla code and in React effects that clean up by hand."
+    },
+    {
+      "id": "jsb-034",
+      "q": "After this runs, does clicking the button still call `track`?",
+      "code": "btn.addEventListener('click', track, true);\nbtn.removeEventListener('click', track);",
+      "lang": "js",
+      "choices": [
+        "No: removal matches on the type and the function only",
+        "No, but only because the capture listener never fired on the target",
+        "Yes: the removal targeted a bubble listener that did not exist",
+        "It throws, since there is no bubble listener to remove"
+      ],
+      "answer": 2,
+      "why": "The capture flag is part of a listener's identity, so removing without `true` looks for a bubble-phase `track`, finds none, and silently does nothing. Pass the same `capture` value to remove it; `removeEventListener` never throws for a missing listener.",
+      "tags": ["events"],
+      "level": 3,
+      "asked": "The silent no-op is what makes this nasty; it shows up in libraries that add capture listeners and \"clean up\" wrongly."
+    },
+    {
+      "id": "jsb-035",
+      "q": "Inside a handler registered as `btn.addEventListener('click', handler)`, what is `this`?",
+      "code": "function handler() { this.classList.add('done'); }\nconst arrow = () => { this.classList.add('done'); };",
+      "lang": "js",
+      "choices": [
+        "`btn` for `handler`; for `arrow`, whatever `this` was where it was defined",
+        "`btn` in both, as `addEventListener` binds every callback to the element",
+        "`window` for `handler`; for `arrow`, the element it was attached to",
+        "`event.target` for both, the innermost element that was clicked"
+      ],
+      "answer": 0,
+      "why": "A regular function listener is called with `this` set to `currentTarget`, the element the listener is on. Arrow functions have no `this` of their own and capture it lexically, so at module top level it is `undefined`. Using `e.currentTarget` avoids relying on either.",
+      "tags": ["events", "dom"],
+      "level": 1,
+      "asked": "It checks that you know arrow functions change `this`, which interviewers probe in event-handler form."
+    },
+    {
+      "id": "jsb-036",
+      "q": "The delete button contains an SVG icon. Clicking the icon logs `undefined`, but clicking the button's padding logs the id. Why?",
+      "code": "<button class=\"delete\" data-id=\"42\"><svg>…</svg></button>\n<script>\ntable.addEventListener('click', (e) => console.log(e.target.dataset.id));\n</script>",
+      "lang": "html",
+      "choices": [
+        "SVG elements do not support `dataset`, so the lookup throws and logs nothing",
+        "`e.target` is the icon element that was hit, which has no `data-id` of its own",
+        "The icon swallows the click, so the table receives a synthetic copy of the event",
+        "Delegated listeners always report the deepest element, which is the document"
+      ],
+      "answer": 1,
+      "why": "`target` is the innermost element under the pointer, here the `<svg>` or its `<path>`. Use `e.target.closest('[data-id]')` to walk up to the element you care about. The icon does not swallow anything; the event bubbles normally with the icon as target.",
+      "tags": ["events", "dom"],
+      "level": 1,
+      "asked": "Every delegated-listener implementation hits this in the first week, so it is a quick practical check."
+    },
+    {
+      "id": "jsb-037",
+      "q": "A form-level listener should highlight whichever field currently has focus. Which listener works?",
+      "choices": [
+        "`form.addEventListener('focus', …)`, as focus bubbles like click does",
+        "`form.addEventListener('focusin', …)`, since `focusin` bubbles",
+        "`form.addEventListener('focus', …, { passive: true })`",
+        "`form.addEventListener('change', …)`, which fires on focus"
+      ],
+      "answer": 1,
+      "why": "`focus` and `blur` do not bubble, so a listener on the form never hears them from its fields. `focusin` and `focusout` are the bubbling equivalents; registering `focus` with `capture: true` would also work. `change` fires when a committed value changes, not on focus.",
+      "tags": ["events", "forms"],
+      "level": 2,
+      "asked": "It tests whether you know delegation has exceptions, which is the natural follow-up after explaining it."
+    },
+    {
+      "id": "jsb-038",
+      "q": "You delegate hover effects from a large list. Why does `mouseenter` on the list not tell you which row the pointer entered?",
+      "choices": [
+        "`mouseenter` only fires on touch devices, so desktop needs `pointerover`",
+        "`mouseenter` fires only when the list itself is entered, since it does not bubble",
+        "`mouseenter` fires on the document, never on elements inside a scroll container",
+        "`mouseenter` reports the row in `relatedTarget`, which the handler must read"
+      ],
+      "answer": 1,
+      "why": "`mouseenter`/`mouseleave` do not bubble and fire only when the pointer crosses that element's own boundary. `mouseover`/`mouseout` (or `pointerover`/`pointerout`) bubble, so a list listener sees every row, with `closest` to find the row and `relatedTarget` to ignore moves within it.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "Hover delegation is less common than click delegation, so this checks real understanding of which events bubble."
+    },
+    {
+      "id": "jsb-039",
+      "q": "A child component fires this, and a listener on an ancestor `<section>` never runs. Why?",
+      "code": "this.dispatchEvent(new CustomEvent('item-saved', {\n  detail: { id: 42 },\n}));",
+      "lang": "js",
+      "choices": [
+        "Custom event names must not contain a hyphen, so it is dropped",
+        "Custom events need `bubbles: true`, which defaults to false",
+        "`detail` is only readable by listeners on the dispatching element",
+        "Only trusted events reach ancestors, and this one is synthetic"
+      ],
+      "answer": 1,
+      "why": "Events built with `new Event` or `new CustomEvent` default to `bubbles: false`, so only listeners on the dispatching element run. Add `bubbles: true` (and `composed: true` to cross a shadow root). Synthetic events bubble fine once asked; `isTrusted` is false but propagation is unaffected.",
+      "tags": ["events", "web-components"],
+      "level": 2,
+      "asked": "A standard building block for component communication without a framework, and the default catches people out."
+    },
+    {
+      "id": "jsb-040",
+      "q": "What is logged, and in what order?",
+      "code": "el.addEventListener('ping', () => console.log('handler'));\nconsole.log('before');\nel.dispatchEvent(new Event('ping'));\nconsole.log('after');",
+      "lang": "js",
+      "choices": [
+        "before, after, handler: dispatch queues a task for its listeners",
+        "before, after, handler: listeners run as microtasks after this code",
+        "before, handler, after: `dispatchEvent` calls listeners synchronously",
+        "handler, before, after: listeners registered first run first"
+      ],
+      "answer": 2,
+      "why": "`dispatchEvent` runs every listener synchronously before it returns, and its return value tells you whether any of them called `preventDefault`. Browser-generated events arrive as tasks, but a dispatch from your own code is an ordinary nested call.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "It shows whether you can reason about synchronous event dispatch when building or testing your own event emitters."
+    },
+    {
+      "id": "jsb-041",
+      "q": "A listener checks `event.isTrusted`. When is it `false`?",
+      "choices": [
+        "When the event came from a keyboard rather than from a pointer device",
+        "When the page is embedded in a cross-origin iframe",
+        "When the listener was added with `{ passive: true }`",
+        "When script created it with `new Event()` and `dispatchEvent`"
+      ],
+      "answer": 3,
+      "why": "`isTrusted` is true only for events the browser generated from real user or system activity; events your code constructs and dispatches, and the click fired by `el.click()`, are untrusted. Browsers use it to gate things such as popups, and analytics or anti-bot code can check it.",
+      "tags": ["events", "security"],
+      "level": 2,
+      "asked": "It comes up when explaining why a scripted click cannot open a popup or trigger fullscreen."
+    },
+    {
+      "id": "jsb-042",
+      "q": "Two listeners on one button each queue a microtask. What order do the logs appear in when a real user clicks, and when code calls `btn.click()`?",
+      "code": "btn.addEventListener('click', () => {\n  Promise.resolve().then(() => log('micro 1')); log('listener 1');\n});\nbtn.addEventListener('click', () => {\n  Promise.resolve().then(() => log('micro 2')); log('listener 2');\n});",
+      "lang": "js",
+      "choices": [
+        "The same in both: listener 1, listener 2, micro 1, micro 2",
+        "User: listener 1, micro 1, listener 2, micro 2; `click()`: both listeners first",
+        "User: both listeners first; `click()`: listener 1, micro 1, listener 2, micro 2",
+        "The same in both: listener 1, micro 1, listener 2, micro 2"
+      ],
+      "answer": 1,
+      "why": "Microtasks run whenever the JavaScript stack empties. For a real click the browser calls each listener from native code, so the stack empties between them and each microtask runs straight after its listener. With `btn.click()` your script is still on the stack, so both listeners run before any microtask.",
+      "tags": ["events", "event-loop"],
+      "level": 3,
+      "asked": "A deep event-loop question that also explains why tests that call `click()` can order effects differently from real users."
+    },
+    {
+      "id": "jsb-043",
+      "q": "A keyboard shortcut should be Ctrl+Z for undo on every keyboard layout, including AZERTY. What should the handler compare?",
+      "choices": [
+        "`e.code === 'KeyZ'`, the physical key position, whatever the layout",
+        "`e.key === 'z'`, the character the key produces on this layout",
+        "`e.keyCode === 90`, which is layout-independent and standard",
+        "`e.which === 26`, the control character that Ctrl+Z produces"
+      ],
+      "answer": 1,
+      "why": "`key` is the character the user's layout produces, so it matches the letter Z printed on the key; that is what shortcuts labelled by letter should use. `code` is the physical position, which on AZERTY is where W is, so it suits games (WASD) rather than letter shortcuts. `keyCode` and `which` are deprecated.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "Checks that you use the modern KeyboardEvent properties and know the difference, which matters for international users."
+    },
+    {
+      "id": "jsb-044",
+      "q": "A search box should filter as the user types, including on paste and on mobile autocorrect. Which event fits?",
+      "choices": [
+        "`keyup`, which fires after each key is released on the field",
+        "`input`, which fires whenever the value changes by any means",
+        "`change`, which fires as each character is typed into the field",
+        "`keypress`, which fires once for every character that is entered"
+      ],
+      "answer": 1,
+      "why": "`input` fires on every value change: typing, paste, cut, drag-drop, IME and autocorrect. `change` on a text field fires only when the edited value is committed, usually on blur. Key events miss paste from menus and autocorrect, and `keypress` is deprecated.",
+      "tags": ["events", "forms"],
+      "level": 1,
+      "asked": "A quick junior check that pairs naturally with a debounce follow-up."
+    },
+    {
+      "id": "jsb-045",
+      "q": "A slider thumb is dragged with pointer events. When the pointer leaves the thumb mid-drag, `pointermove` stops arriving. What fixes it?",
+      "code": "thumb.addEventListener('pointerdown', (e) => {\n  dragging = true;\n});\nthumb.addEventListener('pointermove', (e) => {\n  if (dragging) moveTo(e.clientX);\n});",
+      "lang": "js",
+      "choices": [
+        "Use `mousemove`, which keeps firing on the thumb outside its bounds",
+        "Call `thumb.setPointerCapture(e.pointerId)` in the `pointerdown` handler",
+        "Add `{ passive: true }` so moves are delivered off the main thread",
+        "Call `e.preventDefault()` in `pointermove` so the drag is not cancelled"
+      ],
+      "answer": 1,
+      "why": "Pointer capture retargets all later events for that pointer to the thumb until `pointerup`, even when the pointer is over something else or outside the window. Mouse events have no such behaviour, which is why old code attached move listeners to `document`. For touch, `touch-action: none` on the thumb stops the browser scrolling instead.",
+      "tags": ["events"],
+      "level": 2,
+      "asked": "Drag interactions come up in kanban and slider tasks, and pointer capture is the clean answer."
+    },
+    {
+      "id": "jsb-046",
+      "q": "Which code gives the \"You have unsaved changes\" prompt when the user tries to close a tab with a dirty form?",
+      "code": "// option shown\nwindow.addEventListener('beforeunload', (e) => {\n  if (isDirty) e.preventDefault();\n});",
+      "lang": "js",
+      "choices": [
+        "It works: browsers show a generic prompt when `preventDefault` is called",
+        "It fails: the handler must return the custom message text to display",
+        "It fails: `beforeunload` only fires when navigating links, not closing tabs",
+        "It works, and the browser shows the text from the form's `title` field"
+      ],
+      "answer": 0,
+      "why": "Calling `preventDefault` (or setting `returnValue`) asks the browser to confirm; browsers show their own generic wording and ignore custom strings. Some also require the user to have interacted with the page. Add the listener only while the form is dirty, because a permanent `beforeunload` listener can hurt the back/forward cache.",
+      "tags": ["events", "navigation"],
+      "level": 2,
+      "asked": "A common product request; strong answers mention that the message is not customisable and the listener should be conditional."
+    },
+    {
+      "id": "jsb-047",
+      "q": "What does clicking the button do?",
+      "code": "btn.onclick = () => log(1);\nbtn.onclick = () => log(2);\nbtn.addEventListener('click', () => log(3));\nbtn.addEventListener('click', () => log(4));",
+      "lang": "js",
+      "choices": ["Logs 2, 3, 4", "Logs 1, 2, 3, 4", "Logs 2 only", "Logs 3, 4, then 2"],
+      "answer": 0,
+      "why": "An `on…` property holds one handler, so the second assignment replaces the first; it takes part in dispatch as a listener registered at the point it was first set. `addEventListener` adds independent listeners, which is why libraries use it: they cannot clobber each other.",
+      "tags": ["events"],
+      "level": 1,
+      "asked": "A basic check that explains why `addEventListener` is the default in shared code."
+    },
+    {
+      "id": "jsb-048",
+      "q": "A page adds `Content-Security-Policy: script-src 'self'`. Which existing code stops working?",
+      "choices": [
+        "`<script src=\"/app.js\" defer>`, since deferred scripts need a nonce",
+        "`btn.addEventListener('click', save)` inside `/app.js`",
+        "`<button onclick=\"save()\">Save</button>` in the HTML",
+        "`import { save } from './save.js'` inside a module script"
+      ],
+      "answer": 2,
+      "why": "Inline event-handler attributes are inline script, and a `script-src` without `'unsafe-inline'` (or a matching hash with `'unsafe-hashes'`) blocks them. Scripts loaded from the same origin and listeners attached from them are allowed. This is one practical reason to keep handlers out of markup.",
+      "tags": ["events", "security"],
+      "level": 2,
+      "asked": "Links event handling to CSP, which interviewers like because it shows the security reason behind a style rule."
+    },
+    {
+      "id": "jsb-049",
+      "q": "A delegated handler on a nested menu finds the clicked item like this. When can it act on the wrong element?",
+      "code": "menu.addEventListener('click', (e) => {\n  const item = e.target.closest('[data-action]');\n  if (item) run(item.dataset.action);\n});",
+      "lang": "js",
+      "choices": [
+        "When `menu` itself sits inside an element with `data-action`",
+        "When the clicked element is a text node rather than an element",
+        "When the item has children, as `closest` stops at the first child",
+        "When two items share an action, as `closest` returns the first one"
+      ],
+      "answer": 0,
+      "why": "`closest` walks all the way up to the document, so a click on menu padding can match an ancestor outside the menu that happens to have `data-action`. Guard with `if (item && menu.contains(item))`. `e.target` is always an element for clicks, and `closest` walks up, never down.",
+      "tags": ["events", "dom"],
+      "level": 3,
+      "asked": "A strong delegation answer includes the containment check; it is the difference between a demo and production code."
+    },
+    {
+      "id": "jsb-050",
+      "q": "This module script runs after the page has loaded. Why does `init` never run?",
+      "code": "// loaded later via dynamic import()\ndocument.addEventListener('DOMContentLoaded', init);",
+      "lang": "js",
+      "choices": [
+        "`DOMContentLoaded` only fires for listeners on `window`, not `document`",
+        "The event has already fired, and late listeners do not get a replay",
+        "Module scripts cannot listen for document lifecycle events at all",
+        "The listener needs `{ once: true }` to be allowed after parsing"
+      ],
+      "answer": 1,
+      "why": "Events are not sticky: a listener added after `DOMContentLoaded` has fired simply waits for an event that never comes. Check `document.readyState` first (`'loading'` means wait, otherwise run now), or rely on deferred and module scripts, which already run after parsing.",
+      "tags": ["loading", "events"],
+      "level": 2,
+      "asked": "It catches widgets that work in a static page but break when loaded lazily."
+    },
+    {
+      "id": "jsb-051",
+      "q": "What does this log?",
+      "code": "const ul = document.createElement('ul');\nul.innerHTML = '\\n  <li>a</li>\\n  <li>b</li>\\n';\nconsole.log(ul.childNodes.length, ul.children.length);",
+      "lang": "js",
+      "choices": ["2 2", "5 2", "2 5", "3 2"],
+      "answer": 1,
+      "why": "`childNodes` includes every node, and the whitespace between tags becomes three text nodes around the two `<li>` elements, making five. `children` contains only elements. The same trap makes `firstChild` return a text node where you expected the first `<li>`; use `firstElementChild`.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "A small but real source of \"undefined is not a function\" bugs when walking the DOM."
+    },
+    {
+      "id": "jsb-052",
+      "q": "A list of 200 rows is rendered with this loop. Apart from speed, what breaks?",
+      "code": "for (const item of items) {\n  list.innerHTML += `<li>${escape(item.name)}</li>`;\n}",
+      "lang": "js",
+      "choices": [
+        "Nothing: `+=` appends new markup after the existing rows",
+        "Only the final row renders, since each assignment replaces the list",
+        "The rows appear in reverse order, as each string is prepended",
+        "Existing rows are rebuilt each time, losing listeners and input state"
+      ],
+      "answer": 3,
+      "why": "`innerHTML +=` reads the whole list back as a string, appends, and reparses it, so every existing `<li>` is destroyed and recreated each time. Listeners on them, focus and typed values are lost, and the work is quadratic. Build nodes with `createElement` and `append`, or use `insertAdjacentHTML('beforeend', …)`, which does not touch existing children.",
+      "tags": ["dom", "performance"],
+      "level": 2,
+      "asked": "It tests whether you know what `innerHTML` really does, beyond \"it can be an XSS risk\"."
+    },
+    {
+      "id": "jsb-053",
+      "q": "What does a `<template>` element give you when rendering repeated rows?",
+      "code": "<template id=\"row\"><tr><td class=\"name\"></td></tr></template>\n<script>\nconst tr = document.getElementById('row').content.cloneNode(true);\n</script>",
+      "lang": "html",
+      "choices": [
+        "Parsed but inert markup: nothing renders, loads or runs until you clone it",
+        "A string of HTML that is reparsed and sanitised each time you clone it",
+        "Markup that renders hidden and updates each clone when it is changed",
+        "A reusable custom element whose instances share one shadow root"
+      ],
+      "answer": 0,
+      "why": "`<template>` content is parsed once into a `DocumentFragment` that is not rendered, and its images do not load and scripts do not run. `content.cloneNode(true)` copies it cheaply for each row; clones are independent, and nothing about it sanitises user data, so fill it with `textContent`.",
+      "tags": ["dom"],
+      "level": 2,
+      "asked": "Framework-free rendering questions often end here, and it links to web components."
+    },
+    {
+      "id": "jsb-054",
+      "q": "Why can reading `el.innerText` inside a loop be much slower than reading `el.textContent`?",
+      "choices": [
+        "`innerText` decodes HTML entities, which requires parsing the markup again",
+        "`innerText` is CSS-aware, so it must lay out the page to know what is visible",
+        "`innerText` walks shadow roots too, while `textContent` stops at their hosts",
+        "`innerText` is computed asynchronously and blocks until the next frame"
+      ],
+      "answer": 1,
+      "why": "`innerText` returns the text as rendered: it skips `display: none` content and applies line breaks from layout, so reading it can force a synchronous style and layout. `textContent` returns the raw text of all descendant nodes with no layout. Neither parses or touches shadow roots.",
+      "tags": ["dom", "rendering"],
+      "level": 2,
+      "asked": "It shows you know the two are not synonyms, one being layout-dependent."
+    },
+    {
+      "id": "jsb-055",
+      "q": "The element is `<div data-user-id=\"7\">`. What is `el.dataset.userId`?",
+      "choices": [
+        "The number `7`",
+        "The string `\"7\"`",
+        "`undefined`, as the key must be `user-id`",
+        "`null` until the element is attached"
+      ],
+      "answer": 1,
+      "why": "`data-*` attributes map to camelCased `dataset` keys, so `data-user-id` becomes `userId`, and attribute values are always strings. Convert with `Number(el.dataset.userId)` when you need a number; writing `dataset.userId = 8` updates the attribute to `\"8\"`.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "A small but frequent source of `\"7\" === 7` bugs in delegated handlers."
+    },
+    {
+      "id": "jsb-056",
+      "q": "The input was rendered as `<input name=\"qty\" value=\"1\">`, and the user has typed 5. What do these return?",
+      "code": "input.value;\ninput.getAttribute('value');\ninput.defaultValue;",
+      "lang": "js",
+      "choices": ["\"5\", \"5\", \"1\"", "\"5\", \"1\", \"5\"", "\"5\", \"1\", \"1\"", "\"1\", \"1\", \"5\""],
+      "answer": 2,
+      "why": "The `value` attribute is the initial value and is reflected by `defaultValue`; typing changes only the `value` property. That is why `form.reset()` goes back to \"1\" and why selectors like `[value=\"5\"]` do not match typed text. Checkboxes have the same split between `checked` and `defaultChecked`.",
+      "tags": ["dom", "forms"],
+      "level": 2,
+      "asked": "The attribute-versus-property distinction explains many DOM bugs and how frameworks decide what to set."
+    },
+    {
+      "id": "jsb-057",
+      "q": "What does `btn.disabled` return after this line?",
+      "code": "btn.setAttribute('disabled', 'false');",
+      "lang": "js",
+      "choices": [
+        "`false`, since the attribute value is the string \"false\"",
+        "`true`, because a boolean attribute is on whenever present",
+        "`\"false\"`, the attribute value as a string",
+        "It throws, since only \"\" or \"disabled\" are allowed"
+      ],
+      "answer": 1,
+      "why": "For boolean attributes such as `disabled`, `checked` and `hidden`, presence means true whatever the value. Use `btn.disabled = false` or `removeAttribute('disabled')`, or `toggleAttribute('disabled', cond)`.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "A classic bug from string-building markup, and a quick check of how HTML attributes really work."
+    },
+    {
+      "id": "jsb-058",
+      "q": "What does `el.classList.toggle('open', isOpen)` do?",
+      "choices": [
+        "Flips `open`, then returns whether it matches `isOpen`",
+        "Adds `open` if `isOpen` is truthy and removes it otherwise",
+        "Flips `open` only when `isOpen` is true, and otherwise does nothing",
+        "Sets the whole `className` to `open` or to an empty string"
+      ],
+      "answer": 1,
+      "why": "The optional second argument turns `toggle` into a conditional add/remove, which is what state-driven rendering needs: the class always matches the state, however many times it runs. Without it, `toggle` flips the class and returns whether it is now present.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "It shows the habit of deriving the DOM from state rather than flipping it, a theme interviewers probe."
+    },
+    {
+      "id": "jsb-059",
+      "q": "You clone a row that has a click listener attached with `addEventListener`. What happens when the clone is clicked?",
+      "code": "const copy = row.cloneNode(true);\ntable.append(copy);",
+      "lang": "js",
+      "choices": [
+        "The listener runs, since a deep clone copies listeners on every node",
+        "The listener runs only if it was added with the `capture` option",
+        "Nothing, as `addEventListener` listeners are not copied by cloning",
+        "The listener runs twice, once for the original and once for the copy"
+      ],
+      "answer": 2,
+      "why": "`cloneNode` copies attributes and, when deep, child nodes, but not listeners registered with `addEventListener`. Inline `onclick` attributes do get copied, being attributes. This is another reason delegation suits dynamic lists: new rows need no wiring.",
+      "tags": ["dom", "events"],
+      "level": 2,
+      "asked": "It connects cloning to delegation, which interviewers use to see if you design for dynamic content."
+    },
+    {
+      "id": "jsb-060",
+      "q": "You need an element's position relative to the whole document, to scroll there later. What do you compute?",
+      "choices": [
+        "`el.getBoundingClientRect().top + window.scrollY`",
+        "`el.getBoundingClientRect().top`, already document-relative",
+        "`el.offsetTop`, always measured from the top of the document",
+        "`el.scrollTop`, the distance scrolled to reach the element"
+      ],
+      "answer": 0,
+      "why": "`getBoundingClientRect` is relative to the viewport, so add the current scroll offset to get a document coordinate. `offsetTop` is relative to the `offsetParent`, which is the document only when no ancestor is positioned, and `scrollTop` is how far the element's own content is scrolled.",
+      "tags": ["dom", "rendering"],
+      "level": 2,
+      "asked": "Tooltips, scroll-to and sticky UI all need this, and mixing up the coordinate systems is common."
+    },
+    {
+      "id": "jsb-061",
+      "q": "A scrollable log panel should auto-scroll only when the user is already at the bottom. Which check is right?",
+      "choices": [
+        "`panel.scrollTop === panel.offsetHeight - panel.clientTop`",
+        "`panel.scrollHeight - panel.scrollTop - panel.clientHeight < 2`",
+        "`panel.scrollTop + panel.offsetWidth >= panel.scrollWidth`",
+        "`panel.getBoundingClientRect().bottom === window.innerHeight`"
+      ],
+      "answer": 1,
+      "why": "`scrollHeight` is the full content height, `clientHeight` the visible inner height and `scrollTop` how far it has scrolled, so their difference is the distance left to the bottom. A small tolerance absorbs fractional pixels on zoomed or high-DPI screens. `offsetHeight` includes borders and scrollbars.",
+      "tags": ["dom", "rendering"],
+      "level": 2,
+      "asked": "A real chat or log feature; knowing the three size properties is what makes the answer quick."
+    },
+    {
+      "id": "jsb-062",
+      "q": "How many times does the observer callback run, and when?",
+      "code": "const mo = new MutationObserver((records) => log(records.length));\nmo.observe(list, { childList: true });\nfor (let i = 0; i < 3; i++) list.append(document.createElement('li'));\nlog('done');",
+      "lang": "js",
+      "choices": [
+        "Three times, synchronously, before \"done\" each time with 1",
+        "Once, after \"done\", with 3 records, as a microtask",
+        "Once, on the next animation frame, with 3 records",
+        "Three times, after \"done\", each run with a single record"
+      ],
+      "answer": 1,
+      "why": "Mutation observers batch records and deliver them in a microtask after the current script finishes, so the three appends arrive together in one call after \"done\". They replaced the synchronous, slow mutation events, which are deprecated and already removed from Chrome.",
+      "tags": ["dom", "event-loop"],
+      "level": 3,
+      "asked": "It tests the batching model, which matters when an observer reacts to DOM changes made by a framework."
+    },
+    {
+      "id": "jsb-063",
+      "q": "A chart must redraw when its container changes width, including when a sidebar collapses. Which API fits?",
+      "choices": [
+        "A `window` `resize` listener that reads the container width",
+        "A `ResizeObserver` watching the container element",
+        "A `MutationObserver` on the container's `style` attribute",
+        "An `IntersectionObserver` with a threshold of 1.0"
+      ],
+      "answer": 1,
+      "why": "Collapsing a sidebar changes the container's size without resizing the window, so a `resize` listener misses it. `ResizeObserver` reports size changes of the element itself, whatever caused them, and delivers them once per frame after layout. A `MutationObserver` sees attribute changes, not layout results.",
+      "tags": ["dom", "rendering"],
+      "level": 2,
+      "asked": "Dashboards and responsive widgets need this, and it shows you think in components rather than the window."
+    },
+    {
+      "id": "jsb-064",
+      "q": "A page has `<div id=\"config\">`, and a legacy script reads a global `config` that someone forgot to define. What happens?",
+      "code": "if (config) {\n  applySettings(config.theme);\n}",
+      "lang": "js",
+      "choices": [
+        "It throws a ReferenceError, because `config` was never declared",
+        "`config` is the div element, so the check passes with the wrong value",
+        "`config` is `undefined`, so the block is skipped silently",
+        "It reads `document.config`, which is `null` in standards mode"
+      ],
+      "answer": 1,
+      "why": "Browsers expose elements with an `id` as named properties of `window`, so an undeclared `config` resolves to the element instead of throwing. The code then runs with a DOM node as its settings. Modules and bundled code avoid most of this, but it still bites global scripts and tests.",
+      "tags": ["dom"],
+      "level": 3,
+      "asked": "An obscure but real legacy bug; recognising it signals deep debugging experience."
+    },
+    {
+      "id": "jsb-065",
+      "q": "What is `total` after this runs in a browser?",
+      "code": "localStorage.setItem('count', 5);\nconst total = localStorage.getItem('count') + 1;",
+      "lang": "js",
+      "choices": ["`\"51\"`", "`6`", "`NaN`", "A TypeError"],
+      "answer": 0,
+      "why": "Web Storage keeps only strings, so the 5 is stored as \"5\" and `getItem` returns \"5\"; `+ 1` then concatenates. Parse on the way out (`Number(...)`), or store JSON and `JSON.parse` it. `getItem` also returns `null` for a missing key, which needs its own default.",
+      "tags": ["storage"],
+      "level": 1,
+      "asked": "A first-week bug that shows whether you know the storage API is string-only."
+    },
+    {
+      "id": "jsb-066",
+      "q": "A settings object is saved with `localStorage.setItem('prefs', prefs)`. What is stored?",
+      "choices": [
+        "A structured clone of the object, as IndexedDB would store it",
+        "A JSON string of the object, serialised automatically on save",
+        "A reference that is lost when the tab closes, like a variable",
+        "The literal string `\"[object Object]\"`"
+      ],
+      "answer": 3,
+      "why": "The value is converted with `String()`, which for a plain object gives \"[object Object]\", so the data is gone. Use `JSON.stringify` to save and `JSON.parse` to load, and remember Dates come back as strings and Maps and Sets as `{}`.",
+      "tags": ["storage"],
+      "level": 1,
+      "asked": "It checks that you serialise explicitly and know what JSON loses on the round trip."
+    },
+    {
+      "id": "jsb-067",
+      "q": "A wizard keeps its progress in `sessionStorage`. The user opens the app in a second tab by typing the URL. What does that tab see?",
+      "choices": [
+        "The same progress, since session storage is shared per origin",
+        "The same progress until either tab writes, then a separate copy",
+        "An empty store, since session storage belongs to one tab",
+        "An empty store, until the first tab is closed or reloaded"
+      ],
+      "answer": 2,
+      "why": "`sessionStorage` is scoped to one top-level browsing context (a tab) and origin, and survives reloads in that tab. A new tab starts empty; \"Duplicate tab\" starts with a copy, after which the two diverge. Use `localStorage` or the server for data that should follow the user.",
+      "tags": ["storage"],
+      "level": 2,
+      "asked": "Choosing session versus local storage for form drafts is a common design question."
+    },
+    {
+      "id": "jsb-068",
+      "q": "A draft autosave writes to `localStorage` on every keystroke. In production it sometimes throws. What is the most likely error, and the right handling?",
+      "choices": [
+        "`QuotaExceededError` when the origin's few-MB quota is full; catch it and degrade",
+        "`SecurityError` when the page is served over plain HTTP; switch to cookies",
+        "`TypeError` when the value is longer than 64 KB; split it into chunks",
+        "`InvalidStateError` when another tab writes the same key; retry after a delay"
+      ],
+      "answer": 0,
+      "why": "Each origin gets roughly 5 MB for localStorage, and `setItem` throws a `QuotaExceededError` when that is full; some privacy modes and blocked-storage settings throw on access too. Wrap reads and writes in try/catch and keep the app working without storage. There is no per-value 64 KB limit and concurrent writes from tabs do not throw.",
+      "tags": ["storage"],
+      "level": 2,
+      "asked": "It shows whether you treat browser storage as unreliable, which is what production code has to do."
+    },
+    {
+      "id": "jsb-069",
+      "q": "Why is `localStorage` a poor fit for caching a few thousand API records in an offline-capable app?",
+      "choices": [
+        "It is cleared automatically whenever the user closes the browser",
+        "It is synchronous, string-only and small, so large reads block the main thread",
+        "It is only readable from a service worker, not from page scripts",
+        "It is shared between origins, so the data could leak to other sites"
+      ],
+      "answer": 1,
+      "why": "Every `getItem` and `setItem` blocks the main thread, everything must be serialised to strings, and the quota is only a few megabytes. IndexedDB is asynchronous, stores structured data including Blobs, supports indexes and has far larger quotas. localStorage survives restarts, is per origin, and is not available in service workers at all.",
+      "tags": ["storage"],
+      "level": 2,
+      "asked": "The follow-up is usually \"so what would you use?\", and IndexedDB via a small wrapper is the expected answer."
+    },
+    {
+      "id": "jsb-070",
+      "q": "Inside an IndexedDB transaction, the code awaits a `fetch` before writing the result. The write fails with `TransactionInactiveError`. Why?",
+      "code": "const tx = db.transaction('items', 'readwrite');\nconst store = tx.objectStore('items');\nconst res = await fetch('/api/items/1');\nstore.put(await res.json());",
+      "lang": "js",
+      "choices": [
+        "IndexedDB forbids network calls from inside a page's event loop",
+        "`put` needs the key passed separately when the store has a keyPath",
+        "A readwrite transaction times out after one second of any activity",
+        "The transaction auto-commits once no request is pending at a task boundary"
+      ],
+      "answer": 3,
+      "why": "IndexedDB transactions stay alive only while requests are queued; when control returns to the event loop with nothing pending, they commit. Waiting on a network request lets that happen, so the later `put` hits a finished transaction. Fetch first, then open the transaction and do all the IndexedDB work without awaiting anything else.",
+      "tags": ["storage", "event-loop"],
+      "level": 3,
+      "asked": "This is the classic IndexedDB trap, and it shows you have used the API rather than only named it."
+    },
+    {
+      "id": "jsb-071",
+      "q": "What does the Cache API (`caches.open(...)`) store, and how does it differ from the browser's HTTP cache?",
+      "choices": [
+        "The same entries as the HTTP cache, exposed read-only to scripts",
+        "Arbitrary JSON values keyed by string, like localStorage but larger",
+        "Request/Response pairs you add and remove yourself; it ignores cache headers",
+        "Compiled JavaScript modules, so the browser can skip parsing them"
+      ],
+      "answer": 2,
+      "why": "The Cache API is a programmable store of Request/Response pairs, normally used by a service worker to serve assets or API responses offline. Entries stay until your code deletes them or the browser evicts the origin; `Cache-Control` does not expire them. The HTTP cache is separate and driven entirely by headers.",
+      "tags": ["storage", "workers"],
+      "level": 2,
+      "asked": "It checks whether you know the layers of caching a PWA juggles and who controls each."
+    },
+    {
+      "id": "jsb-072",
+      "q": "Your chat widget runs in an iframe from `widget.example` on many customer sites. In current Chrome, Firefox and Safari, what does its `localStorage` look like?",
+      "choices": [
+        "One store for `widget.example`, shared across every embedding site",
+        "A separate store per top-level site, since third-party storage is partitioned",
+        "No storage at all: cross-origin iframes may not use localStorage",
+        "The embedding site's own store, since the iframe inherits its origin"
+      ],
+      "answer": 1,
+      "why": "Browsers now partition storage for third-party contexts by the top-level site, so the widget on shop-a.com and on shop-b.com sees two separate stores and cannot track users across them. First-party visits to `widget.example` get yet another store. The iframe keeps its own origin; it does not borrow the host page's.",
+      "tags": ["storage", "security"],
+      "level": 3,
+      "asked": "Embedded widgets and SSO iframes break on this, so it signals current platform knowledge."
+    },
+    {
+      "id": "jsb-073",
+      "q": "What does this line do to the existing cookies for the page?",
+      "code": "document.cookie = 'theme=dark; path=/; max-age=31536000';",
+      "lang": "js",
+      "choices": [
+        "Replaces the whole cookie string with just `theme=dark`",
+        "Throws unless the page removes every cookie first",
+        "Adds `theme` to a copy that is sent only once the page reloads",
+        "Sets or updates just the `theme` cookie and leaves the others alone"
+      ],
+      "answer": 3,
+      "why": "`document.cookie` is an accessor: assigning sets one cookie, with its attributes, and reading returns all script-visible cookies as `name=value; name2=value2`. Cookies marked `HttpOnly` never appear when reading and cannot be written from script. The new cookie is sent on the very next request.",
+      "tags": ["storage", "cookies"],
+      "level": 1,
+      "asked": "The odd getter/setter API is a common quiz item, and a good lead-in to HttpOnly."
+    },
+    {
+      "id": "jsb-074",
+      "q": "A logout handler tries to delete a cookie that was set with `path=/app`. Why does the cookie survive?",
+      "code": "document.cookie = 'prefs=; max-age=0';",
+      "lang": "js",
+      "choices": [
+        "`max-age=0` is invalid, so the browser ignores the whole assignment",
+        "Deleting needs the same path (and domain) as the cookie was set with",
+        "Cookies can only be deleted by the server with a `Set-Cookie` header",
+        "The empty value is kept as a valid cookie until the session ends"
+      ],
+      "answer": 1,
+      "why": "Cookies are identified by name, domain and path, so an expiring cookie with the default path (the current directory) is a different cookie and the `/app` one remains. Repeat the original `path` and `domain` with `max-age=0`. Script can delete any non-HttpOnly cookie it could have set.",
+      "tags": ["storage", "cookies"],
+      "level": 2,
+      "asked": "\"Logout does not log me out\" is a real bug report, and this is often why."
+    },
+    {
+      "id": "jsb-075",
+      "q": "A cookie is set by `app.example.com` with no `Domain` attribute. Which requests carry it?",
+      "choices": [
+        "Only requests to `app.example.com` itself",
+        "Requests to `example.com` and every one of its subdomains",
+        "Requests to `app.example.com` and to any of its own subdomains",
+        "Requests to any host, provided the scheme and port match"
+      ],
+      "answer": 0,
+      "why": "Without `Domain`, a cookie is host-only: sent back to the exact host that set it. Setting `Domain=example.com` widens it to `example.com` and every subdomain, which is how shared login across `app.` and `admin.` works and why you should not widen it casually. A host cannot set a cookie for an unrelated domain.",
+      "tags": ["cookies", "security"],
+      "level": 3,
+      "asked": "Cookie scoping comes up whenever an app spans subdomains, and the host-only default surprises people."
+    },
+    {
+      "id": "jsb-076",
+      "q": "A cookie is set with `Set-Cookie: sid=abc; HttpOnly; Secure`. When does the browser discard it?",
+      "choices": [
+        "After 24 hours, the default lifetime for cookies without an expiry",
+        "When the tab that received it closes",
+        "When the browser session ends, as it has no `Expires` or `Max-Age`",
+        "Never, until the server sends a replacement with the same name"
+      ],
+      "answer": 2,
+      "why": "A cookie with no `Expires` or `Max-Age` is a session cookie, dropped when the browser session ends. Browsers that restore sessions on start-up may keep them, so do not rely on it for security; give auth cookies an explicit lifetime and expire sessions server-side. It is not per tab.",
+      "tags": ["cookies"],
+      "level": 1,
+      "asked": "A basic cookie-lifetime check that often leads into how \"remember me\" is implemented."
+    },
+    {
+      "id": "jsb-077",
+      "q": "Your SPA on `https://app.example.com` calls `https://api.example.com` with plain `fetch(url)`. The API relies on a session cookie. What happens?",
+      "choices": [
+        "The cookie is sent, since both hosts share the `example.com` domain",
+        "The cookie is sent only on GET requests, not on POST",
+        "Not sent: cross-origin fetch omits credentials by default",
+        "The request is blocked before sending, since cookies need a preflight"
+      ],
+      "answer": 2,
+      "why": "`fetch` defaults to `credentials: 'same-origin'`, and a different subdomain is a different origin. Pass `credentials: 'include'`, and the API must answer with `Access-Control-Allow-Credentials: true` and a specific `Access-Control-Allow-Origin`. The same-site relationship affects `SameSite`, not this default.",
+      "tags": ["fetch", "cors", "cookies"],
+      "level": 2,
+      "asked": "\"Login works in Postman but not in the app\" is a daily question, and this is half the answer."
+    },
+    {
+      "id": "jsb-078",
+      "q": "The fetch uses `credentials: 'include'`, and the API answers with these headers. What does the browser do?",
+      "code": "Access-Control-Allow-Origin: *\nAccess-Control-Allow-Credentials: true",
+      "lang": "http",
+      "choices": [
+        "Allows it: the wildcard covers every origin, including this one",
+        "Blocks the response: credentialed requests need an exact origin",
+        "Allows it, but strips the cookies from the next request",
+        "Allows it only if the request method is GET or HEAD"
+      ],
+      "answer": 1,
+      "why": "For credentialed requests the wildcard is not allowed: the server must echo the specific origin (and add `Vary: Origin` so caches keep them apart). Otherwise the browser hides the response from your script, even though the server has already processed the request.",
+      "tags": ["cors", "fetch"],
+      "level": 3,
+      "asked": "The wildcard-plus-credentials failure is the most common CORS mistake in real APIs."
+    },
+    {
+      "id": "jsb-079",
+      "q": "To \"fix\" a CORS error, someone adds `mode: 'no-cors'`. What does the code now get back?",
+      "code": "const res = await fetch('https://api.other.com/data', { mode: 'no-cors' });\nconsole.log(res.type, res.status);",
+      "lang": "js",
+      "choices": [
+        "`cors 200`, with the JSON body readable as normal",
+        "`basic 200`, since the request is now treated as same-origin",
+        "`opaque 0`, with no readable headers or body",
+        "Nothing: the fetch rejects with a TypeError before sending"
+      ],
+      "answer": 2,
+      "why": "`no-cors` sends a simple request and gives you an opaque response: status 0, no headers and an empty body, so there is no data to use. It exists for cases like caching a cross-origin image in a service worker. The fix for CORS is on the server, or a same-origin proxy.",
+      "tags": ["cors", "fetch"],
+      "level": 2,
+      "asked": "Interviewers use it to check that you know CORS is solved server-side, not by a client flag."
+    },
+    {
+      "id": "jsb-080",
+      "q": "The API sends `X-Total-Count: 240` on a cross-origin response, and DevTools shows it. Why does `res.headers.get('X-Total-Count')` return `null`?",
+      "choices": [
+        "Header names must be lower-cased when read through the Headers object",
+        "Custom headers are only readable after the body has been consumed",
+        "Headers starting with `X-` are reserved and always hidden from script",
+        "The server did not name it in `Access-Control-Expose-Headers`"
+      ],
+      "answer": 3,
+      "why": "On a CORS response, script can read only the safelisted headers such as `Content-Type` and `Cache-Control`; anything else must be named in `Access-Control-Expose-Headers`. DevTools shows the raw network response, which is why it looks present. `Headers.get` is case-insensitive.",
+      "tags": ["cors", "fetch"],
+      "level": 3,
+      "asked": "Pagination via headers trips on this, and it proves you have debugged CORS past the preflight."
+    },
+    {
+      "id": "jsb-081",
+      "q": "A cross-origin request fails CORS. What can your JavaScript learn about the failure?",
+      "choices": [
+        "Only that `fetch` rejected with a `TypeError`; details are in the console",
+        "The HTTP status code, via the `status` field on the rejection error",
+        "The name of the missing header, from `error.message`",
+        "Nothing: the promise stays pending until the page is reloaded"
+      ],
+      "answer": 0,
+      "why": "A CORS failure is deliberately indistinguishable from a network error in script: `fetch` rejects with a `TypeError`, so a page cannot probe other origins. The browser console and Network panel show the real reason. The server may still have run the request, which matters for non-idempotent calls.",
+      "tags": ["cors", "fetch"],
+      "level": 2,
+      "asked": "It tests your debugging path: go to the console and Network panel, not the error object."
+    },
+    {
+      "id": "jsb-082",
+      "q": "Which URL is the same origin as `https://app.example.com/dashboard`?",
+      "choices": [
+        "`https://app.example.com:443/settings`",
+        "`http://app.example.com/dashboard`",
+        "`https://api.example.com/dashboard`",
+        "`https://app.example.com:8443/dashboard`"
+      ],
+      "answer": 0,
+      "why": "An origin is scheme, host and port, and 443 is the default port for https, so the first URL has the same origin despite the explicit port. Changing the scheme, the subdomain or the port makes a different origin. Paths never matter.",
+      "tags": ["cors", "security"],
+      "level": 1,
+      "asked": "Every CORS and cookie question rests on this definition, so it often opens the topic."
+    },
+    {
+      "id": "jsb-083",
+      "q": "In development the React app runs on `localhost:5173` and the API on `localhost:3000`, and calls hit CORS errors. Why does a Vite `server.proxy` for `/api` make them go away?",
+      "choices": [
+        "The proxy adds `Access-Control-Allow-Origin: *` to every API response",
+        "The browser calls the dev server on its own origin, which forwards server-side",
+        "Vite turns off the browser's CORS checks for localhost while it is running",
+        "Proxied requests are sent with `mode: 'no-cors'` and patched on return"
+      ],
+      "answer": 1,
+      "why": "With a proxy the page fetches `/api/...` from `localhost:5173`, which is same-origin, and the dev server makes the call to port 3000 itself; CORS does not apply between servers. Different ports are different origins, which is why the direct call failed. Production then needs the same shape (a reverse proxy) or real CORS headers.",
+      "tags": ["cors", "fetch"],
+      "level": 2,
+      "asked": "Knowing why the dev proxy works stops people assuming the same code will work unchanged in production."
+    },
+    {
+      "id": "jsb-084",
+      "q": "What happens here?",
+      "code": "const res = await fetch('/api/items');\nconst items = await res.json();\nconst raw = await res.text(); // for logging",
+      "lang": "js",
+      "choices": [
+        "`raw` is an empty string, since the body was already consumed",
+        "`raw` holds the JSON text, since the body is cached after the first read",
+        "The third line rejects with a TypeError: a body can be read only once",
+        "`items` is undefined, because `text()` replaces the parsed result"
+      ],
+      "answer": 2,
+      "why": "A response body is a stream, and reading it once marks it used, so the second read rejects (\"body has already been read\"). Read it once as text and `JSON.parse` it yourself, or `res.clone()` before the first read if two consumers need it.",
+      "tags": ["fetch"],
+      "level": 2,
+      "asked": "Logging a failed response body is where most people meet this, so it tests real debugging."
+    },
+    {
+      "id": "jsb-085",
+      "q": "A DELETE endpoint answers `204 No Content`. What does this code do?",
+      "code": "const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });\nif (!res.ok) throw new Error(res.statusText);\nreturn res.json();",
+      "lang": "js",
+      "choices": [
+        "Resolves to `null`, the JSON value of an empty body",
+        "Resolves to `{}`, since 204 is treated as an empty object",
+        "Resolves to `undefined`, because there is no content type",
+        "Rejects with a SyntaxError, as an empty body is not valid JSON"
+      ],
+      "answer": 3,
+      "why": "`res.json()` parses the body text, and an empty string is not JSON, so it rejects with `SyntaxError: Unexpected end of JSON input`. Check `res.status === 204` (or the content length or type) before parsing; a generic API client should handle it once, centrally.",
+      "tags": ["fetch"],
+      "level": 2,
+      "asked": "A generic fetch wrapper has to handle this, so it is a quick check of API-client experience."
+    },
+    {
+      "id": "jsb-086",
+      "q": "An Express API with `express.json()` receives `req.body` as `{}` from this call. Why?",
+      "code": "await fetch('/api/items', {\n  method: 'POST',\n  body: JSON.stringify({ name: 'Desk' }),\n});",
+      "lang": "js",
+      "choices": [
+        "Express reads bodies only on PUT and PATCH requests, not on POST",
+        "`JSON.stringify` escapes quotes, so the server cannot parse the result",
+        "A string body is sent as `text/plain`, which the JSON parser skips",
+        "The body is not sent, since fetch drops string bodies without `Content-Length`"
+      ],
+      "answer": 2,
+      "why": "Given a string body, fetch sets `Content-Type: text/plain;charset=UTF-8`, and `express.json()` only parses requests whose type is JSON. Add `headers: { 'Content-Type': 'application/json' }`. That header also makes the request non-simple, so cross-origin calls get a preflight.",
+      "tags": ["fetch", "http"],
+      "level": 1,
+      "asked": "Probably the most common first bug when wiring a frontend to an API."
+    },
+    {
+      "id": "jsb-087",
+      "q": "An upload sends a `FormData` with a file. The server fails to parse it after someone added this header. Why?",
+      "code": "await fetch('/api/upload', {\n  method: 'POST',\n  headers: { 'Content-Type': 'multipart/form-data' },\n  body: formData,\n});",
+      "lang": "js",
+      "choices": [
+        "Multipart uploads must be sent with PUT, never with POST",
+        "The header lacks the boundary the browser would have generated",
+        "FormData must be converted to a Blob before it can be sent",
+        "The header must be `application/x-www-form-urlencoded` for files"
+      ],
+      "answer": 1,
+      "why": "Multipart bodies are split by a random boundary that must appear in the header (`multipart/form-data; boundary=…`). When you pass a `FormData` body and no content type, fetch sets it correctly; setting it by hand overrides that with a header the server cannot use. Leave it out.",
+      "tags": ["fetch", "forms"],
+      "level": 2,
+      "asked": "File-upload bugs are common in CRUD apps, and this one is easy to spot once you know it."
+    },
+    {
+      "id": "jsb-088",
+      "q": "What does this throw or send?",
+      "code": "await fetch('/api/search', {\n  method: 'GET',\n  body: JSON.stringify({ q: 'desk' }),\n});",
+      "lang": "js",
+      "choices": [
+        "It sends the JSON as the body of a GET request",
+        "It moves the body into the query string automatically",
+        "It sends the GET, silently dropping the body",
+        "It throws a TypeError: GET and HEAD cannot have a body"
+      ],
+      "answer": 3,
+      "why": "The Fetch standard forbids a body on GET and HEAD, so building the request throws a `TypeError` before anything is sent. Put search parameters in the query string with `URLSearchParams`, or use POST for a complex search.",
+      "tags": ["fetch"],
+      "level": 1,
+      "asked": "It checks you know where GET parameters go and that fetch enforces it."
+    },
+    {
+      "id": "jsb-089",
+      "q": "Which code builds the query string for a search of `rock & roll` on page 2?",
+      "choices": [
+        "Interpolate `q` straight into `/api/songs?q=…&page=2`",
+        "Wrap `q` in `encodeURI()` before interpolating it",
+        "Build it with `new URLSearchParams({ q, page: 2 })`",
+        "Wrap `q` in `escape()` before interpolating it"
+      ],
+      "answer": 2,
+      "why": "`URLSearchParams` encodes each key and value, so `&` becomes `%26` and the space becomes `+`, giving `q=rock+%26+roll&page=2`. Raw interpolation and `encodeURI` leave `&` alone, so the server sees `q=rock ` and a stray ` roll` parameter; `escape` is deprecated and mishandles non-ASCII.",
+      "tags": ["url", "fetch"],
+      "level": 1,
+      "asked": "Search boxes that break on special characters are a standard bug, and this is the fix interviewers want."
+    },
+    {
+      "id": "jsb-090",
+      "q": "What does this log?",
+      "code": "const p = new URLSearchParams('tag=a&tag=b&q=hello+world');\np.set('tag', 'c');\nconsole.log(p.get('q'), p.toString());",
+      "lang": "js",
+      "choices": [
+        "`hello world tag=c&q=hello+world`",
+        "`hello+world tag=a&tag=b&tag=c&q=hello+world`",
+        "`hello world tag=a&tag=c&q=hello+world`",
+        "`hello+world tag=c&q=hello%20world`"
+      ],
+      "answer": 0,
+      "why": "In the query-string format `+` means a space, so `get('q')` decodes it to \"hello world\". `set` replaces every existing value for the key with one, while `append` adds another; `getAll` reads repeated keys such as multi-select filters.",
+      "tags": ["url"],
+      "level": 2,
+      "asked": "Filter UIs with multi-value parameters depend on knowing set versus append."
+    },
+    {
+      "id": "jsb-091",
+      "q": "The page is at `https://shop.example/app/orders`. Which URL does `fetch('api/orders')` request?",
+      "choices": [
+        "`https://shop.example/api/orders`",
+        "`https://shop.example/app/orders/api/orders`",
+        "`https://shop.example/app/api/orders`",
+        "`https://api.shop.example/orders`"
+      ],
+      "answer": 2,
+      "why": "A relative path without a leading slash resolves against the current URL's directory, and `orders` is the last segment, so it is replaced: `/app/api/orders`. With client-side routing the directory changes as the user navigates, so API paths should start with `/` or be built from a configured base URL.",
+      "tags": ["url", "fetch"],
+      "level": 2,
+      "asked": "Explains the \"API calls 404 only on nested routes\" bug in single-page apps."
+    },
+    {
+      "id": "jsb-092",
+      "q": "A streamed response is decoded chunk by chunk like this. What bug appears with non-English text?",
+      "code": "const reader = res.body.getReader();\nconst decoder = new TextDecoder();\nfor (let r = await reader.read(); !r.done; r = await reader.read()) {\n  output.textContent += decoder.decode(r.value);\n}",
+      "lang": "js",
+      "choices": [
+        "Characters split across chunks turn into replacement characters (�)",
+        "Every chunk after the first is decoded as Latin-1 instead of UTF-8",
+        "Nothing: `TextDecoder` always buffers incomplete characters itself",
+        "The loop never ends, because `done` is only set for text responses"
+      ],
+      "answer": 0,
+      "why": "Network chunks split on byte boundaries, so a multi-byte UTF-8 character can arrive in two halves, and decoding each half alone yields �. Pass `{ stream: true }` so the decoder keeps partial bytes for the next call, or pipe through a `TextDecoderStream`.",
+      "tags": ["fetch", "streams"],
+      "level": 3,
+      "asked": "Streaming AI or log output is common now, and this bug only shows with real-world text."
+    },
+    {
+      "id": "jsb-093",
+      "q": "A file upload screen needs a progress bar for the upload itself. What should it use in 2026?",
+      "choices": [
+        "`fetch` with an `onprogress` callback passed in the init options",
+        "`XMLHttpRequest`, listening to `xhr.upload` progress events",
+        "The `Content-Length` response header read after the upload ends",
+        "A `ReadableStream` response body, read chunk by chunk as it downloads"
+      ],
+      "answer": 1,
+      "why": "`fetch` has no upload-progress events; `XMLHttpRequest` still does, through `xhr.upload.onprogress`. Streaming request bodies with fetch need HTTP/2 and `duplex: 'half'` and are not supported everywhere, so XHR (or a library over it) remains the practical answer. Reading the response body tracks download progress, not upload.",
+      "tags": ["fetch", "forms"],
+      "level": 2,
+      "asked": "A practical \"why would you still use XHR\" question with a clear right answer."
+    },
+    {
+      "id": "jsb-094",
+      "q": "A request is given `signal: AbortSignal.timeout(5000)` and the server takes 10 seconds. What does the `catch` see?",
+      "choices": [
+        "A `DOMException` named `AbortError`, the same as a manual abort",
+        "A `TypeError` \"Failed to fetch\", the same as a network error",
+        "A `DOMException` named `TimeoutError`",
+        "Nothing: the promise resolves with a 408 response"
+      ],
+      "answer": 2,
+      "why": "`AbortSignal.timeout()` aborts with a `TimeoutError` DOMException, so you can tell a timeout from a user cancel, which uses `AbortError`. Combine both with `AbortSignal.any([userSignal, AbortSignal.timeout(5000)])`. Nothing synthesises a 408.",
+      "tags": ["fetch"],
+      "level": 2,
+      "asked": "Timeouts are a standard API-client requirement, and distinguishing them from cancels is the mid-level detail."
+    },
+    {
+      "id": "jsb-095",
+      "q": "A static host serves only `index.html` and cannot be configured with rewrites. Why does a hash router (`/#/orders/7`) work there when a path router (`/orders/7`) 404s on reload?",
+      "choices": [
+        "The fragment is never sent to the server, which always receives `/`",
+        "Static hosts rewrite any URL with `#` in it back to `index.html`",
+        "Hash URLs are cached by the browser, so reloads never hit the server",
+        "Path routers need Node on the server to render each route first"
+      ],
+      "answer": 0,
+      "why": "Everything after `#` stays in the browser, so a reload of `/#/orders/7` requests `/` and the app reads `location.hash`, listening for `hashchange`. A path router asks the server for `/orders/7`, which must be rewritten to `index.html` (the \"SPA fallback\") or it 404s.",
+      "tags": ["navigation", "url"],
+      "level": 1,
+      "asked": "It shows you understand what the server sees for client-side routes, the root of every \"404 on refresh\" ticket."
+    },
+    {
+      "id": "jsb-096",
+      "q": "After a successful login you send the user to the dashboard. Which call stops Back returning them to the login page?",
+      "choices": [
+        "`location.href = '/dashboard'`",
+        "`location.assign('/dashboard')`",
+        "`history.pushState({}, '', '/dashboard')`",
+        "`location.replace('/dashboard')`"
+      ],
+      "answer": 3,
+      "why": "`location.replace` navigates and replaces the current history entry, so the login page is no longer behind the dashboard. Setting `href` and `assign` both add an entry, and `pushState` adds one without even loading the page. Router libraries expose the same idea as a `replace` option.",
+      "tags": ["navigation"],
+      "level": 1,
+      "asked": "A small UX detail that separates people who have built auth flows from those who have only read about them."
+    },
+    {
+      "id": "jsb-097",
+      "q": "An OAuth-style flow returns `https://app.example/callback#token=abc`. What does the server hosting `/callback` receive?",
+      "choices": [
+        "The path `/callback` only; the fragment stays in the browser",
+        "The full URL including `#token=abc`, in the request line",
+        "The token, as a `Referer` header added by the browser",
+        "Nothing, since fragment URLs are served from the browser cache"
+      ],
+      "answer": 0,
+      "why": "Browsers strip the fragment before sending a request, so only client-side script can read it, through `location.hash`. That is why the implicit flow used fragments, and also why it is discouraged: the token lives in browser history and script. Referer headers exclude fragments too.",
+      "tags": ["url", "security"],
+      "level": 1,
+      "asked": "It checks your model of what a URL sends, which matters for routing, analytics and auth."
+    },
+    {
+      "id": "jsb-098",
+      "q": "This script is in the `<head>`. Why does it throw \"Cannot read properties of null\"?",
+      "code": "<head>\n  <script src=\"app.js\"></script> <!-- runs document.querySelector('#root').append(...) -->\n</head>\n<body><div id=\"root\"></div></body>",
+      "lang": "html",
+      "choices": [
+        "External scripts cannot use `querySelector` until `load` has fired",
+        "The `id` must be quoted with single quotes to match the selector",
+        "The script runs as soon as it is parsed, before `#root` exists",
+        "`#root` is only created after the first paint of the page"
+      ],
+      "answer": 2,
+      "why": "A classic script without `defer` or `async` blocks parsing and runs immediately, when the parser has not reached the body yet, so `querySelector` returns `null`. Add `defer`, use `type=\"module\"`, or put the script at the end of the body.",
+      "tags": ["loading", "dom"],
+      "level": 1,
+      "asked": "A first-week bug; the strong answer names `defer` rather than wrapping everything in an event listener."
+    },
+    {
+      "id": "jsb-099",
+      "q": "You move a CSV export into a Web Worker. Which line fails inside the worker?",
+      "choices": [
+        "`const csv = rows.map(toLine).join('\n');`",
+        "`postMessage(new Blob([csv], { type: 'text/csv' }));`",
+        "`const res = await fetch('/api/rows'); const rows = await res.json();`",
+        "`document.querySelector('#status').textContent = 'Done';`"
+      ],
+      "answer": 3,
+      "why": "Workers run on their own thread with no access to the DOM, `window` or `document`, so they post results back and the page updates the UI. They do have `fetch`, timers, `Blob`, IndexedDB and `postMessage`, which is what makes them useful for heavy data work.",
+      "tags": ["workers"],
+      "level": 1,
+      "asked": "It checks you know what a worker can and cannot do before proposing one to fix a janky page."
+    },
+    {
+      "id": "jsb-100",
+      "q": "A dashboard polls an API every 10 seconds. Which event lets it stop polling while the tab is in the background?",
+      "choices": [
+        "`blur` on `window`, which fires whenever the tab is hidden",
+        "`pagehide`, which fires when the user switches to another tab",
+        "`visibilitychange`, reading `document.visibilityState`",
+        "`freeze`, which fires as soon as the tab loses focus"
+      ],
+      "answer": 2,
+      "why": "The Page Visibility API fires `visibilitychange` when the tab is hidden or shown, and `document.visibilityState` says which. `blur` also fires when focus moves to devtools or an iframe while the tab is visible, and `pagehide` is about navigating away. Libraries such as TanStack Query use this to refetch on return.",
+      "tags": ["events"],
+      "level": 1,
+      "asked": "Saving server load and battery on background tabs is a practical concern, and this is the standard tool."
+    },
+    {
+      "id": "jsb-101",
+      "q": "An `<input type=\"number\">` holds 5. What is `input.value + 1`?",
+      "choices": ["`6`", "`\"51\"`", "`NaN`", "It throws, since number inputs have no string value"],
+      "answer": 1,
+      "why": "Every input's `value` is a string, whatever its type, so this concatenates. Use `input.valueAsNumber`, which is `NaN` when the field is empty or invalid, or `Number(input.value)`. Date inputs likewise offer `valueAsDate`.",
+      "tags": ["forms", "dom"],
+      "level": 1,
+      "asked": "A quick check that you do not trust input types to give you typed values."
+    },
+    {
+      "id": "jsb-102",
+      "q": "A filter form has three checkboxes named `status`, and two are ticked. What does this return?",
+      "code": "const data = new FormData(form);\ndata.getAll('status');",
+      "lang": "js",
+      "choices": [
+        "An array of the two ticked checkboxes' values",
+        "The value of the last ticked checkbox as a string",
+        "An array of three values, with `null` for the unticked one",
+        "The string `\"on,on\"`, joined in document order"
+      ],
+      "answer": 0,
+      "why": "FormData keeps repeated names as separate entries, and unticked checkboxes are not included at all, so `getAll` returns the two ticked values. `get` returns only the first. A checkbox with no `value` attribute submits `\"on\"`.",
+      "tags": ["forms"],
+      "level": 1,
+      "asked": "Multi-select filters are everywhere in CRUD apps, and this is how you read them without a framework."
+    },
+    {
+      "id": "jsb-103",
+      "q": "Why does this throw?",
+      "code": "class UserCard extends HTMLElement {}\ncustomElements.define('usercard', UserCard);",
+      "lang": "js",
+      "choices": [
+        "Custom element names must contain a hyphen, such as `user-card`",
+        "The class needs a `constructor` that calls `super()` first",
+        "Custom elements must be defined before the document has loaded",
+        "Names must match the class name exactly, as `UserCard`"
+      ],
+      "answer": 0,
+      "why": "Valid custom element names are lower-case and contain a hyphen, which keeps them apart from current and future built-in elements. An implicit constructor already calls `super()`, and elements can be defined at any time; existing tags in the page are upgraded when the definition arrives.",
+      "tags": ["web-components"],
+      "level": 1,
+      "asked": "The entry-level web-components check; the hyphen rule is the thing everyone forgets once."
+    },
+    {
+      "id": "jsb-104",
+      "q": "A \"Copy link\" button calls `navigator.clipboard.writeText(url)`. It works locally but `navigator.clipboard` is `undefined` on the staging server. What is the likely cause?",
+      "choices": [
+        "Staging serves over plain HTTP, and the API needs a secure context",
+        "The call is missing `await`, so it has not finished yet",
+        "The button needs a `type=\"button\"` attribute to allow copying",
+        "Staging has no Permissions-Policy header, which the API requires"
+      ],
+      "answer": 0,
+      "why": "The async Clipboard API exists only in secure contexts: HTTPS, or `localhost`, which is why it worked locally. Writing also needs a recent user gesture in most browsers. Missing `await` would not make the property undefined.",
+      "tags": ["security", "dom"],
+      "level": 1,
+      "asked": "It checks you know about secure contexts, which gate a growing list of browser APIs."
+    },
+    {
+      "id": "jsb-105",
+      "q": "Which page counts as a secure context, so that APIs like `crypto.randomUUID()` and service workers are available?",
+      "choices": [
+        "`http://192.168.1.20:3000`, a machine on the local network",
+        "`http://localhost:5173`, a dev server on your own machine",
+        "`http://staging.example.com`, behind a company VPN",
+        "`file:///C:/app/index.html`, opened from disk"
+      ],
+      "answer": 1,
+      "why": "Secure contexts are HTTPS pages plus loopback addresses (`localhost`, `127.0.0.1`), which browsers trust for development. A LAN IP or internal hostname over HTTP is not secure, however private the network, which is why testing on a phone via your laptop's IP can lose these APIs.",
+      "tags": ["security"],
+      "level": 1,
+      "asked": "The phone-testing gotcha is common, and knowing the localhost exception explains it."
+    },
+    {
+      "id": "jsb-106",
+      "q": "An \"Export CSV\" button builds the file in the browser. Which code downloads it with a proper filename?",
+      "choices": [
+        "`window.open('data:text/csv,' + csv)` in a new tab",
+        "`location.href = csv` with a `Content-Disposition` meta tag",
+        "A `Blob`, an object URL and a clicked `<a download=\"orders.csv\">`",
+        "`navigator.sendBeacon('/download', csv)` to trigger a save"
+      ],
+      "answer": 2,
+      "why": "Wrap the text in a `Blob`, create a URL with `URL.createObjectURL`, point a temporary `<a download>` at it and click it, then revoke the URL. `download` is honoured for same-origin and blob URLs. Popups of data URLs are blocked or open in a tab, and `sendBeacon` is fire-and-forget to a server.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "Client-side exports are a common CRUD feature, and the Blob-URL pattern is the expected answer."
+    },
+    {
+      "id": "jsb-107",
+      "q": "An avatar picker should preview the chosen image before upload. Which is the lightest correct approach?",
+      "code": "input.addEventListener('change', () => {\n  const file = input.files[0];\n  // preview here\n});",
+      "lang": "js",
+      "choices": [
+        "Upload the file first and show the URL the server returns",
+        "Read `input.value`, which is the file's path, and set it as `src`",
+        "Set `img.src = URL.createObjectURL(file)` and revoke the old URL",
+        "Call `JSON.stringify(file)` and set the result as a data URL"
+      ],
+      "answer": 2,
+      "why": "An object URL points straight at the File in memory, so the preview is instant and no copy is made; call `URL.revokeObjectURL` when it is replaced to free it. `input.value` is a fake path such as `C:\\fakepath\\me.png` for privacy, and a File does not serialise to JSON.",
+      "tags": ["dom", "forms"],
+      "level": 1,
+      "asked": "A common upload-form feature that checks you know the File and Blob APIs."
+    },
+    {
+      "id": "jsb-108",
+      "q": "An `<input type=\"file\" multiple>` has three files chosen. Why does `input.files.map(upload)` throw?",
+      "choices": [
+        "`files` is `null` until the form has been submitted",
+        "`files` is a FileList, which is array-like but has no `map`",
+        "`files` holds file paths, and `upload` expects File objects",
+        "`multiple` inputs expose files through `input.value` instead"
+      ],
+      "answer": 1,
+      "why": "`input.files` is a `FileList`, indexable and iterable but not an Array, so it lacks `map`. Convert with `Array.from(input.files)` or spread it. `NodeList` and `HTMLCollection` have the same shape and the same trap.",
+      "tags": ["dom", "forms"],
+      "level": 1,
+      "asked": "Array-likes in the DOM trip up people who learned JavaScript through arrays only."
+    },
+    {
+      "id": "jsb-109",
+      "q": "An offline banner uses `navigator.onLine`. Users on a captive hotel Wi-Fi portal see \"Online\" but every request fails. Why?",
+      "choices": [
+        "`onLine` is only updated when the page is reloaded",
+        "`onLine` only reports whether the device has a network connection",
+        "`onLine` is always true on HTTPS pages, for privacy reasons",
+        "`onLine` checks the server of the current page, which is cached"
+      ],
+      "answer": 1,
+      "why": "`navigator.onLine` and the `online`/`offline` events reflect whether a network interface is up, not whether the internet or your API is reachable. Treat `false` as a reliable offline signal, but for \"online\" check failed requests or ping your own health endpoint.",
+      "tags": ["events"],
+      "level": 1,
+      "asked": "Offline-aware UIs are a common feature request, and this is where naive versions fail."
+    },
+    {
+      "id": "jsb-110",
+      "q": "You log `order` in the console, then mutate it on the next line. When you expand the logged object in DevTools, what do you see?",
+      "code": "console.log(order);\norder.status = 'paid';",
+      "lang": "js",
+      "choices": [
+        "The status as it was when logged, since logs are snapshots",
+        "An error, because the object changed after it was logged",
+        "`[object Object]`, since objects are logged as strings",
+        "The status as it is now, since expanding reads the live object"
+      ],
+      "answer": 3,
+      "why": "Chrome and Firefox log a reference; the preview line may show the old value, but expanding reads the object as it is at that moment, so you see `paid`. For a snapshot, log `structuredClone(order)` or `JSON.stringify(order)`, or use a breakpoint.",
+      "tags": ["debugging"],
+      "level": 1,
+      "asked": "A classic debugging trap; knowing it saves hours of chasing a mutation that did not happen when you thought."
+    },
+    {
+      "id": "jsb-111",
+      "q": "You append an existing `<li>` to a second list. What happens to the first list?",
+      "code": "const item = listA.querySelector('li');\nlistB.append(item);",
+      "lang": "js",
+      "choices": [
+        "Nothing: the `<li>` now appears in both lists",
+        "The `<li>` moves: a node can only be in one place",
+        "It throws, since the item must be removed first",
+        "listA keeps a placeholder until the next render"
+      ],
+      "answer": 1,
+      "why": "Appending a node that is already in the document moves it, keeping its listeners and state. To have it in both places, append `item.cloneNode(true)`, remembering clones lose `addEventListener` listeners. Drag-to-reorder lists rely on this move behaviour.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "The basis of reorderable lists and kanban boards, so it is a common framework-free question."
+    },
+    {
+      "id": "jsb-112",
+      "q": "What does `btn.closest('button')` return when `btn` is itself a `<button>`?",
+      "choices": [
+        "`btn` itself",
+        "Its nearest button ancestor, or `null`",
+        "`null`, as only ancestors are checked",
+        "The first button in the document"
+      ],
+      "answer": 0,
+      "why": "`closest` tests the element itself first, then walks up its ancestors, returning the first match or `null`. That is exactly why `e.target.closest('button')` works whether the click landed on the button or on an icon inside it.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "A quick check that underpins every delegation answer."
+    },
+    {
+      "id": "jsb-113",
+      "q": "In a hand-rolled router, a click listener on `<a href=\"/orders\">` calls `history.pushState` and renders. What must it do to stop the browser also loading `/orders`?",
+      "choices": [
+        "Call `e.stopPropagation()` so the click never reaches the document",
+        "Return `false` from a listener added with `addEventListener`",
+        "Remove the `href`, since links with one always navigate",
+        "Call `e.preventDefault()` to cancel the link's default navigation"
+      ],
+      "answer": 3,
+      "why": "`preventDefault` cancels the default action, here following the link, while the element keeps its `href` for accessibility, middle-click and copy-link. `stopPropagation` affects other listeners, not the default, and `return false` only cancels in `on…` properties and jQuery.",
+      "tags": ["navigation", "events"],
+      "level": 1,
+      "asked": "The core of every client-side router, and a clean check on default actions versus propagation."
+    },
+    {
+      "id": "jsb-114",
+      "q": "What does this line do when the page has no element with class `.toast`?",
+      "code": "document.querySelector('.toast').remove();",
+      "lang": "js",
+      "choices": [
+        "Nothing: `remove()` on no match is a silent no-op",
+        "Throws a TypeError, since `querySelector` returned `null`",
+        "Removes the `<body>`, which is the default match",
+        "Throws a SyntaxError, since `.toast` is not a valid selector"
+      ],
+      "answer": 1,
+      "why": "`querySelector` returns `null` when nothing matches, and calling a method on `null` throws. Use optional chaining (`?.remove()`) when absence is expected, and let it throw when absence is a bug. `querySelectorAll` returns an empty NodeList instead.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "The most common DOM error message, so it is a quick screen for everyday experience."
+    },
+    {
+      "id": "jsb-115",
+      "q": "A settings page should follow the OS dark-mode setting live, even if the user changes it while the page is open. Which code does that?",
+      "choices": [
+        "Read `matchMedia('(prefers-color-scheme: dark)').matches` once on load",
+        "Listen for `change` on `matchMedia('(prefers-color-scheme: dark)')`",
+        "Listen for `resize` on `window` and re-check the colour scheme",
+        "Poll `screen.colorDepth` every second and compare it with before"
+      ],
+      "answer": 1,
+      "why": "`matchMedia` returns a MediaQueryList whose `matches` gives the current answer and whose `change` event fires when it flips. Reading once misses later changes, and the OS theme has nothing to do with resizing or colour depth. In pure CSS the `prefers-color-scheme` media query already updates live.",
+      "tags": ["events", "dom"],
+      "level": 1,
+      "asked": "Theming is a common feature, and it shows you can use media queries from JavaScript."
+    },
+    {
+      "id": "jsb-116",
+      "q": "After saving, a long form should bring its success banner into view smoothly. Which call does that?",
+      "choices": [
+        "`banner.focus({ behavior: 'smooth', preventScroll: false })`",
+        "`window.scrollTo(banner, { behavior: 'smooth' })`",
+        "`banner.scrollIntoView({ behavior: 'smooth' })`",
+        "`document.body.scrollTop = banner.offsetTop`"
+      ],
+      "answer": 2,
+      "why": "`scrollIntoView` scrolls every scrollable ancestor as needed to show the element, with options for smooth motion and alignment. `scrollTo` takes coordinates, not an element, and `offsetTop` is only document-relative when no ancestor is positioned. A sticky header can be allowed for with CSS `scroll-margin-top`.",
+      "tags": ["dom"],
+      "level": 1,
+      "asked": "A small everyday API; the `scroll-margin-top` follow-up is a nice extra."
+    },
+    {
+      "id": "jsb-117",
+      "q": "A page reads `?tab=billing` from its URL. Which line is correct?",
+      "choices": [
+        "`new URLSearchParams(location.search).get('tab')`",
+        "`location.searchParams.get('tab')`",
+        "`location.query.get('tab')`",
+        "`new URL(location.search).searchParams.get('tab')`"
+      ],
+      "answer": 0,
+      "why": "`location.search` is the raw string `?tab=billing`, and `URLSearchParams` parses it, handling the leading `?` and decoding. `location` has no `searchParams` or `query` of its own (URL objects do), and `new URL('?tab=billing')` throws because it is not an absolute URL; `new URL(location.href).searchParams.get('tab')` would work.",
+      "tags": ["url"],
+      "level": 1,
+      "asked": "Reading state from the URL is basic router work, and a good habit for shareable filters."
+    },
+    {
+      "id": "jsb-118",
+      "q": "In a classic `<script>` (not a module), a colleague defines `const config = {...}` at the top level. Where is it visible?",
+      "choices": [
+        "Only inside that script file, like a module-scoped variable",
+        "To every classic script on the page, but not as `window.config`",
+        "As `window.config`, like a top-level `var` would be",
+        "Nowhere after the script ends, since it is garbage collected"
+      ],
+      "answer": 1,
+      "why": "Top-level `let`, `const` and `class` in classic scripts go into a shared global scope visible to every classic script, but unlike `var` and function declarations they do not become `window` properties. Module scripts keep their top-level bindings private, which is one reason to use them.",
+      "tags": ["loading", "modules"],
+      "level": 1,
+      "asked": "It tests whether you understand global scope in the browser and why modules replaced it."
+    },
+    {
+      "id": "jsb-119",
+      "q": "A drop zone logs from its `drop` handler, but dropping files on it just opens them in the browser. Why?",
+      "code": "zone.addEventListener('drop', (e) => {\n  e.preventDefault();\n  handle(e.dataTransfer.files);\n});",
+      "lang": "js",
+      "choices": [
+        "`dataTransfer` is only readable in `dragstart`, not in `drop`",
+        "Drop zones need the `draggable=\"true\"` attribute to accept files",
+        "Files can only be dropped onto an `<input type=\"file\">`",
+        "`dragover` must also call `preventDefault`, or `drop` never fires"
+      ],
+      "answer": 3,
+      "why": "By default elements are not drop targets; cancelling `dragover` (and usually `dragenter`) is how an element says it accepts the drop. Without it the drop goes to the browser's default, opening the file. `draggable` is for drag sources, and `dataTransfer.files` is readable in `drop`.",
+      "tags": ["events", "forms"],
+      "level": 2,
+      "asked": "Drag-and-drop upload is a common feature, and the `dragover` rule is the one thing people forget."
+    },
+    {
+      "id": "jsb-120",
+      "q": "A form has two submit buttons, `<button name=\"action\" value=\"draft\">` and `value=\"publish\"`. In the submit handler, how do you know which was clicked?",
+      "code": "form.addEventListener('submit', (e) => {\n  e.preventDefault();\n  // which button?\n});",
+      "lang": "js",
+      "choices": [
+        "`e.target`, which is the button that was pressed",
+        "`document.activeElement`, which is always the pressed button",
+        "`new FormData(form).get('action')`, which includes it",
+        "`e.submitter`, the button or input that triggered submission"
+      ],
+      "answer": 3,
+      "why": "`SubmitEvent.submitter` is the button that submitted the form (or `null` for `requestSubmit()` without one). `e.target` is the form, `activeElement` is unreliable because Safari does not focus buttons on click, and `new FormData(form)` omits the submitter unless you pass it as the second argument.",
+      "tags": ["forms", "events"],
+      "level": 2,
+      "asked": "Save-draft versus publish is a common requirement, and `submitter` is the clean answer."
+    },
+    {
+      "id": "jsb-121",
+      "q": "A router intercepts every click on internal links and calls `pushState`. Users complain that Ctrl+click no longer opens a new tab. What should the handler check before intercepting?",
+      "choices": [
+        "Whether the link is inside `<nav>`, since only nav links should route",
+        "Whether `e.isTrusted` is true, since modified clicks are synthetic",
+        "Modifier keys, the mouse button, `target`, `download` and origin",
+        "Whether the `href` ends in `.html`, which marks a full navigation"
+      ],
+      "answer": 2,
+      "why": "A good link interceptor bails out on `e.button !== 0`, Ctrl/Meta/Shift/Alt, `target=\"_blank\"`, a `download` attribute or a cross-origin `href`, and on `e.defaultPrevented`. Everything else can be routed client-side. Router libraries' `<Link>` components do exactly these checks.",
+      "tags": ["navigation", "events"],
+      "level": 2,
+      "asked": "It separates people who have used a router from people who have thought about what one must preserve."
+    },
+    {
+      "id": "jsb-122",
+      "q": "Your app embeds a payment iframe and listens for its result. What is missing?",
+      "code": "window.addEventListener('message', (e) => {\n  if (e.data.type === 'payment-complete') markPaid(e.data.orderId);\n});",
+      "lang": "js",
+      "choices": [
+        "A check that `e.origin` is the payment provider's origin",
+        "A call to `e.preventDefault()` so the iframe stops retrying",
+        "`{ passive: true }`, since message handlers must not block",
+        "A `JSON.parse(e.data)`, since messages are always strings"
+      ],
+      "answer": 0,
+      "why": "Any window that can get a reference to yours, including a page that opened it, can post messages, so accept only those whose `origin` matches the expected sender. Likewise, give `postMessage` an explicit target origin rather than `'*'` when sending secrets. Messages are structured-cloned, not only strings.",
+      "tags": ["security", "events"],
+      "level": 2,
+      "asked": "A standard security review item for widgets, OAuth popups and payment frames."
+    },
+    {
+      "id": "jsb-123",
+      "q": "An error reporter hooks `window.onerror`. Which failures does it miss?",
+      "choices": [
+        "Errors thrown inside `setTimeout` callbacks",
+        "Promise rejections that nothing handles",
+        "Errors thrown by inline `onclick` attributes",
+        "Errors from scripts added dynamically after load"
+      ],
+      "answer": 1,
+      "why": "Uncaught exceptions go to the `error` event, but a rejected promise with no handler fires a separate `unhandledrejection` event on `window`, and with async code everywhere that is most failures. Register both. Timer callbacks, inline handlers and later-loaded scripts all reach `onerror`.",
+      "tags": ["debugging", "events"],
+      "level": 2,
+      "asked": "It shows you know how production error tracking works in the browser, not just in try/catch."
+    },
+    {
+      "id": "jsb-124",
+      "q": "Two scripts in the head: `analytics.js` then `widget.js`, both with `async`. `widget.js` depends on `analytics.js`. What goes wrong, and what fixes it?",
+      "choices": [
+        "Nothing: `async` scripts run in document order once both are loaded",
+        "They can run in either order; `defer` keeps order and waits for parsing",
+        "They run before parsing ends; `type=\"module\"` alone keeps them ordered",
+        "The second one never runs; `async` allows one script per document"
+      ],
+      "answer": 1,
+      "why": "`async` scripts run as soon as each one arrives, so a smaller or cached `widget.js` can run first. `defer` scripts download in parallel but run in document order after parsing, so dependent scripts should use `defer` (module scripts behave like `defer` unless marked `async`).",
+      "tags": ["loading"],
+      "level": 2,
+      "asked": "The async-versus-defer ordering follow-up is what interviewers use after \"what does defer do\"."
+    },
+    {
+      "id": "jsb-125",
+      "q": "A username field shows \"Name taken\" via a custom validity message. After the user picks a free name, the form still refuses to submit. Why?",
+      "code": "const res = await checkName(input.value);\nif (res.taken) input.setCustomValidity('Name taken');",
+      "lang": "js",
+      "choices": [
+        "Custom validity is only re-checked after the page reloads",
+        "Nothing clears it: it stays invalid until `setCustomValidity('')`",
+        "`setCustomValidity` also adds `required`, which is still unmet",
+        "The async check needs `reportValidity()` before it can take effect"
+      ],
+      "answer": 1,
+      "why": "A non-empty custom message makes the field invalid until you set it back to an empty string. Always set it on both branches, for example `input.setCustomValidity(res.taken ? 'Name taken' : '')`. It does not touch `required` and needs no reload.",
+      "tags": ["forms"],
+      "level": 2,
+      "asked": "The Constraint Validation API is how you add server-backed checks to native validation, and this is its main trap."
+    },
+    {
+      "id": "jsb-126",
+      "q": "What is the difference between `form.checkValidity()` and `form.reportValidity()`?",
+      "choices": [
+        "`checkValidity` checks required fields only; `reportValidity` checks every constraint",
+        "`checkValidity` returns a boolean silently; `reportValidity` also shows the messages",
+        "`checkValidity` runs before submit; `reportValidity` only after a server response",
+        "`checkValidity` validates one field; `reportValidity` validates the whole form"
+      ],
+      "answer": 1,
+      "why": "Both run every constraint and fire `invalid` on failing controls; `reportValidity` additionally shows the browser's messages and focuses the first invalid field. Both exist on forms and on individual controls. Use `checkValidity` to enable a button, `reportValidity` when the user tries to proceed.",
+      "tags": ["forms"],
+      "level": 2,
+      "asked": "Multi-step forms validate each step by hand, and this pair is how."
+    },
+    {
+      "id": "jsb-127",
+      "q": "A multi-select filter form is serialised like this. The user ticked the `open` and `overdue` statuses. What is sent?",
+      "code": "const params = Object.fromEntries(new FormData(form));\nawait fetch('/api/orders?' + new URLSearchParams(params));",
+      "lang": "js",
+      "choices": ["`status=open&status=overdue`", "`status=open%2Coverdue`", "`status=overdue`", "`status=open`"],
+      "answer": 2,
+      "why": "`Object.fromEntries` keeps one value per key, and the later entry overwrites the earlier one, so only `overdue` survives. Pass the FormData straight to `new URLSearchParams(formData)` to keep repeated keys, or collect them with `getAll`.",
+      "tags": ["forms", "url"],
+      "level": 2,
+      "asked": "A subtle data-loss bug in a very common one-liner, which interviewers enjoy."
+    },
+    {
+      "id": "jsb-128",
+      "q": "A custom element starts a timer in `connectedCallback`. A drag-to-reorder list moves the element, and two timers are now running. Why?",
+      "choices": [
+        "The constructor runs again on every move, re-creating the timer",
+        "`connectedCallback` runs on every insertion, so a move re-runs it",
+        "Moving an element clones it, and the clone gets its own timer",
+        "`attributeChangedCallback` fires on moves and calls connect again"
+      ],
+      "answer": 1,
+      "why": "A move is a removal and an insertion, so `disconnectedCallback` then `connectedCallback` run again. Start work in connect and stop it in disconnect so the pair stays balanced. The constructor runs once per element.",
+      "tags": ["web-components"],
+      "level": 2,
+      "asked": "Lifecycle symmetry is the core of web components, like effect cleanup in React."
+    },
+    {
+      "id": "jsb-129",
+      "q": "A `<user-badge>` element implements `attributeChangedCallback`, but changing its `name` attribute never calls it. What is missing?",
+      "choices": [
+        "A `MutationObserver` registered in the constructor",
+        "A static `observedAttributes` getter that returns `['name']`",
+        "A `name` property setter that dispatches a change event",
+        "The `is=\"user-badge\"` attribute on the element in the page"
+      ],
+      "answer": 1,
+      "why": "For performance the browser only reports attributes listed in the class's static `observedAttributes`. List `name` there and the callback receives the name, old value and new value. Reflecting a property to the attribute is a separate, optional step.",
+      "tags": ["web-components"],
+      "level": 2,
+      "asked": "Every web-components walkthrough hits this, so it is the standard follow-up to the lifecycle question."
+    },
+    {
+      "id": "jsb-130",
+      "q": "A product list updates `?sort=` as the user changes a dropdown. Why prefer `replaceState` over `pushState` here?",
+      "choices": [
+        "`pushState` reloads the page, while `replaceState` does not",
+        "Back should leave the page, not step through every sort choice",
+        "`replaceState` fires `popstate`, so the list re-renders itself",
+        "`pushState` cannot change only the query string of a URL"
+      ],
+      "answer": 1,
+      "why": "Each `pushState` adds a history entry, so rapid filter tweaks would make Back walk through every one. `replaceState` updates the URL, keeping it shareable, without growing history. Neither reloads or fires `popstate`; push is right for changes users think of as navigation.",
+      "tags": ["navigation", "url"],
+      "level": 2,
+      "asked": "It shows product thinking about URL state, not just knowing the two methods exist."
+    },
+    {
+      "id": "jsb-131",
+      "q": "A worker sends a 50 MB `ArrayBuffer` back to the page with `postMessage(buffer)`. Why is it slow, and what fixes it?",
+      "choices": [
+        "It is structured-cloned; pass `[buffer]` as the transfer list to move it",
+        "It is JSON-encoded; wrap it in a `Blob` so it is sent as binary",
+        "It is sent over the network; use `SharedWorker` to keep it local",
+        "It is compressed; set `{ compress: false }` in the message options"
+      ],
+      "answer": 0,
+      "why": "`postMessage` copies data with the structured clone algorithm, so 50 MB is duplicated. Listing the buffer in the transfer argument (`postMessage(buffer, [buffer])`) moves ownership instead, leaving the sender's buffer detached with length 0. Nothing is JSON-encoded, sent over a network or compressed.",
+      "tags": ["workers"],
+      "level": 3,
+      "asked": "Transferables are what make workers useful for heavy data, and knowing about detaching shows real use."
+    },
+    {
+      "id": "jsb-132",
+      "q": "A countdown in a background tab updates with `setInterval(tick, 100)`. When the user returns after a few minutes, the displayed time is well behind. Why?",
+      "choices": [
+        "Intervals under 1 second are rounded up to 1 second on every page",
+        "Browsers throttle timers in hidden tabs, so far fewer ticks run",
+        "The interval stops for good once the tab is hidden, until reload",
+        "Hidden tabs run timers on a worker thread with a slower clock"
+      ],
+      "answer": 1,
+      "why": "Browsers throttle timers in background tabs to at most about once a second, and Chrome throttles long-hidden pages to once a minute, so a counter that adds 100 ms per tick falls behind. Compute remaining time from `Date.now()` or `performance.now()` on each tick instead of counting ticks.",
+      "tags": ["events", "event-loop"],
+      "level": 2,
+      "asked": "Timers, countdowns and session-expiry warnings all hit this, and the fix is a transferable habit."
+    },
+    {
+      "id": "jsb-133",
+      "q": "Your error tracker receives only `\"Script error.\"` with no stack for errors in a script served from your CDN. What fixes it?",
+      "choices": [
+        "Serve source maps next to the minified script on the CDN",
+        "Wrap the whole bundle in a top-level try/catch block",
+        "Add `crossorigin` to the tag and CORS headers on the CDN",
+        "Load the script with `type=\"module\"` instead of classic"
+      ],
+      "answer": 2,
+      "why": "Browsers hide error details from cross-origin scripts loaded without CORS, to stop pages learning about other origins. `crossorigin=\"anonymous\"` plus `Access-Control-Allow-Origin` on the CDN response unlocks the message and stack. Source maps only help once you have a stack; module scripts are fetched with CORS anyway but must then still get the header.",
+      "tags": ["debugging", "cors"],
+      "level": 3,
+      "asked": "An obscure-looking message with a precise fix, which shows real production debugging experience."
+    },
+    {
+      "id": "jsb-134",
+      "q": "A form wants to log every field that fails validation when the user submits. Why does this listener never fire?",
+      "code": "form.addEventListener('invalid', (e) => {\n  log(e.target.name);\n});",
+      "lang": "js",
+      "choices": [
+        "`invalid` fires on the form only after `submit` has been cancelled",
+        "`invalid` fires only when `reportValidity()` is called explicitly",
+        "It fires on each control and does not bubble; use capture",
+        "`invalid` is suppressed when the form has the `novalidate` attribute"
+      ],
+      "answer": 2,
+      "why": "The `invalid` event is dispatched at each failing control with `bubbles: false`, so a form listener only hears it with `{ capture: true }`. It fires during interactive submission and from `checkValidity`/`reportValidity`. `novalidate` would stop validation, but nothing here sets it.",
+      "tags": ["forms", "events"],
+      "level": 3,
+      "asked": "Custom error summaries are built on this event, and the capture trick is the detail that proves you built one."
+    },
+    {
+      "id": "jsb-135",
+      "q": "A \"Publish\" button submits a form handled with fetch. Why does the server never receive `action=publish`?",
+      "code": "<button name=\"action\" value=\"publish\">Publish</button>\n<script>\nform.addEventListener('submit', (e) => {\n  e.preventDefault();\n  fetch('/posts', { method: 'POST', body: new FormData(form) });\n});\n</script>",
+      "lang": "html",
+      "choices": [
+        "`FormData` skips `<button>` elements unless they have a `type=\"submit\"`",
+        "`new FormData(form)` omits the submitter; pass `e.submitter` as its second argument",
+        "The server must read button values from the query string, not the body",
+        "Named buttons are sent only when the form has a `method=\"post\"` attribute"
+      ],
+      "answer": 1,
+      "why": "A native submission includes the clicked button's name and value, but constructing FormData from the form alone has no idea which button was used. `new FormData(form, e.submitter)` adds it in document order, matching native behaviour. Buttons default to `type=\"submit\"` already.",
+      "tags": ["forms"],
+      "level": 3,
+      "asked": "Progressive-enhancement forms depend on parity with native submission, and this is the gap people miss."
+    },
+    {
+      "id": "jsb-136",
+      "q": "A custom element dispatches `bubbles: true` events from inside its shadow root. Page code listening on `document` never sees them. What is missing?",
+      "code": "this.shadowRoot.querySelector('button').dispatchEvent(\n  new CustomEvent('rate', { bubbles: true, detail: { stars: 4 } })\n);",
+      "lang": "js",
+      "choices": [
+        "`composed: true`, so the event crosses the shadow boundary",
+        "`cancelable: true`, which is required for events that carry a `detail`",
+        "A `slot` element, since events only leave through slots",
+        "`mode: 'open'` on `attachShadow`, which closed roots lack"
+      ],
+      "answer": 0,
+      "why": "Without `composed: true`, an event stops at the shadow root. With it, the event continues into the light DOM, retargeted so outside listeners see the host element as `target`. Open versus closed shadow roots do not change event propagation.",
+      "tags": ["web-components", "events"],
+      "level": 3,
+      "asked": "The composed flag is the key idea behind component events in shadow DOM, and few people know it."
+    },
+    {
+      "id": "jsb-137",
+      "q": "What does this server-rendered markup give you without any JavaScript running?",
+      "code": "<user-card>\n  <template shadowrootmode=\"open\">\n    <style>p { color: teal }</style><p><slot></slot></p>\n  </template>\n  Ada Lovelace\n</user-card>",
+      "lang": "html",
+      "choices": [
+        "Nothing until `customElements.define` runs, when the template is attached",
+        "A plain template: its content is inert and is never rendered",
+        "An iframe-like sandbox where scripts in the template run on load",
+        "A shadow root attached by the parser, with scoped styles and the slot filled"
+      ],
+      "answer": 3,
+      "why": "Declarative shadow DOM lets the HTML parser attach a shadow root from a `<template shadowrootmode>`, so server-rendered components display with encapsulated styles before any script loads. The element can be upgraded later by a definition that reuses the existing root. It has been supported in every major browser since 2024.",
+      "tags": ["web-components"],
+      "level": 3,
+      "asked": "Server-rendering web components used to be impossible, and this is what changed."
+    },
+    {
+      "id": "jsb-138",
+      "q": "You deploy a new service worker. Users with the app open in one tab keep getting the old version even after reloading. Why?",
+      "choices": [
+        "Service workers are cached for 24 hours regardless of headers",
+        "The new worker is installed but waits until every tab using the old one closes",
+        "Reloading bypasses the service worker, so the old HTTP cache is used",
+        "The new worker is rejected because its scope matches the old worker's"
+      ],
+      "answer": 1,
+      "why": "A new service worker installs and then waits while any client is controlled by the old one; a reload does not release it, because the old page stays alive until the new one commits. Apps show an \"Update available\" prompt and call `skipWaiting()`, or call it on install and accept mixed versions.",
+      "tags": ["workers"],
+      "level": 3,
+      "asked": "The PWA update lifecycle is where most service-worker bugs live, and this waiting phase is its core."
+    },
+    {
+      "id": "jsb-139",
+      "q": "After Back, a product page is restored from the back/forward cache and shows a stale cart count. Which listener lets the page refresh it?",
+      "choices": [
+        "`DOMContentLoaded`, which fires again on restoration",
+        "`load`, which fires again with `event.persisted` set",
+        "`popstate`, which fires for every back navigation",
+        "`pageshow`, checking `event.persisted` to spot a restore"
+      ],
+      "answer": 3,
+      "why": "A bfcache restore brings back the frozen page without reloading it, so `DOMContentLoaded` and `load` do not fire again. `pageshow` fires on every show, and `persisted` is true when the page came from the cache. `popstate` is for same-document history entries.",
+      "tags": ["navigation", "events"],
+      "level": 3,
+      "asked": "bfcache gives instant Back navigation, and handling its staleness is the mid-to-senior detail."
+    },
+    {
+      "id": "jsb-140",
+      "q": "A router stores its view state in history. What happens here?",
+      "code": "history.pushState(\n  { page: 2, onBack: () => closeModal() },\n  '', '?page=2'\n);",
+      "lang": "js",
+      "choices": [
+        "It throws a `DataCloneError`: functions cannot be structured-cloned",
+        "It works, and the function runs when the user presses Back",
+        "It works, but `onBack` is silently dropped from the saved state",
+        "It works, and the state is saved as a JSON string in the URL"
+      ],
+      "answer": 0,
+      "why": "History state is stored with the structured clone algorithm so it can survive reloads and session restores, and functions cannot be cloned, so `pushState` throws. Keep state to plain data (and small), and derive behaviour from it in the `popstate` handler.",
+      "tags": ["navigation"],
+      "level": 3,
+      "asked": "It tests whether you know what history state is, which matters when building or debugging routers."
+    },
+    {
+      "id": "jsb-141",
+      "q": "The SPA on `https://app.example.com` calls `https://api.example.com` with `credentials: 'include'`. The session cookie is `SameSite=Lax`. Is it sent?",
+      "choices": [
+        "No: `Lax` cookies are only sent on top-level GET navigations",
+        "No: any cross-origin request drops `Lax` cookies",
+        "Yes: the two hosts are same-site, so `SameSite` does not block it",
+        "Yes, but only if the cookie also has `Domain=api.example.com`"
+      ],
+      "answer": 2,
+      "why": "SameSite compares sites (scheme plus registrable domain), and both hosts are on `example.com`, so the request is same-site even though it is cross-origin. The cookie is sent, provided CORS allows credentials. From `evil.com` it would be cross-site and the `Lax` rule would apply.",
+      "tags": ["cookies", "cors"],
+      "level": 3,
+      "asked": "Site versus origin is the distinction behind most modern cookie confusion."
+    },
+    {
+      "id": "jsb-142",
+      "q": "Every PUT from the SPA triggers an OPTIONS request first, doubling latency. Without changing the request, how can the server reduce this?",
+      "choices": [
+        "Send `Access-Control-Max-Age` so browsers cache the preflight",
+        "Send `Cache-Control: max-age=600` on the PUT response itself",
+        "Respond to OPTIONS with 204 No Content instead of 200 OK",
+        "Add `Connection: keep-alive` to the OPTIONS response"
+      ],
+      "answer": 0,
+      "why": "`Access-Control-Max-Age` tells the browser how long it may reuse a preflight result for that URL and method set; browsers cap it (Chrome at 2 hours). `Cache-Control` on the real response does not affect preflight caching, and a 200 or 204 makes no difference.",
+      "tags": ["cors", "http"],
+      "level": 3,
+      "asked": "A performance-meets-CORS question; knowing preflights can be cached is the mid-level signal."
+    },
+    {
+      "id": "jsb-143",
+      "q": "A live-updates feed uses `EventSource`. The connection drops for ten seconds. What happens without extra code?",
+      "choices": [
+        "The EventSource closes for good and fires `error` once",
+        "It reconnects and replays every event the server ever sent",
+        "It stops until the page calls `source.reconnect()`",
+        "It reconnects, sending `Last-Event-ID` so the server can resume"
+      ],
+      "answer": 3,
+      "why": "Server-sent events reconnect automatically after a delay the server can set with `retry:`, and if events carried `id:` fields the browser sends the last one in `Last-Event-ID`. The server decides what to replay from it. WebSockets have no built-in reconnect, which is one reason SSE suits one-way feeds.",
+      "tags": ["events", "http"],
+      "level": 3,
+      "asked": "Comparing SSE with WebSockets comes up in realtime questions, and auto-reconnect is the practical differentiator."
+    },
+    {
+      "id": "jsb-144",
+      "q": "In a browser that supports the Navigation API, what does this give a client-side router that `pushState` alone does not?",
+      "code": "navigation.addEventListener('navigate', (e) => {\n  if (!e.canIntercept) return;\n  e.intercept({ handler: () => render(new URL(e.destination.url)) });\n});",
+      "lang": "js",
+      "choices": [
+        "Server-side rendering of each route before the handler runs",
+        "Cross-origin navigations that stay inside the single-page app",
+        "One event for links, forms and back/forward, made same-document",
+        "Automatic caching of rendered routes in the back/forward cache"
+      ],
+      "answer": 2,
+      "why": "The `navigate` event fires for every navigation the page can see, and `intercept()` turns it into a same-document one with your handler, so a router no longer needs its own link-click listener plus `popstate`. It also tracks the handler's promise for loading state and scroll/focus handling. Cross-origin navigations cannot be intercepted.",
+      "tags": ["navigation"],
+      "level": 3,
+      "asked": "Knowing the modern platform replacement for hand-rolled routing is a strong signal of current knowledge."
+    },
+    {
+      "id": "jsb-145",
+      "q": "An editor sends the whole 300 KB draft with `fetch(..., { keepalive: true })` when the page is hidden. Why does the request fail?",
+      "choices": [
+        "`keepalive` requests are limited to about 64 KB of body in total",
+        "`keepalive` only works with the GET method, never with POST",
+        "`keepalive` requests are blocked on HTTPS pages for privacy",
+        "`keepalive` needs a service worker to be registered first"
+      ],
+      "answer": 0,
+      "why": "To stop pages leaving large uploads running after they close, browsers cap the combined body size of in-flight `keepalive` requests (and `sendBeacon`) at about 64 KB. Save drafts incrementally while the page is open and use the unload-time request only for a small final delta.",
+      "tags": ["fetch", "navigation"],
+      "level": 3,
+      "asked": "Autosave-on-exit is a common feature, and the size limit is the production gotcha."
     }
   ]
 }

@@ -560,6 +560,2242 @@
       "tags": ["observability", "operations"],
       "level": 2,
       "asked": "An on-call classic that separates alerting on errors from alerting on missing expected events; 'dead man's switch' is the phrase interviewers hope for."
+    },
+    {
+      "id": "db-038",
+      "q": "In React 19 development, an effect that posts an analytics event fires twice on mount, but only once in production. What is going on?",
+      "choices": [
+        "The component is rendered by two different parents, so it mounts twice everywhere",
+        "Strict Mode remounts components once in development to expose effects missing cleanup",
+        "The dev server sends each network request twice to warm the HTTP cache for the page",
+        "React 19 batches effects differently in development and replays the last one it ran"
+      ],
+      "answer": 1,
+      "why": "Strict Mode deliberately runs an extra setup-cleanup cycle in development so effects without proper cleanup show their bug. The fix is idempotent effects or cleanup, not removing Strict Mode; production mounts once.",
+      "tags": ["frontend"],
+      "level": 1,
+      "asked": "A very common 'bug' report from juniors; the strong answer explains why React does it on purpose."
+    },
+    {
+      "id": "db-039",
+      "q": "A React 19 counter increments once per second, but the displayed value sticks at 1. What is the bug?",
+      "code": "const [count, setCount] = useState(0);\nuseEffect(() => {\n  const id = setInterval(() => setCount(count + 1), 1000);\n  return () => clearInterval(id);\n}, []);",
+      "lang": "jsx",
+      "choices": [
+        "`setInterval` is throttled in React components, so it only fires the once",
+        "The cleanup runs immediately after setup, so the interval is cleared again each second",
+        "The interval callback closes over `count` from the first render, which is always 0",
+        "`useState` setters ignore values that are computed from the previous state"
+      ],
+      "answer": 2,
+      "why": "With an empty dependency array the effect runs once, and its callback keeps seeing `count === 0`, so it sets 1 forever. Use the updater form `setCount(c => c + 1)` so the callback no longer depends on a stale closure.",
+      "tags": ["frontend"],
+      "level": 2,
+      "asked": "Stale closures are the most common hooks bug in real code; the updater-function fix is what interviewers want."
+    },
+    {
+      "id": "db-040",
+      "q": "A Next.js or React SSR page logs 'Hydration failed because the server rendered text didn't match the client'. The component shows `new Date().toLocaleTimeString()`. Why?",
+      "choices": [
+        "Server and browser render at different moments, often in different zones and locales",
+        "`toLocaleTimeString` is not available in Node, so the server renders an empty string",
+        "Hydration fails whenever a component uses any built-in JavaScript Date method",
+        "The browser's clock is ahead of the server's, and React refuses to hydrate future times"
+      ],
+      "answer": 0,
+      "why": "Hydration expects the client's first render to produce the same markup as the server's. Times, random values and locale-dependent formatting differ, so render them only after mount (in an effect) or pass the server's value down as data.",
+      "tags": ["frontend", "dates"],
+      "level": 2,
+      "asked": "Hydration errors are a daily SSR headache; strong answers list the usual non-deterministic sources."
+    },
+    {
+      "id": "db-041",
+      "q": "After a deploy, some users keep seeing the old version of your PWA even after refreshing. The app registers a service worker. What is the likely cause?",
+      "choices": [
+        "The CDN is ignoring your cache headers, so it serves the old version forever",
+        "Browsers keep a separate copy of each site's JavaScript for every open tab",
+        "The new build failed to deploy for users in some regions of the world",
+        "The old service worker serves cached assets until the new one takes control"
+      ],
+      "answer": 3,
+      "why": "A new service worker installs but waits until all tabs using the old one close; meanwhile the old worker keeps answering from its cache. Prompt users to reload on `waiting`, or use `skipWaiting` and `clients.claim` deliberately.",
+      "tags": ["frontend", "deployment"],
+      "level": 3,
+      "asked": "Shows you understand service worker lifecycle, which trips up almost every team that adds one."
+    },
+    {
+      "id": "db-042",
+      "q": "Your frontend on `app.example.com` calls `api.example.com` with `fetch`, but the session cookie is never sent. The server sets it with `SameSite=Lax`. What else is required?",
+      "choices": [
+        "Setting `mode: 'no-cors'` on the fetch, so the browser skips the cookie check",
+        "Nothing, because cookies are always sent on every request to the same site",
+        "`credentials: 'include'` on the fetch, plus CORS allowing credentials for that origin",
+        "Renaming the cookie with a `__Host-` prefix so that it is shared across all subdomains"
+      ],
+      "answer": 2,
+      "why": "Cross-origin fetches omit cookies unless you opt in with `credentials: 'include'`, and the API must reply with `Access-Control-Allow-Credentials: true` and an explicit origin, not `*`. `__Host-` cookies are the opposite: locked to one host.",
+      "tags": ["frontend", "http"],
+      "level": 2,
+      "asked": "Cookie-plus-CORS bugs are extremely common in split frontend and API deployments."
+    },
+    {
+      "id": "db-043",
+      "q": "Login works on `http://localhost` but on the HTTPS staging site the browser drops the auth cookie. It is set with `SameSite=None` but without `Secure`. Why?",
+      "choices": [
+        "Browsers reject `SameSite=None` cookies that are not also marked `Secure`",
+        "Staging sites are treated as third-party domains, which block all cookies",
+        "`SameSite=None` only works on localhost, as a development convenience",
+        "HTTPS strips all cookie attributes, so the cookie arrives with no name"
+      ],
+      "answer": 0,
+      "why": "Modern browsers require `Secure` on any `SameSite=None` cookie and silently discard it otherwise; the DevTools cookie panel shows a warning. Localhost gets special treatment, which is why it 'works on my machine'.",
+      "tags": ["frontend", "http", "security"],
+      "level": 2,
+      "asked": "Browsers log it quietly, so candidates who have debugged cookie issues know to look in the Application panel."
+    },
+    {
+      "id": "db-044",
+      "q": "After adding a Content-Security-Policy header, your analytics script and an inline `onclick` handler stop working. What does the console most likely show?",
+      "choices": [
+        "A CORS error, because CSP and CORS are the same browser mechanism",
+        "A 403 from the server, since CSP blocks the requests on the server side before sending",
+        "Refused to load or execute them because they violate the policy's `script-src`",
+        "A mixed-content warning, since CSP forces all scripts onto plain HTTP"
+      ],
+      "answer": 2,
+      "why": "CSP is enforced by the browser: scripts from unlisted origins and inline handlers are blocked unless allowed, and each violation is logged. Add the analytics origin, move inline handlers into scripts, or use nonces; roll out with `Content-Security-Policy-Report-Only` first.",
+      "tags": ["frontend", "security"],
+      "level": 2,
+      "asked": "Shows you can adopt CSP without breaking the site; report-only mode is the strong detail."
+    },
+    {
+      "id": "db-045",
+      "q": "Your HTTPS page loads an image from `http://cdn.example.com/logo.png`, and it does not appear. What is happening?",
+      "choices": [
+        "The CDN rejects requests that come from pages served over HTTPS connections",
+        "Images over HTTP are allowed, but the browser lazy-loads them only once the user scrolls",
+        "The image is too large, so the browser cancels it on a secure connection",
+        "Mixed content: the browser upgrades or blocks HTTP subresources on HTTPS pages"
+      ],
+      "answer": 3,
+      "why": "Browsers block active mixed content and now auto-upgrade or block passive content such as images, so an HTTP URL on an HTTPS page fails if the host has no HTTPS. Serve every asset over HTTPS or use protocol-relative config from the environment.",
+      "tags": ["frontend", "http"],
+      "level": 1,
+      "asked": "A common bug after moving a site to HTTPS; easy points if you name it."
+    },
+    {
+      "id": "db-046",
+      "q": "The React app reads `import.meta.env.VITE_API_URL`. You change the variable in the hosting dashboard and restart, but the app still calls the old URL. Why?",
+      "choices": [
+        "Vite reads environment variables only on the first request after each restart of the host",
+        "The value is inlined into the bundle at build time, so you must rebuild and redeploy",
+        "The browser caches environment variables in localStorage for up to a day",
+        "Dashboard variables apply only to server code and never to static sites"
+      ],
+      "answer": 1,
+      "why": "Frontend bundlers replace `import.meta.env.*` with literal strings during the build, so the running bundle contains the old URL. Rebuild per environment, or load runtime config from a small `/config.json` fetched at start-up.",
+      "tags": ["frontend", "config"],
+      "level": 2,
+      "asked": "Build-time versus runtime config is a key distinction; strong answers offer the runtime-config alternative."
+    },
+    {
+      "id": "db-047",
+      "q": "A 'remember my draft' feature throws `QuotaExceededError` for a few users. What is the most likely explanation?",
+      "choices": [
+        "Those users' browsers do not support localStorage at all, so every call throws",
+        "localStorage is cleared on each reload, so writes fail when the page reloads",
+        "The origin's storage quota (about 5 MB) is full, or the browser restricts storage",
+        "The server rejected the draft, and the error is forwarded into the browser API"
+      ],
+      "answer": 2,
+      "why": "localStorage has a small per-origin quota, and some privacy modes or embedded contexts restrict it further, so `setItem` can throw. Wrap access in try/catch, keep drafts small, and treat browser storage as a convenience that may fail.",
+      "tags": ["frontend"],
+      "level": 1,
+      "asked": "Shows defensive thinking about browser APIs that 'always work' in development."
+    },
+    {
+      "id": "db-048",
+      "q": "Your API behind a TLS-terminating load balancer builds redirect URLs, and users land on `http://` links that redirect back to HTTPS in a loop. What is missing?",
+      "choices": [
+        "A second TLS certificate on the app itself so it can serve HTTPS directly",
+        "A CDN between the balancer and the app to rewrite the scheme of each link it returns",
+        "An HSTS header on the balancer, which rewrites the app's generated URLs",
+        "Trusting `X-Forwarded-Proto` so the app knows the original request was HTTPS"
+      ],
+      "answer": 3,
+      "why": "The app receives plain HTTP from the balancer and assumes the client did too. Enable forwarded-headers handling (`UseForwardedHeaders` in ASP.NET Core, `app.set('trust proxy', ...)` in Express) for the known proxy so scheme, host and client IP are correct.",
+      "tags": ["http", "config"],
+      "level": 2,
+      "asked": "A classic 'works locally, loops behind the proxy' bug; strong answers restrict trust to known proxies."
+    },
+    {
+      "id": "db-049",
+      "q": "Your Express app's rate limiter blocks everyone at once in production, though it works locally. The logs show every request coming from `10.0.3.17`. Why?",
+      "choices": [
+        "The app sees the load balancer's IP, not the client's, because proxy trust is not set",
+        "A single attacker at `10.0.3.17` is flooding the API and triggering the limit",
+        "The rate limiter uses a shared counter that resets only once a day when run in production",
+        "Express converts IPv6 client addresses to one IPv4 address behind proxies"
+      ],
+      "answer": 0,
+      "why": "Behind a proxy, the socket address is the proxy's, so all users share one rate-limit bucket. Configure `trust proxy` for your proxy hops so `req.ip` comes from `X-Forwarded-For`, without trusting arbitrary client-supplied headers.",
+      "tags": ["http", "config"],
+      "level": 2,
+      "asked": "Real production incident; strong answers mention not trusting `X-Forwarded-For` from anywhere."
+    },
+    {
+      "id": "db-050",
+      "q": "A third-party address-lookup API starts taking 30 seconds to respond. Soon your whole API is unresponsive, including endpoints that never call it. Why?",
+      "choices": [
+        "Requests waiting on the slow dependency hold threads or connections until none are left",
+        "The third party is sending your API malicious payloads that crash every endpoint",
+        "Slow outbound calls make Node and .NET lower the priority of every other request",
+        "The load balancer marks your API unhealthy whenever a dependency is slow"
+      ],
+      "answer": 0,
+      "why": "Without a short timeout, calls to the slow dependency pile up and exhaust shared resources (connection pools, thread pool, sockets), so unrelated requests queue too. Timeouts, a circuit breaker and a bulkhead (separate limit for that dependency) contain the failure.",
+      "tags": ["reliability", "performance"],
+      "level": 2,
+      "asked": "Cascading failure from a slow dependency is a classic; strong answers name timeouts, circuit breakers and bulkheads."
+    },
+    {
+      "id": "db-051",
+      "q": "A report endpoint returns 504 Gateway Timeout after exactly 60 seconds, yet the app logs show the request completing successfully after 75 seconds. What happened?",
+      "choices": [
+        "The app crashed at 60 seconds and restarted, then logged a different request",
+        "The browser has a 60-second limit and reported its own timeout as a 504 response code",
+        "The proxy's 60-second timeout fired first, so the app's late response was discarded",
+        "The database cancelled the query at 60 seconds but returned the rows anyway"
+      ],
+      "answer": 2,
+      "why": "Each hop has its own timeout; the gateway gave up at 60 seconds and answered 504 while the app carried on. Either make the work faster, move it to a background job with 202 and polling, or align timeouts deliberately across the chain.",
+      "tags": ["http", "performance"],
+      "level": 2,
+      "asked": "Tests layered-timeout reasoning; strong answers prefer an async job over raising every timeout."
+    },
+    {
+      "id": "db-052",
+      "q": "In Nginx access logs you see many HTTP 499 responses for your search endpoint. What does 499 mean?",
+      "choices": [
+        "The upstream app returned an unknown error that Nginx could not classify",
+        "The request body was too large for the configured client buffer size",
+        "Nginx rejected the request because the rate limit for that client was hit",
+        "The client closed the connection before Nginx could send the response"
+      ],
+      "answer": 3,
+      "why": "499 is Nginx's own code for 'client closed request': the user navigated away, a fetch was aborted, or a caller's timeout fired. Many 499s on one endpoint usually mean it is too slow for its callers, or the frontend aborts superseded searches.",
+      "tags": ["http", "performance"],
+      "level": 2,
+      "asked": "Reading proxy logs is a real skill; 499 is often misread as a server error."
+    },
+    {
+      "id": "db-053",
+      "q": "A WebSocket chat works locally but fails in production behind Nginx with a 400 or an immediate close. What is the most likely missing configuration?",
+      "choices": [
+        "Forwarding the `Upgrade` and `Connection` headers and using HTTP/1.1 to the upstream",
+        "Enabling gzip for WebSocket frames, since uncompressed frames are rejected",
+        "Setting a CORS header, since WebSocket handshakes require a preflight request",
+        "Opening a separate TCP port for WebSockets, since they cannot share port 443 with HTTPS"
+      ],
+      "answer": 0,
+      "why": "The WebSocket handshake is an HTTP/1.1 upgrade, and Nginx does not pass hop-by-hop `Upgrade`/`Connection` headers by default. Add `proxy_http_version 1.1` and set both headers, and raise idle timeouts for long-lived connections.",
+      "tags": ["http", "networking"],
+      "level": 3,
+      "asked": "A standard real-time deployment bug; people who have shipped WebSockets know the two headers."
+    },
+    {
+      "id": "db-054",
+      "q": "One corporate user cannot reach your API: the browser reports `NET::ERR_CERT_AUTHORITY_INVALID`, but it works for everyone else and on SSL checkers. What is a likely cause?",
+      "choices": [
+        "Your certificate expired only for users in that user's time zone",
+        "A corporate TLS-inspection proxy re-signs traffic with a CA their device lacks",
+        "The API rejects that user's IP, and the browser shows it as a certificate error",
+        "Your server sends a different certificate to every visitor for security reasons"
+      ],
+      "answer": 1,
+      "why": "Middleboxes that intercept TLS present their own certificate, and if the device lacks the corporate root CA the browser rejects it. Checking the certificate issuer in the browser reveals it; the fix is on their network side.",
+      "tags": ["http", "networking"],
+      "level": 3,
+      "asked": "Tests the ability to reason from 'only one user' to 'something on their path'."
+    },
+    {
+      "id": "db-055",
+      "q": "Browsers load your site fine, but a partner's Java or Node client fails with 'unable to verify the first certificate'. What should you check?",
+      "choices": [
+        "That the partner's client supports HTTP/2, since HTTP/1.1 cannot verify certificates",
+        "That the certificate uses RSA, since elliptic-curve certificates fail in servers",
+        "That your server sends the full chain, including the intermediate certificate",
+        "That the certificate's expiry date is in the partner's local time zone"
+      ],
+      "answer": 2,
+      "why": "Browsers often fetch or cache missing intermediates, masking a misconfigured server; many non-browser clients do not. Configure the server with the full chain file, and verify with `openssl s_client -showcerts` or an SSL checker.",
+      "tags": ["http", "networking"],
+      "level": 3,
+      "asked": "A real integration bug that browser testing hides; strong answers mention testing with a CLI client."
+    },
+    {
+      "id": "db-056",
+      "q": "In production your ASP.NET Core API ignores settings in `appsettings.Production.json`. Locally, `appsettings.Development.json` works fine. What should you check first?",
+      "choices": [
+        "That the JSON file is marked as an embedded resource so the runtime can read it",
+        "That `appsettings.json` has been deleted, since it overrides all other files",
+        "That the file name uses lowercase `production`, which Linux requires",
+        "That `ASPNETCORE_ENVIRONMENT` really is `Production` and the file was published"
+      ],
+      "answer": 3,
+      "why": "The environment-specific file is chosen by the environment name, which defaults to Production but is often overridden by a stray setting, and the file must be copied to the publish output. `appsettings.json` loads first and the environment file overrides it.",
+      "tags": ["config"],
+      "level": 1,
+      "asked": "Environment-specific configuration is a basic .NET deployment skill interviewers check."
+    },
+    {
+      "id": "db-057",
+      "q": "An ASP.NET Core app reads `ConnectionStrings:Default`. On the host you set the environment variable `ConnectionStrings:Default`, but Linux ignores it. What is the correct name?",
+      "choices": [
+        "`CONNECTIONSTRINGS_DEFAULT`, since environment variables must be uppercase",
+        "`ConnectionStrings__Default`, using a double underscore for the section separator",
+        "`ConnectionStrings.Default`, using a dot, which Linux shells accept",
+        "`Default`, since connection strings are always read from the root of the configuration"
+      ],
+      "answer": 1,
+      "why": "Colons are not portable in environment variable names, so the .NET configuration provider maps `__` to `:`. Names are case-insensitive for .NET, so uppercase is not required, but the separator is.",
+      "tags": ["config"],
+      "level": 2,
+      "asked": "A small detail that causes real production outages; knowing it shows hands-on .NET deployment."
+    },
+    {
+      "id": "db-058",
+      "q": "A Node API works locally but crashes in production because `process.env.DATABASE_URL` is undefined. Locally, the value lives in a `.env` file. What is the most likely reason?",
+      "choices": [
+        "The `.env` file is not deployed, and the variable was never set on the host itself",
+        "Node 24 ignores `.env` files unless the process runs as the root user",
+        "Environment variables are read-only in production, so the value is cleared",
+        "`process.env` only contains variables whose names are all lowercase"
+      ],
+      "answer": 0,
+      "why": "`.env` files are a local convenience (loaded by dotenv or `node --env-file`) and should not ship; production must set variables on the host or in the platform's config. Validate required config at start-up so this fails loudly.",
+      "tags": ["config"],
+      "level": 1,
+      "asked": "Tests whether config is understood as the environment's job; strong answers add start-up validation."
+    },
+    {
+      "id": "db-059",
+      "q": "Tests pass on your Mac and Windows machines but fail in the Linux CI with 'Cannot find module ./components/Header'. The file is `header.tsx`. Why?",
+      "choices": [
+        "Linux cannot resolve `.tsx` extensions without an explicit loader flag",
+        "CI caches old files, so it is still looking at a `Header` file that has since been deleted",
+        "Linux filesystems are case-sensitive, so `Header` and `header` are different files",
+        "Module resolution on Linux requires every import path to be absolute"
+      ],
+      "answer": 2,
+      "why": "macOS and Windows filesystems are case-insensitive by default, so a wrong-case import works locally. Linux containers and CI are case-sensitive. Fix the import; `forceConsistentCasingInFileNames` in tsconfig catches it earlier.",
+      "tags": ["ci", "config"],
+      "level": 1,
+      "asked": "Very common cross-platform bug; mentioning the tsconfig flag is a strong detail."
+    },
+    {
+      "id": "db-060",
+      "q": "A shell script committed from Windows fails in a Linux container with `/bin/sh^M: bad interpreter`. What is wrong?",
+      "choices": [
+        "The script is missing execute permission, and `^M` is the permission error code",
+        "The container's shell is too old to run scripts that were written on Windows",
+        "The script uses a Windows-only command that the shell prints as `^M`",
+        "The file has CRLF line endings, so the shebang line ends with a carriage return"
+      ],
+      "answer": 3,
+      "why": "`^M` is a carriage return: the interpreter path became `/bin/sh\\r`. Convert to LF and add a `.gitattributes` rule such as `*.sh text eol=lf` so git checks it out correctly on every machine.",
+      "tags": ["config", "docker"],
+      "level": 1,
+      "asked": "Classic cross-platform trap; `.gitattributes` is the durable fix interviewers like."
+    },
+    {
+      "id": "db-061",
+      "q": "A Node script works when run from the project root but fails with ENOENT when a cron job runs it. It reads `fs.readFileSync('./data/config.json')`. Why?",
+      "choices": [
+        "Relative paths resolve against the process's working directory, not the script's folder",
+        "Cron jobs cannot read JSON files unless they run with elevated permissions on the machine",
+        "`readFileSync` is disabled in non-interactive shells for safety reasons",
+        "The file is locked by the editor, which blocks reads from other processes"
+      ],
+      "answer": 0,
+      "why": "`./` means `process.cwd()`, and cron starts in the home directory. Resolve paths relative to the module instead, for example `new URL('./data/config.json', import.meta.url)` or `path.join(import.meta.dirname, ...)`.",
+      "tags": ["config"],
+      "level": 2,
+      "asked": "Working-directory bugs appear in every deployment; strong answers show the module-relative fix."
+    },
+    {
+      "id": "db-062",
+      "q": "A CI build fails with a type error inside a library, though you changed nothing. The lockfile is committed, but CI runs `npm install`. What is the fix?",
+      "choices": [
+        "Delete the lockfile so that npm can pick the newest compatible versions on every run",
+        "Use `npm ci`, which installs exactly what the lockfile records and fails on mismatch",
+        "Add `--force` to `npm install` so it ignores type errors in dependencies",
+        "Pin the library with a caret range such as `^2.0.0` in `package.json`"
+      ],
+      "answer": 1,
+      "why": "`npm install` may update the lockfile within `package.json` ranges, pulling a new release; `npm ci` installs the lockfile exactly and errors if it disagrees with `package.json`. A caret range allows the very drift that caused this.",
+      "tags": ["ci", "dependencies"],
+      "level": 1,
+      "asked": "Reproducible installs are a basic CI expectation; the npm ci answer is what interviewers listen for."
+    },
+    {
+      "id": "db-063",
+      "q": "The app builds locally on Node 24 but CI fails with `SyntaxError` on modern syntax, and the CI image uses Node 18. What durable fix stops this recurring?",
+      "choices": [
+        "Transpile every dependency to ES5 so it runs on any version of Node",
+        "Remove the modern syntax from your code so it runs on older versions",
+        "Declare the version once (`.nvmrc` or `engines`) and have CI read it",
+        "Ask each developer to downgrade to Node 18 to match the CI image"
+      ],
+      "answer": 2,
+      "why": "One source of truth for the runtime version, read by `actions/setup-node` (`node-version-file`), local tooling and the Dockerfile, keeps them aligned. Node 18 is also end-of-life, so CI should move up, not developers down.",
+      "tags": ["ci", "dependencies"],
+      "level": 1,
+      "asked": "Environment parity question; strong answers name a single version file."
+    },
+    {
+      "id": "db-064",
+      "q": "A test passes alone but fails when the whole suite runs. Another test earlier in the run sets a module-level cache. What kind of bug is this?",
+      "choices": [
+        "A flaky network dependency that only appears under heavy CI load",
+        "A timezone difference between the test runner and the code under test",
+        "A compiler bug that only appears when many test files are loaded",
+        "Order-dependent tests sharing state that one test leaves behind"
+      ],
+      "answer": 3,
+      "why": "Shared mutable state (module singletons, globals, database rows) leaks between tests, so results depend on order. Reset state in `beforeEach`, isolate modules, or run with a random order to surface these early.",
+      "tags": ["ci", "method"],
+      "level": 2,
+      "asked": "Test isolation is a core testing skill; interviewers like hearing about randomised order."
+    },
+    {
+      "id": "db-065",
+      "q": "A date-formatting test passes on your laptop in London and fails in CI. The expected string is `'24/09/2026'`. What is the most likely cause?",
+      "choices": [
+        "CI runs in UTC and a different default locale, so the formatted output differs",
+        "The CI machine's clock is set to the wrong year, so the date is off",
+        "Date formatting in Node only works when a browser is present",
+        "The test framework rounds all dates to midnight UTC before comparing them with strings"
+      ],
+      "answer": 0,
+      "why": "`toLocaleDateString()` without arguments uses the machine's locale and time zone, which differ between laptop and CI. Pass an explicit locale and `timeZone` in code and tests, or set `TZ` in the test environment.",
+      "tags": ["ci", "dates"],
+      "level": 1,
+      "asked": "Hidden environment dependencies in tests are common; strong answers make locale and zone explicit."
+    },
+    {
+      "id": "db-066",
+      "q": "Your Node image now runs as `USER node`. The app starts, but every upload fails with `EACCES: permission denied, open '/app/uploads/a.png'`. What is the most likely cause?",
+      "choices": [
+        "The `node` user lacks write permission on `/app/uploads`, which was created as root",
+        "Uploads are blocked by the container runtime unless the port is published first",
+        "Node refuses to write files whose names end in an image extension without a flag",
+        "The filesystem inside every container image is mounted read-only by Docker itself"
+      ],
+      "answer": 0,
+      "why": "Files and folders created earlier in the Dockerfile (by `COPY` or `RUN mkdir`) belong to root, so switching to a non-root user leaves them unwritable. Use `COPY --chown=node:node` or `chown` the directory, or better, write uploads to object storage or a mounted volume.",
+      "tags": ["docker", "config"],
+      "level": 2,
+      "asked": "Running as non-root is best practice, and this is the bug it causes first; strong answers fix ownership rather than going back to root."
+    },
+    {
+      "id": "db-067",
+      "q": "Your API container starts and logs 'listening on localhost:3000', but the host cannot reach it on the published port. What is wrong?",
+      "choices": [
+        "Port 3000 is reserved inside containers, so the app must use port 80",
+        "Containers cannot accept connections until a health check has passed",
+        "The app is bound to the container's loopback, so it must listen on `0.0.0.0`",
+        "The `-p 3000:3000` flag only works on Linux hosts, not under Docker on macOS or Windows"
+      ],
+      "answer": 2,
+      "why": "Inside a container, `localhost` is the container's own loopback, which the published port cannot reach. Bind to `0.0.0.0` (all interfaces), for example `app.listen(3000, '0.0.0.0')` or `ASPNETCORE_URLS=http://+:8080`.",
+      "tags": ["docker", "networking"],
+      "level": 1,
+      "asked": "Probably the most common first container bug; quick recognition earns easy credit."
+    },
+    {
+      "id": "db-068",
+      "q": "A customer named `Zoë` appears as `ZoÃ«` in exported CSV files opened in Excel, while the web UI shows it correctly. What is the most likely cause?",
+      "choices": [
+        "The database column is too short, so the accented character was truncated on save",
+        "The file is UTF-8, but Excel is opening it with a legacy Windows encoding instead",
+        "The browser converted the name to ASCII before sending it to the export endpoint",
+        "The CSV writer escapes non-English letters as HTML entities by default in exports"
+      ],
+      "answer": 1,
+      "why": "`Ã«` is what the two UTF-8 bytes for `ë` look like when decoded as Windows-1252: classic mojibake. The data is fine; write a UTF-8 BOM at the start of the CSV (Excel uses it to detect encoding) or offer an XLSX export.",
+      "tags": ["dates", "config"],
+      "level": 2,
+      "asked": "Encoding bugs are everyday work with exports; recognising mojibake patterns speeds diagnosis."
+    },
+    {
+      "id": "db-069",
+      "q": "An order id from your API is `9007199254740993`, but the frontend shows and sends back `9007199254740992`. What happened?",
+      "code": "JSON.parse('{\"id\": 9007199254740993}').id\n// → 9007199254740992",
+      "lang": "js",
+      "choices": [
+        "The API rounded the id to an even number before serialising the response",
+        "`JSON.parse` truncates every integer to 16 characters to protect memory",
+        "The id exceeds `Number.MAX_SAFE_INTEGER`, so it was parsed into the nearest double",
+        "The browser's fetch adds one to very large numbers to stop attackers enumerating ids"
+      ],
+      "answer": 2,
+      "why": "JavaScript numbers are 64-bit doubles and only represent integers exactly up to 2^53 − 1; larger values snap to a neighbouring representable number. Send 64-bit ids (C# `long`, Postgres `bigint`) as strings in JSON.",
+      "tags": ["frontend", "http"],
+      "level": 3,
+      "asked": "A real integration bug between .NET or SQL bigints and JavaScript; the 'send as string' fix is the key."
+    },
+    {
+      "id": "db-070",
+      "q": "A daily 02:30 reminder job did not run on one Sunday in March and ran twice on one Sunday in October. The server uses local UK time. Why?",
+      "choices": [
+        "The scheduler library has a leap-year bug that affects two Sundays a year",
+        "The database was in maintenance on those Sundays, and the job retried itself afterwards",
+        "Two servers were deployed on those weekends, and each one ran the job",
+        "Daylight saving: 02:30 did not exist on one day and occurred twice on the other"
+      ],
+      "answer": 3,
+      "why": "When clocks jump forward, local times in the gap never happen; when they fall back, an hour repeats. Run schedulers in UTC, or pick a local time outside the transition window and make jobs idempotent.",
+      "tags": ["dates", "operations"],
+      "level": 2,
+      "asked": "Time zones and DST produce memorable bugs; strong answers say 'schedule in UTC, make jobs idempotent'."
+    },
+    {
+      "id": "db-071",
+      "q": "A price input accepts `1,50` from a German user, and the API stores `150` instead of `1.50`. Where is the bug?",
+      "choices": [
+        "Locale-aware input is parsed with rules that treat the comma as a thousands separator",
+        "The database column is an integer type, which drops everything after the decimal point",
+        "The browser rounds numbers typed with a comma to the nearest whole unit before sending",
+        "JSON cannot carry decimal numbers, so the API multiplies prices by one hundred"
+      ],
+      "answer": 0,
+      "why": "In German, the comma is the decimal separator; stripping 'thousands separators' before parsing turns `1,50` into `150`. Parse with the user's locale on the client (or use `<input type=number>`), and send numbers as plain JSON numbers or decimal strings.",
+      "tags": ["frontend", "dates"],
+      "level": 2,
+      "asked": "Internationalisation bugs are common in CRUD forms; interviewers like 'parse at the edge, send canonical values'."
+    },
+    {
+      "id": "db-072",
+      "q": "A bug appeared some time in the last 200 commits, and you have a reliable test that shows it. What is the fastest systematic way to find the commit?",
+      "choices": [
+        "Read every commit message from the last month and look for the most likely suspect",
+        "Revert the most recent commits one at a time until the test passes again",
+        "`git bisect`, which binary-searches the range and needs about eight test runs",
+        "Diff the current code against the last release and review the whole thing"
+      ],
+      "answer": 2,
+      "why": "Bisect halves the range each step, so 200 commits take about log2(200) ≈ 8 checks, and `git bisect run <test>` automates it. Reverting one by one is linear and may not even revert the right thing.",
+      "tags": ["method"],
+      "level": 1,
+      "asked": "Classic efficient-debugging question; mentioning `bisect run` with a script is a strong detail."
+    },
+    {
+      "id": "db-073",
+      "q": "A bug report says 'the export crashes for some customers'. Before changing any code, what gives you the most leverage?",
+      "choices": [
+        "Rewrite the export module, since crashing code is usually poorly structured",
+        "Add retries around the export so that the crash is hidden from customers",
+        "Upgrade every dependency in case one of them has already fixed the crash",
+        "A minimal reproduction: the smallest input and steps that trigger the crash"
+      ],
+      "answer": 3,
+      "why": "A reliable, small repro turns guessing into experiment: you can test hypotheses, bisect and later keep it as a regression test. Retries hide the symptom, and blanket upgrades change many variables at once.",
+      "tags": ["method"],
+      "level": 1,
+      "asked": "Interviewers want to hear a method; 'first, reproduce it' is the expected opening move."
+    },
+    {
+      "id": "db-074",
+      "q": "You get this Node stack trace. Which frame should you usually read first?",
+      "code": "TypeError: Cannot read properties of undefined (reading 'email')\n    at formatUser (/app/src/users/format.js:12:23)\n    at Array.map (<anonymous>)\n    at listUsers (/app/src/users/routes.js:40:18)\n    at Layer.handle (/app/node_modules/express/lib/router/layer.js:95:5)",
+      "lang": "txt",
+      "choices": [
+        "`format.js:12`, the topmost frame in your own code where the error was thrown",
+        "`layer.js:95`, because the bottom frame is always where an error really started",
+        "`Array.map`, since built-in functions are the usual source of such errors",
+        "None of them, since stack traces in Node always point at the wrong line"
+      ],
+      "answer": 0,
+      "why": "The top frame is where the exception was raised; here `formatUser` received an element that is `undefined`. Then walk down to `routes.js:40` to see why the array contained it. Framework frames at the bottom are just how the request arrived.",
+      "tags": ["method"],
+      "level": 1,
+      "asked": "Reading a stack trace fluently is a basic skill interviewers sometimes test live."
+    },
+    {
+      "id": "db-075",
+      "q": "Staging works, production fails, and both run the same image. What is the most productive next step?",
+      "choices": [
+        "Redeploy production several times, since the failure may be a one-off",
+        "Diff the two environments: config, secrets, data shape, versions and traffic",
+        "Copy the production database into staging and hope the failure reproduces",
+        "Roll back to an image from last month, even though the code is identical"
+      ],
+      "answer": 1,
+      "why": "If the code is identical, the difference is in what surrounds it: environment variables, feature flags, network rules, dependency versions, data shape or volume. Listing and comparing them narrows the search; blind redeploys and rollbacks test nothing.",
+      "tags": ["method", "config"],
+      "level": 2,
+      "asked": "Shows a disciplined comparison method rather than trial and error."
+    },
+    {
+      "id": "db-076",
+      "q": "A new feature is behind a flag. After enabling it for 10% of users, errors rise. What should you do first?",
+      "choices": [
+        "Roll the whole release back, since a flag cannot be switched off once it is enabled",
+        "Raise it to 100% so that you get enough errors to diagnose the problem well",
+        "Turn the flag off, confirm errors drop, then investigate with the flag's cohort",
+        "Leave it on and add more logging, since 10% of users is a small population"
+      ],
+      "answer": 2,
+      "why": "The point of a flag is an instant kill switch: disabling it mitigates without a deploy, and checking that errors fall confirms the flag caused them. Then reproduce with the flag on in a safe environment.",
+      "tags": ["method", "deployment"],
+      "level": 1,
+      "asked": "Tests whether you know feature flags are a mitigation tool, not only a release tool."
+    },
+    {
+      "id": "db-077",
+      "q": "An API in Kubernetes keeps restarting. `kubectl describe pod` shows the liveness probe failing during start-up, which takes 40 seconds. What is the fix?",
+      "choices": [
+        "Remove all probes so that Kubernetes stops restarting the container at all",
+        "Increase the pod's memory limit, since slow start-up means memory pressure",
+        "Change the restart policy to `Never` so that the pod stays up even after the failures",
+        "Add a startup probe (or initial delay) so liveness checks begin after start-up"
+      ],
+      "answer": 3,
+      "why": "Liveness probes that fire before the app is ready kill it in a loop. A startup probe holds off liveness checks until the app has started; readiness then controls traffic. Removing probes loses self-healing entirely.",
+      "tags": ["docker", "deployment"],
+      "level": 3,
+      "asked": "A common Kubernetes crash-loop cause; distinguishing startup, readiness and liveness probes is the key."
+    },
+    {
+      "id": "db-078",
+      "q": "A Postgres-backed endpoint was fast last month and is now slow. `EXPLAIN ANALYZE` shows `Seq Scan on orders` with a filter on `customer_id`. What is the most likely fix?",
+      "choices": [
+        "Add an index on `orders(customer_id)` so the planner can seek instead of scan",
+        "Run `VACUUM FULL` every hour so that sequential scans are turned into index scans",
+        "Increase the connection pool size, so more scans can run in parallel",
+        "Rewrite the query as a stored procedure, which always uses an index"
+      ],
+      "answer": 0,
+      "why": "As the table grew, scanning every row to find one customer's orders became expensive. An index on the filter column lets Postgres jump to matching rows. Vacuuming reclaims space but does not create access paths, and more connections just run more slow scans.",
+      "tags": ["database", "performance"],
+      "level": 1,
+      "asked": "The canonical slow-query scenario; interviewers want EXPLAIN and an index, not guesswork."
+    },
+    {
+      "id": "db-079",
+      "q": "In SQL Server 2022, a stored procedure is fast for most customers but occasionally becomes slow for everyone until the plan cache is cleared. What is the classic explanation?",
+      "choices": [
+        "The procedure leaks memory, which slows every call until the server restarts",
+        "Parameter sniffing: a plan compiled for an unusual value is reused for all calls",
+        "The procedure's statistics are updated on every call, which blocks other queries",
+        "SQL Server randomly picks a plan each time, so some executions are unlucky"
+      ],
+      "answer": 1,
+      "why": "The first execution's parameter values shape the cached plan; if they are atypical (a huge customer), the plan suits them and hurts everyone else. Fixes include `OPTION (RECOMPILE)`, `OPTIMIZE FOR`, or Query Store plan forcing and SQL Server 2022's parameter-sensitive plan optimisation.",
+      "tags": ["database", "performance"],
+      "level": 3,
+      "asked": "A famous SQL Server production issue; naming it and a fix separates experienced candidates."
+    },
+    {
+      "id": "db-080",
+      "q": "After a bulk import of two million rows, queries on that Postgres table became slow, though the indexes exist. What should you try first?",
+      "choices": [
+        "Drop and recreate every index on the table, since bulk imports corrupt the indexes",
+        "Restart the database server, since imports leave locks held in memory",
+        "Run `ANALYZE` so the planner's statistics reflect the new data distribution",
+        "Increase `work_mem` to the maximum so that every query has more memory"
+      ],
+      "answer": 2,
+      "why": "The planner chooses plans from table statistics; after a large change they are stale until autovacuum's analyze catches up, so it may misestimate row counts and pick bad plans. Running `ANALYZE` right after bulk loads is standard.",
+      "tags": ["database", "performance"],
+      "level": 2,
+      "asked": "Tests whether you know the planner depends on statistics, not just on indexes existing."
+    },
+    {
+      "id": "db-081",
+      "q": "A SQL Server query filters `WHERE AccountCode = @code`. `AccountCode` is `varchar` with an index, but EF Core sends `@code` as `nvarchar`, and the index is scanned. Why?",
+      "choices": [
+        "Indexes on `varchar` columns are ignored whenever the query uses a parameter value",
+        "EF Core disables index use for queries generated from LINQ expressions",
+        "The `nvarchar` parameter is truncated, so no index entry can match it",
+        "An implicit conversion of the column to `nvarchar` prevents an efficient seek"
+      ],
+      "answer": 3,
+      "why": "SQL Server converts the lower-precedence `varchar` column to match the `nvarchar` parameter, which forces it to evaluate the conversion row by row instead of seeking. Map the property as `varchar` (`HasColumnType` or `IsUnicode(false)`) so parameters match.",
+      "tags": ["database", "performance"],
+      "level": 3,
+      "asked": "Implicit conversions are a subtle real-world cause of scans; spotting it shows deep SQL Server experience."
+    },
+    {
+      "id": "db-082",
+      "q": "Users report that saving a record hangs for 30 seconds and then times out, but only when a nightly report is running. Where do you look first?",
+      "choices": [
+        "Blocking: the report's long transaction holds locks that the update waits on",
+        "Disk space: reports write temporary files that fill the database's data disk",
+        "The CDN: reports are cached at the edge, which delays other requests",
+        "Browser limits: the report opens too many tabs for the save to go through"
+      ],
+      "answer": 0,
+      "why": "A long-running reporting transaction can hold or escalate locks, so writers queue behind it until they time out. Check `pg_locks`/`pg_stat_activity` or `sys.dm_exec_requests` blocking chains; run reports on a replica or use snapshot isolation.",
+      "tags": ["database", "concurrency"],
+      "level": 2,
+      "asked": "Correlating a symptom with another workload is the core skill here; strong answers name the DMVs or views."
+    },
+    {
+      "id": "db-083",
+      "q": "A Node API using `pg.Pool` with `max: 10` hangs under load, and requests never reach the database. The code below runs per request. What is the bug?",
+      "code": "const client = await pool.connect();\nconst { rows } = await client.query(sql, params);\nif (rows.length === 0) return res.status(404).end();\nclient.release();\nres.json(rows);",
+      "lang": "js",
+      "choices": [
+        "`pool.connect` opens a new pool each time, which exhausts server memory",
+        "The early `return` skips `client.release()`, so clients leak until none are left",
+        "`client.query` must be called without `await` when a pool is used",
+        "`res.status(404)` closes the database connection, so the pool retries the query forever"
+      ],
+      "answer": 1,
+      "why": "Every 404 path leaks a checked-out client; after ten, `pool.connect()` waits forever for one to be returned. Release in `finally`, or use `pool.query()`, which checks out and releases for you.",
+      "tags": ["database", "performance"],
+      "level": 2,
+      "asked": "Connection leaks on early-return paths are extremely common; the try/finally fix is expected."
+    },
+    {
+      "id": "db-084",
+      "q": "An ASP.NET Core API logs `Timeout expired. The timeout period elapsed prior to obtaining a connection from the pool` under load. What does this mean?",
+      "choices": [
+        "The database server is down, and the pool is reporting it with a misleading message",
+        "The connection string has an invalid timeout, so every attempt fails immediately",
+        "All pooled connections are in use (or leaked), and new requests waited too long",
+        "The pool was disposed at start-up, so no connections can ever be obtained"
+      ],
+      "answer": 2,
+      "why": "ADO.NET's pool (default max 100) was exhausted: connections are held too long by slow queries, long transactions or undisposed contexts/connections. Look for missing `using`, long-running work inside a transaction, and slow queries before simply raising `Max Pool Size`.",
+      "tags": ["database", "performance"],
+      "level": 2,
+      "asked": "A standard .NET production error; interviewers want causes, not just 'raise the pool size'."
+    },
+    {
+      "id": "db-085",
+      "q": "A Postgres server starts rejecting connections with `FATAL: sorry, too many clients already` after you scale the API from 4 to 20 instances. Why?",
+      "choices": [
+        "Each API instance now opens a separate database, and Postgres limits databases",
+        "Postgres limits connections per client IP, and the new instances share one IP",
+        "The API instances are running an older driver that Postgres no longer supports",
+        "Each instance has its own pool, so total connections exceeded `max_connections`"
+      ],
+      "answer": 3,
+      "why": "Twenty instances with a pool of 20 each want 400 connections, beyond the default 100. Size pools as `max_connections` divided by instances (with headroom), or add PgBouncer. Postgres connections are processes, so raising the limit has real memory cost.",
+      "tags": ["database", "operations"],
+      "level": 2,
+      "asked": "Scaling out the app layer can break the database layer; interviewers like the arithmetic."
+    },
+    {
+      "id": "db-086",
+      "q": "Your logs show one request running 101 SQL queries: one for a list of orders and one per order for its customer. What is this, and what is the usual fix?",
+      "choices": [
+        "N+1 queries; load the related data in one query with a join or `Include`",
+        "A deadlock; retry the request so that the queries run in a different order",
+        "Connection pooling; disable the pool so all queries share one connection",
+        "Query caching; clear the plan cache so the database batches the queries"
+      ],
+      "answer": 0,
+      "why": "Lazy loading or per-item lookups turn a list into 1 + N round trips, which scales with the data. Eager loading (`Include`), a projection with a join, or batching ids into one `IN` query collapses it to one or two queries.",
+      "tags": ["database", "performance"],
+      "level": 1,
+      "asked": "The single most-asked ORM performance question; seeing it from logs is the real-world version."
+    },
+    {
+      "id": "db-087",
+      "q": "A migration adds a column with a default value and an index to a 50-million-row Postgres table. During deploy the site stops responding for minutes. What likely happened?",
+      "choices": [
+        "Adding a column with any default always rewrites every row, in all versions of Postgres",
+        "`CREATE INDEX` without `CONCURRENTLY` locks the table against writes until it finishes",
+        "Migrations run on every API instance at once, so the column was added 20 times",
+        "Postgres closes all connections when the schema changes, forcing reconnects"
+      ],
+      "answer": 1,
+      "why": "A plain `CREATE INDEX` takes a lock that blocks writes for the whole build; `CREATE INDEX CONCURRENTLY` avoids that (outside a transaction). Since Postgres 11, adding a column with a constant default is metadata-only, so the index is the likely culprit.",
+      "tags": ["database", "deployment"],
+      "level": 3,
+      "asked": "Online schema changes separate people who have migrated big tables from those who have not."
+    },
+    {
+      "id": "db-088",
+      "q": "A user updates their profile and is redirected to the profile page, which shows the old values. A refresh a second later shows the new ones. Reads go to a replica. What is the cause?",
+      "choices": [
+        "The browser cached the page, and the refresh bypassed the cache by coincidence",
+        "The write was committed twice, and the first commit was rolled back quietly",
+        "Replica lag: the redirect's read hit the replica before the write replicated",
+        "The ORM cached the entity in memory and served it from the first request"
+      ],
+      "answer": 2,
+      "why": "Asynchronous replication means a replica can be milliseconds to seconds behind. Read-your-writes flows should read from the primary for a short window after a write, or return the updated data in the write response.",
+      "tags": ["database", "concurrency"],
+      "level": 2,
+      "asked": "Eventual consistency made concrete; strong answers give a routing strategy."
+    },
+    {
+      "id": "db-089",
+      "q": "Two admins edit the same product. Admin A saves a new price; a minute later admin B saves a description change, and A's price is gone. What is this, and what prevents it?",
+      "choices": [
+        "A deadlock; add retries so both saves eventually succeed in some order",
+        "A replication delay; always read from the primary database before showing the edit form",
+        "A cache bug; disable output caching on the edit endpoint for admins",
+        "A lost update; use optimistic concurrency with a version or rowversion check"
+      ],
+      "answer": 3,
+      "why": "B's form was loaded before A saved, and saving the whole object overwrote A's change. A version column in the `WHERE` clause (EF Core concurrency tokens, `rowversion`) makes B's save fail with a conflict the UI can resolve.",
+      "tags": ["database", "concurrency"],
+      "level": 2,
+      "asked": "Every CRUD app with multiple editors has this bug; the version-check answer is expected at mid-level."
+    },
+    {
+      "id": "db-090",
+      "q": "Sign-up checks `SELECT ... WHERE email = @e`, and inserts if none is found. Under load, duplicate accounts with the same email appear. What is the robust fix?",
+      "choices": [
+        "A unique constraint on email, handling the violation as 'already registered'",
+        "Wrapping the check and insert in a `try/catch` block in the application code",
+        "Adding a one-second delay before the insert so the first request finishes",
+        "Checking again after the insert and deleting the second row if one exists"
+      ],
+      "answer": 0,
+      "why": "Check-then-insert is a race: two requests both see 'none' and both insert. Only the database can enforce uniqueness atomically; the unique index turns the race into an error you translate to a friendly message.",
+      "tags": ["database", "concurrency"],
+      "level": 1,
+      "asked": "The canonical race condition in CRUD apps; interviewers want 'let the database enforce it'."
+    },
+    {
+      "id": "db-091",
+      "q": "A payment client retries timed-out HTTP calls, and some customers are charged twice. What is the right fix?",
+      "choices": [
+        "Stop retrying payment calls entirely, since any retry can double-charge",
+        "Send an idempotency key with each logical payment so the provider deduplicates",
+        "Increase the timeout to five minutes so that the first call always has time to finish",
+        "Retry only on Mondays, when the provider guarantees exactly-once delivery"
+      ],
+      "answer": 1,
+      "why": "A timeout does not mean failure: the charge may have succeeded before the response was lost. An idempotency key (reused across retries of the same logical operation) lets the provider return the original result instead of charging again.",
+      "tags": ["concurrency", "reliability"],
+      "level": 2,
+      "asked": "Payments make idempotency concrete; strong answers note that timeouts are ambiguous outcomes."
+    },
+    {
+      "id": "db-092",
+      "q": "A scheduled job runs every 5 minutes, but some runs take 8 minutes, and records are occasionally processed twice. What is the cause?",
+      "choices": [
+        "The scheduler's clock drifts by three minutes, so it fires the job early",
+        "The database commits each record twice when a transaction runs for too long",
+        "Runs overlap: a new run starts before the last one finishes, and both claim records",
+        "The job's logs are duplicated, so records only appear to be processed twice"
+      ],
+      "answer": 2,
+      "why": "Timer-based schedulers usually do not wait for the previous run. Prevent overlap (a lock or `DisallowConcurrentExecution`), claim work atomically (`UPDATE ... RETURNING` or `SKIP LOCKED`), and make processing idempotent.",
+      "tags": ["concurrency", "operations"],
+      "level": 2,
+      "asked": "Overlapping jobs are a common production bug; the strong answer covers both prevention and idempotency."
+    },
+    {
+      "id": "db-093",
+      "q": "Every authenticated request runs `UPDATE users SET last_seen = now() WHERE id = @id`. Under load, lock waits on the `users` table climb and logins slow down. What is a sensible fix?",
+      "choices": [
+        "Wrap the update in a serialisable transaction so that the lock waits are shorter",
+        "Update `last_seen` only when it is older than a few minutes, or batch the writes",
+        "Move the `users` table to a separate database server so it gets more locks",
+        "Add an index on `last_seen` so the update can find the row more quickly"
+      ],
+      "answer": 1,
+      "why": "A write on every request turns a read-mostly row into a hotspot that competes with logins and profile updates. Throttling the write (only if stale) or buffering it in memory or Redis and flushing in batches removes most of the contention; an extra index makes each update more expensive.",
+      "tags": ["database", "concurrency"],
+      "level": 3,
+      "asked": "Shows you question whether a write is needed at all, a mark of production experience."
+    },
+    {
+      "id": "db-094",
+      "q": "Tokens issued by your auth server are rejected by one API instance with 'token not yet valid', but accepted by the others. What should you check?",
+      "choices": [
+        "Clock skew: that instance's clock is behind, so the token's `nbf` looks in the future",
+        "The signing key rotated, and that instance uses a key from the future",
+        "The token is too long for that instance's header buffer, so it is truncated",
+        "That instance runs a different .NET version, which reads token dates in local time"
+      ],
+      "answer": 0,
+      "why": "JWT validation compares `nbf`, `iat` and `exp` against the local clock. A server whose clock has drifted (NTP not running) rejects fresh tokens; validators allow small clock skew, but fix time sync on the host.",
+      "tags": ["concurrency", "operations"],
+      "level": 3,
+      "asked": "Shows you know time is a distributed-systems problem, even in a CRUD app."
+    },
+    {
+      "id": "db-095",
+      "q": "A Node 24 API becomes unresponsive for everyone whenever one user uploads a large CSV, though CPU usage is only one core at 100%. What is the likely cause?",
+      "choices": [
+        "The upload saturates the network card, so other requests cannot be received",
+        "Node limits each process to one concurrent request while an upload is running",
+        "Synchronous parsing of the CSV blocks the event loop, so no other request runs",
+        "The upload uses all available memory, so the garbage collector stops the process"
+      ],
+      "answer": 2,
+      "why": "Node runs JavaScript on one thread; a long synchronous loop (parsing, `JSON.parse` of huge payloads, sync crypto) stops the event loop from serving anything else. Stream the parse, chunk the work, or move it to a worker thread or background job.",
+      "tags": ["performance"],
+      "level": 2,
+      "asked": "The most important Node performance concept; interviewers expect 'blocking the event loop' and a fix."
+    },
+    {
+      "id": "db-096",
+      "q": "Which metric tells you most directly that a Node service's event loop is being blocked?",
+      "choices": [
+        "Heap used, because a blocked loop always allocates more memory",
+        "Event loop delay or lag, for example from `perf_hooks.monitorEventLoopDelay`",
+        "The number of open file descriptors, since blocking opens more files",
+        "Garbage collection count, since blocking the loop triggers a full collection each time"
+      ],
+      "answer": 1,
+      "why": "Event loop delay measures how late timers fire; sustained high values mean something synchronous is hogging the thread. Heap and GC metrics describe memory, which is a different problem.",
+      "tags": ["performance", "observability"],
+      "level": 2,
+      "asked": "Shows you know how to measure Node health, not just CPU and memory."
+    },
+    {
+      "id": "db-097",
+      "q": "Error rates spike for about five minutes at 00:00 UTC every night and are normal the rest of the day. What is the most productive first step?",
+      "choices": [
+        "Add more instances permanently, since midnight traffic must be higher than you think",
+        "Switch the servers to local time so the spike moves out of the busiest hours",
+        "Ignore it, since a five-minute spike each night stays within most error budgets",
+        "List what is scheduled at midnight, such as cron jobs, backups and log rotation"
+      ],
+      "answer": 3,
+      "why": "A spike at the same wall-clock time every day almost always correlates with scheduled work competing for the database, locks or CPU, or with daily expiries. Line up job schedules against the graphs before changing capacity.",
+      "tags": ["method", "operations"],
+      "level": 1,
+      "asked": "Correlation with time is a basic but powerful debugging move; interviewers like the list of usual suspects."
+    },
+    {
+      "id": "db-098",
+      "q": "An ASP.NET Core endpoint serves videos with `return File(await System.IO.File.ReadAllBytesAsync(path), \"video/mp4\");`. With a few concurrent 2 GB downloads, the process runs out of memory. What is the fix?",
+      "choices": [
+        "Increase the container memory to 16 GB so that several videos fit at once",
+        "Compress each video with gzip before returning it, so the arrays are smaller",
+        "Return a stream (`PhysicalFile` or a `FileStream`) so the file is sent in chunks",
+        "Call `GC.Collect()` after each download so the byte arrays are freed sooner"
+      ],
+      "answer": 2,
+      "why": "`ReadAllBytesAsync` loads the entire file into one huge array per request (on the large object heap). Returning `PhysicalFile(path, ...)` or a `FileStream` streams from disk with small buffers and supports range requests; video is already compressed, and forcing GCs does not reduce peak use.",
+      "tags": ["memory", "performance"],
+      "level": 1,
+      "asked": "Buffering versus streaming is a basic but frequently missed concept in file endpoints."
+    },
+    {
+      "id": "db-099",
+      "q": "A .NET 9 API allocates a fresh 200 KB `byte[]` buffer per request, and `dotnet-counters` shows frequent gen 2 collections with long pauses. Why?",
+      "choices": [
+        "Arrays over 85,000 bytes go on the large object heap, which is only collected in gen 2",
+        "Byte arrays are pinned by the runtime, so every single collection has to scan them twice",
+        "The GC promotes any object that survives one request straight to gen 2 storage",
+        "Server GC collects only gen 2, so every allocation eventually causes a full GC"
+      ],
+      "answer": 0,
+      "why": "Large objects skip the cheap gen 0 path and are reclaimed only by full, expensive gen 2 collections, so churning big buffers triggers them often. Rent buffers from `ArrayPool<byte>.Shared` or stream instead of buffering.",
+      "tags": ["memory", "performance"],
+      "level": 3,
+      "asked": "The LOH is a classic .NET performance topic; `ArrayPool` is the answer that shows you have fixed it."
+    },
+    {
+      "id": "db-100",
+      "q": "A Node API gets steadily slower over each week, and speed returns after every deploy. CPU per request rises; memory is flat. What pattern fits best?",
+      "choices": [
+        "A memory leak, since slower responses always mean the heap is growing",
+        "An in-memory list that grows over time and is scanned on each request",
+        "The database needs a restart each week, which the deploy does as well",
+        "The CDN's cache warms up after deploys and slowly empties over the week"
+      ],
+      "answer": 1,
+      "why": "Rising CPU per request with flat memory suggests work proportional to accumulated state, such as an array of revoked tokens or registered handlers scanned linearly on every call; the restart resets it. Profile a slow request and look for a loop over something that only grows.",
+      "tags": ["performance", "method"],
+      "level": 2,
+      "asked": "Tests reasoning from symptoms (resets on restart, CPU not memory) to a class of bug."
+    },
+    {
+      "id": "db-101",
+      "q": "A React SPA gets slower the longer a tab stays open, and DevTools shows detached DOM nodes growing. What is a common cause?",
+      "choices": [
+        "React 19 keeps every previous render in memory so that it can undo changes",
+        "An effect subscribes to a global event or timer and never cleans it up",
+        "CSS animations keep the DOM nodes they animated alive for the session",
+        "The browser caches each API response as DOM nodes until the tab closes"
+      ],
+      "answer": 1,
+      "why": "A listener on `window`, a `setInterval` or a third-party subscription created in an effect without a cleanup function keeps closures, and through them old components and DOM nodes, reachable after unmount. Return a cleanup from the effect.",
+      "tags": ["memory", "frontend"],
+      "level": 2,
+      "asked": "Frontend leaks are underrated; the cleanup-function answer ties to how effects are meant to work."
+    },
+    {
+      "id": "db-102",
+      "q": "A .NET 9 API's working set grows under load and never shrinks back, but it does not crash, and a memory dump shows nothing unusual. What is a reasonable explanation?",
+      "choices": [
+        "Every .NET app leaks memory by design, which is why IIS recycles app pools",
+        "The garbage collector is broken in .NET 9 and must be switched off in config",
+        "The GC keeps memory it has committed for reuse, so a plateau is normal",
+        "The app is out of disk space, so the operating system cannot page it out"
+      ],
+      "answer": 2,
+      "why": "Server GC is tuned for throughput and holds on to committed memory to avoid re-requesting it; a high but stable plateau is not a leak. A leak keeps growing across GCs. In containers, set limits and consider `DOTNET_GCHeapHardLimit` or DATAS in .NET 9.",
+      "tags": ["memory", "performance"],
+      "level": 3,
+      "asked": "Separates 'uses memory' from 'leaks memory', which many candidates conflate."
+    },
+    {
+      "id": "db-103",
+      "q": "Which tool would you use first to watch GC counts, thread pool queue length and exception rate of a running .NET process without restarting it?",
+      "choices": [
+        "`dotnet build --verbose`, which prints runtime metrics during compilation",
+        "`dotnet test`, which runs the process under a profiler and reports metrics",
+        "Visual Studio's Immediate window, attached to the production process",
+        "`dotnet-counters monitor`, which reads the runtime's live event counters"
+      ],
+      "answer": 3,
+      "why": "`dotnet-counters` attaches to a running process and shows live runtime metrics (GC, thread pool, exceptions, ASP.NET Core requests). For deeper work, `dotnet-trace` captures CPU traces and `dotnet-dump` captures memory.",
+      "tags": ["performance", "observability"],
+      "level": 2,
+      "asked": "Knowing the diagnostics tools by name shows you have debugged .NET beyond breakpoints."
+    },
+    {
+      "id": "db-104",
+      "q": "An ASP.NET Core API handles a burst badly: CPU is low, yet requests queue for seconds, and `dotnet-counters` shows the thread pool queue growing. The code calls `.Result` on async HTTP calls. What is happening?",
+      "choices": [
+        "Thread pool starvation: blocking on async work ties up threads faster than new ones arrive",
+        "The HTTP client has a default limit of two connections per server, so calls queue",
+        "Kestrel's request queue is full, so it must be enlarged in configuration",
+        "The garbage collector pauses every thread while `.Result` values are stored"
+      ],
+      "answer": 0,
+      "why": "Sync-over-async blocks pool threads waiting for work that needs pool threads to complete; the pool grows slowly, so latency spikes while CPU idles. Make the call chain async all the way down.",
+      "tags": ["performance", "concurrency"],
+      "level": 3,
+      "asked": "Thread pool starvation is the classic .NET production performance bug; low CPU with high latency is the tell."
+    },
+    {
+      "id": "db-105",
+      "q": "Password-reset emails worked in testing, but in production most users never receive them, and the email provider's dashboard shows them as delivered. Where do you look?",
+      "choices": [
+        "The reset tokens, since expired tokens stop the email from being delivered",
+        "The users' passwords, since the provider drops mail to accounts that are locked",
+        "The app's SMTP timeout, since slow sends are silently cancelled by the provider",
+        "Spam filtering: check SPF, DKIM and DMARC for the sending domain and the headers"
+      ],
+      "answer": 3,
+      "why": "'Delivered' means the receiving server accepted it, not that it reached the inbox. Without SPF and DKIM records authorising your provider (and a DMARC policy), mail from a new domain is often junked. Check the raw headers of a test message for authentication results.",
+      "tags": ["operations", "config"],
+      "level": 2,
+      "asked": "A common launch-week bug; strong answers know 'delivered' is not 'in the inbox'."
+    },
+    {
+      "id": "db-106",
+      "q": "A profile shows your API spends most CPU time in one function. In a flame graph, what does a very WIDE bar mean?",
+      "choices": [
+        "The function was called by the most distinct callers in the code base",
+        "The function has the deepest call stack below it in the whole trace",
+        "The function, including what it calls, was on the stack for many samples",
+        "The function was the most recently executed code at the moment the trace was stopped"
+      ],
+      "answer": 2,
+      "why": "Width is the proportion of samples in which that frame (and its children) was on the stack, so wide means expensive; height is just stack depth. Look for wide plateaus near the top, where time is spent in the function itself.",
+      "tags": ["performance"],
+      "level": 2,
+      "asked": "Reading a flame graph is a practical skill; interviewers sometimes show one and ask where to look."
+    },
+    {
+      "id": "db-107",
+      "q": "After an upgrade, p50 latency is unchanged but p99 doubled. What does that tell you?",
+      "choices": [
+        "Nothing, because p99 is too noisy to be meaningful for real users",
+        "Every request got slower, but the median hides it because of rounding",
+        "The slowdown must be in the database, since the API code itself is unchanged by the upgrade",
+        "A minority of requests got much slower, such as some paths, users or GC pauses"
+      ],
+      "answer": 3,
+      "why": "Percentiles describe the distribution: the typical request is the same, but the slowest 1% got worse. Slice by endpoint, tenant and instance, and check GC or lock waits; averages would hide this entirely.",
+      "tags": ["observability", "performance"],
+      "level": 1,
+      "asked": "Tests whether you understand percentiles, a basic observability literacy check."
+    },
+    {
+      "id": "db-108",
+      "q": "Your tracing samples 1% of requests. A customer reports one very slow checkout, but you cannot find its trace. What sampling approach would have kept it?",
+      "choices": [
+        "Tail-based sampling, which decides after the request whether it was slow or failed",
+        "Head-based sampling at 0.1%, which keeps fewer but more representative traces overall",
+        "Turning tracing off and relying on logs, which always record every request",
+        "Sampling by user id, which guarantees every customer's first request is kept"
+      ],
+      "answer": 0,
+      "why": "Head sampling decides at the start, before anyone knows the request will be slow, so rare bad requests are usually dropped. Tail sampling (in an OpenTelemetry Collector) keeps errors and slow traces plus a sample of the rest.",
+      "tags": ["observability"],
+      "level": 3,
+      "asked": "Shows understanding of the trade-offs in tracing cost and usefulness."
+    },
+    {
+      "id": "db-109",
+      "q": "An order request enqueues a message, and a worker processes it later. In the logs you cannot connect the worker's error to the original request. What is missing?",
+      "choices": [
+        "A shared log file that both the API and the worker write to on disk",
+        "Passing the trace or correlation id in the message and logging it in the worker",
+        "Synchronous processing, since queues make request tracing impossible",
+        "A higher log level on the worker so that it records every message body"
+      ],
+      "answer": 1,
+      "why": "Context does not cross a queue automatically: put the trace or correlation id in the message headers and restore it in the consumer (OpenTelemetry does this with links or propagation). Logging whole payloads adds volume, not linkage.",
+      "tags": ["observability", "messaging"],
+      "level": 2,
+      "asked": "Asynchronous boundaries are where tracing breaks; the strong answer propagates context explicitly."
+    },
+    {
+      "id": "db-110",
+      "q": "Logs show `Error: Something went wrong` with no stack trace or context, thrown from deep in your Node app. What change most improves future debugging?",
+      "choices": [
+        "Log the error at `debug` level so it only appears when needed",
+        "Catch errors at every function and return `null`, so nothing crashes",
+        "Throw errors with a specific message and a `cause`, and log them with context",
+        "Replace errors with `console.log` calls so the output is always visible"
+      ],
+      "answer": 2,
+      "why": "A descriptive message, the original error attached via `new Error('...', { cause })`, and structured logging of the stack plus request id make an error traceable. Swallowing errors and returning `null` moves the crash somewhere even harder to diagnose.",
+      "tags": ["logging", "method"],
+      "level": 1,
+      "asked": "Error hygiene is a practical signal of seniority; `cause` shows you know modern JavaScript."
+    },
+    {
+      "id": "db-111",
+      "q": "A Node process crashes and restarts several times a day with no error in the logs. What is a likely gap?",
+      "choices": [
+        "Node never logs errors in production mode, so crashes are always silent",
+        "The restarts are caused by log rotation, which kills processes by design",
+        "Unhandled promise rejections are ignored by Node 24, so they cannot crash the process",
+        "No `uncaughtException`/`unhandledRejection` logging, or the platform's OOM kill"
+      ],
+      "answer": 3,
+      "why": "Since Node 15 an unhandled rejection crashes the process, and if nothing logs it before exit, you see only restarts. Also check container events for OOMKilled, which leaves no application log at all.",
+      "tags": ["logging", "operations"],
+      "level": 2,
+      "asked": "Silent crash loops happen; the strong answer checks both the app's last words and the platform's events."
+    },
+    {
+      "id": "db-112",
+      "q": "Your API runs on six instances, and the error rate has risen, but only instance 4 is producing the errors. What is the best first move?",
+      "choices": [
+        "Roll back the latest release on all six instances before looking any further",
+        "Take instance 4 out of rotation or replace it, then compare it with a healthy one",
+        "Scale out to twelve instances so that instance 4 receives a smaller share of traffic",
+        "Restart the database, since one instance erroring points to a data problem"
+      ],
+      "answer": 1,
+      "why": "Errors isolated to one instance point at something local to it: a bad host, full disk, stale config or a failed start-up step. Draining it mitigates immediately, and diffing it against a healthy peer finds the cause; a code bug would hit every instance.",
+      "tags": ["operations", "method"],
+      "level": 1,
+      "asked": "Tests whether you slice metrics by instance before acting; strong answers mitigate first, then compare."
+    },
+    {
+      "id": "db-113",
+      "q": "When is 'fix forward' preferable to rolling back a bad release?",
+      "choices": [
+        "Always, since rollbacks are riskier than any fix you can write under pressure",
+        "When the release ran an irreversible change, such as a destructive migration",
+        "Never, because good teams must always be able to roll back every change",
+        "Only when the release happened more than a week ago and nobody remembers it"
+      ],
+      "answer": 1,
+      "why": "If the old code cannot run against the new schema or data, rolling back makes things worse, so a small, reviewed forward fix is the path. That is why migrations are designed to be backward-compatible (expand, migrate, contract).",
+      "tags": ["operations", "deployment"],
+      "level": 2,
+      "asked": "Shows judgement rather than dogma; strong answers connect it to backward-compatible migrations."
+    },
+    {
+      "id": "db-114",
+      "q": "During an incident, several engineers are changing configuration and restarting services at the same time. What does a good incident process add first?",
+      "choices": [
+        "A rule that only the most senior engineer may touch production systems",
+        "A ban on communicating until the root cause has been found, agreed and written up",
+        "A single incident lead who coordinates actions, plus a running log of changes",
+        "A requirement to open a pull request for every command during the outage"
+      ],
+      "answer": 2,
+      "why": "Uncoordinated changes confuse cause and effect and can make things worse. An incident commander assigns work, approves changes, and someone records a timeline, which also feeds the postmortem.",
+      "tags": ["operations", "process"],
+      "level": 2,
+      "asked": "Tests awareness of incident roles; a timeline and a single lead are the key points."
+    },
+    {
+      "id": "db-115",
+      "q": "An alert fires at 3 a.m. for a service the on-call engineer has never worked on. What most reduces the time to mitigate?",
+      "choices": [
+        "A rule that only the service's original author may respond to its alerts",
+        "A dashboard with every metric the service emits, in no particular order",
+        "A runbook linked from the alert, with checks and safe mitigation steps",
+        "A longer alert delay, so that the owning team sees it in the morning"
+      ],
+      "answer": 2,
+      "why": "A runbook turns tribal knowledge into steps: what the alert means, which dashboards to check, and safe actions such as rollback, scale or flag off. Unstructured dashboards leave a stranger guessing, and waiting until morning extends user impact.",
+      "tags": ["operations", "process"],
+      "level": 1,
+      "asked": "Operational maturity question; strong answers say every paging alert should link to one."
+    },
+    {
+      "id": "db-116",
+      "q": "During a 40-minute outage, customers and support staff keep asking what is happening. The cause is still unknown. What should the team communicate?",
+      "choices": [
+        "Nothing until the root cause is known, to avoid saying anything that turns out wrong",
+        "A detailed technical explanation of every hypothesis the team is investigating",
+        "A promise that the outage will be fixed within five minutes, to calm customers",
+        "Regular updates on impact and status, with the time of the next update"
+      ],
+      "answer": 3,
+      "why": "People mostly need to know you are aware, what is affected and when they will hear more; a status page and a named communicator keep engineers free to work. Silence breeds escalations, and guesses or promises create a second credibility problem.",
+      "tags": ["operations", "process"],
+      "level": 1,
+      "asked": "Incident communication is part of the job; interviewers like 'next update at' as a habit."
+    },
+    {
+      "id": "db-117",
+      "q": "A queue consumer reports 'processed' for each message, but downstream data is often missing. The handler below is used. What is the bug?",
+      "code": "queue.on('message', async (msg) => {\n  msg.ack();\n  await saveToDb(JSON.parse(msg.body));\n});",
+      "lang": "js",
+      "choices": [
+        "`JSON.parse` is synchronous, so it must be awaited before the message can be saved",
+        "The message is acknowledged before the save, so a failed save loses it for good",
+        "`async` handlers cannot be used with queues, so every message is dropped",
+        "`msg.ack()` should be called twice, once before and once after the save"
+      ],
+      "answer": 1,
+      "why": "Acknowledging first removes the message from the queue, so if `saveToDb` throws or the process dies, nothing redelivers it. Acknowledge after the work succeeds, and make the handler idempotent to cope with redelivery.",
+      "tags": ["messaging", "reliability"],
+      "level": 1,
+      "asked": "Acknowledgement order is basic but frequently wrong in real code."
+    },
+    {
+      "id": "db-118",
+      "q": "A consumer's messages reappear and are processed a second time even though processing succeeds. Each message takes about 90 seconds; the visibility timeout is 30 seconds. Why?",
+      "choices": [
+        "The broker duplicates every message by default to guarantee delivery",
+        "The acknowledgement is too large to be accepted after 30 seconds",
+        "The timeout expires mid-processing, so the broker redelivers it to another consumer",
+        "Processing succeeds only on the second attempt, since the first is a warm-up"
+      ],
+      "answer": 2,
+      "why": "If a message is not acknowledged within its visibility timeout or lock duration, the broker assumes the consumer died and redelivers it. Set the timeout above the worst-case processing time or extend the lock while working.",
+      "tags": ["messaging", "reliability"],
+      "level": 2,
+      "asked": "A common queue misconfiguration; strong answers mention lock renewal as well as a longer timeout."
+    },
+    {
+      "id": "db-119",
+      "q": "A consumer group's lag keeps growing during peak hours and recovers overnight. What does that tell you?",
+      "choices": [
+        "Messages are being lost at peak times, and lag measures how many were lost",
+        "The broker is slowing down deliberately to protect itself from overload",
+        "The producers are sending duplicates, so lag always doubles during peaks",
+        "Consumers process more slowly than producers publish during peaks"
+      ],
+      "answer": 3,
+      "why": "Lag is the backlog between the newest message and what consumers have processed. Growing lag means consumption rate is below production rate; scale consumers on lag, speed up handlers, or accept delay if the business can.",
+      "tags": ["messaging", "performance"],
+      "level": 1,
+      "asked": "Basic queue operations literacy; autoscaling on lag is the strong follow-up."
+    },
+    {
+      "id": "db-120",
+      "q": "A downstream API was down for a minute. When it recovered, every client retried at the same instant and knocked it over again. What should the clients do?",
+      "choices": [
+        "Retry with exponential backoff and random jitter, capped at a few attempts",
+        "Retry immediately in a tight loop so that they succeed first when it recovers",
+        "Never retry at all, since retries are what caused the second outage",
+        "Retry exactly every five seconds, so the load is spread evenly in time"
+      ],
+      "answer": 0,
+      "why": "Fixed or immediate retries synchronise clients into a thundering herd. Exponential backoff reduces the rate and jitter de-synchronises them; a circuit breaker stops calling a dependency that is clearly down.",
+      "tags": ["reliability", "performance"],
+      "level": 2,
+      "asked": "Retry design comes up in every resilience discussion; 'jitter' is the word interviewers wait for."
+    },
+    {
+      "id": "db-121",
+      "q": "After adding a Redis cache to `GET /api/dashboard`, a user reports seeing another customer's figures. What is the most likely bug?",
+      "choices": [
+        "Redis replicated the key to a replica that belongs to the other customer",
+        "The cache TTL is too long, so figures from last week are being shown",
+        "The cache key omits the user or tenant id, so everyone shares one entry",
+        "Redis compresses values, which mixes up entries that are the same size"
+      ],
+      "answer": 2,
+      "why": "If the key is just the route, the first caller's personalised response is served to everyone. Include every input that changes the response (tenant, user, role, query) in the key, or cache only data that is genuinely shared.",
+      "tags": ["caching", "security"],
+      "level": 2,
+      "asked": "A real data-leak pattern; strong answers treat cache keys as part of the security model."
+    },
+    {
+      "id": "db-122",
+      "q": "After editing a product, admins see the change, but customers see the old price for up to ten minutes. Product data is cached in Redis with a 10-minute TTL. What is the fix?",
+      "choices": [
+        "Lower the TTL to one second so that the cache is effectively switched off",
+        "Cache product data in each browser instead, so the server cache is not used",
+        "Invalidate or update the product's cache entry as part of the write",
+        "Add a second Redis instance so that reads are split between two caches"
+      ],
+      "answer": 2,
+      "why": "Time-based expiry alone guarantees staleness up to the TTL. Deleting (or rewriting) the key when the product changes gives immediate consistency for the common path, with the TTL as a safety net.",
+      "tags": ["caching", "database"],
+      "level": 1,
+      "asked": "Invalidation is the hard part of caching; interviewers want invalidate-on-write."
+    },
+    {
+      "id": "db-123",
+      "q": "A background worker crashes on start-up with `Cannot access a disposed context instance` after resolving a `DbContext` in its constructor. The worker is an `IHostedService` (a singleton). What is wrong?",
+      "choices": [
+        "`DbContext` cannot be used in background services under any circumstances",
+        "The database connection string is missing from the worker's configuration",
+        "EF Core 9 disposes every context after five minutes of inactivity by default in workers",
+        "A scoped `DbContext` is captured by a singleton; create a scope per unit of work"
+      ],
+      "answer": 3,
+      "why": "Hosted services live for the whole app, but `DbContext` is scoped. Inject `IServiceScopeFactory`, create a scope for each job or message, and resolve the context from it, so each unit of work gets a fresh context.",
+      "tags": ["database", "concurrency"],
+      "level": 2,
+      "asked": "The captive-dependency bug in its most common real form; the scope-factory fix is expected."
+    },
+    {
+      "id": "db-124",
+      "q": "An EF Core 9 request throws `A second operation was started on this context instance before a previous operation completed`. What is the usual cause?",
+      "choices": [
+        "Running two queries on the same context concurrently, e.g. with `Task.WhenAll`",
+        "Calling `SaveChangesAsync` twice in a row within the same request's unit of work",
+        "Using `AsNoTracking`, which makes the context refuse a second query",
+        "Having two `DbSet` properties that point at the same database table"
+      ],
+      "answer": 0,
+      "why": "`DbContext` is not thread-safe and supports one operation at a time; awaiting several queries in parallel on it triggers this. Await them sequentially, or use separate contexts (for example via `IDbContextFactory`) for true parallelism.",
+      "tags": ["database", "concurrency"],
+      "level": 2,
+      "asked": "A common EF Core mistake when people first try to 'speed up' a request with parallel queries."
+    },
+    {
+      "id": "db-125",
+      "q": "A SQL Server app sees deadlocks between two transactions that update `Orders` and `Customers`. What is a common structural fix?",
+      "choices": [
+        "Wrap every statement in `NOLOCK` hints so that no locks are ever taken",
+        "Make every transaction touch shared tables in the same order",
+        "Raise the lock timeout so that deadlocked transactions wait longer",
+        "Move the two tables into separate databases so they cannot deadlock"
+      ],
+      "answer": 1,
+      "why": "Deadlocks need a cycle: A holds Orders and wants Customers while B holds Customers and wants Orders. A consistent access order removes the cycle; short transactions and retrying the victim handle the rest. `NOLOCK` only affects reads and brings dirty reads.",
+      "tags": ["database", "concurrency"],
+      "level": 3,
+      "asked": "Goes beyond 'retry the victim'; consistent lock ordering is the structural answer."
+    },
+    {
+      "id": "db-126",
+      "q": "A Postgres database's disk usage keeps growing though row counts are flat, and queries on a busy `sessions` table are slowing. What should you check?",
+      "choices": [
+        "Whether the table has too many columns, which Postgres stores twice on disk for safety",
+        "Whether the server's clock is wrong, which stops rows being counted",
+        "Bloat from dead tuples, and whether autovacuum keeps up with the updates",
+        "Whether indexes were created in a different tablespace from the table"
+      ],
+      "answer": 2,
+      "why": "Postgres updates and deletes leave dead row versions (MVCC) that vacuum must reclaim. On high-churn tables, autovacuum can fall behind, or a long-open transaction can stop it; tune per-table autovacuum settings and find idle-in-transaction sessions.",
+      "tags": ["database", "performance"],
+      "level": 3,
+      "asked": "MVCC and vacuum are Postgres-specific depth that interviewers at Postgres shops probe."
+    },
+    {
+      "id": "db-127",
+      "q": "A query takes 20 ms when you run it by hand in `psql`, but 4 seconds when the app runs it through EF Core. What should you do first?",
+      "choices": [
+        "Rewrite the query as raw SQL, since EF Core always generates slower queries",
+        "Capture the exact SQL and parameter values the app sends, then EXPLAIN that",
+        "Add `AsNoTracking()`, since change tracking accounts for most query time",
+        "Assume the network is slow and move the database next to the app server"
+      ],
+      "answer": 1,
+      "why": "The app often runs something different: other joins from `Include`, a parameterised statement that gets a generic plan, or different parameter types. Log the generated SQL (`LogTo`, `ToQueryString()`), run EXPLAIN ANALYZE with the real parameters, and compare plans.",
+      "tags": ["database", "method"],
+      "level": 2,
+      "asked": "Tests whether you compare like with like before blaming the ORM."
+    },
+    {
+      "id": "db-128",
+      "q": "A developer restored last night's production database into staging to reproduce a bug. An hour later, real customers complain about receiving strange test emails. What was missing?",
+      "choices": [
+        "A faster restore, so that the test could finish before the email job started up",
+        "Scrubbing personal data and pointing staging's email at a sandbox or catch-all",
+        "A read replica, so that staging could read production data without copying it",
+        "A different staging database password, so the email job could not connect"
+      ],
+      "answer": 1,
+      "why": "Production data carries real addresses, and staging jobs happily act on them. Anonymise copies before use and configure non-production environments to send mail only to a sandbox such as Mailpit or the provider's test mode.",
+      "tags": ["operations", "config"],
+      "level": 1,
+      "asked": "A surprisingly common incident; strong answers mention both data masking and sandboxed integrations."
+    },
+    {
+      "id": "db-129",
+      "q": "Users report being logged out almost exactly one hour after signing in, even while actively using the app. What is the most likely cause?",
+      "choices": [
+        "The browser clears all cookies once an hour for privacy reasons",
+        "The server restarts every hour, which invalidates every session held in its memory",
+        "The access token expires after an hour and the refresh flow is not working",
+        "The load balancer moves each user to a new instance once per hour"
+      ],
+      "answer": 2,
+      "why": "A precise, repeatable interval points at a configured lifetime. Access tokens are short-lived by design; the client should use the refresh token before or on a 401. Check the refresh request in the network tab and the token lifetimes in the identity provider.",
+      "tags": ["http", "security"],
+      "level": 1,
+      "asked": "Tests reasoning from 'exactly one hour' to a configured expiry rather than guessing."
+    },
+    {
+      "id": "db-130",
+      "q": "A download link built as `'/files/' + name` works for most files, but `Q3 report #2.pdf` returns 404. Why?",
+      "code": "new URL('https://x.com/files/report#1.pdf').pathname\n// → '/files/report'",
+      "lang": "js",
+      "choices": [
+        "Unencoded characters such as `#` change the URL, so encode it with `encodeURIComponent`",
+        "Browsers refuse to download files whose names contain digits and spaces",
+        "The server's filesystem cannot store names containing `#`, so the file was never saved",
+        "PDF files must be served from a separate domain when their names have symbols"
+      ],
+      "answer": 0,
+      "why": "`#` starts the fragment, which is never sent to the server, and spaces, `?` and `%` also have meaning in URLs. Encode each path segment with `encodeURIComponent`, or better, link by a stored id rather than the user's filename.",
+      "tags": ["http", "frontend"],
+      "level": 1,
+      "asked": "URL encoding bugs are everyday work; strong answers suggest using ids instead of user-supplied names."
+    },
+    {
+      "id": "db-131",
+      "q": "Searching customers works, except a search for `O'Brien` returns HTTP 500. What does that most strongly suggest?",
+      "choices": [
+        "The database cannot store apostrophes, so the customer was saved incorrectly",
+        "The search index has not been rebuilt since the customer was created",
+        "The apostrophe exceeds the maximum length allowed for a search term",
+        "The SQL is built by string concatenation, which is also an injection hole"
+      ],
+      "answer": 3,
+      "why": "The quote closes the SQL string literal, producing a syntax error, which means user input reaches the SQL text directly. Use parameterised queries; escaping by hand is fragile. This bug is the friendly version of SQL injection.",
+      "tags": ["database", "security"],
+      "level": 1,
+      "asked": "Connects a mundane bug to a security flaw, which is exactly what interviewers want to hear."
+    },
+    {
+      "id": "db-132",
+      "q": "You renamed the JSON field `fullName` to `displayName` in the API. The web app was updated in the same deploy, but older mobile app versions now show blank names. What should you have done?",
+      "choices": [
+        "Released the mobile app first, since the stores publish every update within the hour",
+        "Added `displayName` alongside `fullName` and removed the old field only later",
+        "Returned HTTP 410 for old clients so that they are forced to upgrade",
+        "Renamed the field in the database as well, so the API stays consistent"
+      ],
+      "answer": 1,
+      "why": "Clients you do not deploy (mobile apps, partners, cached SPAs) keep using the old contract. Make additive changes, keep the old field until usage drops, or version the API; removals are breaking changes.",
+      "tags": ["http", "deployment"],
+      "level": 1,
+      "asked": "API evolution question in scenario form; strong answers say 'add, then deprecate, then remove'."
+    },
+    {
+      "id": "db-133",
+      "q": "A fix was merged to `main` last week, but the bug still happens in production. How do you quickly check whether the deployed release includes the fix?",
+      "choices": [
+        "Read the release notes, which list every commit that each release contains",
+        "Search the production logs for the fix's commit message text",
+        "Run `git tag --contains <fix-sha>` and compare with the deployed version",
+        "Ask the team whether anyone remembers deploying since the merge"
+      ],
+      "answer": 2,
+      "why": "`git tag --contains` (or `git branch -r --contains`) lists the tags or branches that include a commit; compare that with the version the app reports. Release notes and memory are often incomplete, and commit messages are not logged at runtime.",
+      "tags": ["method", "deployment"],
+      "level": 1,
+      "asked": "Shows fluency with git as a debugging tool, and the habit of verifying before assuming."
+    },
+    {
+      "id": "db-134",
+      "q": "Password-reset emails in production contain links to `http://localhost:5173/reset?...`. What is the fix?",
+      "choices": [
+        "Read the public base URL from per-environment config instead of hard-coding it",
+        "Build the link from the request's `Origin` header, which browsers always send with it",
+        "Ask users to replace `localhost` with the real domain before clicking",
+        "Send the reset token in the email body so that no link is needed at all"
+      ],
+      "answer": 0,
+      "why": "Links in emails must use the public site URL, which differs per environment, so it belongs in configuration validated at start-up. Deriving it from untrusted headers risks host-header poisoning of reset links.",
+      "tags": ["config"],
+      "level": 1,
+      "asked": "A classic 'worked in dev' bug; mentioning host-header poisoning is a strong security detail."
+    },
+    {
+      "id": "db-135",
+      "q": "A nightly sync calls a partner API 5,000 times in a tight loop and starts getting HTTP 429 after the first few hundred. What should the client do?",
+      "choices": [
+        "Retry each 429 immediately, since rate limits reset every second",
+        "Run the loop from several servers at once so that each one stays under the rate limit",
+        "Ignore the 429s, since the partner will process the requests later",
+        "Throttle requests and honour the `Retry-After` header when it is sent"
+      ],
+      "answer": 3,
+      "why": "429 means you exceeded the partner's rate limit; `Retry-After` says when to try again. Pacing requests (a concurrency limit or token bucket) avoids hitting it; spreading across servers to evade limits usually breaches the terms and gets keys revoked.",
+      "tags": ["http", "reliability"],
+      "level": 1,
+      "asked": "Being a good API citizen is expected; strong answers mention batching endpoints if the partner offers them."
+    },
+    {
+      "id": "db-136",
+      "q": "The frontend receives the string `\"{\\\"id\\\":1}\"` instead of an object, so `data.id` is undefined. The API handler does `res.json(JSON.stringify(order))`. What is wrong?",
+      "choices": [
+        "`res.json` expects a Buffer, so the string should be converted first",
+        "The object is serialised twice: once by `JSON.stringify` and again by `res.json`",
+        "The frontend needs `await res.text()` instead, since JSON cannot hold nested objects",
+        "`JSON.stringify` escapes quotes only in Node, so browsers misread the result"
+      ],
+      "answer": 1,
+      "why": "`res.json` already serialises its argument, so passing a string produces a JSON string literal containing JSON. Pass the object itself. The same happens in .NET when returning a pre-serialised string from `Ok(...)`.",
+      "tags": ["http"],
+      "level": 1,
+      "asked": "A common beginner bug that looks mysterious in the network tab; recognising it is quick credit."
+    },
+    {
+      "id": "db-137",
+      "q": "The frontend logs `SyntaxError: Unexpected token '<', \"<!doctype \"... is not valid JSON` when calling `/api/orders`. What is the most likely cause?",
+      "choices": [
+        "The API returned JSON with a byte-order mark that the parser cannot read",
+        "The browser's JSON parser does not support arrays at the top level",
+        "The request received an HTML page, such as an error page or SPA fallback",
+        "The API's JSON contains a `<` character inside one of the string values"
+      ],
+      "answer": 2,
+      "why": "The body starts with `<`, so it is HTML: a proxy error page, a login redirect, or the dev server returning `index.html` because the API route or proxy is wrong. Check the response in the network tab and the request URL.",
+      "tags": ["http", "frontend"],
+      "level": 1,
+      "asked": "One of the most common frontend errors; the network tab is the expected first stop."
+    },
+    {
+      "id": "db-138",
+      "q": "In VS Code, breakpoints in your TypeScript files are never hit when you debug the Node API, though the code runs. What is the usual cause?",
+      "choices": [
+        "Node ignores breakpoints unless the code is run with administrator rights",
+        "Breakpoints only work in the browser, never in server-side TypeScript",
+        "The debugger needs the `--inspect-brk` flag removed from the start command to attach",
+        "The debugger runs compiled JavaScript without source maps linking it to the `.ts`"
+      ],
+      "answer": 3,
+      "why": "The debugger sets breakpoints in the JavaScript that actually runs; without `sourceMap: true` (and the launch config's `outFiles` or a loader that emits maps), it cannot map your `.ts` lines to it. Enable source maps or run TypeScript via a loader that provides them.",
+      "tags": ["method", "config"],
+      "level": 1,
+      "asked": "Practical tooling question; being able to use a debugger properly is a mid-level expectation."
+    },
+    {
+      "id": "db-139",
+      "q": "After each deploy of a .NET API, the first few requests take several seconds, then everything is fast. What is the most likely explanation?",
+      "choices": [
+        "Warm-up: JIT, connection pools, caches and the DI graph are built on first use",
+        "The load balancer sends the first requests to the old version before switching over",
+        "The database locks every table for a few seconds whenever a new app version starts",
+        "The CDN rejects requests until it has downloaded the new version from the origin"
+      ],
+      "answer": 0,
+      "why": "A fresh process compiles code paths, opens database connections and fills caches on the first requests. Warm-up requests before marking the instance ready, readiness probes, and ReadyToRun or Native AOT reduce the effect.",
+      "tags": ["performance", "deployment"],
+      "level": 1,
+      "asked": "Shows you understand runtime start-up costs and how to keep users from paying them."
+    },
+    {
+      "id": "db-140",
+      "q": "A user reports that clicking Save does nothing. There is no error on screen. What should you check first?",
+      "choices": [
+        "The server logs for that user, since the problem must be on the backend",
+        "The database, since the save may have been blocked by a lock",
+        "The source code of the Save button, reading it line by line from the top to the bottom",
+        "The browser console and network tab, to see whether a request was sent at all"
+      ],
+      "answer": 3,
+      "why": "The first split is client versus server: an exception in the click handler means no request is ever sent, while a failed request shows its status and body. That one observation halves the search space.",
+      "tags": ["method", "frontend"],
+      "level": 1,
+      "asked": "Tests whether you have a systematic first step, which is what interviewers want in debugging questions."
+    },
+    {
+      "id": "db-141",
+      "q": "A bug reproduces in your normal browser window but not in a private window. What does that suggest?",
+      "choices": [
+        "The bug is on the server, since private windows are routed to a different set of servers",
+        "State stored in the browser, such as cookies, localStorage, cache or extensions",
+        "Private windows run an older JavaScript engine that hides the bug",
+        "The bug depends on screen size, since private windows open smaller"
+      ],
+      "answer": 1,
+      "why": "A private window starts with no cookies, storage or cached files and usually no extensions. If the bug vanishes there, inspect stored state (an old token, a stale cached bundle, a corrupt localStorage value) or disable extensions one by one.",
+      "tags": ["method", "frontend"],
+      "level": 1,
+      "asked": "A quick, cheap experiment that narrows things fast; interviewers like hearing it."
+    },
+    {
+      "id": "db-142",
+      "q": "Every page errors for one specific customer, and works for everyone else, including staff impersonating other accounts. What is the most productive next step?",
+      "choices": [
+        "Look at that customer's data for an unusual value, such as a null or huge list",
+        "Ask the customer to reinstall their browser and clear every cookie it has stored for you",
+        "Roll back the latest deploy, since one customer failing means a code bug",
+        "Scale out the API, since that customer's requests may be timing out"
+      ],
+      "answer": 0,
+      "why": "If the code path is shared and only one account breaks, the difference is almost always data: a missing relation, an unexpected null, an enormous collection or an odd character. Reproduce by impersonating that account in a safe environment.",
+      "tags": ["method", "database"],
+      "level": 1,
+      "asked": "Shows you think 'what is different about this case' before touching code."
+    },
+    {
+      "id": "db-143",
+      "q": "Support says production still behaves like the old version after a deploy. What is the most reliable way to confirm which version is actually running?",
+      "choices": [
+        "Check the date on the latest commit in the repository's main branch",
+        "Compare the page's look with screenshots taken before the deploy",
+        "Ask the CI system whether the deploy pipeline finished with a green status for the release",
+        "Expose the build's commit SHA or version via a `/version` endpoint or header"
+      ],
+      "answer": 3,
+      "why": "A green pipeline does not prove which bits serve traffic: a deploy can target the wrong slot, a CDN can serve old assets, or one instance can lag. Having every build report its own SHA settles it in seconds.",
+      "tags": ["deployment", "method"],
+      "level": 1,
+      "asked": "A cheap practice that saves hours; interviewers like candidates who build observability into releases."
+    },
+    {
+      "id": "db-144",
+      "q": "The React form accepts a phone number, but the API rejects it with 400. Validation rules were written separately for client and server. What is the durable fix?",
+      "choices": [
+        "Remove the server-side validation, since the client already checks the input",
+        "Keep the server authoritative and share or derive the rules from one schema",
+        "Remove the client-side validation, since duplicate rules always drift apart",
+        "Ask users to type phone numbers without spaces, as stated in the placeholder"
+      ],
+      "answer": 1,
+      "why": "Server validation is mandatory, since clients can be bypassed; client validation is for fast feedback. Sharing one schema (for example Zod shared in a TypeScript monorepo, or generating client rules from the API's OpenAPI description) stops them drifting, and the UI should display the server's field errors.",
+      "tags": ["frontend", "http"],
+      "level": 1,
+      "asked": "Validation duplication is a real maintenance problem; strong answers keep the server authoritative."
+    },
+    {
+      "id": "db-145",
+      "q": "In the browser, `fetch('/api/orders')` rejects with `TypeError: Failed to fetch`, and there is no HTTP status. What does that tell you?",
+      "choices": [
+        "The server returned a 500 error, which fetch reports as a rejection without a status code",
+        "The JSON in the response was invalid, so fetch could not read the body",
+        "No usable HTTP response reached the page: a network, DNS, TLS or CORS failure",
+        "The request succeeded, but the page navigated away before it could be read"
+      ],
+      "answer": 2,
+      "why": "`fetch` only rejects when it cannot get a response it is allowed to expose; any HTTP status, even 500, resolves normally. The console and network tab show which: a CORS block, a refused connection, a certificate error or being offline.",
+      "tags": ["http", "frontend"],
+      "level": 1,
+      "asked": "Separates transport failures from HTTP errors, a distinction many juniors miss."
+    },
+    {
+      "id": "db-146",
+      "q": "For some users one widget never appears, and the network tab shows `net::ERR_BLOCKED_BY_CLIENT` for `/api/ads-summary`. What is happening?",
+      "choices": [
+        "The server blocked those users' IP addresses after too many requests",
+        "The CDN rejected the request because its cache key was too long",
+        "The browser's CORS policy blocked the request because of its path",
+        "A browser extension such as an ad blocker blocked the URL by pattern"
+      ],
+      "answer": 3,
+      "why": "`ERR_BLOCKED_BY_CLIENT` means something in the browser, almost always a content blocker, cancelled the request; URLs containing words like `ads`, `track` or `analytics` are common targets. Rename the endpoint and do not let core features depend on such paths.",
+      "tags": ["frontend", "http"],
+      "level": 1,
+      "asked": "A real-world gotcha that is quick to diagnose if you know the error string."
+    },
+    {
+      "id": "db-147",
+      "q": "The frontend build in CI fails with `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory`. What is a reasonable first fix?",
+      "choices": [
+        "Raise the build's heap with `NODE_OPTIONS=--max-old-space-size=4096`",
+        "Delete the lockfile so that npm installs smaller versions of each package",
+        "Switch the CI runner's operating system, since Linux limits Node memory",
+        "Split the build across two CI jobs that each compile half of the files"
+      ],
+      "answer": 0,
+      "why": "Large bundles and type checks can exceed V8's default heap, and the flag raises the limit for that process (within the runner's RAM). If it keeps growing, look for heavy source maps, huge JSON imports or a leaking plugin.",
+      "tags": ["ci", "dependencies"],
+      "level": 1,
+      "asked": "A common CI failure; knowing `NODE_OPTIONS` shows hands-on build experience."
+    },
+    {
+      "id": "db-148",
+      "q": "Two services log in local time on servers in different time zones, and an incident timeline built from their logs looks out of order. What prevents this?",
+      "choices": [
+        "Log timestamps in UTC using ISO 8601 with an offset, everywhere",
+        "Log the server's name alongside each message so readers can adjust",
+        "Sort all log lines alphabetically before building a timeline from them",
+        "Log only the time of day, since the date is the same for both services"
+      ],
+      "answer": 0,
+      "why": "UTC timestamps with explicit offsets sort correctly and compare across machines and daylight-saving changes. Log platforms then display them in the reader's zone. Trace ids help correlate, but timestamps still need a common reference.",
+      "tags": ["logging", "dates"],
+      "level": 1,
+      "asked": "Basic logging hygiene; strong answers mention both UTC and structured timestamps."
+    },
+    {
+      "id": "db-149",
+      "q": "After `git pull`, the Node app crashes on start with `Cannot find module 'zod'`. It worked before the pull. What is the most likely fix?",
+      "choices": [
+        "Reinstall Node, since pulling new code sometimes corrupts the runtime",
+        "Add `zod` to `.gitignore`, since it should not be tracked by git",
+        "Run `npm install` (or `npm ci`), because someone added a dependency",
+        "Delete `package.json`, since it is out of date after the pull"
+      ],
+      "answer": 2,
+      "why": "`node_modules` is not in git; when a teammate adds a dependency to `package.json` and the lockfile, you must install to get it. Tools such as a `postmerge` hook or `npm ci` in scripts make this automatic.",
+      "tags": ["dependencies"],
+      "level": 1,
+      "asked": "A basic but real everyday issue; interviewers use it to check you understand what git tracks."
+    },
+    {
+      "id": "db-150",
+      "q": "Since last night every call to a partner's API fails with a TLS error, while your own site and other integrations are fine. Nothing was deployed. What should you check?",
+      "choices": [
+        "Your own certificate, since outbound calls present it to the partner",
+        "The partner's certificate, which may have expired or changed its chain",
+        "Your database, since TLS failures usually mean the connection pool is full",
+        "Your firewall, since TLS errors mean port 443 has been blocked outbound"
+      ],
+      "answer": 1,
+      "why": "Outbound HTTPS verifies the partner's certificate, so an expired or misconfigured one on their side breaks you with no change on yours. Check it with `openssl s_client` or a browser, and tell the partner; never disable validation as a fix.",
+      "tags": ["http", "operations"],
+      "level": 1,
+      "asked": "Tests knowing which side's certificate matters, and resisting the 'turn off validation' shortcut."
+    },
+    {
+      "id": "db-151",
+      "q": "The `status` column stores a C# enum as an integer. After someone inserted a new member at the top of the enum, existing orders show the wrong status. Why?",
+      "choices": [
+        "EF Core re-reads enum values alphabetically each time the app starts up",
+        "The database converts integers to strings whenever the enum definition in code changes",
+        "Adding an enum member invalidates the EF Core model, so all reads return 0",
+        "Enum members get sequential values by default, so every later value shifted"
+      ],
+      "answer": 3,
+      "why": "Without explicit values, C# numbers members from 0 in declaration order, so inserting one renumbers the rest while the stored integers stay put. Assign explicit values, append new members, or store enums as strings.",
+      "tags": ["database"],
+      "level": 2,
+      "asked": "A quiet data-corruption bug; interviewers like explicit values or string storage in the answer."
+    },
+    {
+      "id": "db-152",
+      "q": "Production .NET exception logs show stack traces without file names or line numbers, which makes them hard to use. What is missing?",
+      "choices": [
+        "Debug builds, since Release builds cannot record exceptions at all",
+        "A try/catch in every single method, so that each frame can log its own line number",
+        "Symbol files (PDBs, portable or embedded) deployed alongside the assemblies",
+        "Verbose logging, since line numbers are only printed at `Trace` level"
+      ],
+      "answer": 2,
+      "why": "Line information comes from PDBs; if the publish step strips them, traces show only method names. Embed portable PDBs (`DebugType` embedded) or ship them with the build; Release builds still produce useful traces.",
+      "tags": ["logging", "deployment"],
+      "level": 2,
+      "asked": "A practical detail that makes production debugging much faster."
+    },
+    {
+      "id": "db-153",
+      "q": "Photos uploaded from phones sometimes appear sideways in your app, though they look correct in the phone's gallery. What is the cause?",
+      "choices": [
+        "The camera saved the pixels unrotated with an EXIF orientation flag you ignore",
+        "The upload was corrupted in transit, which rotated part of the image data by 90 degrees",
+        "Browsers rotate portrait images by 90 degrees unless their CSS forbids it",
+        "Object storage rotates images to landscape to save space in its index"
+      ],
+      "answer": 0,
+      "why": "Phones often store sensor-oriented pixels plus an orientation tag; galleries honour the tag, while server-side resizing that strips metadata loses it. Apply the orientation during processing (for example `sharp().rotate()`), then strip EXIF, which also removes location data.",
+      "tags": ["frontend"],
+      "level": 2,
+      "asked": "A real upload bug; strong answers also mention stripping location metadata for privacy."
+    },
+    {
+      "id": "db-154",
+      "q": "A CSV import reads the header row, but `row.id` is always undefined even though the first column is clearly `id`. The file came from Excel. What is going on?",
+      "code": "const header = '\\uFEFFid,name'.split(',');\nheader[0] === 'id'; // false\nheader[0].length;   // 3",
+      "lang": "js",
+      "choices": [
+        "Excel saves every header in uppercase, so the column is really called `ID` in the file",
+        "The file starts with a UTF-8 byte-order mark, which is glued to the first header",
+        "CSV parsers skip the first column unless it contains numbers",
+        "Excel adds a trailing space to every header, so the key is `id `"
+      ],
+      "answer": 1,
+      "why": "Excel's 'CSV UTF-8' export begins with a BOM (U+FEFF), which is invisible in most editors but becomes part of the first field. Strip it before parsing, or use a parser option such as `bom: true`.",
+      "tags": ["method", "config"],
+      "level": 2,
+      "asked": "An invisible-character bug that takes hours if you do not know it; the length check is the giveaway."
+    },
+    {
+      "id": "db-155",
+      "q": "Users with emails like `bob+shop@x.com` get 'user not found' on a lookup that passes the email in the query string. What is happening?",
+      "code": "new URLSearchParams('email=bob+shop@x.com').get('email')\n// → 'bob shop@x.com'",
+      "lang": "js",
+      "choices": [
+        "Email addresses containing `+` are invalid by the RFC, so the lookup fails correctly",
+        "The server lowercases emails, and `+` has no lowercase form to match",
+        "The browser strips `+` from every URL before sending it to the server",
+        "In query strings `+` decodes as a space, so the value must be percent-encoded"
+      ],
+      "answer": 3,
+      "why": "Form-style query decoding turns `+` into a space. Build URLs with `URLSearchParams` or `encodeURIComponent`, which encode `+` as `%2B`, instead of concatenating raw values.",
+      "tags": ["http", "frontend"],
+      "level": 2,
+      "asked": "Plus-addressing is common; interviewers like candidates who build URLs with proper encoders."
+    },
+    {
+      "id": "db-156",
+      "q": "In SQL Server, customer names such as `李明` are saved as `??`. The app sends them correctly. What is the most likely cause?",
+      "choices": [
+        "The column is `varchar` with a non-UTF-8 collation, so unmappable characters become `?`",
+        "SQL Server cannot store characters outside the Latin alphabet in any column type",
+        "The JSON serialiser in .NET replaces non-ASCII characters with question marks",
+        "The connection string is missing `Encrypt=true`, which garbles non-ASCII text"
+      ],
+      "answer": 0,
+      "why": "`varchar` uses the collation's code page; characters it cannot represent are replaced with `?` and the original is lost. Use `nvarchar`, or a `_UTF8` collation (SQL Server 2019+), for text that may contain any language.",
+      "tags": ["database"],
+      "level": 2,
+      "asked": "Unicode storage is a classic data-loss bug; knowing `nvarchar` versus `varchar` is expected in .NET shops."
+    },
+    {
+      "id": "db-157",
+      "q": "After the database password was rotated, every API request returns 500, yet the load balancer reports all instances healthy. What does that reveal?",
+      "choices": [
+        "The load balancer caches health results for a whole day, so it has not noticed yet",
+        "The health endpoint checks only that the process is up, not that it can serve",
+        "Health checks are skipped for instances that have been running over an hour",
+        "The 500s must come from the load balancer itself, not from the instances"
+      ],
+      "answer": 1,
+      "why": "A shallow liveness check keeps passing while every real request fails. Add a readiness check that exercises critical dependencies (with care not to cascade), and alert on the 5xx rate so symptoms are caught even when checks pass.",
+      "tags": ["observability", "operations"],
+      "level": 2,
+      "asked": "Probes the difference between liveness, readiness and actual user-facing health."
+    },
+    {
+      "id": "db-158",
+      "q": "You mistakenly deployed a `301` redirect from `/pricing` to `/plans`, then removed it an hour later. Some users are still sent to `/plans`. Why?",
+      "choices": [
+        "The CDN keeps every redirect rule for exactly 24 hours after it has been removed",
+        "The server still has the rule cached in memory until it is restarted",
+        "DNS resolvers cached the redirect along with the domain's A record",
+        "Browsers may cache a 301 indefinitely, so they redirect without asking again"
+      ],
+      "answer": 3,
+      "why": "A 301 is 'moved permanently', and browsers cache it heuristically, often with no expiry, so they never re-request `/pricing`. Use 302 or 307 while testing, add explicit `Cache-Control` to permanent redirects, and treat a 301 as hard to undo.",
+      "tags": ["http"],
+      "level": 2,
+      "asked": "A real 'I cannot undo it' incident; strong answers know 301 caching is sticky."
+    },
+    {
+      "id": "db-159",
+      "q": "In an ASP.NET Core 8 app using cookie authentication, an expired session makes `fetch('/api/orders')` return 200 with the login page's HTML. Why?",
+      "choices": [
+        "Cookie auth redirects unauthenticated requests with 302, and fetch follows it",
+        "The API returned the login page deliberately as a fallback for any error",
+        "The browser converts every 401 response into the login page for security reasons",
+        "The session cookie was sent, but the API only accepts header tokens"
+      ],
+      "answer": 0,
+      "why": "The cookie handler's default challenge is a redirect to the login path, which fetch follows transparently, ending at an HTML 200. For API paths, override `OnRedirectToLogin`/`OnRedirectToAccessDenied` to return 401/403 (.NET 10 does this for known API endpoints).",
+      "tags": ["http", "security"],
+      "level": 2,
+      "asked": "A classic mixed MVC-plus-API bug; knowing the redirect events shows real ASP.NET Core experience."
+    },
+    {
+      "id": "db-160",
+      "q": "During every rolling deploy to Kubernetes, users see a burst of errors for 20 seconds while new pods start. The pods have no readiness probe. Why?",
+      "choices": [
+        "Pods get traffic once their containers start, even if the app is not ready yet",
+        "Rolling deploys always stop every old pod before starting the first new one",
+        "Pods without a readiness probe are restarted every 20 seconds by the kubelet",
+        "The service's DNS name changes during each deploy, so clients fail to resolve"
+      ],
+      "answer": 0,
+      "why": "Without a readiness probe, a pod counts as ready once its containers run, so requests arrive before the app has bound its port or warmed up. A readiness probe on a real endpoint (and graceful shutdown for old pods) makes rolling deploys seamless.",
+      "tags": ["deployment", "docker"],
+      "level": 2,
+      "asked": "Complements the liveness question; interviewers want the difference between the probe types."
+    },
+    {
+      "id": "db-161",
+      "q": "After importing 10,000 rows with explicit ids into a Postgres table with an identity column, new inserts fail with `duplicate key value violates unique constraint`. Why?",
+      "choices": [
+        "The import disabled the primary key, and it must be recreated by hand",
+        "Postgres allows only one import per table, so later inserts are rejected",
+        "Explicit ids do not advance the sequence, so it hands out ids already used",
+        "The imported rows are still locked, so their ids are reported as duplicates"
+      ],
+      "answer": 2,
+      "why": "Identity and serial columns draw from a sequence, which only moves when it generates a value. After a bulk load with explicit ids, reset it with `setval(pg_get_serial_sequence('t', 'id'), (SELECT max(id) FROM t))`.",
+      "tags": ["database"],
+      "level": 2,
+      "asked": "A common data-migration bug; knowing `setval` shows hands-on Postgres experience."
+    },
+    {
+      "id": "db-162",
+      "q": "Your load test showed 50 ms responses at 2,000 requests per second, but production struggles at 300. The test hit the same ten product ids repeatedly. What went wrong?",
+      "choices": [
+        "Load tests always overstate capacity by about seven times, so divide the result",
+        "The test's traffic was so repetitive that caches served nearly everything",
+        "Production uses HTTPS, which costs six times more CPU than the test's HTTP",
+        "The load test tool reported averages, whereas production reports medians"
+      ],
+      "answer": 1,
+      "why": "Ten hot ids stay in every cache (application, database buffer pool, CDN), so the test measured cache hits. Realistic tests use production-like data volume and key distribution, including cold paths and writes.",
+      "tags": ["performance", "method"],
+      "level": 2,
+      "asked": "Tests scepticism about benchmarks; strong answers design tests with realistic data."
+    },
+    {
+      "id": "db-163",
+      "q": "An EF Core app on Postgres works, but a raw SQL report `SELECT * FROM users` fails with `relation \"users\" does not exist`. The DbSet is `Users`. Why?",
+      "choices": [
+        "Raw SQL cannot read tables that EF Core created through migrations",
+        "The table lives in a separate schema that raw queries cannot access",
+        "Postgres requires `SELECT *` to be written as `SELECT ALL` for tables",
+        "EF Core created the table as quoted `\"Users\"`, and quoted names are case-sensitive"
+      ],
+      "answer": 3,
+      "why": "Postgres folds unquoted names to lowercase, but Npgsql quotes the names EF Core generates, so the table is literally `Users`. Quote it in raw SQL, or adopt snake_case naming (`UseSnakeCaseNamingConvention`) so both sides agree.",
+      "tags": ["database", "config"],
+      "level": 2,
+      "asked": "A common EF Core plus Postgres surprise; the naming-convention fix is the strong answer."
+    },
+    {
+      "id": "db-164",
+      "q": "Under load, users of an ASP.NET Core API occasionally see another user's name in responses. A `CurrentUserService` stores the user in a property set by middleware. What is the likely bug?",
+      "choices": [
+        "The JWT library caches tokens and returns the most recently validated one",
+        "Kestrel reuses `HttpContext` objects, so the user claims leak between separate requests",
+        "The service is registered as a singleton, so concurrent requests overwrite it",
+        "The database returns rows for the wrong user when the pool is under pressure"
+      ],
+      "answer": 2,
+      "why": "One singleton instance is shared by every request, so per-request state stored on it races. Register it as scoped, or read the user from `IHttpContextAccessor` each time; the Node equivalent is a module-level variable instead of AsyncLocalStorage.",
+      "tags": ["concurrency", "security"],
+      "level": 2,
+      "asked": "Lifetimes bugs with security impact are exactly what interviewers probe in DI questions."
+    },
+    {
+      "id": "db-165",
+      "q": "The SPA works at the domain root, but deployed under `/app/` it shows a blank page and `Failed to load module script: ... MIME type of \"text/html\"`. What is wrong?",
+      "choices": [
+        "The server sends the JavaScript with the wrong charset, which browsers reject for modules",
+        "The build assumes base `/`, so asset URLs miss and the fallback returns `index.html`",
+        "Module scripts cannot be served from subfolders on any static host",
+        "The browser blocks modules from paths that contain a trailing slash"
+      ],
+      "answer": 1,
+      "why": "Assets are requested at `/assets/...` rather than `/app/assets/...`; the host's SPA fallback returns `index.html` for the unknown path, which the browser refuses as a module. Set the bundler's base path (Vite `base: '/app/'`) and the router's basename.",
+      "tags": ["frontend", "deployment"],
+      "level": 2,
+      "asked": "Base-path bugs are common when apps move behind a path prefix; reading the MIME error correctly is the key."
+    },
+    {
+      "id": "db-166",
+      "q": "After moving static assets to a CDN domain, icons from a web font show as empty boxes, while images and CSS load fine. What is missing?",
+      "choices": [
+        "CORS headers on the font responses, since cross-origin fonts require them",
+        "A longer cache lifetime, since the fonts expire before the CSS is able to use them",
+        "A `preload` hint, since fonts are never downloaded without one",
+        "HTTP/2 on the CDN, since font files cannot be served over HTTP/1.1"
+      ],
+      "answer": 0,
+      "why": "Browsers fetch `@font-face` files in CORS mode, so a font from another origin needs `Access-Control-Allow-Origin`; images and stylesheets have no such requirement. The console shows the blocked request.",
+      "tags": ["frontend", "http"],
+      "level": 2,
+      "asked": "A classic CDN migration bug; knowing fonts are special-cased under CORS is the insight."
+    },
+    {
+      "id": "db-167",
+      "q": "A dashboard's WebSocket connection drops every 60 seconds when no messages are sent, but stays up during busy periods. What is the most likely cause?",
+      "choices": [
+        "The browser closes WebSockets that have been open for exactly one minute",
+        "The server's garbage collector closes sockets that have not been used recently",
+        "An idle timeout in a proxy or load balancer closes quiet connections",
+        "WebSockets have a protocol limit of 60 seconds without a message frame"
+      ],
+      "answer": 2,
+      "why": "Load balancers and proxies drop connections with no traffic after their idle timeout. Send application or protocol-level pings (heartbeats) more often than the timeout, raise the timeout, and reconnect with backoff on the client.",
+      "tags": ["http", "networking"],
+      "level": 2,
+      "asked": "Long-lived connections meet infrastructure timeouts; heartbeats plus reconnect is the expected answer."
+    },
+    {
+      "id": "db-168",
+      "q": "PDF generation with a headless browser works on your laptop but fails in the slim production container with errors about missing shared libraries. What is the fix?",
+      "choices": [
+        "Run the container as root, since shared libraries require root to load",
+        "Increase the container's memory, since missing libraries mean memory pressure",
+        "Install the libraries at runtime with a startup script on every request",
+        "Use a base image that includes the browser's system dependencies and fonts"
+      ],
+      "answer": 3,
+      "why": "Headless Chromium needs system libraries and fonts that slim images omit; your laptop already has them. Use the tool's documented image (for example the Playwright base image) or install the listed packages in the Dockerfile, not at runtime.",
+      "tags": ["docker", "dependencies"],
+      "level": 2,
+      "asked": "Environment parity again; the strong answer bakes dependencies into the image."
+    },
+    {
+      "id": "db-169",
+      "q": "An admin creates product 42, but `GET /products/42` keeps returning 404 for ten minutes. The API caches lookups for ten minutes. What happened?",
+      "choices": [
+        "The database write is delayed by ten minutes so that inserts can be batched together",
+        "Someone requested it before creation, and the 'not found' result was cached",
+        "The CDN rejects new ids until it has seen them at least ten times",
+        "The API returns 404 for new products until the next deploy restarts it"
+      ],
+      "answer": 1,
+      "why": "Caching a miss (negative caching) is useful against repeated lookups for absent keys, but it must have a short TTL and be invalidated on create. Here the earlier miss shadowed the new row for the full TTL.",
+      "tags": ["caching"],
+      "level": 2,
+      "asked": "Tests careful thinking about what a cache stores, including absence."
+    },
+    {
+      "id": "db-170",
+      "q": "A Node script updates 10,000 rows with `await Promise.all(rows.map(r => pool.query(sql, [r.id])))`. The pool has `max: 10`. It is slow and sometimes errors with connection timeouts. Why?",
+      "choices": [
+        "`Promise.all` runs the queries one at a time, so it is always slow",
+        "All 10,000 queries are queued at once for ten connections, so waiters time out",
+        "Postgres rejects more than ten parameterised queries per second from any one client",
+        "`pool.query` cannot be used inside `map`, since it needs a callback"
+      ],
+      "answer": 1,
+      "why": "Every query is started immediately, so thousands wait for a connection and some exceed the pool's acquire timeout. Bound the concurrency (a small limiter), or better, do the work in one set-based statement such as `UPDATE ... WHERE id = ANY($1)`.",
+      "tags": ["database", "performance"],
+      "level": 2,
+      "asked": "Unbounded concurrency is a common Node mistake; strong answers prefer a single set-based query."
+    },
+    {
+      "id": "db-171",
+      "q": "An EF Core endpoint takes seconds and uses lots of memory. The code is `db.Orders.ToList().Where(o => o.CustomerId == id)`. What is wrong?",
+      "choices": [
+        "`Where` after `ToList` is translated into a slower SQL subquery by EF Core",
+        "`ToList` disables indexes on the table for the rest of the request",
+        "The lambda captures `id`, which forces EF Core to recompile the query each time",
+        "`ToList()` loads the whole table into memory before filtering in C#"
+      ],
+      "answer": 3,
+      "why": "Once `ToList()` runs, the query has executed; `Where` then filters in memory over every order. Keep the query as `IQueryable` until the end, `db.Orders.Where(...).ToList()`, so the filter becomes SQL.",
+      "tags": ["database", "performance"],
+      "level": 2,
+      "asked": "The IQueryable versus IEnumerable boundary is a core EF Core concept, seen here as a bug."
+    },
+    {
+      "id": "db-172",
+      "q": "A dashboard shows the total order count with `SELECT count(*) FROM orders` on a 200-million-row Postgres table, and the page takes 20 seconds. What is a reasonable fix?",
+      "choices": [
+        "Add an index on `id`, which lets Postgres return the count instantly",
+        "Switch to `count(id)`, which Postgres reads directly from the table header",
+        "Show an estimate from the planner's statistics, or maintain a counter",
+        "Run `VACUUM FULL` before each count so that the table is smaller"
+      ],
+      "answer": 2,
+      "why": "Because of MVCC, Postgres must check row visibility, so an exact count scans the table or an index. Dashboards rarely need exactness: use `reltuples` from `pg_class`, a cached figure, or a counter table updated by the app or a trigger.",
+      "tags": ["database", "performance"],
+      "level": 2,
+      "asked": "Shows you know exact counts are expensive in MVCC databases, and that 'approximately' is often fine."
+    },
+    {
+      "id": "db-173",
+      "q": "During a rolling deploy, some users get 404s from a new endpoint for a few minutes, then everything works. The frontend and backend deploy together. Why?",
+      "choices": [
+        "New frontend code reached users while some requests still hit old API instances",
+        "The CDN rejects requests to new endpoints until their first cache miss",
+        "The API's router rebuilds its route table only after every instance is updated",
+        "The browser caches 404 responses for new URLs until the page is reloaded"
+      ],
+      "answer": 0,
+      "why": "During a rollout, old and new versions serve side by side. Deploy the backend first and keep it backward-compatible, then release the frontend (or put the feature behind a flag) so no client calls an endpoint that might not exist yet.",
+      "tags": ["deployment", "http"],
+      "level": 2,
+      "asked": "Mixed-version windows are inherent in rolling deploys; the ordering answer shows real release experience."
+    },
+    {
+      "id": "db-174",
+      "q": "Some long-time users suddenly get `431 Request Header Fields Too Large` (or an Nginx 400 'Request Header Or Cookie Too Large') on every page. New users are fine. What is the likely cause?",
+      "choices": [
+        "Their browsers send a newer HTTP version that the server does not support",
+        "Their accounts have too many roles for the server to process in time",
+        "Cookies have accumulated on your domain until the headers exceed the limit",
+        "Their IP addresses have been added to a blocklist by the web application firewall"
+      ],
+      "answer": 2,
+      "why": "Large or numerous cookies (chunked auth cookies, analytics, per-feature cookies) ride along on every request and can exceed server header limits. Shrink them (store sessions server-side, drop unused cookies) rather than only raising the limit.",
+      "tags": ["http"],
+      "level": 2,
+      "asked": "A real, confusing error; knowing that cookies are headers is the key insight."
+    },
+    {
+      "id": "db-175",
+      "q": "API latency rises whenever your hosted log platform is slow. The app sends each log entry to it over HTTP inside the request. What is the fix?",
+      "choices": [
+        "Log less information per request, so each HTTP call to the platform is smaller",
+        "Take log shipping off the request path: batch it, or log to stdout for an agent",
+        "Raise the HTTP timeout for logging calls, so they fail less often under load",
+        "Switch logs to `debug` level in production, which bypasses the log platform"
+      ],
+      "answer": 1,
+      "why": "Synchronous remote logging makes every request depend on the log service's latency. Asynchronous, batching sinks or writing to stdout and letting a collector ship logs decouples them, with bounded buffers to protect memory.",
+      "tags": ["logging", "performance"],
+      "level": 2,
+      "asked": "Observability should not hurt availability; interviewers like 'stdout plus a collector'."
+    },
+    {
+      "id": "db-176",
+      "q": "A Postgres login query uses `WHERE LOWER(email) = LOWER(@e)`, and database CPU jumped after you added it. An index exists on `email`. Why?",
+      "choices": [
+        "`LOWER` is not available in Postgres, so the driver emulates the query on the client side",
+        "The function call on the column prevents use of the plain index, forcing a scan",
+        "Lowercasing both sides doubles the rows returned, which doubles the CPU",
+        "Indexes on text columns are disabled whenever parameters are lowercased"
+      ],
+      "answer": 1,
+      "why": "An index on `email` stores original values, so filtering on `LOWER(email)` cannot seek it. Create an expression index on `LOWER(email)`, use `citext`, or store emails normalised to lowercase.",
+      "tags": ["database", "performance"],
+      "level": 2,
+      "asked": "Sargability comes up in every SQL performance conversation; the expression index is the strong answer."
+    },
+    {
+      "id": "db-177",
+      "q": "A .NET API compares roles with `role.ToUpper() == \"ADMIN\"`. It works everywhere except on servers configured with Turkish culture, where admins are denied. Why?",
+      "choices": [
+        "Turkish culture uppercases `i` to `İ`, so `admin` becomes `ADMİN`",
+        "Turkish Windows servers cannot store strings in uppercase letters at all",
+        "`ToUpper` throws on non-English servers, so the comparison fails",
+        "The JWT library translates role names into the server's language"
+      ],
+      "answer": 0,
+      "why": "Culture-sensitive casing maps `i` to dotted capital `İ` in Turkish. Compare identifiers with `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)` or use `ToUpperInvariant`; culture rules are for text shown to people.",
+      "tags": ["config", "security"],
+      "level": 3,
+      "asked": "The famous 'Turkish I' problem; it tests awareness of culture-sensitive string operations."
+    },
+    {
+      "id": "db-178",
+      "q": "In the cloud, the first database query after several quiet minutes fails with 'connection reset' or hangs, then everything is fine. The pool keeps idle connections open for 30 minutes. What is a likely cause?",
+      "choices": [
+        "The database restarts itself after a few quiet minutes to save resources",
+        "The driver closes idle connections, but the pool still hands them out",
+        "Queries after idle periods are rejected until the database's query cache has been refilled",
+        "A NAT or firewall silently drops idle TCP flows, so pooled connections are dead"
+      ],
+      "answer": 3,
+      "why": "Cloud NAT gateways, load balancers and firewalls expire idle flows after a few minutes without telling either end. Set the pool's idle timeout below that limit, enable TCP keepalives, or validate connections on checkout.",
+      "tags": ["database", "networking"],
+      "level": 3,
+      "asked": "A subtle infrastructure-meets-pooling bug; knowing it signals real cloud operations experience."
+    },
+    {
+      "id": "db-179",
+      "q": "A monthly report runs several `SELECT` statements under Postgres's default READ COMMITTED isolation. The totals section and the detail section sometimes disagree. Why?",
+      "choices": [
+        "READ COMMITTED allows dirty reads, so uncommitted rows appear in one section",
+        "Each statement takes a new snapshot, so writes between them show up in only one section",
+        "Postgres caches the first statement's results and reuses them for the rest",
+        "Aggregates such as `SUM` are computed on a replica that lags behind"
+      ],
+      "answer": 1,
+      "why": "Under READ COMMITTED every statement takes a fresh snapshot, so rows committed between the totals query and the detail query appear in only one. Run the report in a REPEATABLE READ (snapshot) transaction so all statements see the same data.",
+      "tags": ["database", "concurrency"],
+      "level": 3,
+      "asked": "Isolation levels made concrete; strong answers pick snapshot isolation for multi-statement reads."
+    },
+    {
+      "id": "db-180",
+      "q": "A mobile app retries failed calls 3 times, the API gateway retries 3 times, and the API retries its database call 3 times. The database has a brief slowdown. What happens?",
+      "choices": [
+        "Retries cancel each other out, so the database sees normal load",
+        "Only the outermost retries run, since the inner ones are disabled automatically by the SDK",
+        "Each failure can fan out into up to 27 database calls, amplifying the overload",
+        "The gateway detects the loop and stops all retries after the first failure"
+      ],
+      "answer": 2,
+      "why": "Retries at every layer multiply: 3 × 3 × 3 attempts reach the bottom for one user action, turning a slowdown into an outage. Retry at one layer (usually closest to the failure), use retry budgets, and add backoff and circuit breakers.",
+      "tags": ["reliability", "performance"],
+      "level": 3,
+      "asked": "Retry amplification is a classic resilience lesson; interviewers like the multiplication."
+    },
+    {
+      "id": "db-181",
+      "q": "A Node service's p99 latency spikes and CPU climbs in the hours before it is OOM-killed, while request volume is flat. What is happening in V8?",
+      "choices": [
+        "The heap is near its limit, so V8 runs frequent full GCs that reclaim little",
+        "V8 recompiles every function when memory is low, which costs CPU time",
+        "The event loop switches to a slower mode once heap usage passes half",
+        "Node throttles incoming requests to protect its memory, which raises the tail latency"
+      ],
+      "answer": 0,
+      "why": "As live objects approach `--max-old-space-size`, V8 runs mark-compact collections more and more often, each pausing the thread while freeing little. The latency and CPU rise are symptoms of the leak; fix the retention rather than just raising the limit.",
+      "tags": ["memory", "performance"],
+      "level": 3,
+      "asked": "Connects GC behaviour to user-visible latency, a sign of deep runtime understanding."
+    },
+    {
+      "id": "db-182",
+      "q": "A job takes a Redis lock with a 30-second TTL, but sometimes runs for 45 seconds. Occasionally two workers process the same batch. What is the core problem?",
+      "choices": [
+        "Redis drops locks at random under memory pressure, whatever the TTL is",
+        "Two workers can never hold the same key, so the duplicate must come from retries",
+        "The TTL is measured in milliseconds, so the lock lasts only 30 ms",
+        "The lock expires while the first worker is still running, so a second takes it"
+      ],
+      "answer": 3,
+      "why": "A lease with a TTL shorter than the work lets another worker acquire it mid-job. Extend the lease while working, check a fencing token when writing results, and keep processing idempotent, since no distributed lock is perfectly safe.",
+      "tags": ["concurrency", "reliability"],
+      "level": 3,
+      "asked": "Distributed locks are subtle; strong answers mention fencing tokens and idempotency."
+    },
+    {
+      "id": "db-183",
+      "q": "A .NET API in Kubernetes has a CPU limit of 500m. Average CPU usage looks low, yet latency spikes periodically. What is a likely cause?",
+      "choices": [
+        "Low CPU usage means the pod is idle, so the spikes must come from the network",
+        "The CPU limit is enforced as a quota per period, and bursts get throttled",
+        "Kubernetes pauses pods with CPU limits every minute to rebalance the nodes",
+        "The runtime ignores CPU limits and uses every core, which causes contention"
+      ],
+      "answer": 1,
+      "why": "CPU limits use CFS quotas: a multi-threaded runtime can burn its 50 ms per 100 ms period in a burst and is then throttled for the rest of it, adding latency. Check the throttling metrics, and raise or remove limits while keeping requests.",
+      "tags": ["performance", "docker"],
+      "level": 3,
+      "asked": "CPU throttling is a well-known Kubernetes trap; averages hide it, which is the insight."
+    },
+    {
+      "id": "db-184",
+      "q": "A long-running .NET service's memory grows, and a dump shows thousands of `ReportViewModel` instances retained through a static `SettingsChanged` event. Why are they not collected?",
+      "choices": [
+        "Static classes pin every object that was created while their static constructor was running",
+        "Events keep objects alive only in Debug builds, so the dump is misleading",
+        "The static event's delegate list references each subscriber, keeping it alive",
+        "The GC skips objects that implement `INotifyPropertyChanged` by design"
+      ],
+      "answer": 2,
+      "why": "Subscribing an instance method to an event stores a reference to the instance in the publisher's delegate list; a static publisher lives forever, so subscribers never become unreachable. Unsubscribe (for example in `Dispose`) or use a weak-event pattern.",
+      "tags": ["memory"],
+      "level": 3,
+      "asked": "The classic .NET event-handler leak; reading a retention path in a dump is the practical skill."
+    },
+    {
+      "id": "db-185",
+      "q": "A colleague on another network says your site is down, but it loads fine for you. What is a sensible first check?",
+      "choices": [
+        "Tell them to restart their laptop, since the site is clearly up for everyone",
+        "Test from outside your network, such as an external uptime checker or a phone on mobile data",
+        "Restart the production servers, since some users being affected means an outage",
+        "Clear the CDN cache, since partial outages are always caused by stale edge content"
+      ],
+      "answer": 1,
+      "why": "'Works for me' may be your cache, your DNS resolver or your office network. Checking from independent vantage points shows whether the problem is regional, DNS-related or specific to their network before anyone restarts anything.",
+      "tags": ["method", "networking"],
+      "level": 1,
+      "asked": "Tests whether you verify scope before acting, a habit interviewers value."
     }
   ]
 }

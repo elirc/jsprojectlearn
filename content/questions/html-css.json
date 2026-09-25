@@ -516,6 +516,1980 @@
       "tags": ["responsive", "units"],
       "level": 2,
       "asked": "Fluid typography with `clamp()` replaced a stack of media queries; interviewers want you to evaluate one on paper, including the rem term that keeps it zoomable."
+    },
+    {
+      "id": "hc-034",
+      "q": "You set `font-family` on `body`, yet every `<button>` and `<input>` still renders in the system font. Why?",
+      "choices": [
+        "Buttons are replaced elements, which never take any text styles",
+        "The UA stylesheet gives form controls their own `font` value",
+        "`font-family` only inherits into block-level descendants",
+        "Form controls read fonts from the OS theme, not from CSS"
+      ],
+      "answer": 1,
+      "why": "Browsers' default stylesheets set a `font` on form controls, and a directly set value always beats an inherited one, so the body font never reaches them. Resets add `button, input, select, textarea { font: inherit; }`; controls are fully stylable, they just do not inherit by default.",
+      "tags": ["cascade", "forms"],
+      "level": 1,
+      "asked": "Every CSS reset has this line; interviewers ask it to see whether you understand inherited versus directly set values."
+    },
+    {
+      "id": "hc-035",
+      "q": "`.card` has `color: navy` and `border: 1px solid grey`. Which of these do the paragraphs inside the card pick up?",
+      "choices": [
+        "Both: children inherit every property set on a parent",
+        "Neither: only properties set on `:root` are inherited",
+        "The border only, because box properties cascade down",
+        "The colour only: `color` inherits, `border` does not"
+      ],
+      "answer": 3,
+      "why": "Each property is defined as inherited or not: text properties like `color`, `font` and `line-height` inherit, while box properties like `border`, `padding` and `margin` do not. Otherwise every nested element would draw its own border.",
+      "tags": ["cascade"],
+      "level": 1,
+      "asked": "Knowing which properties inherit is the basis for writing less CSS and for debugging styles that seem to leak."
+    },
+    {
+      "id": "hc-036",
+      "q": "A `<p>` sits inside `.card { color: navy; }`. What colour does it get with this rule?",
+      "code": ".card p { color: initial; }",
+      "lang": "css",
+      "choices": [
+        "The spec's initial value (usually black), not navy",
+        "Navy, because `initial` takes the parent's value",
+        "Whatever the UA stylesheet sets for paragraphs",
+        "Navy: `initial` is ignored on inherited properties"
+      ],
+      "answer": 0,
+      "why": "`initial` means the property's initial value from the spec (`canvastext`, black in a light scheme), ignoring both the parent and the browser stylesheet. `inherit` would give navy, and `revert` would roll back to the UA stylesheet's value.",
+      "tags": ["cascade", "css-keywords"],
+      "level": 2,
+      "asked": "The four global keywords (`inherit`, `initial`, `unset`, `revert`) are a favourite way to probe cascade knowledge past specificity."
+    },
+    {
+      "id": "hc-037",
+      "q": "A design system resets its buttons with `all: unset`. What happens to the button's `display` and `color`?",
+      "choices": [
+        "`display` becomes `inline`; `color` inherits from the parent",
+        "`display` goes back to `inline-block`; `color` turns black",
+        "Each goes back to the browser's default button style",
+        "Each inherits the parent element's computed value"
+      ],
+      "answer": 0,
+      "why": "`unset` acts as `inherit` for inherited properties such as `color` and as `initial` for the rest, and the initial value of `display` is `inline`. Going back to the browser's button look is what `all: revert` does.",
+      "tags": ["cascade", "css-keywords"],
+      "level": 2,
+      "asked": "It explains why an `all: unset` button suddenly sits inline and loses its focus ring, which you then have to restore deliberately."
+    },
+    {
+      "id": "hc-038",
+      "q": "The menu has nested sub-lists. Which `<li>` elements does this selector match?",
+      "code": ".menu > li { font-weight: bold; }",
+      "lang": "css",
+      "choices": [
+        "Every `<li>` anywhere inside `.menu`, at any depth",
+        "Only the first `<li>` inside `.menu`",
+        "Only `<li>` elements that are direct children of `.menu`",
+        "Every `<li>` that comes after `.menu` anywhere in the document"
+      ],
+      "answer": 2,
+      "why": "`>` is the child combinator, so only the top-level items match; the space in `.menu li` is the descendant combinator, which would also reach the sub-list items. Following siblings are what `~` targets.",
+      "tags": ["selectors"],
+      "level": 1,
+      "asked": "A basic combinator check that comes up whenever nested menus or comment threads pick up styles they should not."
+    },
+    {
+      "id": "hc-039",
+      "q": "An article has an `<h2>` followed by three `<p>` elements. Which paragraphs does `h2 + p` match?",
+      "choices": [
+        "All three paragraphs that follow the heading",
+        "None, because `+` only matches parent and child",
+        "Only the last paragraph before the next heading",
+        "Only the paragraph straight after the heading"
+      ],
+      "answer": 3,
+      "why": "`+` is the next-sibling combinator: it matches a `p` that immediately follows an `h2` with the same parent. The subsequent-sibling combinator `h2 ~ p` would match all three.",
+      "tags": ["selectors"],
+      "level": 1,
+      "asked": "Used for \"intro paragraph\" styling; the follow-up is usually how `~` differs."
+    },
+    {
+      "id": "hc-040",
+      "q": "Each form row is `<div class=\"field\"><label>…</label><input required></div>`. Which selector styles the whole row red when its input is invalid?",
+      "choices": [
+        "`.field input:invalid`",
+        "`.field:parent(input:invalid)`",
+        "`input:invalid ~ .field`",
+        "`.field:has(input:invalid)`"
+      ],
+      "answer": 3,
+      "why": "`:has()` matches an element based on its descendants, so it is the \"parent selector\" CSS lacked for years and is supported in all current browsers. `.field input:invalid` styles only the input, `<` is not a CSS combinator, and `~` looks at later siblings, not ancestors.",
+      "tags": ["selectors", "forms"],
+      "level": 2,
+      "asked": "Interviewers ask about `:has()` to see whether your CSS knowledge is current; a strong answer mentions it replaces JavaScript that toggled parent classes."
+    },
+    {
+      "id": "hc-041",
+      "q": "What colour is `<p class=\"note\">`, given this CSS?",
+      "code": "p:not(#intro) { color: red; }\n.note { color: blue; }",
+      "lang": "css",
+      "choices": [
+        "Blue: `.note` comes later and `:not()` adds no weight",
+        "Red: `:not(#intro)` counts as an id, so it outweighs a class",
+        "Blue: a class selector always beats an element selector",
+        "Red: negation pseudo-classes add one to the class-selector column"
+      ],
+      "answer": 1,
+      "why": "`:not()`, `:is()` and `:has()` take the specificity of their most specific argument, so `p:not(#intro)` is (1,0,1) and beats `.note` at (0,1,0) even though no id is actually matched. Only `:where()` contributes zero.",
+      "tags": ["specificity", "selectors"],
+      "level": 3,
+      "asked": "A classic \"why does this innocent-looking rule win\" puzzle; strong candidates know which functional pseudo-classes carry weight."
+    },
+    {
+      "id": "hc-042",
+      "q": "What colour is the `.btn` inside `#app`?",
+      "code": "@layer reset {\n  #app button.btn { color: red; }\n}\n.btn { color: blue; }",
+      "lang": "css",
+      "choices": [
+        "Red: its selector has an id, so it has more specificity",
+        "Red: layered rules are applied after unlayered ones",
+        "Blue: unlayered styles beat every normal layered rule",
+        "Blue: specificity is ignored and later source order wins"
+      ],
+      "answer": 2,
+      "why": "Cascade layers are compared before specificity, and normal declarations outside any layer sit in an implicit final layer that beats all named layers. Specificity only matters between rules in the same layer; source order is not what decides here.",
+      "tags": ["cascade-layers", "cascade"],
+      "level": 2,
+      "asked": "Cascade layers are the modern answer to specificity wars, and interviewers check you know layer order trumps selector weight."
+    },
+    {
+      "id": "hc-043",
+      "q": "What colour is the `.btn`?",
+      "code": "@layer base, components;\n@layer components { .btn { color: blue; } }\n@layer base { #app button.btn { color: red; } }",
+      "lang": "css",
+      "choices": [
+        "Blue: `components` is declared after `base` in the order",
+        "Red: the `base` block appears last in the source, so it wins",
+        "Red: its selector has an id, and ids always win",
+        "Blue: the first `@layer` block in the file wins"
+      ],
+      "answer": 0,
+      "why": "Layer order is fixed by the first time each name appears, here the `@layer base, components;` statement, and later layers win for normal declarations. Where the blocks sit afterwards and how specific their selectors are does not change that.",
+      "tags": ["cascade-layers"],
+      "level": 2,
+      "asked": "Declaring the order up front is the idiom teams use; interviewers want you to explain why it makes stylesheet load order irrelevant."
+    },
+    {
+      "id": "hc-044",
+      "q": "Both rules are `!important`. What colour is the `.btn`?",
+      "code": "@layer base, theme;\n@layer base  { .btn { color: red !important; } }\n@layer theme { .btn { color: blue !important; } }",
+      "lang": "css",
+      "choices": [
+        "Blue: `theme` is the later layer, so it wins",
+        "Blue: with equal specificity, the last rule wins",
+        "Red: important declarations reverse the layer order",
+        "Neither: two important rules cancel out, so it inherits"
+      ],
+      "answer": 2,
+      "why": "For `!important` declarations the layer order flips, so the earliest layer wins; that lets a base or reset layer lock something down that later layers cannot override. For normal declarations `theme` would win.",
+      "tags": ["cascade-layers", "cascade"],
+      "level": 3,
+      "asked": "A deep cascade question; knowing the inversion shows you understand why `!important` exists at all, not just that it is \"bad\"."
+    },
+    {
+      "id": "hc-045",
+      "q": "A vendor date-picker stylesheet keeps beating your overrides with long selectors. How do you make all of its rules lose to your unlayered CSS?",
+      "choices": [
+        "Link it after your own stylesheet so its rules come later",
+        "Add `!important` to every rule you want to override",
+        "Import it into a layer: `@import url(vendor.css) layer(vendor);`",
+        "Put your own rules in `@layer app` and leave the vendor CSS alone"
+      ],
+      "answer": 2,
+      "why": "Anything in a layer loses to unlayered normal styles, whatever its specificity, so importing the vendor file into a layer disarms it without editing it. Putting your own CSS in a layer does the opposite and makes the unlayered vendor rules win.",
+      "tags": ["cascade-layers", "architecture"],
+      "level": 2,
+      "asked": "A practical question about taming third-party CSS; it tells the interviewer you can apply layers, not just recite them."
+    },
+    {
+      "id": "hc-046",
+      "q": "Two stacked blocks: the first has `margin-bottom: 20px` and the second `margin-top: 30px`. In normal block flow, how far apart are they?",
+      "choices": [
+        "30px, because the vertical margins collapse",
+        "50px, because the two margins add together",
+        "20px, because the first margin takes priority",
+        "25px, because collapsing averages the margins"
+      ],
+      "answer": 0,
+      "why": "Adjacent vertical margins in block flow collapse into one margin the size of the larger. Horizontal margins never collapse, and the effect disappears inside flex and grid containers.",
+      "tags": ["box-model", "spacing"],
+      "level": 1,
+      "asked": "Margin collapsing is behind many \"my spacing is wrong\" bugs and is a staple junior CSS question."
+    },
+    {
+      "id": "hc-047",
+      "q": "The same two blocks (`margin-bottom: 20px`, then `margin-top: 30px`) are now children of a `display: flex; flex-direction: column` container. How far apart are they?",
+      "choices": [
+        "30px, the same as in normal block flow",
+        "20px, the margin of the first child only",
+        "0px, because flex items ignore vertical margins",
+        "50px, as flex item margins do not collapse"
+      ],
+      "answer": 3,
+      "why": "Margin collapsing is a block-flow behaviour; flex and grid items keep both margins, so they add up. That difference is one reason teams switch stacks to `gap`, which behaves the same everywhere.",
+      "tags": ["box-model", "flexbox", "spacing"],
+      "level": 2,
+      "asked": "Checks that you know collapsing is specific to block layout, which explains spacing that changes when someone adds `display: flex`."
+    },
+    {
+      "id": "hc-048",
+      "q": "A wrapper contains only floated images and collapses to zero height, so its background vanishes. What is the modern one-line fix on the wrapper?",
+      "choices": ["`display: flow-root`", "`clear: both`", "`height: auto`", "`position: relative`"],
+      "answer": 0,
+      "why": "`display: flow-root` makes the wrapper a new block formatting context, which contains its floats so its height includes them. `clear` belongs on an element after the floats, `height: auto` is already the default, and positioning does not change float containment.",
+      "tags": ["box-model", "layout"],
+      "level": 2,
+      "asked": "Floats are rare in new code but common in legacy and email CSS; this tells the interviewer you know the clean fix rather than the clearfix hack."
+    },
+    {
+      "id": "hc-049",
+      "q": "Adding `border: 2px solid` on `:hover` makes neighbouring menu items jump. Why does `outline: 2px solid` not cause the jump?",
+      "choices": [
+        "Outlines are drawn outside the box and take up no layout space",
+        "Outlines are always drawn inside the padding box",
+        "Browsers only redraw outlines on the next animation frame, after layout",
+        "Outlines ignore `box-sizing` and only apply on focus"
+      ],
+      "answer": 0,
+      "why": "A border is part of the box model, so adding one grows the element (unless it already had a transparent border) and pushes its neighbours. An outline is painted over the layout without affecting it, which is also why focus rings use it.",
+      "tags": ["box-model"],
+      "level": 1,
+      "asked": "A simple layout-shift question; a strong answer also mentions the transparent-border trick or `box-shadow` alternatives."
+    },
+    {
+      "id": "hc-050",
+      "q": "Text sits in the inner `.a` element. What is its computed font size?",
+      "code": "html { font-size: 16px; }\n.a { font-size: 1.5em; }\n/* <div class=\"a\"><div class=\"a\">Text</div></div> */",
+      "lang": "css",
+      "choices": [
+        "24px, because `em` is relative to the root size",
+        "16px, because `em` is ignored when nested",
+        "32px, because each level adds 8px to the size",
+        "36px, because `em` compounds on the parent size"
+      ],
+      "answer": 3,
+      "why": "For `font-size`, `em` is relative to the parent's computed font size, so the outer div is 24px and the inner one 1.5 × 24 = 36px. `rem` avoids the compounding by always using the root size.",
+      "tags": ["units", "typography"],
+      "level": 1,
+      "asked": "The rem-versus-em question; a good answer says when `em` compounding is useful, such as padding that scales with a component's own text."
+    },
+    {
+      "id": "hc-051",
+      "q": "A full-screen mobile checkout uses `height: 100vh`, and its bottom Pay button hides behind the browser's address bar. Which value fixes it?",
+      "choices": [
+        "`100lvh`, the viewport height with the toolbar retracted",
+        "`100%` on the checkout, which always equals the visible area",
+        "`100dvh`, which tracks the viewport as the toolbar moves",
+        "`100vmax`, the larger of the viewport width and height"
+      ],
+      "answer": 2,
+      "why": "On mobile, `vh` is the large viewport (toolbars hidden), so content overflows when they are showing. `dvh` follows the current visible height; `svh` is the smallest viewport if you prefer no resizing. `lvh` is exactly the size that caused the bug.",
+      "tags": ["units", "responsive"],
+      "level": 2,
+      "asked": "A real mobile bug; knowing `svh`, `lvh` and `dvh` shows your CSS knowledge is current and that you test on phones."
+    },
+    {
+      "id": "hc-052",
+      "q": "What does `max-width: 65ch` on an article's text column do?",
+      "choices": [
+        "Caps each line at exactly 65 characters of any width",
+        "Caps the column at 65% of its container's width",
+        "Caps the column at 65 times the element's font size",
+        "Caps it at 65 widths of the \"0\" glyph in its font"
+      ],
+      "answer": 3,
+      "why": "One `ch` is the advance width of the \"0\" character in the element's font, so 65ch gives roughly 60–75 characters per line in proportional fonts, a comfortable measure. It is not an exact character count, and `em` is the unit tied to font size.",
+      "tags": ["units", "typography"],
+      "level": 1,
+      "asked": "A quick unit check that also lets you talk about readable line length in content-heavy pages."
+    },
+    {
+      "id": "hc-053",
+      "q": "A sidebar's child has `height: 50%`, but it stays as tall as its content. The sidebar itself has no height set. Why?",
+      "choices": [
+        "Percentage heights only work on absolutely positioned elements",
+        "The sidebar's height is `auto`, so the percentage becomes `auto`",
+        "Percentage heights resolve against the viewport height, not the parent",
+        "Percentages need `box-sizing: border-box` on the child to apply"
+      ],
+      "answer": 1,
+      "why": "A percentage height needs a containing block with a definite height; when the parent is sized by its content, the child's percentage behaves as `auto`. Stretch the parent (flex or grid) or give it a definite height instead.",
+      "tags": ["sizing", "units"],
+      "level": 2,
+      "asked": "A daily frustration; interviewers like hearing that percentage widths and heights resolve differently and why."
+    },
+    {
+      "id": "hc-054",
+      "q": "Which of these leaves the element invisible but still clickable?",
+      "choices": ["`display: none`", "`visibility: hidden`", "`opacity: 0`", "`content-visibility: hidden`"],
+      "answer": 2,
+      "why": "`opacity: 0` only changes painting, so the element keeps its space and still receives clicks and focus. `visibility: hidden` keeps the space but ignores pointer events, and `display: none` removes the box entirely.",
+      "tags": ["display", "visibility"],
+      "level": 1,
+      "asked": "The follow-up is usually \"and which of them hides content from screen readers\", so know all three."
+    },
+    {
+      "id": "hc-055",
+      "q": "A toolbar is `<div class=\"toolbar\" hidden>` and the stylesheet has `.toolbar { display: flex; }`. What does the user see?",
+      "choices": [
+        "The toolbar: author CSS overrides the UA's `display: none`",
+        "Nothing: the `hidden` attribute always wins over CSS",
+        "Nothing until JavaScript removes the attribute",
+        "The toolbar, but with `visibility: hidden` applied by the UA"
+      ],
+      "answer": 0,
+      "why": "`hidden` works only through a UA stylesheet rule `[hidden] { display: none }`, which any author `display` value beats. Resets often add `[hidden] { display: none !important; }` so the attribute keeps working.",
+      "tags": ["display", "cascade"],
+      "level": 2,
+      "asked": "A real bug that ships often; the answer shows you know how HTML attributes and CSS interact through the UA stylesheet."
+    },
+    {
+      "id": "hc-056",
+      "q": "A form's fields are wrapped in `<div class=\"row\">` elements, and you want each field to be a direct grid item of the form. What does `.row { display: contents; }` do?",
+      "choices": [
+        "Makes `.row` a subgrid that shares the form's tracks",
+        "Hides `.row` but keeps it available to screen readers",
+        "Makes `.row` fill its grid cell with its own contents",
+        "Removes `.row`'s box so its children become grid items"
+      ],
+      "answer": 3,
+      "why": "With `display: contents` the element generates no box of its own and its children are laid out as if they were children of its parent, so they join the form's grid. That is different from `subgrid`, which keeps the wrapper as a grid item that reuses its parent's tracks.",
+      "tags": ["display", "grid"],
+      "level": 2,
+      "asked": "It shows you can fix a layout without changing markup that a component library or framework controls."
+    },
+    {
+      "id": "hc-057",
+      "q": "An `<img>` inside a bordered `<div>` leaves a few pixels of empty space under it. What causes the gap?",
+      "choices": [
+        "The image is inline and sits on the text baseline",
+        "The browser adds default `margin-bottom` to images",
+        "The div's `line-height` is applied as extra padding",
+        "The image's intrinsic size includes a transparent row"
+      ],
+      "answer": 0,
+      "why": "Images are inline by default, so they sit on the baseline and leave room below it for descenders. `display: block` on the image (or `vertical-align: middle`) removes the gap, which is why resets set `img { display: block; }`.",
+      "tags": ["box-model", "display"],
+      "level": 1,
+      "asked": "A small bug that tests whether you understand inline formatting rather than reaching for negative margins."
+    },
+    {
+      "id": "hc-058",
+      "q": "A block element has `width: 600px`. Which declaration centres it horizontally inside its wider parent?",
+      "choices": [
+        "`text-align: center` on the element",
+        "`vertical-align: middle` on the element",
+        "`align-self: center` on the element",
+        "`margin-inline: auto` on the element"
+      ],
+      "answer": 3,
+      "why": "Auto inline margins split the free space equally, centring a block with a known width. `text-align` centres inline content inside a block, `align-self` needs a flex or grid parent, and `vertical-align` applies to inline and table cells.",
+      "tags": ["layout", "box-model"],
+      "level": 1,
+      "asked": "The oldest CSS interview question; a strong answer adds how you would do it with flex or grid, too."
+    },
+    {
+      "id": "hc-059",
+      "q": "This rule shows no ellipsis; long titles wrap onto a second line instead. What is missing?",
+      "code": ".title {\n  overflow: hidden;\n  text-overflow: ellipsis;\n}",
+      "lang": "css",
+      "choices": [
+        "`display: inline-block`, as ellipsis needs an inline box",
+        "`white-space: nowrap`, so the text overflows sideways",
+        "`width: 100%`, so the box has an explicit width",
+        "`overflow-wrap: anywhere`, so words can be truncated"
+      ],
+      "answer": 1,
+      "why": "`text-overflow` only applies when inline content overflows the box horizontally, and text that is allowed to wrap never does. The single-line ellipsis needs all three: `overflow: hidden`, `white-space: nowrap` and `text-overflow: ellipsis`.",
+      "tags": ["overflow", "typography"],
+      "level": 1,
+      "asked": "It is on every table and card; interviewers use it to see if you know why the three properties go together."
+    },
+    {
+      "id": "hc-060",
+      "q": "Long URLs in user comments overflow their card. Which declaration wraps them only when a word would not fit otherwise?",
+      "choices": [
+        "`word-break: break-all`, which only breaks overflowing words",
+        "`white-space: pre-wrap`, which wraps long unbroken strings",
+        "`hyphens: auto`, which splits any string at a hyphen",
+        "`overflow-wrap: anywhere`, which breaks only if it must"
+      ],
+      "answer": 3,
+      "why": "`overflow-wrap: anywhere` (or `break-word`) allows breaks inside a word only when there is no other way to fit the line, leaving normal text alone. `word-break: break-all` breaks every word at the edge, and `hyphens` only works on dictionary words in a declared language.",
+      "tags": ["overflow", "typography"],
+      "level": 2,
+      "asked": "User-generated content always contains a 200-character URL; this shows you have dealt with it properly."
+    },
+    {
+      "id": "hc-061",
+      "q": "A dropdown inside a card must not escape its z-index into the rest of the page. Which declaration on the card creates a stacking context without other side effects?",
+      "choices": ["`isolation: isolate`", "`position: relative`", "`overflow: hidden`", "`display: flow-root`"],
+      "answer": 0,
+      "why": "`isolation: isolate` exists to create a stacking context and does nothing else. `position: relative` alone does not create one without a `z-index`, `overflow: hidden` would clip the dropdown, and `flow-root` creates a block formatting context, not a stacking context.",
+      "tags": ["positioning", "stacking"],
+      "level": 2,
+      "asked": "z-index questions are standard; naming `isolation` shows you manage stacking contexts on purpose rather than escalating numbers."
+    },
+    {
+      "id": "hc-062",
+      "q": "Inside a `position: relative` card, where does this box end up?",
+      "code": ".badge {\n  position: absolute;\n  inset: 0;\n  width: 200px;\n  height: 100px;\n  margin: auto;\n}",
+      "lang": "css",
+      "choices": [
+        "At the top-left, since auto margins are 0 when positioned",
+        "Stretched to fill the card, ignoring its width and height",
+        "Centred horizontally only; vertical auto margins are 0",
+        "Centred both ways inside the card's padding box"
+      ],
+      "answer": 3,
+      "why": "With all four insets set and a fixed size, the leftover space in each direction is shared by the auto margins, which centres the box both ways. Without the explicit width and height, `inset: 0` would stretch it instead.",
+      "tags": ["positioning", "layout"],
+      "level": 3,
+      "asked": "It shows you understand how absolute positioning resolves auto margins, the mechanism behind a classic centring technique."
+    },
+    {
+      "id": "hc-063",
+      "q": "An icon button's inline SVG should always match the button text's colour, including on hover and in dark mode. What should the SVG use?",
+      "choices": [
+        "`fill: inherit`, which copies the parent's `fill`",
+        "`fill: auto`, which lets the browser pick a contrast",
+        "`fill: var(--text)`, which resolves on `:root` only",
+        "`fill: currentColor`, the element's own `color` value"
+      ],
+      "answer": 3,
+      "why": "`currentColor` resolves to the element's computed `color`, which the SVG inherits from the button, so every colour change on the button reaches the icon. `inherit` would copy the parent's `fill`, which is not the text colour, and `fill: auto` does not exist.",
+      "tags": ["colour", "svg"],
+      "level": 1,
+      "asked": "A small detail that shows you build icon systems that theme cleanly without per-state overrides."
+    },
+    {
+      "id": "hc-064",
+      "q": "With native CSS nesting, which elements does the nested rule select?",
+      "code": ".card {\n  color: black;\n  .sidebar & { color: grey; }\n}",
+      "lang": "css",
+      "choices": [
+        "A `.sidebar` element inside a `.card`",
+        "A `.card` element inside a `.sidebar`",
+        "An element with both `.card` and `.sidebar`",
+        "Nothing, since `&` must start the selector"
+      ],
+      "answer": 1,
+      "why": "`&` stands for the parent rule's selector wherever it appears, so `.sidebar &` means `.sidebar .card`. `&` may appear anywhere in the nested selector; it is a Sass habit that it has to come first.",
+      "tags": ["nesting", "selectors"],
+      "level": 3,
+      "asked": "Native nesting shipped in all engines; interviewers ask about `&` placement to see whether you know it beyond Sass."
+    },
+    {
+      "id": "hc-065",
+      "q": "Inside `.tab { … }` using native CSS nesting, what is the difference between `&.active` and `& .active`?",
+      "choices": [
+        "The first matches `.tab.active`; the second matches an `.active` inside `.tab`",
+        "None: whitespace around `&` is ignored when nesting",
+        "The first matches an `.active` inside `.tab`; the second matches `.tab.active`",
+        "The first is invalid without `:is()`; the second matches `.tab .active`"
+      ],
+      "answer": 0,
+      "why": "Without a space `&` joins the class to the parent selector (same element); the space is the descendant combinator. Mixing them up silently styles the wrong element, which is a common nesting bug.",
+      "tags": ["nesting", "selectors"],
+      "level": 2,
+      "asked": "A small syntax point that catches real bugs in code review."
+    },
+    {
+      "id": "hc-066",
+      "q": "Your app will ship an Arabic version with `dir=\"rtl\"`. Why write `padding-inline-start: 1rem` instead of `padding-left: 1rem`?",
+      "choices": [
+        "It applies padding on both inline sides at once",
+        "It is shorthand that sets the top and left padding",
+        "It maps to the left in LTR and the right in RTL",
+        "It only applies when the text direction is RTL"
+      ],
+      "answer": 2,
+      "why": "Logical properties follow the writing direction: `inline-start` is the side where text begins, so layouts mirror correctly for right-to-left languages without a second stylesheet. `padding-inline` is the one that sets both sides.",
+      "tags": ["logical-properties", "i18n"],
+      "level": 1,
+      "asked": "Increasingly asked by product teams with international users; it shows you write CSS that survives localisation."
+    },
+    {
+      "id": "hc-067",
+      "q": "In a flex container with the default `flex-direction: row`, which property centres the items vertically?",
+      "choices": [
+        "`justify-content: center`",
+        "`align-content: center`",
+        "`vertical-align: middle`",
+        "`align-items: center`"
+      ],
+      "answer": 3,
+      "why": "In a row the main axis is horizontal, so `justify-content` works left to right and `align-items` works on the cross axis, top to bottom. `vertical-align` does nothing to flex items, and `align-content` spaces wrapped lines rather than items in a single line.",
+      "tags": ["flexbox"],
+      "level": 1,
+      "asked": "The main-axis versus cross-axis distinction is the core flexbox concept; everything else builds on it."
+    },
+    {
+      "id": "hc-068",
+      "q": "Three cards in a flex row have different amounts of text, yet all three render the same height. Why?",
+      "choices": [
+        "Flex items get the height of the tallest item by rule",
+        "The default `align-items: stretch` fills the line's height",
+        "`flex: 1` on each card equalises their heights",
+        "Flex containers set `height: 100%` on all of their children"
+      ],
+      "answer": 1,
+      "why": "The initial value of `align-items` is `stretch`, so items without a fixed cross size stretch to fill the line, which is as tall as the tallest item. Set `align-items: flex-start` to let each card keep its content height; `flex` only affects the main axis.",
+      "tags": ["flexbox"],
+      "level": 1,
+      "asked": "It explains both the \"equal-height cards for free\" win and the \"why is my button stretched\" bug."
+    },
+    {
+      "id": "hc-069",
+      "q": "The container is 600px wide with no gap. How wide do `.a` and `.b` end up?",
+      "code": ".row { display: flex; width: 600px; }\n.a { flex: 1 1 100px; }\n.b { flex: 2 1 100px; }",
+      "lang": "css",
+      "choices": [
+        "About 233px and 367px: the 400px left over is split 1 : 2",
+        "200px and 400px, split 1 : 2 across the whole row",
+        "300px each, because the bases are equal",
+        "100px and 500px, as `.b` takes all the free space"
+      ],
+      "answer": 0,
+      "why": "Flex-grow divides the free space left after the bases, not the whole container: 600 − 200 = 400px, shared 1 : 2, gives 133⅓px and 266⅔px on top of each 100px basis. A 1 : 2 split of the full width only happens when the bases are 0, as with `flex: 1` and `flex: 2`.",
+      "tags": ["flexbox", "sizing"],
+      "level": 2,
+      "asked": "Working the numbers shows you understand the flex algorithm rather than treating grow values as percentages."
+    },
+    {
+      "id": "hc-070",
+      "q": "Three tabs have labels of very different lengths, and they should be exactly equal widths across the bar. Which declaration on each tab does that?",
+      "choices": ["`flex: auto`", "`flex: initial`", "`flex: none`", "`flex: 1`"],
+      "answer": 3,
+      "why": "`flex: 1` sets a basis of 0, so all the space is free space and is shared equally, whatever the content. `flex: auto` starts from each tab's content width and then adds equal shares, so longer labels stay wider; `none` and `initial` do not grow at all.",
+      "tags": ["flexbox", "sizing"],
+      "level": 2,
+      "asked": "Choosing between `flex: 1` and `flex: auto` is a real decision on every toolbar; interviewers like the \"basis 0 versus basis auto\" explanation."
+    },
+    {
+      "id": "hc-071",
+      "q": "A navbar is a flex row of links followed by a Log out button. What is the simplest way to push only the button to the far right?",
+      "choices": [
+        "`float: right` on the button",
+        "`justify-content: space-between` on the nav",
+        "`align-self: flex-end` on the button",
+        "`margin-left: auto` on the button"
+      ],
+      "answer": 3,
+      "why": "An auto margin on a flex item absorbs all the free space on that side, pushing the button and anything after it to the end. `space-between` would also spread the links apart, `float` is ignored on flex items, and `align-self` works on the cross axis.",
+      "tags": ["flexbox", "spacing"],
+      "level": 1,
+      "asked": "The auto-margin trick is a sign of someone who has built real navbars with flexbox."
+    },
+    {
+      "id": "hc-072",
+      "q": "A sidebar has `width: 280px` in a flex row. When the main area holds a wide table, the sidebar gets narrower than 280px. What stops that?",
+      "choices": [
+        "`flex-shrink: 0` on the sidebar",
+        "`flex-grow: 0` on the sidebar",
+        "`box-sizing: border-box` on the sidebar",
+        "`flex-wrap: nowrap` on the container"
+      ],
+      "answer": 0,
+      "why": "Flex items default to `flex-shrink: 1`, so when the row overflows every item gives up space in proportion to its size, including the sidebar. `flex-shrink: 0` (or `flex: none`) keeps it at 280px; `flex-grow` only controls growing, and `nowrap` is already the default.",
+      "tags": ["flexbox", "sizing"],
+      "level": 2,
+      "asked": "A very common layout bug; the answer shows you know items shrink by default."
+    },
+    {
+      "id": "hc-073",
+      "q": "A `flex-wrap: wrap` container with a fixed height has two rows of items. Which property controls how those rows are spaced within the container?",
+      "choices": ["`align-items`", "`justify-content`", "`align-content`", "`row-gap` only"],
+      "answer": 2,
+      "why": "`align-content` distributes the flex lines along the cross axis when there is spare room, while `align-items` aligns items inside each line. `row-gap` sets a fixed gap but does not distribute leftover space.",
+      "tags": ["flexbox"],
+      "level": 2,
+      "asked": "Separating `align-items` from `align-content` is a common flexbox stumbling block."
+    },
+    {
+      "id": "hc-074",
+      "q": "A designer asks you to show a form's Submit button before the Cancel button on mobile using `order: -1`. What else changes?",
+      "choices": [
+        "Tab order and screen reader order follow the new visual order",
+        "Nothing: DOM order, tab order and reading order stay the same",
+        "The button is moved in the DOM, so event handlers re-bind",
+        "The form will submit with the first button in visual order"
+      ],
+      "answer": 1,
+      "why": "`order` changes only where the box is painted; keyboard focus and assistive technology follow the DOM. That mismatch can confuse users, so reorder the markup when the new order is meaningful and keep `order` for decorative moves.",
+      "tags": ["flexbox", "grid"],
+      "level": 2,
+      "asked": "Interviewers raise it to see whether you consider keyboard users when you rearrange layouts in CSS."
+    },
+    {
+      "id": "hc-075",
+      "q": "Buttons in a `flex-direction: column` container were full width. After adding `align-items: center` to the container, they shrink to their text width. Why?",
+      "choices": [
+        "`center` also sets `flex: none` on every item",
+        "Centring switches the main axis back to horizontal",
+        "Items are no longer stretched across the cross axis",
+        "Column containers ignore widths once items are centred"
+      ],
+      "answer": 2,
+      "why": "In a column the cross axis is horizontal, and the full width came from the default `align-items: stretch`. Any other value sizes items to their content, so add `width: 100%` or keep stretch and centre the text instead.",
+      "tags": ["flexbox", "sizing"],
+      "level": 2,
+      "asked": "It checks that you can reason about which axis each property controls once the direction changes."
+    },
+    {
+      "id": "hc-076",
+      "q": "The row has plenty of spare space. How wide is `.item`?",
+      "code": ".item {\n  width: 200px;\n  flex: 0 0 300px;\n  max-width: 250px;\n}",
+      "lang": "css",
+      "choices": [
+        "200px, because an explicit `width` beats `flex-basis`",
+        "300px, because `flex-basis` beats every other size",
+        "250px: basis wins over width, but `max-width` clamps it",
+        "275px, the midpoint between the flex basis and the max-width"
+      ],
+      "answer": 2,
+      "why": "A `flex-basis` other than `auto` replaces `width` as the starting size, so the item wants 300px, but min and max constraints still apply to the result and clamp it to 250px. `width` would only be used if the basis were `auto`.",
+      "tags": ["flexbox", "sizing"],
+      "level": 3,
+      "asked": "Knowing the precedence of basis, width and min/max sizes lets you debug flex sizing without trial and error."
+    },
+    {
+      "id": "hc-077",
+      "q": "In a 3-column grid, what does `grid-column: 1 / -1` do to an item?",
+      "choices": [
+        "Spans it from the first to the last explicit column line",
+        "Places it in column 1 and hides it on narrow screens",
+        "Spans it one column to the left of where it would sit",
+        "Places it in the last column, counting backwards"
+      ],
+      "answer": 0,
+      "why": "Negative line numbers count from the end of the explicit grid, so `-1` is the last line and the item spans every column; that is how full-width headers and error rows are made. It only covers explicit columns, not implicit ones.",
+      "tags": ["grid"],
+      "level": 1,
+      "asked": "A quick placement check; full-width rows inside a grid come up in every dashboard layout."
+    },
+    {
+      "id": "hc-078",
+      "q": "Where does the `<main>` element (with `grid-area: main`) sit in this layout?",
+      "code": ".page {\n  display: grid;\n  grid-template-columns: 200px 1fr;\n  grid-template-areas:\n    \"header header\"\n    \"nav    main\";\n}",
+      "lang": "css",
+      "choices": [
+        "First row, beside the header in the 1fr column",
+        "Second row, in the 200px column beside the nav",
+        "Second row, in the 1fr column beside the nav",
+        "Across both columns, below the header row"
+      ],
+      "answer": 2,
+      "why": "Each quoted string is a row and each name a cell, so `main` is row 2, column 2, which is the `1fr` track. The header spans both columns because its name is repeated in the first row.",
+      "tags": ["grid"],
+      "level": 1,
+      "asked": "Template areas make page layouts readable; interviewers use them to check you can read a grid definition at a glance."
+    },
+    {
+      "id": "hc-079",
+      "q": "A grid has `grid-template-columns: repeat(3, 1fr)` and `grid-template-rows: 100px 100px`, and holds nine items. How tall is the third row?",
+      "choices": [
+        "100px, repeating the last explicit row size",
+        "0px, since the items fall outside the grid",
+        "As tall as its content, via `grid-auto-rows: auto`",
+        "Equal to the remaining height of the container"
+      ],
+      "answer": 2,
+      "why": "Items beyond the explicit grid create implicit tracks, sized by `grid-auto-rows`, whose default is `auto`. Set `grid-auto-rows: 100px` (or `minmax(100px, auto)`) if every row should match.",
+      "tags": ["grid"],
+      "level": 2,
+      "asked": "Explicit versus implicit grid is the concept behind lots of \"why is my last row different\" bugs."
+    },
+    {
+      "id": "hc-080",
+      "q": "A photo gallery uses `grid-auto-flow: dense`, and wide images now leave no gaps. What is the trade-off?",
+      "choices": [
+        "Items may render out of their DOM order",
+        "Every item must declare an explicit row",
+        "Wide items are shrunk to fit a single column",
+        "The grid can no longer have implicit rows"
+      ],
+      "answer": 0,
+      "why": "Dense packing backfills earlier holes with later items, so visual order no longer matches source order, which confuses keyboard and screen reader users. It suits galleries where order does not matter and is a poor choice for ordered lists.",
+      "tags": ["grid"],
+      "level": 2,
+      "asked": "It shows you weigh visual polish against reading order."
+    },
+    {
+      "id": "hc-081",
+      "q": "A product grid has three cards per row, with titles of different lengths. You want each card's body and footer to line up with its neighbours. What does that?",
+      "choices": [
+        "Each card spans three rows and uses `grid-template-rows: subgrid`",
+        "Give every card `display: flex` and `height: 100%`",
+        "Set `align-items: stretch` on the outer product grid",
+        "Give each title a fixed `min-height` and `overflow: hidden` on cards"
+      ],
+      "answer": 0,
+      "why": "With subgrid, each card places its title, body and footer on the parent grid's row tracks, so each row is as tall as the tallest title in it and every section lines up. Flex and stretch only equalise card heights, and fixed heights break on the next long title.",
+      "tags": ["grid", "subgrid"],
+      "level": 3,
+      "asked": "Subgrid is supported everywhere now; knowing when to reach for it shows up-to-date layout skills."
+    },
+    {
+      "id": "hc-082",
+      "q": "What does `gap: 16px 24px` set on a grid container?",
+      "choices": [
+        "16px between columns and 24px between rows",
+        "A gap between 16px and 24px that grows with space",
+        "16px inside each cell and 24px around the grid",
+        "16px between rows and 24px between columns"
+      ],
+      "answer": 3,
+      "why": "`gap` is shorthand for `row-gap` then `column-gap`, following the usual block-then-inline order. Gaps only go between tracks, never around the outside edge.",
+      "tags": ["grid", "spacing"],
+      "level": 1,
+      "asked": "A quick syntax check that trips up people who have only ever written a single value."
+    },
+    {
+      "id": "hc-083",
+      "q": "A 620px-wide grid has `grid-template-columns: repeat(3, 1fr)` and `gap: 10px`. How wide is each column?",
+      "choices": [
+        "About 206.7px: the gaps are ignored by `fr`",
+        "200px: the gaps are taken off before sharing",
+        "190px: each column loses 10px on both sides",
+        "210px: `fr` shares the gaps between columns"
+      ],
+      "answer": 1,
+      "why": "Gaps are fixed-size tracks, so `fr` units share what remains: 620 − 2 × 10 = 600px, split three ways. That is why `fr` is safer than percentages, which ignore the gap and overflow.",
+      "tags": ["grid", "sizing"],
+      "level": 1,
+      "asked": "It checks you know why `repeat(3, 33.33%)` plus a gap overflows, while `fr` does not."
+    },
+    {
+      "id": "hc-084",
+      "q": "What is the shortest way to centre a single child both ways inside a container?",
+      "choices": [
+        "`display: grid; place-items: center;` on the container",
+        "`display: block; margin: auto;` on the container",
+        "`text-align: center; vertical-align: middle;` on it",
+        "`display: flex; align-content: center;` on the container"
+      ],
+      "answer": 0,
+      "why": "`place-items` sets `align-items` and `justify-items` together, so a one-cell grid centres its child both ways. `margin: auto` on the container centres the container itself, and `align-content` in a single-line flex row does not move the item.",
+      "tags": ["grid", "layout"],
+      "level": 1,
+      "asked": "The modern answer to \"centre a div\"; mention the flex equivalent too."
+    },
+    {
+      "id": "hc-085",
+      "q": "In a 3-column auto-placed grid, items 1 and 2 are normal and item 3 has `grid-column: span 2`. Where does item 3 go?",
+      "choices": [
+        "Row 1, column 3, overflowing into an implicit column",
+        "Row 1, column 3, shrunk to fit a single column",
+        "Row 2, columns 1–2, leaving row 1, column 3 empty",
+        "Row 2, columns 2–3, keeping to its source position"
+      ],
+      "answer": 2,
+      "why": "A two-column item cannot fit in the single remaining cell, so auto-placement moves to the next row where it fits and, in the default sparse mode, never goes back to fill the hole. `grid-auto-flow: dense` would let a later item fill that cell.",
+      "tags": ["grid"],
+      "level": 2,
+      "asked": "Predicting auto-placement explains the mysterious holes in dashboard grids."
+    },
+    {
+      "id": "hc-086",
+      "q": "A 1000px-wide grid has `gap: 20px`. How many columns does it get?",
+      "code": ".grid {\n  display: grid;\n  gap: 20px;\n  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));\n}",
+      "lang": "css",
+      "choices": [
+        "Four columns of 250px, since 1000 ÷ 250 = 4",
+        "Four columns of 235px, shrunk to make room for gaps",
+        "Five columns, as `auto-fill` adds an empty one",
+        "Three columns of 320px, since four need 1060px"
+      ],
+      "answer": 3,
+      "why": "`auto-fill` creates as many tracks as fit at their minimum size including the gaps: four would need 4 × 250 + 3 × 20 = 1060px, so it makes three, and `1fr` stretches them to (1000 − 40) ÷ 3 = 320px. Tracks never go below their `minmax()` minimum.",
+      "tags": ["grid", "responsive"],
+      "level": 3,
+      "asked": "Doing the arithmetic proves you understand the responsive-grid one-liner rather than copying it."
+    },
+    {
+      "id": "hc-087",
+      "q": "A layout uses `grid-template-columns: 250px 1fr`, and a `<pre>` with a very long line in the main column makes the whole page scroll sideways. What is the fix?",
+      "choices": [
+        "Change `1fr` to `minmax(0, 1fr)` for the main column",
+        "Change `1fr` to `100%` so it matches the container",
+        "Set `overflow: hidden` on the page `<body>`",
+        "Change `250px` to `minmax(250px, auto)` for the sidebar"
+      ],
+      "answer": 0,
+      "why": "`1fr` means `minmax(auto, 1fr)`, and the `auto` minimum is the content's min-content width, so an unbreakable line forces the track wider than the space. A minimum of 0 lets the track shrink; then give the `<pre>` `overflow-x: auto`. It is the grid version of the flexbox `min-width: 0` fix.",
+      "tags": ["grid", "overflow"],
+      "level": 3,
+      "asked": "A deep but very common bug; interviewers are impressed when you know `1fr` has an auto minimum."
+    },
+    {
+      "id": "hc-088",
+      "q": "A badge has `position: relative; top: 10px;`. What happens to the elements around it?",
+      "choices": [
+        "They stay put: its original space is kept",
+        "They move down 10px along with the badge",
+        "They move up to fill the badge's old space",
+        "They overlap it, as it leaves normal flow"
+      ],
+      "answer": 0,
+      "why": "Relative positioning only shifts where the box is painted; layout still reserves its original position, so nothing else moves. Absolute positioning is what takes an element out of flow.",
+      "tags": ["positioning"],
+      "level": 1,
+      "asked": "A basic positioning distinction; mention that `relative` is mostly used to set the containing block for absolute children."
+    },
+    {
+      "id": "hc-089",
+      "q": "Someone puts `z-index: 10` on a plain `<div>` in normal block flow, and it still renders under its neighbour. Why?",
+      "choices": [
+        "z-index needs a value over 100 to beat browser layers",
+        "The neighbour comes later in the DOM, which always wins",
+        "z-index only applies to positioned, flex or grid items",
+        "z-index needs `opacity` below 1 before it takes effect"
+      ],
+      "answer": 2,
+      "why": "On a statically positioned block, `z-index` is ignored; it takes effect on positioned elements and on flex or grid items. Add `position: relative` (or make the parent flex or grid) and the value will count within its stacking context.",
+      "tags": ["positioning", "stacking"],
+      "level": 2,
+      "asked": "The standard z-index follow-up after stacking contexts; many developers never learned this rule."
+    },
+    {
+      "id": "hc-090",
+      "q": "A sticky header has `z-index: 99999`, yet a `<dialog>` opened with `showModal()` appears above it with no z-index at all. Why?",
+      "choices": [
+        "Browsers cap z-index values, so 99999 is ignored",
+        "Dialogs get `z-index: 2147483647` from the browser's UA stylesheet",
+        "The dialog is rendered in the top layer, above all z-index",
+        "Modal dialogs are drawn in a separate OS window"
+      ],
+      "answer": 2,
+      "why": "Modal dialogs, popovers and fullscreen elements are promoted to the top layer, which paints above the whole document regardless of z-index or stacking contexts. That is why they fix the classic \"modal stuck under the header\" problem.",
+      "tags": ["positioning", "stacking", "dialog"],
+      "level": 2,
+      "asked": "It shows you know the platform's built-in answer to z-index wars."
+    },
+    {
+      "id": "hc-091",
+      "q": "Which stylesheet structure is mobile-first?",
+      "choices": [
+        "Desktop styles by default, then `max-width` queries for phones",
+        "Only `@media (orientation: portrait)` rules for phone layouts",
+        "Two separate stylesheets, chosen by the server from the user-agent string",
+        "Narrow styles by default, then `min-width` queries that add to them"
+      ],
+      "answer": 3,
+      "why": "Mobile-first writes the simplest single-column layout as the base and layers wider layouts on with `min-width` queries, so phones load and override the least CSS. Starting from desktop and undoing it with `max-width` queries is the desktop-first pattern.",
+      "tags": ["responsive"],
+      "level": 1,
+      "asked": "A standard responsive-design question; a good answer explains why mobile-first rules are simpler to maintain."
+    },
+    {
+      "id": "hc-092",
+      "q": "A YouTube embed must keep a 16:9 shape at any width. What is the modern CSS?",
+      "choices": [
+        "`height: 56.25vw` on the iframe",
+        "`aspect-ratio: 16 / 9; width: 100%` on it",
+        "`object-fit: contain` on the iframe",
+        "`padding-top: 16 / 9` on a wrapper"
+      ],
+      "answer": 1,
+      "why": "`aspect-ratio` sizes one dimension from the other, replacing the old padding-percentage wrapper hack. A `vw` height ties the shape to the viewport rather than the element, and `object-fit` changes how content fits a box, not the box's shape.",
+      "tags": ["responsive", "sizing"],
+      "level": 1,
+      "asked": "Checks you have moved on from legacy embed hacks."
+    },
+    {
+      "id": "hc-093",
+      "q": "User avatars come in all shapes and must fill a 48×48 circle without being squashed. Which declaration on the `<img>` does that?",
+      "choices": ["`object-fit: contain`", "`background-size: cover`", "`object-fit: cover`", "`aspect-ratio: 1`"],
+      "answer": 2,
+      "why": "`object-fit: cover` scales the image to fill the box while keeping its proportions, cropping the overflow. `contain` would letterbox it, `background-size` only affects background images, and `aspect-ratio` sets the box shape but still stretches the pixels inside.",
+      "tags": ["responsive", "images"],
+      "level": 1,
+      "asked": "An everyday UI detail; mention `object-position` for choosing which part is kept."
+    },
+    {
+      "id": "hc-094",
+      "q": "Cards should lift with a shadow on hover, but on phones the effect sticks after a tap. Which query limits it to devices that can really hover?",
+      "choices": [
+        "`@media (hover: hover) and (pointer: fine)`",
+        "`@media (min-width: 1024px)`",
+        "`@media (orientation: landscape)`",
+        "`@media (any-pointer: coarse)`"
+      ],
+      "answer": 0,
+      "why": "Interaction media features describe the input device: `hover: hover` plus `pointer: fine` matches a mouse or trackpad. Width queries misfire on large tablets and small laptops, and `any-pointer: coarse` matches touch devices, the opposite of what you want.",
+      "tags": ["responsive", "media-queries"],
+      "level": 2,
+      "asked": "It separates people who use screen width as a proxy for \"desktop\" from those who query capabilities."
+    },
+    {
+      "id": "hc-095",
+      "q": "Which widths does this query match?",
+      "code": "@media (400px <= width < 800px) { … }",
+      "lang": "css",
+      "choices": [
+        "From 400px up to but not including 800px",
+        "From 401px up to and including 800px",
+        "Nothing: range syntax needs `min-` and `max-`",
+        "Only the widths 400px and 800px exactly"
+      ],
+      "answer": 0,
+      "why": "Media queries level 4 range syntax reads like maths and is supported in all current browsers, so the `<` makes 800px exclusive. The older `min-width`/`max-width` pair is always inclusive, which is why code used `max-width: 799.98px` to avoid overlap.",
+      "tags": ["responsive", "media-queries"],
+      "level": 2,
+      "asked": "Checks your CSS is current and that you have met the overlapping-breakpoint problem."
+    },
+    {
+      "id": "hc-096",
+      "q": "Your dark theme sets dark backgrounds with custom properties, but scrollbars, date pickers and checkboxes still render light. What fixes that?",
+      "choices": [
+        "`color-scheme: light dark` on `:root`",
+        "`filter: invert(1)` on the form controls",
+        "`accent-color: black` on every input",
+        "`appearance: none` on the scrollbars"
+      ],
+      "answer": 0,
+      "why": "`color-scheme` tells the browser which schemes the page supports, so it renders built-in UI such as scrollbars, form controls and the default canvas in the matching scheme. `accent-color` only tints checked controls, and inverting is a hack that breaks images and colours.",
+      "tags": ["theming", "colour"],
+      "level": 2,
+      "asked": "Dark mode is a common task; this detail separates a polished implementation from a half-done one."
+    },
+    {
+      "id": "hc-097",
+      "q": "A card component has `@container (min-width: 400px) { .card { display: grid; } }`, but it never switches to grid. No ancestor sets `container-type`. What is wrong?",
+      "choices": [
+        "No ancestor is a query container, so nothing is measured",
+        "Container queries only work on direct children of `<body>`",
+        "`@container` needs `max-width`; `min-width` is invalid",
+        "Container queries need a JavaScript `ResizeObserver` polyfill"
+      ],
+      "answer": 0,
+      "why": "Container queries test the nearest ancestor that has `container-type` (usually `inline-size`); without one there is nothing to query and the rule never applies. They are supported in all current browsers without JavaScript.",
+      "tags": ["responsive", "container-queries"],
+      "level": 2,
+      "asked": "Container queries changed component CSS; interviewers check you know the opt-in step."
+    },
+    {
+      "id": "hc-098",
+      "q": "You put `container-type: inline-size` on `.card` itself and write `@container (min-width: 500px) { .card { display: grid; } }`. Why does the card never change?",
+      "choices": [
+        "An element cannot query its own size, only an ancestor's",
+        "`inline-size` containers can only be queried with `max-width`",
+        "The rule needs `!important` to beat the card's own `display`",
+        "Containers must set an explicit width for queries to work"
+      ],
+      "answer": 0,
+      "why": "Styles inside `@container` apply to descendants of the query container, because letting an element change its own size based on its size would loop. Put the container on a wrapper, or style the card's children instead.",
+      "tags": ["responsive", "container-queries"],
+      "level": 3,
+      "asked": "The most common container-query mistake; explaining the loop shows you understand why the rule exists."
+    },
+    {
+      "id": "hc-099",
+      "q": "A heading inside a card uses `font-size: clamp(1rem, 5cqi, 2rem)`. What is `1cqi`?",
+      "choices": [
+        "1% of the viewport's inline size, like `vw`",
+        "1% of the heading's own inline size",
+        "1% of the query container's inline size",
+        "1% of the root element's font size"
+      ],
+      "answer": 2,
+      "why": "Container query units measure the nearest ancestor query container, so text scales with the card rather than the window. If there is no container they fall back to the small viewport units.",
+      "tags": ["units", "container-queries"],
+      "level": 3,
+      "asked": "It shows you can make components responsive to where they are placed, not just to the screen."
+    },
+    {
+      "id": "hc-100",
+      "q": "No element defines `--accent`. What background does the button get?",
+      "code": ".btn { background: var(--accent, teal); }",
+      "lang": "css",
+      "choices": [
+        "Teal, the fallback given as the second argument",
+        "Transparent, since the whole declaration is dropped",
+        "Black, the initial value for undefined variables",
+        "The UA default button background, as if unset"
+      ],
+      "answer": 0,
+      "why": "The second argument of `var()` is used when the custom property is not defined (its value is the guaranteed-invalid initial value). Fallbacks let components work outside a theme and still pick up tokens when a theme provides them.",
+      "tags": ["custom-properties"],
+      "level": 1,
+      "asked": "The entry question on custom properties; strong answers mention that fallbacks can nest another `var()`."
+    },
+    {
+      "id": "hc-101",
+      "q": "What colour is the paragraph text, if its parent has `color: green`?",
+      "code": "p { color: blue; }\np { --c: 20px; color: var(--c); }",
+      "lang": "css",
+      "choices": [
+        "Green: the `var()` value is invalid, so `color` inherits",
+        "Blue: the invalid declaration is skipped, so the first rule wins",
+        "Black: an invalid colour falls back to the initial value",
+        "Transparent: the browser cannot parse `20px` as a colour"
+      ],
+      "answer": 0,
+      "why": "Declarations containing `var()` are accepted at parse time, so this one wins the cascade; when `20px` turns out not to be a colour it is \"invalid at computed-value time\" and behaves like `unset`, which inherits for `color`. The earlier blue rule has already lost, which surprises people used to invalid CSS simply being skipped.",
+      "tags": ["custom-properties", "cascade"],
+      "level": 3,
+      "asked": "A deep question about how variables interact with the cascade; it explains why a bad token does not fall back to the previous rule."
+    },
+    {
+      "id": "hc-102",
+      "q": "A team defines `--bp-md: 768px` on `:root` and writes `@media (min-width: var(--bp-md))`. What happens?",
+      "choices": [
+        "It works, because `:root` variables are global",
+        "It works only once the page has finished loading",
+        "The query is invalid: `var()` cannot be used there",
+        "It works in Chromium but not in Firefox or Safari"
+      ],
+      "answer": 2,
+      "why": "Custom properties belong to elements and are resolved during cascade, while media queries are evaluated for the document without an element, so `var()` is not allowed in them. Teams share breakpoints through a preprocessor, PostCSS custom media, or container queries instead.",
+      "tags": ["custom-properties", "media-queries"],
+      "level": 2,
+      "asked": "It tests whether you understand what custom properties actually are, not just that they are \"CSS variables\"."
+    },
+    {
+      "id": "hc-103",
+      "q": "A gradient border rotates via `--angle`, but setting `transition: --angle 1s` just makes it jump. What makes it animate smoothly?",
+      "choices": [
+        "Wrap the angle in `calc()` so it becomes numeric",
+        "Use `transition: all 1s` so the property is included",
+        "Register it: `@property --angle { syntax: '<angle>'; … }`",
+        "Declare `--angle` on `:root` rather than the element"
+      ],
+      "answer": 2,
+      "why": "An unregistered custom property is just a token list, so the browser cannot interpolate it and swaps it discretely. `@property` gives it a type, an initial value and inheritance, and typed properties can transition and animate.",
+      "tags": ["custom-properties", "animation"],
+      "level": 3,
+      "asked": "It shows you know the Houdini-derived `@property` rule and why variables are untyped by default."
+    },
+    {
+      "id": "hc-104",
+      "q": "A progress bar reads `width: var(--progress)`. How do you update the value from JavaScript?",
+      "choices": [
+        "`bar.style.setProperty('--progress', '40%')`",
+        "`bar.style.progress = '40%'`",
+        "`bar.dataset.progress = '40%'`",
+        "`bar.style['var(--progress)'] = '40%'`"
+      ],
+      "answer": 0,
+      "why": "Custom properties are not exposed as camelCase keys on `style`, so you set them with `setProperty` (and read them with `getPropertyValue`). A `data-` attribute changes the DOM but not any CSS value unless a selector matches it.",
+      "tags": ["custom-properties", "dom"],
+      "level": 1,
+      "asked": "Driving CSS from JS through one variable is a clean pattern interviewers like to see."
+    },
+    {
+      "id": "hc-105",
+      "q": "A settings page offers Light, Dark and System themes. Which approach supports all three with the least CSS?",
+      "choices": [
+        "Two stylesheets, swapping the `<link>` element with JavaScript on toggle",
+        "A `.dark` class on every component that has colours",
+        "Tokens on `:root`, overridden by the OS query and by `data-theme`",
+        "A `prefers-color-scheme` query only, as the OS decides"
+      ],
+      "answer": 2,
+      "why": "Components read colour tokens; the tokens get dark values inside `@media (prefers-color-scheme: dark)` for `:root:not([data-theme=\"light\"])` and again under `[data-theme=\"dark\"]`, so System follows the OS and the attribute forces a choice. A media query alone cannot honour a manual override.",
+      "tags": ["theming", "custom-properties"],
+      "level": 2,
+      "asked": "Theming is a common take-home feature; this is the architecture interviewers hope to hear."
+    },
+    {
+      "id": "hc-106",
+      "q": "You write `color: light-dark(#111, #eee)`, yet it always gives `#111`, even with the OS in dark mode. What is missing?",
+      "choices": [
+        "A `@media (prefers-color-scheme: dark)` wrapper",
+        "Swapping the order so the dark value comes first",
+        "A registered `@property` for the colour value",
+        "`color-scheme: light dark` on the element or `:root`"
+      ],
+      "answer": 3,
+      "why": "`light-dark()` picks a value based on the element's used colour scheme, which is only dark when `color-scheme` allows it and the user prefers it. Without `color-scheme: light dark` the scheme stays light, so the first value always wins.",
+      "tags": ["theming", "colour"],
+      "level": 2,
+      "asked": "A modern theming detail; it shows you know how `color-scheme` ties the pieces together."
+    },
+    {
+      "id": "hc-107",
+      "q": "You want a gap twice the size of `--space`. Which declaration works?",
+      "choices": [
+        "`gap: var(--space) * 2;`",
+        "`gap: var(--space * 2);`",
+        "`gap: calc(var(--space) * 2);`",
+        "`gap: 2var(--space);`"
+      ],
+      "answer": 2,
+      "why": "`var()` substitutes tokens; it does no maths, so arithmetic has to be inside `calc()`. The other forms produce invalid values or invalid `var()` syntax.",
+      "tags": ["custom-properties", "units"],
+      "level": 1,
+      "asked": "A small syntax point that comes up constantly with spacing scales."
+    },
+    {
+      "id": "hc-108",
+      "q": "A component sets `--size: 12` and uses `font-size: var(--size)px`, but the text keeps its inherited size. Why?",
+      "choices": [
+        "Custom properties cannot hold unitless numbers",
+        "Substitution keeps tokens separate, so `12` `px` is not a length",
+        "Numbers in variables are strings until wrapped in `attr()`",
+        "Custom properties must hold a unit of `px` to be usable as a length"
+      ],
+      "answer": 1,
+      "why": "`var()` substitutes the number token and the following `px` stays a separate identifier, so the result is not the single dimension `12px`. Multiply instead: `calc(var(--size) * 1px)`, which is also how you keep unitless values flexible.",
+      "tags": ["custom-properties", "units"],
+      "level": 3,
+      "asked": "It separates people who understand token substitution from people who treat variables like string templates."
+    },
+    {
+      "id": "hc-109",
+      "q": "Buttons use `--brand` for their background, and a theme can change it. How do you get a slightly darker hover shade without adding another token?",
+      "choices": [
+        "`background: darken(var(--brand), 10%)`",
+        "`background: var(--brand); opacity: 0.9`",
+        "`background: var(--brand) - 10%`",
+        "`background: color-mix(in oklch, var(--brand), black 15%)`"
+      ],
+      "answer": 3,
+      "why": "`color-mix()` mixes two colours in a chosen colour space at runtime, so it follows whatever `--brand` is. `darken()` is a Sass function that cannot see runtime variables, and `opacity` lets the background through instead of darkening.",
+      "tags": ["colour", "theming"],
+      "level": 2,
+      "asked": "Modern colour functions reduce the size of theme token sets; interviewers like seeing you use them."
+    },
+    {
+      "id": "hc-110",
+      "q": "A popover has `transition: opacity 0.3s` and `opacity: 1` when open, and `display: none` plus `opacity: 0` when closed. It still appears instantly. What is missing for the fade-in?",
+      "choices": [
+        "An `@starting-style` block with `opacity: 0` for the open state",
+        "A `setTimeout` of 0 between showing it and changing opacity",
+        "Changing `display: none` to `visibility: hidden` everywhere",
+        "Adding `will-change: opacity` so the browser prepares a layer"
+      ],
+      "answer": 0,
+      "why": "An element that goes from `display: none` to shown has no previous style to transition from, so it renders at the end state; `@starting-style` supplies that \"before\" style. The fade-out additionally needs `transition-behavior: allow-discrete` on `display` (and `overlay`) so it is not hidden before the transition runs.",
+      "tags": ["animation", "transitions"],
+      "level": 3,
+      "asked": "Entry and exit animations used to need JavaScript; knowing `@starting-style` shows your CSS is current."
+    },
+    {
+      "id": "hc-111",
+      "q": "This button fades in its highlight on hover but snaps back instantly when the pointer leaves. Why?",
+      "code": ".btn { background: white; }\n.btn:hover {\n  background: gold;\n  transition: background 0.3s;\n}",
+      "lang": "css",
+      "choices": [
+        "When hover ends, the base rule applies, and it has no transition",
+        "Transitions can only run once per element per page load",
+        "The `background` shorthand cannot be transitioned in both directions",
+        "Leaving an element cancels transitions until the next frame"
+      ],
+      "answer": 0,
+      "why": "The transition used is the one on the state being entered: on leave, the `.btn` rule applies and has no `transition`, so the change is instant. Put `transition` on the base rule so it covers both directions.",
+      "tags": ["animation", "transitions"],
+      "level": 2,
+      "asked": "A quick way to see whether someone has written transitions by hand or only copied them."
+    },
+    {
+      "id": "hc-112",
+      "q": "Which pair of properties can the browser usually animate without recalculating layout?",
+      "choices": ["`width` and `height`", "`top` and `left`", "`transform` and `opacity`", "`margin` and `padding`"],
+      "answer": 2,
+      "why": "`transform` and `opacity` change how an already laid-out layer is drawn, so the compositor can animate them without layout or repaint. Animating `left`, `width` or `margin` reruns layout every frame, which is where janky animations come from.",
+      "tags": ["animation"],
+      "level": 1,
+      "asked": "The most common animation question; a strong answer mentions moving with `translate` instead of `left`."
+    },
+    {
+      "id": "hc-113",
+      "q": "A toast slides in with a keyframe animation, then jumps back to its start position when the animation ends. Which property keeps the final frame?",
+      "choices": [
+        "`animation-fill-mode: forwards`",
+        "`animation-iteration-count: 1`",
+        "`animation-direction: reverse`",
+        "`animation-play-state: paused`"
+      ],
+      "answer": 0,
+      "why": "By default an animation's styles apply only while it runs, so the element falls back to its normal styles afterwards. `forwards` keeps the last keyframe's values; often the cleaner fix is to make the end state the element's normal style.",
+      "tags": ["animation"],
+      "level": 1,
+      "asked": "A small but frequent bug with keyframe animations."
+    },
+    {
+      "id": "hc-114",
+      "q": "An accordion should animate open to its content height. Which approach works in every current browser without JavaScript measurement?",
+      "choices": [
+        "Transition `height` from `0` to `auto`",
+        "Transition `max-height` from `0` to `none`",
+        "Transition `grid-template-rows` from `0fr` to `1fr`",
+        "Transition `transform: scaleY()` from 0 to 1"
+      ],
+      "answer": 2,
+      "why": "Grid track sizes interpolate, so a one-row grid moving from `0fr` to `1fr` (with `min-height: 0` on the child) animates to the content height. `height: auto` and `max-height: none` are not interpolable without the newer `interpolate-size`, and `scaleY` squashes the content instead of revealing it.",
+      "tags": ["animation", "grid"],
+      "level": 3,
+      "asked": "Animating to `auto` is a famous CSS limitation; knowing the grid trick shows practical depth."
+    },
+    {
+      "id": "hc-115",
+      "q": "Some users get motion sickness from your page transitions. How should the CSS respond?",
+      "choices": [
+        "Turn off every animation on screens narrower than 600px, where it matters most",
+        "Add an `aria-live` region that announces each transition",
+        "Slow every animation down to at least two seconds",
+        "Reduce or remove motion in `@media (prefers-reduced-motion: reduce)`"
+      ],
+      "answer": 3,
+      "why": "The `prefers-reduced-motion` media feature reflects the OS \"reduce motion\" setting, so you can swap large movements for fades or none at all. Slower animations still move, and screen width says nothing about motion sensitivity.",
+      "tags": ["animation", "media-queries"],
+      "level": 1,
+      "asked": "Interviewers look for it whenever animation comes up; it shows you respect user preferences by default."
+    },
+    {
+      "id": "hc-116",
+      "q": "A card uses `transition: all 0.3s`. What is the main risk?",
+      "choices": [
+        "It stops `transform` from being hardware accelerated",
+        "It animates any property that changes, including layout ones",
+        "It overrides every transition declared on child elements as well",
+        "It is deprecated and ignored in current browsers"
+      ],
+      "answer": 1,
+      "why": "`all` animates whatever happens to change, such as `width`, `padding` or colours from a theme switch, causing unexpected motion and layout work. Listing the properties you mean (`transform`, `opacity`, `background-color`) keeps behaviour predictable.",
+      "tags": ["animation", "transitions"],
+      "level": 2,
+      "asked": "A code-review question; it shows you think about side effects in CSS the way you would in code."
+    },
+    {
+      "id": "hc-117",
+      "q": "A skeleton loader has `animation: shimmer 2s infinite` and `animation-delay: -0.5s`. What does the negative delay do?",
+      "choices": [
+        "Waits 0.5s before starting, like a positive delay",
+        "Plays the animation backwards for the first 0.5s",
+        "Is invalid, so the animation starts with no delay",
+        "Starts at once, as if it had already run for 0.5s"
+      ],
+      "answer": 3,
+      "why": "A negative delay starts the animation immediately part-way through its cycle. Giving each skeleton row a different negative delay staggers them without any waiting at the start.",
+      "tags": ["animation"],
+      "level": 2,
+      "asked": "A neat trick that shows you have built loading states and know the animation properties beyond the shorthand."
+    },
+    {
+      "id": "hc-118",
+      "q": "A loading spinner rotates with `animation: spin 1s infinite`, and it visibly speeds up and slows down each turn. What is the fix?",
+      "choices": [
+        "Set the timing function to `linear`",
+        "Set `animation-direction: alternate`",
+        "Set `animation-fill-mode: both`",
+        "Set `animation-duration` below 500ms"
+      ],
+      "answer": 0,
+      "why": "The default timing function is `ease`, which accelerates and decelerates within every iteration. `linear` gives a constant rotation speed, which is what a spinner needs; `alternate` would make it spin back and forth.",
+      "tags": ["animation"],
+      "level": 1,
+      "asked": "A quick check that you know the default easing and how it affects repeated animations."
+    },
+    {
+      "id": "hc-119",
+      "q": "An old page has no `<!DOCTYPE html>` line. What is the practical effect?",
+      "choices": [
+        "The browser refuses to run any JavaScript on the page",
+        "The page is parsed as XML instead, and fails on the first markup error",
+        "The browser renders it in quirks mode with legacy CSS rules",
+        "Nothing: the doctype has been optional since HTML5"
+      ],
+      "answer": 2,
+      "why": "Without the doctype, browsers switch to quirks mode, which emulates old engines: for example, percentage heights and table font sizes behave differently. The short HTML5 doctype exists only to trigger standards mode.",
+      "tags": ["html", "documents"],
+      "level": 1,
+      "asked": "It explains layout bugs that only happen in some legacy pages or HTML emails."
+    },
+    {
+      "id": "hc-120",
+      "q": "A template renders `<button disabled=\"false\">Save</button>`. Is the button disabled?",
+      "choices": [
+        "No: the string \"false\" turns the attribute off",
+        "Only in Safari, which parses the value as a string",
+        "No: boolean attributes only work without a value",
+        "Yes: any presence of a boolean attribute means true"
+      ],
+      "answer": 3,
+      "why": "For boolean attributes like `disabled`, `checked` and `required`, the attribute being present means true, whatever its value. To enable the button, remove the attribute (or set the `disabled` property to `false` from JavaScript).",
+      "tags": ["html", "forms"],
+      "level": 1,
+      "asked": "A common bug when templates render attributes from variables; frameworks hide it, which is why interviewers ask it."
+    },
+    {
+      "id": "hc-121",
+      "q": "The server sends `<p>Intro <div>Box</div> text</p>`. What does the parser build?",
+      "choices": [
+        "A `<p>` containing the text and the `<div>`, exactly as written",
+        "A `<div>` wrapped by a `<p>` with the text split in two",
+        "An error page, since the markup is invalid",
+        "`<p>Intro </p>`, the `<div>`, the text, then an empty `<p>`"
+      ],
+      "answer": 3,
+      "why": "A `<p>` cannot contain block elements such as `<div>`, so the parser closes the paragraph when it sees `<div>`; the stray `</p>` then creates an empty paragraph. That is why CSS like `p > div` never matches and hydration can complain about mismatched markup.",
+      "tags": ["html", "parsing"],
+      "level": 3,
+      "asked": "It explains confusing hydration and styling bugs, and shows you know HTML is error-correcting rather than strict."
+    },
+    {
+      "id": "hc-122",
+      "q": "A form shows the account id in a field users must not change. Which attribute still sends the value when the form is submitted?",
+      "choices": [
+        "`disabled`, which also stops the user editing it",
+        "`readonly`, which blocks editing but still submits",
+        "`inert`, which blocks editing and keeps it in the form",
+        "`aria-disabled`, which disables the native input"
+      ],
+      "answer": 1,
+      "why": "Disabled controls are left out of the form data set entirely, while `readonly` fields cannot be edited but are submitted. `inert` stops interaction but does not affect submission, and `aria-disabled` only informs assistive technology.",
+      "tags": ["forms", "html"],
+      "level": 1,
+      "asked": "A common \"why is this field missing on the server\" bug."
+    },
+    {
+      "id": "hc-123",
+      "q": "A shipping address section should be disabled until \"Ship to a different address\" is ticked. What is the simplest markup?",
+      "choices": [
+        "Wrap the fields in `<fieldset disabled>` and toggle that",
+        "Add `disabled` to each input and toggle them one by one",
+        "Set `pointer-events: none` on the section container",
+        "Wrap them in `<div aria-disabled=\"true\">` and toggle it"
+      ],
+      "answer": 0,
+      "why": "A disabled `<fieldset>` disables every control inside it (except in its first `<legend>`), so one attribute switches the section and the fields are also left out of the submission. `pointer-events` still allows keyboard input, and `aria-disabled` changes nothing functionally.",
+      "tags": ["forms", "html"],
+      "level": 2,
+      "asked": "It shows you reach for native grouping rather than looping over inputs in JavaScript."
+    },
+    {
+      "id": "hc-124",
+      "q": "A layout puts the Notes `<textarea>` in a sidebar, outside the `<form id=\"checkout\">` element. How can it still be submitted with the form?",
+      "choices": [
+        "Give it `name=\"checkout\"` so it joins that form",
+        "Wrap it in a second form with the same `action`",
+        "It cannot; only descendants of a form element are ever submitted",
+        "Give it `form=\"checkout\"`, which links it by the form's id"
+      ],
+      "answer": 3,
+      "why": "The `form` attribute associates a control with any form by id, wherever it sits in the document, and it is included in submission and `FormData`. `name` is the field's key in the payload, not a link to a form.",
+      "tags": ["forms", "html"],
+      "level": 2,
+      "asked": "Handy when layout and form structure disagree; many developers do not know the attribute exists."
+    },
+    {
+      "id": "hc-125",
+      "q": "A postcode field has `pattern=\"[0-9]{5}\"`. Is the value `123456` valid?",
+      "choices": [
+        "Yes, because the first five characters match",
+        "Yes, because patterns match anywhere in the value",
+        "No, because the pattern must match the whole value",
+        "No, because `pattern` needs `^` and `$` to work at all"
+      ],
+      "answer": 2,
+      "why": "The browser wraps `pattern` as `^(?:…)$`, so the entire value must match, and six digits fail. Adding your own anchors is harmless but unnecessary; the empty value is only rejected if the field is also `required`.",
+      "tags": ["forms", "validation"],
+      "level": 2,
+      "asked": "A small constraint-validation detail that trips people who copy JavaScript regexes into HTML."
+    },
+    {
+      "id": "hc-126",
+      "q": "Required fields show a red border as soon as the page loads, before the user has typed anything. Which selector should the styles use instead of `:invalid`?",
+      "choices": ["`:user-invalid`", "`:invalid:focus`", "`:not(:valid)`", "`:placeholder-shown`"],
+      "answer": 0,
+      "why": "`:user-invalid` only matches after the user has interacted with the field or tried to submit, so an empty required field is not flagged on load. `:invalid` matches immediately, `:not(:valid)` is the same thing, and styling only on focus hides errors once the user moves on.",
+      "tags": ["forms", "validation", "selectors"],
+      "level": 2,
+      "asked": "Premature error styling is a common UX complaint; this is the native fix interviewers hope you know."
+    },
+    {
+      "id": "hc-127",
+      "q": "A form has Publish and Save draft buttons. Drafts may be incomplete. How do you skip browser validation for Save draft only?",
+      "choices": [
+        "Add `novalidate` to the `<form>` element",
+        "Add `formnovalidate` to the Save draft button",
+        "Make Save draft `type=\"button\"` and call `form.submit()`",
+        "Remove `required` in the draft button's click handler"
+      ],
+      "answer": 1,
+      "why": "`formnovalidate` on a submit button turns validation off only for submissions made with that button, while Publish still validates. `novalidate` on the form turns it off for both, and removing `required` in a handler is fragile and leaves the form changed.",
+      "tags": ["forms", "validation"],
+      "level": 2,
+      "asked": "It shows you know the per-button form attributes (`formaction`, `formmethod`, `formnovalidate`)."
+    },
+    {
+      "id": "hc-128",
+      "q": "A price field is `<input type=\"number\" min=\"0\">`, and the browser rejects 9.99 as invalid. Why?",
+      "choices": [
+        "The default `step` is 1, so 9.99 is not a valid step",
+        "Number inputs only accept integers in every browser",
+        "`min=\"0\"` forces whole numbers when it is present",
+        "Decimals need `inputmode=\"decimal\"` to be accepted"
+      ],
+      "answer": 0,
+      "why": "Number inputs validate against `step`, which defaults to 1 counted from `min`, so 9.99 is a step mismatch. Set `step=\"0.01\"` (or `step=\"any\"`); `inputmode` only changes the on-screen keyboard.",
+      "tags": ["forms", "validation"],
+      "level": 2,
+      "asked": "A real bug in checkout forms; knowing `step` shows you have shipped number fields."
+    },
+    {
+      "id": "hc-129",
+      "q": "A confirmation `<dialog>` contains `<form method=\"dialog\">` with OK and Cancel buttons that have `value` attributes. What happens when OK is clicked?",
+      "choices": [
+        "The page posts the form to its own URL and reloads",
+        "Nothing, until a click handler calls `dialog.close()`",
+        "The dialog closes and `returnValue` is set to OK's value",
+        "The dialog closes, and the values go to its `action` URL"
+      ],
+      "answer": 2,
+      "why": "A form with `method=\"dialog\"` does not send a request: submitting it closes the enclosing dialog and sets `dialog.returnValue` to the submitter's value, and a `close` event fires. It is a no-JavaScript way to build a confirm dialog.",
+      "tags": ["dialog", "forms"],
+      "level": 2,
+      "asked": "It shows you know the native dialog features beyond `showModal()`."
+    },
+    {
+      "id": "hc-130",
+      "q": "What does this markup give you without any JavaScript?",
+      "code": "<button popovertarget=\"menu\">Actions</button>\n<div id=\"menu\" popover>\n  <a href=\"/export\">Export</a>\n</div>",
+      "lang": "html",
+      "choices": [
+        "A modal dialog that traps focus until closed",
+        "A tooltip that opens on hover and on focus",
+        "A menu that is always visible on wide screens",
+        "A toggling top-layer panel that closes on Esc or outside click"
+      ],
+      "answer": 3,
+      "why": "The popover attribute gives a top-layer element that the button toggles; the default `auto` popovers light-dismiss on Escape or an outside click. It is not modal and does not trap focus, which is what `<dialog>` with `showModal()` is for.",
+      "tags": ["popover", "html"],
+      "level": 2,
+      "asked": "Popovers replace a lot of dropdown JavaScript; interviewers use this to see if your platform knowledge is current."
+    },
+    {
+      "id": "hc-131",
+      "q": "A JSX habit leaks into a server template: `<div class=\"spacer\" /><p>Hello</p>`. What does the HTML parser do?",
+      "choices": [
+        "Creates an empty div, then the paragraph after it",
+        "Reports a syntax error in the console and stops rendering the page",
+        "Drops the div, since self-closing divs are invalid",
+        "Ignores the slash, so the paragraph ends up inside the div"
+      ],
+      "answer": 3,
+      "why": "In HTML the trailing slash is ignored; it only means something on void elements like `<img>`, where it is optional anyway. The `<div>` stays open and swallows the following content until something closes it.",
+      "tags": ["html", "parsing"],
+      "level": 3,
+      "asked": "It separates people who know HTML from people who only know JSX, where `<div />` is valid."
+    },
+    {
+      "id": "hc-132",
+      "q": "A table is written as `<table><tr><td>…</td></tr></table>`. Why does the CSS rule `table > tr { … }` match nothing?",
+      "choices": [
+        "The parser inserts a `<tbody>`, so rows are not direct children",
+        "Rows can only be styled through their `<td>` cells",
+        "The child combinator does not work on table elements",
+        "`table > tr` needs `display: table-row` set on the rows before it matches"
+      ],
+      "answer": 0,
+      "why": "When a `<tr>` appears directly in a `<table>`, the HTML parser wraps it in an implied `<tbody>`, so the real structure is `table > tbody > tr`. Write `tbody > tr` or `table tr` instead.",
+      "tags": ["html", "parsing", "selectors"],
+      "level": 3,
+      "asked": "A parsing detail that explains otherwise baffling selector and DOM-traversal bugs."
+    },
+    {
+      "id": "hc-133",
+      "q": "A required-field marker uses `.required::after { color: red; }`, but no asterisk ever appears. What is missing?",
+      "choices": [
+        "A `content: \"*\"` declaration, without which no box is made",
+        "`display: block`, since pseudo-elements start out hidden",
+        "A `position` value, as pseudo-elements need positioning",
+        "An `aria-hidden` attribute on the element being marked"
+      ],
+      "answer": 0,
+      "why": "`::before` and `::after` only generate a box when `content` is set to something other than `none`, even an empty string. Everything else about the pseudo-element is optional.",
+      "tags": ["selectors", "pseudo-elements"],
+      "level": 1,
+      "asked": "A quick check that you have built decorations with pseudo-elements rather than extra markup."
+    },
+    {
+      "id": "hc-134",
+      "q": "Which selector adds a download icon only to links that point at PDF files?",
+      "choices": ["`a[href*=\"pdf\"]`", "`a[href$=\".pdf\"]`", "`a[href^=\".pdf\"]`", "`a[type=\"pdf\"]`"],
+      "answer": 1,
+      "why": "`$=` matches attribute values that end with the string, `^=` matches the start and `*=` matches anywhere, so `*=\"pdf\"` would also catch `/pdf-guide.html`. The `type` attribute is optional and rarely set on links.",
+      "tags": ["selectors"],
+      "level": 1,
+      "asked": "Attribute selectors come up when styling generated content you cannot add classes to."
+    },
+    {
+      "id": "hc-135",
+      "q": "A product carousel scrolls sideways, and each card should settle neatly at the left edge after a swipe. Which CSS does that?",
+      "choices": [
+        "`scroll-snap-type: x mandatory` on the track, `scroll-snap-align: start` on cards",
+        "`overflow-x: auto; scroll-behavior: smooth` on the track",
+        "`scroll-padding: 0` on the track and `scroll-margin: 0` on each card",
+        "`overscroll-behavior-x: contain` on the track and `display: flex` on it"
+      ],
+      "answer": 0,
+      "why": "Scroll snapping needs both halves: the container opts in with `scroll-snap-type`, and each child declares where it snaps with `scroll-snap-align`. `scroll-behavior` only smooths programmatic scrolls, and `overscroll-behavior` controls scroll chaining.",
+      "tags": ["scrolling"],
+      "level": 1,
+      "asked": "Carousels are common UI; this shows you know the no-JavaScript approach."
+    },
+    {
+      "id": "hc-136",
+      "q": "You want a subgrid layout where supported and a flexbox fallback elsewhere. Which rule applies styles only when the browser understands a declaration?",
+      "choices": [
+        "`@media (feature: subgrid) { … }`",
+        "`@layer supports.subgrid { … }`",
+        "`@container style(subgrid) { … }`",
+        "`@supports (grid-template-rows: subgrid) { … }`"
+      ],
+      "answer": 3,
+      "why": "`@supports` tests whether the browser can parse a property and value, so you can layer enhancements on a working base. Media queries describe the device, not CSS support.",
+      "tags": ["progressive-enhancement"],
+      "level": 1,
+      "asked": "Feature queries are the CSS side of progressive enhancement, which interviewers like to hear about."
+    },
+    {
+      "id": "hc-137",
+      "q": "What does `width: min(100%, 60rem)` do on a page's content column?",
+      "choices": [
+        "Keeps it at least 60rem wide, even on phones",
+        "Fills the parent up to a cap of 60rem",
+        "Always sets it to exactly 60rem wide",
+        "Sets it to 60% of the root font size"
+      ],
+      "answer": 1,
+      "why": "`min()` picks the smaller value, so on narrow screens the column is 100% of its parent and on wide screens it stops at 60rem. It replaces the `width: 100%; max-width: 60rem` pair in one declaration.",
+      "tags": ["units", "responsive"],
+      "level": 1,
+      "asked": "CSS maths functions reduce media queries; interviewers like the one-line version."
+    },
+    {
+      "id": "hc-138",
+      "q": "A signup form has `<input type=\"checkbox\" name=\"newsletter\">` with no `value` attribute. What is submitted when it is ticked, and when it is not?",
+      "choices": [
+        "`newsletter=true` when ticked; `newsletter=false` when not",
+        "`newsletter=1` when ticked; `newsletter=0` when not",
+        "`newsletter=on` when ticked; nothing at all when not",
+        "`newsletter=` when ticked; `newsletter=off` when not"
+      ],
+      "answer": 2,
+      "why": "A checked checkbox sends its `value`, which defaults to `\"on\"`, and an unchecked one is omitted from the form data entirely. Server code must treat a missing key as false.",
+      "tags": ["forms", "html"],
+      "level": 1,
+      "asked": "It causes real bugs in server handlers that expect an explicit false value."
+    },
+    {
+      "id": "hc-139",
+      "q": "A city field should suggest common cities but still accept any text the user types. Which native element fits?",
+      "choices": [
+        "An `<input list=\"cities\">` with a `<datalist>`",
+        "A `<select>` whose first option is empty",
+        "An `<input type=\"search\">` with `pattern`",
+        "An `<output>` element bound to the input"
+      ],
+      "answer": 0,
+      "why": "A `<datalist>` attached with the `list` attribute offers suggestions while leaving the field free text. A `<select>` restricts the value to its options, and `<output>` displays results rather than taking input.",
+      "tags": ["forms", "html"],
+      "level": 1,
+      "asked": "Knowing the native option can save a dependency in simple cases."
+    },
+    {
+      "id": "hc-140",
+      "q": "A logo is always shown at 120×40 CSS pixels. How should the `<img>` offer a sharper version for high-density screens?",
+      "choices": [
+        "`srcset=\"logo.png 120w, logo@2x.png 240w\"` without `sizes`",
+        "A `<picture>` with one `<source media>` per pixel ratio",
+        "Only `logo@2x.png` with CSS `zoom: 0.5` applied to it",
+        "`srcset=\"logo.png 1x, logo@2x.png 2x\"` with `src=\"logo.png\"`"
+      ],
+      "answer": 3,
+      "why": "For a fixed-size image, `x` descriptors let the browser pick by device pixel ratio. `w` descriptors are for images whose layout width varies, and without `sizes` the browser assumes the image is `100vw` wide and may download far too much.",
+      "tags": ["responsive-images", "images"],
+      "level": 1,
+      "asked": "It checks you know when to use `x` versus `w` descriptors."
+    },
+    {
+      "id": "hc-141",
+      "q": "A React component imports `styles from './Card.module.css'` and uses `className={styles.title}`. What happens to the `.title` class?",
+      "choices": [
+        "It stays `.title` and applies to every `.title` on the page",
+        "It is inlined as a `style` attribute on the element",
+        "It is renamed to a unique class scoped to this module",
+        "It is moved into the component's shadow root"
+      ],
+      "answer": 2,
+      "why": "CSS Modules rewrite each class to a unique name at build time (for example `Card_title__a1b2`) and export the mapping, so styles cannot collide across components. Global styles need an explicit `:global()` escape.",
+      "tags": ["architecture", "css-modules"],
+      "level": 1,
+      "asked": "Teams ask how you scope CSS in a component app; CSS Modules is one of the standard answers."
+    },
+    {
+      "id": "hc-142",
+      "q": "In BEM naming, what does the class `card__title--muted` describe?",
+      "choices": [
+        "The `muted` element inside the `title` block",
+        "The `title` element of `card`, in its `muted` variant",
+        "A `card` block nested inside a `title` block",
+        "A utility class that mutes any card title text"
+      ],
+      "answer": 1,
+      "why": "BEM is Block__Element--Modifier: `card` is the block, `title` an element of it, and `muted` a variant. The flat, single-class selectors keep specificity low and predictable.",
+      "tags": ["architecture"],
+      "level": 1,
+      "asked": "Naming conventions come up in CSS architecture questions; explain why BEM keeps specificity flat."
+    },
+    {
+      "id": "hc-143",
+      "q": "On short pages the footer floats halfway up the screen. The layout is `<body>` → `<header>`, `<main>`, `<footer>`. What keeps the footer at the bottom?",
+      "choices": [
+        "`position: fixed; bottom: 0` on the footer, with no other change",
+        "`margin-top: 100vh` on the footer so it starts below the fold",
+        "A `min-height: 100dvh` flex column on `body`, with `main { flex: 1 }`",
+        "`height: 100%` on `<main>` so it fills the rest of the page"
+      ],
+      "answer": 2,
+      "why": "Making the body at least viewport-tall and letting `main` grow pushes the footer down on short pages while still letting long pages scroll normally. A fixed footer covers content on long pages, and `height: 100%` on `main` has nothing definite to resolve against.",
+      "tags": ["flexbox", "layout"],
+      "level": 1,
+      "asked": "The \"sticky footer\" is a classic layout task; the flex version shows you think in terms of free space."
+    },
+    {
+      "id": "hc-144",
+      "q": "A table hides filtered rows with the `hidden` attribute, and the zebra stripes break. Which selector stripes only the visible rows?",
+      "choices": [
+        "`tr:nth-child(even of :not([hidden]))`",
+        "`tr:not([hidden]):nth-child(even)`",
+        "`tr:nth-of-type(even):not([hidden])`",
+        "`tr:visible:nth-child(even)`"
+      ],
+      "answer": 0,
+      "why": "The `of S` form of `:nth-child()` counts only siblings matching S, so the even count skips hidden rows. The other forms still count hidden rows, and `:visible` is a jQuery pseudo-class, not CSS.",
+      "tags": ["selectors"],
+      "level": 2,
+      "asked": "It shows you know selector features added in the last few years, not just CSS2."
+    },
+    {
+      "id": "hc-145",
+      "q": "A heading and its subheading have different font sizes. Why do the subheading's lines overlap when the parent has `line-height: 1.2em`, but not with `line-height: 1.2`?",
+      "choices": [
+        "`em` line heights ignore the font size of children entirely",
+        "A unitless value is always rounded up to a whole pixel",
+        "The `em` value is computed on the parent, and children inherit those pixels",
+        "`1.2` is treated as 1.2rem, which is based on the root size"
+      ],
+      "answer": 2,
+      "why": "A length like `1.2em` is resolved to pixels on the parent and that fixed value is inherited, so larger child text gets a line box that is too short. A unitless number is inherited as a factor and recalculated against each element's own font size.",
+      "tags": ["typography", "cascade"],
+      "level": 2,
+      "asked": "The reason style guides say \"always use unitless line-height\"; interviewers want the inheritance explanation."
+    },
+    {
+      "id": "hc-146",
+      "q": "Clicking an in-page link like `#pricing` scrolls the heading under your 64px sticky header. What fixes it in CSS?",
+      "choices": [
+        "`scroll-margin-top: 64px` on each target (or `scroll-padding-top`)",
+        "`margin-top: -64px` on the sticky header element",
+        "`scroll-behavior: smooth` on the `<html>` element",
+        "`position: relative; top: 64px` on each target heading"
+      ],
+      "answer": 0,
+      "why": "`scroll-margin` on the target (or `scroll-padding` on the scroll container) offsets where the browser stops when it scrolls something into view, including for anchors and `scrollIntoView`. Smooth scrolling changes the animation, not the final position.",
+      "tags": ["scrolling", "positioning"],
+      "level": 2,
+      "asked": "Every site with a sticky header meets this; the CSS-only fix is what interviewers want."
+    },
+    {
+      "id": "hc-147",
+      "q": "When a filter reduces a list so it no longer overflows, the scrollbar disappears and the whole layout shifts sideways. Which property prevents that shift?",
+      "choices": [
+        "`overflow-y: scroll`, which hides the scrollbar when unused",
+        "`scrollbar-width: none`, which keeps the gutter in place",
+        "`overscroll-behavior: contain` on the list container",
+        "`scrollbar-gutter: stable` on the scrolling container"
+      ],
+      "answer": 3,
+      "why": "`scrollbar-gutter: stable` reserves space for the scrollbar whether or not content overflows, so the content width stays the same. `overflow-y: scroll` also avoids the shift, but by always showing an empty scrollbar, and `scrollbar-width: none` hides the scrollbar entirely.",
+      "tags": ["scrolling", "layout"],
+      "level": 2,
+      "asked": "A polish detail that shows you notice layout shift in real UIs."
+    },
+    {
+      "id": "hc-148",
+      "q": "A modal's content scrolls, and when the user reaches its end the page behind starts scrolling too. Which property stops that?",
+      "choices": [
+        "`overflow: hidden` on the modal's scroll area",
+        "`touch-action: none` on the whole `<body>` element",
+        "`scroll-snap-stop: always` on the modal's children",
+        "`overscroll-behavior: contain` on the modal's scroll area"
+      ],
+      "answer": 3,
+      "why": "`overscroll-behavior: contain` stops scroll chaining, so reaching the edge of the modal does not hand the scroll to its ancestors. `overflow: hidden` would stop the modal scrolling at all, and `touch-action: none` breaks touch scrolling everywhere.",
+      "tags": ["scrolling"],
+      "level": 2,
+      "asked": "It is a small property that replaces a lot of scroll-lock JavaScript."
+    },
+    {
+      "id": "hc-149",
+      "q": "A form has `<select name=\"country\"><option>France</option><option>Spain</option></select>`, and the user picks Spain. What is submitted?",
+      "choices": [
+        "`country=1`, the index of the chosen option",
+        "`country=Spain`, the option's text content",
+        "`country=`, since no `value` attributes exist",
+        "`country=on`, as for a checkbox with no value"
+      ],
+      "answer": 1,
+      "why": "When an `<option>` has no `value` attribute, its value is its text content. Relying on that couples your API to display text, so real forms set explicit values such as ISO codes.",
+      "tags": ["forms", "html"],
+      "level": 2,
+      "asked": "It shows you know what the browser actually sends rather than what the UI displays."
+    },
+    {
+      "id": "hc-150",
+      "q": "An `<img>` has `srcset=\"a-400.jpg 400w, a-800.jpg 800w, a-1600.jpg 1600w\"` but no `sizes`, and it is shown in a 300px sidebar on a 1440px laptop. What happens?",
+      "choices": [
+        "The browser assumes `100vw` and downloads a far larger file",
+        "The browser measures the sidebar and picks the 400w file",
+        "The `srcset` is ignored and `src` is used, as `sizes` is required",
+        "The browser always picks the smallest candidate to save data"
+      ],
+      "answer": 0,
+      "why": "The browser chooses a candidate before layout, so without `sizes` it assumes the image will be as wide as the viewport and picks something suitable for 1440px or more. Setting `sizes` (for example `300px`) tells it the real slot width.",
+      "tags": ["responsive-images", "images"],
+      "level": 2,
+      "asked": "The most common responsive-image mistake; the answer shows you know why `sizes` exists."
+    },
+    {
+      "id": "hc-151",
+      "q": "The hero shows a wide landscape photo on desktop but should switch to a tightly cropped portrait photo on phones. Which markup expresses that?",
+      "choices": [
+        "A `<picture>` with `<source media=\"…\">` per crop and an `<img>` fallback",
+        "One `<img>` whose `srcset` lists both crops with `w` descriptors",
+        "Two `<img>` elements, one hidden by a media query at each size",
+        "One `<img>` with `object-position` set for each breakpoint"
+      ],
+      "answer": 0,
+      "why": "Art direction, where different images are needed, is what `<picture>` with `media` conditions is for; the browser must use the source that matches. `srcset` alone treats candidates as the same image at different resolutions and may pick either, and hidden `<img>` elements can still download.",
+      "tags": ["responsive-images", "images"],
+      "level": 2,
+      "asked": "Interviewers use it to see if you know the difference between resolution switching and art direction."
+    },
+    {
+      "id": "hc-152",
+      "q": "In which order should these go inside `<picture>` so browsers get the best format they support?",
+      "code": "<source type=\"image/avif\" srcset=\"hero.avif\">\n<source type=\"image/webp\" srcset=\"hero.webp\">\n<img src=\"hero.jpg\" alt=\"Team at work\">",
+      "lang": "html",
+      "choices": [
+        "Any order: the browser compares all sources by file size",
+        "JPEG first, so older browsers can stop there quickly",
+        "As shown: the first `<source>` it supports is used",
+        "WebP first, as it is supported more widely than AVIF"
+      ],
+      "answer": 2,
+      "why": "The browser walks the `<source>` elements in order and uses the first whose `type` (and `media`) it supports, falling back to the `<img>`. Putting the most efficient format first means capable browsers get it; `alt` and sizing live on the `<img>` either way.",
+      "tags": ["responsive-images", "images"],
+      "level": 2,
+      "asked": "A practical question about serving modern formats with a safe fallback."
+    },
+    {
+      "id": "hc-153",
+      "q": "Inside a web component's shadow CSS, which selector styles the custom element itself, for example to give it `display: block`?",
+      "choices": ["`:root`", "`:scope > *`", "`::part(host)`", "`:host`"],
+      "answer": 3,
+      "why": "`:host` selects the shadow host from inside its shadow tree, and `:host(.compact)` matches it with a class. Custom elements are `display: inline` by default, so most components set `:host { display: block; }`.",
+      "tags": ["web-components"],
+      "level": 2,
+      "asked": "The first thing anyone writes when styling a component; it shows hands-on web component experience."
+    },
+    {
+      "id": "hc-154",
+      "q": "The page stylesheet has `.btn { background: purple; }`, but buttons inside a component's shadow root stay grey. What does reach inside the shadow tree?",
+      "choices": [
+        "Nothing at all: shadow trees ignore all outside CSS",
+        "Only rules that use `!important` from the page",
+        "Custom properties and other inherited properties",
+        "Page rules whose selectors include the element name"
+      ],
+      "answer": 2,
+      "why": "Shadow DOM scopes selectors, so page rules cannot match elements inside it, but inheritance still flows from the host into the tree. That is why design tokens are passed in as custom properties such as `--button-bg`.",
+      "tags": ["web-components", "custom-properties"],
+      "level": 2,
+      "asked": "It shows you understand how theming works across the shadow boundary."
+    },
+    {
+      "id": "hc-155",
+      "q": "A `<date-picker>` component's docs say it exposes `part=\"header\"`. How do you style that header from the page?",
+      "choices": [
+        "`date-picker .header { … }`",
+        "`date-picker::part(header) { … }`",
+        "`date-picker >>> header { … }`",
+        "`date-picker::slotted(header) { … }`"
+      ],
+      "answer": 1,
+      "why": "Elements marked with `part` inside a shadow root are styleable from outside with `::part()`, which is the component's explicit styling API. Descendant selectors cannot cross the boundary, `>>>` was removed years ago, and `::slotted` is used inside the component.",
+      "tags": ["web-components"],
+      "level": 3,
+      "asked": "It shows you can theme third-party web components without forking them."
+    },
+    {
+      "id": "hc-156",
+      "q": "A component's shadow CSS has `::slotted(p) strong { color: red; }` and `::slotted(p) { margin: 0; }`. What applies to `<p>Hi <strong>there</strong></p>` slotted in from the page?",
+      "choices": [
+        "Both: `::slotted` reaches any slotted descendant",
+        "Neither: slotted content only takes page styles",
+        "Only the colour, as margins cannot cross the boundary",
+        "Only the margin: `::slotted` cannot reach descendants"
+      ],
+      "answer": 3,
+      "why": "`::slotted()` takes a single compound selector and matches only the top-level nodes placed in a slot, so `::slotted(p) strong` is invalid. The slotted content stays in the light DOM, so the page can style its inner parts itself.",
+      "tags": ["web-components", "selectors"],
+      "level": 3,
+      "asked": "A deep web component detail; the answer shows you know slotted content lives in the light DOM."
+    },
+    {
+      "id": "hc-157",
+      "q": "The page sets `body { color: navy; font-family: Inter; }`. What does text inside a component's shadow root use, if its own CSS sets neither?",
+      "choices": [
+        "Navy and Inter, because inherited properties cross the shadow boundary",
+        "The browser defaults, as shadow roots start from a fresh stylesheet",
+        "Navy but not Inter, since fonts must be declared inside the shadow",
+        "Inter but not navy, since colours are reset at every shadow host"
+      ],
+      "answer": 0,
+      "why": "Encapsulation blocks selectors, not inheritance: the shadow tree inherits from its host like any child. A component that must be immune can reset with `:host { all: initial; }`, at the cost of losing theming.",
+      "tags": ["web-components", "cascade"],
+      "level": 3,
+      "asked": "A common misconception about shadow DOM; getting it right shows you understand what encapsulation actually covers."
+    },
+    {
+      "id": "hc-158",
+      "q": "A component's shadow CSS has `:host { display: block; }`, and the page has `user-card { display: inline-flex; }`. What display does the element get?",
+      "choices": [
+        "`inline-flex`: outer styles beat `:host` rules",
+        "`block`: the component's own styles always win",
+        "`block`: `:host` has higher specificity than a tag",
+        "`inline-flex`: the page stylesheet loads later"
+      ],
+      "answer": 0,
+      "why": "For normal declarations, styles from the outer context win over `:host` rules regardless of specificity or order, so `:host` acts as a default the page can override. The order flips for `!important`, letting a component lock a value.",
+      "tags": ["web-components", "cascade"],
+      "level": 3,
+      "asked": "It shows you understand the cascade across shadow boundaries, not just inside one tree."
+    },
+    {
+      "id": "hc-159",
+      "q": "A component builds classes like `` `text-${color}-600` `` with Tailwind, and the colours only work for some values. Why?",
+      "choices": [
+        "Tailwind limits each component to a fixed set of colours",
+        "Template literals are not allowed in `className` in React",
+        "The build scans source for whole class names, so these are never generated",
+        "Classes are generated at runtime, which is too late for first paint"
+      ],
+      "answer": 2,
+      "why": "Tailwind generates only classes it finds as complete strings in your source, so dynamically assembled names are missing unless they appear elsewhere, which is why \"some\" work. Map values to full class names (`{ red: 'text-red-600' }`) or safelist them.",
+      "tags": ["architecture", "tailwind"],
+      "level": 2,
+      "asked": "A common Tailwind bug; the answer shows you understand how its build step works."
+    },
+    {
+      "id": "hc-160",
+      "q": "An element has `style=\"color: red\"`, and a stylesheet has `p { color: blue !important; }`. What colour is it?",
+      "choices": [
+        "Red: inline styles always beat any stylesheet",
+        "Blue: element selectors outrank the `style` attribute",
+        "Red: inline styles count as `!important` as well",
+        "Blue: an important declaration beats a normal inline one"
+      ],
+      "answer": 3,
+      "why": "Importance is compared before specificity, so an `!important` stylesheet rule beats a normal inline style; only an inline `!important` would beat it back. Inline styles win otherwise because they have the highest specificity, not because they are special.",
+      "tags": ["cascade", "specificity"],
+      "level": 2,
+      "asked": "Interviewers ask it to see whether you know importance and specificity are separate steps."
+    },
+    {
+      "id": "hc-161",
+      "q": "A two-column flex layout has a filter sidebar with `position: sticky; top: 0`. It scrolls away with the page instead of sticking. No ancestor has `overflow` set. What is the likely cause?",
+      "choices": [
+        "Sticky elements cannot be flex items in any browser",
+        "The sidebar is stretched to the row's full height, so it has no room to move",
+        "The `top` value must be larger than zero for sticking to start",
+        "Flex containers create a new stacking context that stops sticking"
+      ],
+      "answer": 1,
+      "why": "A sticky element only moves within its containing block, and the default `align-items: stretch` makes the sidebar as tall as the row, so there is no space to stick into. `align-self: start` on the sidebar keeps it content-height so it can stick.",
+      "tags": ["positioning", "flexbox"],
+      "level": 3,
+      "asked": "A subtle and common sticky bug; explaining the containing-block rule shows real understanding."
+    },
+    {
+      "id": "hc-162",
+      "q": "To stop a carousel spilling sideways, you add `overflow-x: hidden` to its wrapper. Now a dropdown inside it is clipped vertically, and the wrapper has a vertical scrollbar. Why?",
+      "choices": [
+        "`visible` cannot pair with `hidden`, so `overflow-y` becomes `auto`",
+        "Hidden overflow on one axis always hides the other axis too",
+        "Dropdowns are clipped by any ancestor with a set `overflow`",
+        "Horizontal clipping creates a stacking context that clips it"
+      ],
+      "answer": 0,
+      "why": "If one axis is `hidden`, `scroll` or `auto`, a `visible` value on the other axis computes to `auto`, turning the wrapper into a scroll container. `overflow-x: clip` clips without creating a scroll container, so `overflow-y` can stay visible.",
+      "tags": ["overflow"],
+      "level": 3,
+      "asked": "It explains a whole class of \"where did this scrollbar come from\" bugs and shows you know `clip`."
+    },
+    {
+      "id": "hc-163",
+      "q": "A decorative child has `position: absolute; z-index: -1` to sit behind its card's text, but it disappears behind the card's white background. What fixes it?",
+      "choices": [
+        "Give the child `z-index: 0` so it sits at the card's level",
+        "Give the card `overflow: hidden` to contain the child",
+        "Move the child after the text so it paints first",
+        "Give the card `isolation: isolate` so it forms a stacking context"
+      ],
+      "answer": 3,
+      "why": "Without a stacking context on the card, the child's negative z-index places it behind the card's own background within the parent stacking context. Making the card a stacking context keeps the child above the card's background but below its in-flow text.",
+      "tags": ["stacking", "positioning"],
+      "level": 3,
+      "asked": "Knowing the painting order within a stacking context is what separates deep CSS knowledge from trial and error."
+    },
+    {
+      "id": "hc-164",
+      "q": "With native CSS nesting, what is the specificity of the inner rule when it matches an element through `.a`?",
+      "code": ".a, #b {\n  .c { color: red; }\n}",
+      "lang": "css",
+      "choices": [
+        "(0,2,0), from `.a .c`, since only `.a` matched",
+        "(1,1,0), because it behaves like `:is(.a, #b) .c`",
+        "(0,1,0), because the parent adds no specificity",
+        "(1,2,0), as all selectors in the list are summed"
+      ],
+      "answer": 1,
+      "why": "Nested rules desugar the parent list into `:is()`, which takes the specificity of its most specific argument, so `#b` gives the rule id weight even when `.a` is what matched. Sass expands to `.a .c, #b .c` instead, so migrating from Sass can change which rule wins.",
+      "tags": ["nesting", "specificity"],
+      "level": 3,
+      "asked": "A deep difference between native nesting and Sass that bites teams during migration."
+    },
+    {
+      "id": "hc-165",
+      "q": "The viewport is 1200px wide at a pixel ratio of 1. Which slot width does the browser use to pick from `srcset`?",
+      "code": "<img srcset=\"p-400.jpg 400w, p-800.jpg 800w, p-1200.jpg 1200w\"\n     sizes=\"(min-width: 600px) 50vw, (min-width: 1000px) 33vw, 100vw\"\n     src=\"p-800.jpg\" alt=\"\">",
+      "lang": "html",
+      "choices": [
+        "600px, from the first condition that matches",
+        "396px, from the most specific matching condition",
+        "1200px, from the final `100vw` default value",
+        "400px, the smallest candidate in the `srcset`"
+      ],
+      "answer": 0,
+      "why": "The browser uses the first entry in `sizes` whose media condition matches, and `(min-width: 600px)` already matches at 1200px, so the slot is 50vw = 600px and it will pick the 800w file. List conditions from widest to narrowest so the later ones are ever reached.",
+      "tags": ["responsive-images", "images"],
+      "level": 3,
+      "asked": "Reading a `sizes` attribute correctly is how you catch images that download the wrong file at some breakpoints."
     }
   ]
 }

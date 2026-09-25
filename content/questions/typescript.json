@@ -916,6 +916,3808 @@
       ],
       "level": 2,
       "asked": "The 'string cannot be used to index type User' error that follows is one of the most googled TypeScript errors, and the reason is structural typing."
+    },
+    {
+      "id": "ts-050",
+      "q": "In TypeScript 5.4+, does this compile under `strict`?",
+      "code": "function shout(input: string | null) {\n  if (!input) return [];\n  return ['a', 'b'].map((s) => s + input.toUpperCase());\n}",
+      "lang": "ts",
+      "choices": [
+        "No: narrowing never survives into a callback, so `input` is back to `string | null`",
+        "Yes: `input` is never reassigned, so its narrowing is kept inside the arrow function",
+        "No: parameters lose narrowing in closures; only `const` locals keep it there",
+        "Yes, but only because `map` runs the callback synchronously before returning"
+      ],
+      "answer": 1,
+      "why": "Since TS 5.4 the checker keeps narrowing inside closures created after the last assignment to a `let` or parameter. Before 5.4 this was an error, which is why older code copies the value into a `const` first. Whether the callback runs synchronously is not something the checker knows or uses.",
+      "tags": [
+        "narrowing",
+        "control-flow"
+      ],
+      "level": 3,
+      "asked": "Shows whether you know narrowing is flow-based and why older codebases are full of `const x = input` copies."
+    },
+    {
+      "id": "ts-051",
+      "q": "What is the runtime bug in this function?",
+      "code": "function formatQty(qty: number | undefined) {\n  if (!qty) return 'not set';\n  return `${qty} items`;\n}",
+      "lang": "ts",
+      "choices": [
+        "It fails to compile, because `!qty` does not narrow a `number` union",
+        "`qty` is still `number | undefined` on the last line, so it may print 'undefined'",
+        "It is fine: `!qty` is true only for `undefined`, which is the intended case",
+        "A quantity of 0 is falsy, so it is reported as 'not set' instead of '0 items'"
+      ],
+      "answer": 3,
+      "why": "Truthiness narrowing removes `undefined` but also sends `0` (and `NaN`) down the 'missing' branch. The types are happy either way; use `qty === undefined` when zero is a real value. The narrowing itself works, so the other two type-level answers are wrong.",
+      "tags": [
+        "narrowing",
+        "null"
+      ],
+      "level": 1,
+      "asked": "A real bug that ships constantly with prices, counts and page numbers; interviewers want `=== undefined` or `== null`."
+    },
+    {
+      "id": "ts-052",
+      "q": "You have `interface User { id: string }`. Why can you not write `if (value instanceof User)`?",
+      "choices": [
+        "Interfaces are erased, so there is no runtime value for `instanceof` to test against",
+        "`instanceof` works only on classes marked `abstract`, and interfaces are not classes",
+        "It compiles but always returns false, because interfaces have no prototype chain",
+        "`instanceof` needs a type guard declared alongside the interface to be usable"
+      ],
+      "answer": 0,
+      "why": "`instanceof` is a JavaScript operator that needs a constructor function at runtime. An interface exists only for the checker, so tsc reports that `User` only refers to a type. Check the shape with `in`, a type guard or a schema instead.",
+      "tags": [
+        "narrowing",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Tests whether you keep the type world and the runtime world apart."
+    },
+    {
+      "id": "ts-053",
+      "q": "What are the types of `a` and `b` inside the `if`?",
+      "code": "function same(a: string | number, b: string | boolean) {\n  if (a === b) {\n    // here\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "`a` is `string | number` and `b` is `string | boolean`; `===` does not narrow",
+        "`a` is `string | number` and `b` is `string`",
+        "Each is `string`, because that is the only type they share",
+        "Each is `never`, because the two unions are different types"
+      ],
+      "answer": 2,
+      "why": "Equality narrowing intersects the possibilities: if `a === b` is true, both must be the one type the unions have in common, `string`. `===` is a narrowing construct just like `typeof`, and the unions only need to overlap, not match.",
+      "tags": [
+        "narrowing",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "Checks that you know narrowing is broader than `typeof` and `in`."
+    },
+    {
+      "id": "ts-054",
+      "q": "What is the type of `list`?",
+      "code": "function toList(tags: string | string[]) {\n  const list = Array.isArray(tags) ? tags : [tags];\n  return list;\n}",
+      "lang": "ts",
+      "choices": [
+        "`(string | string[])[]`",
+        "`string[]`",
+        "`string | string[]`",
+        "`any[]`"
+      ],
+      "answer": 1,
+      "why": "`Array.isArray` is declared as a type predicate, so the true branch has `string[]` and the false branch `string`, which is wrapped in an array. Both arms are `string[]`. The nested-array option would only appear without narrowing.",
+      "tags": [
+        "narrowing",
+        "arrays"
+      ],
+      "level": 1,
+      "asked": "The 'accept one or many' pattern is everywhere in API options, and interviewers like to see it typed cleanly."
+    },
+    {
+      "id": "ts-055",
+      "q": "In TypeScript 5.5+, what is the type of `ids`?",
+      "code": "const raw = [1, null, 2, null];\nconst ids = raw.filter((x) => x !== null);",
+      "lang": "ts",
+      "choices": [
+        "`(number | null)[]`, because `filter` never changes the element type",
+        "`number[] | null[]`, split by the branches of the comparison",
+        "`number[]`, because the callback is inferred as a type predicate",
+        "`unknown[]`, because the callback returns a plain boolean"
+      ],
+      "answer": 2,
+      "why": "TS 5.5 infers `x is number` for simple arrow functions like `x => x !== null`, and `filter` has an overload that uses predicates. Before 5.5 you got `(number | null)[]` and had to write the predicate yourself.",
+      "tags": [
+        "narrowing",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "A good check that you have kept up with recent releases and know why the old `(x): x is T` boilerplate existed."
+    },
+    {
+      "id": "ts-056",
+      "q": "In TypeScript 5.9, what is the type of `names`?",
+      "code": "declare const raw: (string | null)[];\nconst names = raw.filter(Boolean);",
+      "lang": "ts",
+      "choices": [
+        "`string[]`, because `Boolean` is typed as a type predicate",
+        "`boolean[]`, because `Boolean` converts each element to true or false",
+        "`(string | null)[]`, because `Boolean` is not a type predicate",
+        "`string[]`, because inferred predicates cover `Boolean`"
+      ],
+      "answer": 2,
+      "why": "The built-in `Boolean` function is declared as returning `boolean`, not `value is T`, so no predicate overload applies and the element type is unchanged. Inferred predicates only apply to function expressions you write, such as `(x) => x !== null`, not to the `Boolean` constructor.",
+      "tags": [
+        "narrowing",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "`filter(Boolean)` is a common idiom; knowing why it does not narrow shows you read the lib types."
+    },
+    {
+      "id": "ts-057",
+      "q": "What does the compiler verify about the body of this type guard?",
+      "code": "interface User { id: string; email: string }\nfunction isUser(x: unknown): x is User {\n  return typeof x === 'object' && x !== null;\n}",
+      "lang": "ts",
+      "choices": [
+        "That every property of `User` is checked before returning true",
+        "That the body narrows `x` to `User` on every path returning true",
+        "Only that it returns a boolean; the `x is User` claim is trusted",
+        "That the guard is only ever called with values typed `unknown`"
+      ],
+      "answer": 2,
+      "why": "A type predicate is a promise you make to the checker. Here any non-null object passes as `User`, so callers get a `User` that may have no `email`. Keep guards next to tests, or derive them from a schema so they cannot drift.",
+      "tags": [
+        "guards",
+        "boundary"
+      ],
+      "level": 2,
+      "asked": "Type guards are where many 'type-safe' codebases quietly lie; strong candidates say so unprompted."
+    },
+    {
+      "id": "ts-058",
+      "q": "Why does the last line fail to compile?",
+      "code": "const assertString = (v: unknown): asserts v is string => {\n  if (typeof v !== 'string') throw new Error('not a string');\n};\ndeclare const input: unknown;\nassertString(input);",
+      "lang": "ts",
+      "choices": [
+        "Assertion functions must be declared with the `function` keyword, never as arrows",
+        "Assertion calls need the callee's name to carry an explicit type annotation",
+        "`asserts v is string` is valid only on class methods, not on functions",
+        "An assertion function must return `boolean` as well as throwing"
+      ],
+      "answer": 1,
+      "why": "The checker must know a call is an assertion before it infers types, so it requires the name to have an explicit type (error 2775). Write `const assertString: (v: unknown) => asserts v is string = ...` or use a `function` declaration. Arrows are fine once annotated, so 'never as arrows' is too strong.",
+      "tags": [
+        "guards",
+        "functions"
+      ],
+      "level": 3,
+      "asked": "Anyone who has written assertion helpers has hit this error; it separates using the feature from reading about it."
+    },
+    {
+      "id": "ts-059",
+      "q": "In TypeScript 5.3+, what is the type of `x` inside the `case`?",
+      "code": "function describe(x: unknown) {\n  switch (true) {\n    case typeof x === 'string':\n      return x.toUpperCase();\n  }\n  return 'other';\n}",
+      "lang": "ts",
+      "choices": [
+        "`unknown`, so `toUpperCase` is a compile error",
+        "`string`, because `switch (true)` narrows by each case",
+        "`any`, because `switch (true)` switches type checking off",
+        "`string | unknown`, which collapses back to `unknown`"
+      ],
+      "answer": 1,
+      "why": "TS 5.3 added narrowing for `switch (true)`: each `case` condition narrows as if it were an `if`. Earlier versions left `x` as `unknown` and reported an error on the call.",
+      "tags": [
+        "narrowing",
+        "control-flow"
+      ],
+      "level": 3,
+      "asked": "Lets you show you follow release notes and know the idiom is now type-safe."
+    },
+    {
+      "id": "ts-060",
+      "q": "Does `payload` narrow after checking the destructured `kind`?",
+      "code": "type Action =\n  | { kind: 'add'; payload: number }\n  | { kind: 'rename'; payload: string };\nfunction run({ kind, payload }: Action) {\n  if (kind === 'add') return payload.toFixed(2);\n}",
+      "lang": "ts",
+      "choices": [
+        "No: once destructured, the two variables are unrelated to the checker",
+        "Only if you also write `payload as number` inside the `if`",
+        "Yes: destructured discriminants still narrow their sibling properties",
+        "Only when `Action` is declared as an interface, not a type alias"
+      ],
+      "answer": 2,
+      "why": "Since TS 4.6, when you destructure a discriminated union into non-reassigned bindings, checking the discriminant narrows the other bindings too. Reassigning either binding, or destructuring with `let` and mutating, breaks the link.",
+      "tags": [
+        "narrowing",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "Reducers and event handlers often destructure; knowing this saves pointless casts."
+    },
+    {
+      "id": "ts-061",
+      "q": "What is the type of `x` inside the `if`?",
+      "code": "function trim(x: unknown) {\n  const isText = typeof x === 'string';\n  if (isText) return x.trim();\n  return '';\n}",
+      "lang": "ts",
+      "choices": [
+        "`unknown`: the check was stored in a variable, so it no longer narrows",
+        "`boolean`, since `isText` is the value being checked",
+        "`any`, because narrowing through a variable is unsound",
+        "`string`: a `const` holding the check still narrows `x`"
+      ],
+      "answer": 3,
+      "why": "Since TS 4.4 the checker follows aliased conditions: a `const` initialised with a narrowing expression narrows the original when you test it, as long as neither is reassigned. Before 4.4 you got `unknown` here.",
+      "tags": [
+        "narrowing",
+        "control-flow"
+      ],
+      "level": 2,
+      "asked": "Naming a condition improves readability; interviewers like hearing that it no longer costs you type safety."
+    },
+    {
+      "id": "ts-062",
+      "q": "What does `if (value == null)` narrow away in the `else` branch?",
+      "choices": [
+        "Only `null`; `undefined` needs its own `=== undefined` check",
+        "`null`, `undefined`, `0` and empty strings, as loose equality coerces",
+        "Only `undefined`, because `null == undefined` is false",
+        "`null` and `undefined` together, and nothing else"
+      ],
+      "answer": 3,
+      "why": "Loose equality with `null` is true for exactly `null` and `undefined`, and TypeScript narrows accordingly. It does not match `0` or `''` — that is truthiness. It is the one widely accepted use of `==`.",
+      "tags": [
+        "narrowing",
+        "null"
+      ],
+      "level": 1,
+      "asked": "Checks you know the one legitimate `==` and do not confuse it with truthiness."
+    },
+    {
+      "id": "ts-063",
+      "q": "Why does this fail to compile under `strict`?",
+      "code": "function price(cache: Map<string, { amount: number }>, sku: string) {\n  if (cache.has(sku)) return cache.get(sku).amount;\n  return 0;\n}",
+      "lang": "ts",
+      "choices": [
+        "`has` does not narrow `get`, which still returns `{ amount: number } | undefined`",
+        "`Map` keys must be declared `readonly`, and `sku` is a mutable function parameter",
+        "`get` needs a generic argument when the value type is an object literal",
+        "`has` narrows `sku` to `never`, so the `get` call has no valid overload"
+      ],
+      "answer": 0,
+      "why": "The checker has no link between two separate method calls, so `get` is always `V | undefined`. Call `get` once, store the result and check it: `const hit = cache.get(sku); if (hit) return hit.amount;`. That is also one lookup instead of two.",
+      "tags": [
+        "narrowing",
+        "null"
+      ],
+      "level": 2,
+      "asked": "Everyone hits this; the good answer is 'get once and test the result', not a `!`."
+    },
+    {
+      "id": "ts-064",
+      "q": "What is the type of `x.id` inside the `if` (TypeScript 4.9+)?",
+      "code": "function getId(x: unknown) {\n  if (typeof x === 'object' && x !== null && 'id' in x) {\n    return x.id;\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "`any`, because `in` narrows to an index signature",
+        "`string | number`, the possible property key types",
+        "`unknown`, because only the key's presence is known",
+        "A compile error: `in` cannot narrow an `object`"
+      ],
+      "answer": 2,
+      "why": "Since TS 4.9, `'id' in x` narrows `object` to `object & Record<'id', unknown>`. You know the key exists but nothing about its value, so check `typeof x.id` next. `string | number` confuses the key type with the value type.",
+      "tags": [
+        "narrowing",
+        "unknown"
+      ],
+      "level": 2,
+      "asked": "The building block of every hand-written guard for JSON; shows you can validate without casting."
+    },
+    {
+      "id": "ts-065",
+      "q": "What is the type of `x` inside the `if`?",
+      "code": "function f(x: string) {\n  if (typeof x === 'number') {\n    return x;\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "`number`, as the `typeof` check says",
+        "`string`, since checks cannot contradict the parameter",
+        "`never`, since no `string` can pass the check",
+        "A compile error: the comparison has no overlap"
+      ],
+      "answer": 2,
+      "why": "Narrowing a `string` by `typeof x === 'number'` leaves no possible type, so `x` is `never`. tsc does not report this comparison as an error because `typeof` returns the general union of type-name strings. Seeing `never` in a hover is a useful sign of dead code.",
+      "tags": [
+        "never",
+        "narrowing"
+      ],
+      "level": 2,
+      "asked": "Recognising `never` in a hover as 'this branch is impossible' is a practical debugging skill."
+    },
+    {
+      "id": "ts-066",
+      "q": "This compiles under `strict`. What happens when `use()` runs with `value` set?",
+      "code": "class Box {\n  value: string | null = 'x';\n  clear() { this.value = null; }\n  use() {\n    if (this.value) { this.clear(); return this.value.length; }\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "It returns 1, since the narrowing guarantees `value` is still a non-empty string",
+        "It throws a TypeError, as `clear()` set `value` to null after the check",
+        "It returns undefined, since reading `length` of null gives undefined",
+        "It returns 0, since `clear()` sets `value` to an empty string"
+      ],
+      "answer": 1,
+      "why": "TypeScript deliberately does not reset property narrowing after function calls; doing so would make most code unusable. So `this.value` stays `string` in the checker's eyes, yet at runtime it is null and `.length` throws. Copy the value into a local `const` before calling anything that might mutate.",
+      "tags": [
+        "narrowing",
+        "soundness"
+      ],
+      "level": 3,
+      "asked": "Probes whether you know the checker's trade-offs, not just its rules."
+    },
+    {
+      "id": "ts-067",
+      "q": "What does this line do?",
+      "code": "let id: string | number = 'abc';\nid.toUpperCase();",
+      "lang": "ts",
+      "choices": [
+        "Fails: `id` is declared `string | number`, so `toUpperCase` is not allowed",
+        "Compiles: assignment narrows `id` to `string` until it is reassigned",
+        "Compiles, but only because `let` declarations are not type-checked",
+        "Fails: a union-typed variable must be narrowed with `typeof` first"
+      ],
+      "answer": 1,
+      "why": "The declared type is `string | number`, but assignment narrowing gives the variable the assigned type for the code that follows. Assigning a number later narrows it to `number` from that point on.",
+      "tags": [
+        "narrowing",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "Distinguishes the declared type from the flow type, which explains many confusing hovers."
+    },
+    {
+      "id": "ts-068",
+      "q": "What is the type of `label` on the last line?",
+      "code": "type Label = string | (() => string);\nfunction resolve(l: Label) {\n  const label = typeof l === 'function' ? l() : l;\n  return label;\n}",
+      "lang": "ts",
+      "choices": [
+        "`string | (() => string)`",
+        "`string`",
+        "`Function | string`",
+        "`unknown`"
+      ],
+      "answer": 1,
+      "why": "`typeof l === 'function'` narrows to the function member, whose call returns `string`; the other branch is already `string`. This 'value or factory' shape is common in config and React props.",
+      "tags": [
+        "narrowing",
+        "functions"
+      ],
+      "level": 1,
+      "asked": "Accepting a value or a lazy factory is a common option-typing task."
+    },
+    {
+      "id": "ts-069",
+      "q": "What makes `r.value` compile on the last line?",
+      "code": "type Res = { ok: true; value: number } | { ok: false; error: string };\nfunction read(r: Res) {\n  if (!r.ok) return r.error;\n  return r.value;\n}",
+      "lang": "ts",
+      "choices": [
+        "The `return` in the `if` narrows `r` to the `ok: true` member afterwards",
+        "`value` is optional on every member, so reading it always compiles",
+        "The union is merged into one object type with all four properties",
+        "`!r.ok` is a type guard only because `ok` was declared as `boolean`"
+      ],
+      "answer": 0,
+      "why": "`ok` is a literal `true`/`false` discriminant, so `!r.ok` narrows to the failure member, and the early return leaves only the success member below it. If `ok` were plain `boolean`, nothing would narrow.",
+      "tags": [
+        "narrowing",
+        "unions"
+      ],
+      "level": 1,
+      "asked": "The `ok: true | false` result shape is everywhere; this checks you know why the literal types matter."
+    },
+    {
+      "id": "ts-070",
+      "q": "What is the type of `city` on the last line?",
+      "code": "type User = { address?: { city: string } };\nfunction city(u: User) {\n  if (u.address?.city) {\n    return u.address.city;\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "`string | undefined`, because optional chaining never narrows",
+        "A compile error: `u.address` is possibly undefined",
+        "`string`, with `u.address` narrowed to defined as well",
+        "`string | null`, as `?.` converts undefined to null"
+      ],
+      "answer": 2,
+      "why": "A truthy `u.address?.city` implies `u.address` is defined, and TypeScript narrows the whole chain. `?.` yields `undefined`, never `null`, when it short-circuits.",
+      "tags": [
+        "narrowing",
+        "optional"
+      ],
+      "level": 1,
+      "asked": "Quick check that you trust narrowing instead of sprinkling `!`."
+    },
+    {
+      "id": "ts-071",
+      "q": "In TypeScript 5.5+, does this compile under `strict`?",
+      "code": "function upper(obj: Record<string, string | number>, key: string) {\n  if (typeof obj[key] === 'string') {\n    return obj[key].toUpperCase();\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "No: element access with a plain `string` key is never narrowed by `typeof`",
+        "Yes: `obj[key]` narrows because neither `obj` nor `key` is reassigned",
+        "No: `Record` values must be read with `Object.entries` to narrow",
+        "Yes, but only because `Record` values are implicitly `any`"
+      ],
+      "answer": 1,
+      "why": "TS 5.5 narrows element accesses when both the object and the key are effectively constant. Earlier versions required `const v = obj[key]` first. Values of a `Record<string, V>` are typed `V`, not `any`.",
+      "tags": [
+        "narrowing",
+        "control-flow"
+      ],
+      "level": 3,
+      "asked": "Shows you know which narrowing limitations recent releases removed, and why the local-variable workaround existed."
+    },
+    {
+      "id": "ts-072",
+      "q": "Why does this narrowing fail under `strict`?",
+      "code": "type Shape = { kind: string; radius?: number; side?: number };\nfunction area(s: Shape) {\n  if (s.kind === 'circle') return Math.PI * s.radius ** 2;\n  return 0;\n}",
+      "lang": "ts",
+      "choices": [
+        "`kind` is typed `string`, so the check cannot narrow and `radius` stays optional",
+        "`Math.PI` is a `number` literal, which cannot be multiplied by an optional",
+        "The `**` operator is rejected on any property that is declared optional",
+        "Comparing a `string` to the literal `'circle'` is itself a type error under `strict`"
+      ],
+      "answer": 0,
+      "why": "Narrowing needs a union with literal discriminants. With one object type and a `string` kind, nothing ties `kind === 'circle'` to `radius` being set. Model it as `{ kind: 'circle'; radius: number } | { kind: 'square'; side: number }`.",
+      "tags": [
+        "unions",
+        "modelling"
+      ],
+      "level": 1,
+      "asked": "The 'bag of optionals' is the most common modelling mistake; the fix is the discriminated union."
+    },
+    {
+      "id": "ts-073",
+      "q": "What is the type of `n` on the last line?",
+      "code": "function parse(s: string) {\n  let n;\n  if (s === '') n = null;\n  else n = Number(s);\n  return n;\n}",
+      "lang": "ts",
+      "choices": [
+        "`any`, because `n` was declared without a type or initialiser",
+        "`number`, because `null` is dropped from inferred variable types",
+        "`number | null`, from control-flow analysis of the assignments",
+        "`unknown`, because the checker cannot follow both branches"
+      ],
+      "answer": 2,
+      "why": "A `let` with no annotation and no initialiser is an 'evolving' variable under `noImplicitAny`: its type is computed from the assignments that reach each use. Both branches reach the return, giving `number | null`. It only becomes an implicit-any error if the checker cannot determine a type.",
+      "tags": [
+        "inference",
+        "control-flow"
+      ],
+      "level": 3,
+      "asked": "Explains a confusing hover and shows you understand flow-based typing rather than memorised rules."
+    },
+    {
+      "id": "ts-074",
+      "q": "Why does the last line fail to compile under `strict`?",
+      "code": "type User = { id: number; name: string };\ndeclare const users: User[];\nconst name = users.find((u) => u.id === 7).name;",
+      "lang": "ts",
+      "choices": [
+        "`find` returns `User | undefined`, because nothing may match",
+        "`find` returns `User[]`, so `.name` needs an index first",
+        "`find` returns `unknown` unless you pass a type argument",
+        "The callback must be a type predicate for `find` to compile"
+      ],
+      "answer": 0,
+      "why": "`Array.prototype.find` is typed `T | undefined` because a search can come up empty, and `strictNullChecks` makes you handle that. A predicate callback only narrows the element type; it does not remove `undefined`. Decide what 'not found' means (404, default, throw) instead of adding `!`.",
+      "tags": [
+        "null",
+        "arrays"
+      ],
+      "level": 1,
+      "asked": "Every CRUD handler looks something up; the interviewer wants to hear what you do when it is not there."
+    },
+    {
+      "id": "ts-075",
+      "q": "Under `strict`, what does tsc report for this class?",
+      "code": "class Repo {\n  private db: Db;\n  connect(db: Db) { this.db = db; }\n}\ninterface Db { query(sql: string): unknown }",
+      "lang": "ts",
+      "choices": [
+        "Nothing: `connect` assigns `db` before it can be used",
+        "An error: `db` is private, so a method like `connect` cannot assign it",
+        "An error: `db` has no initialiser and is not set in the constructor",
+        "Nothing: class fields are only checked when they are read through `this`"
+      ],
+      "answer": 2,
+      "why": "`strictPropertyInitialization` requires every non-optional field to be assigned in its declaration or the constructor; a later method call does not count. Pass `db` to the constructor, make the field `Db | undefined`, or, if something outside guarantees it, use `db!: Db`.",
+      "tags": [
+        "classes",
+        "config"
+      ],
+      "level": 1,
+      "asked": "Shows whether you model 'not ready yet' honestly or paper over it with `!`."
+    },
+    {
+      "id": "ts-076",
+      "q": "What does the `!` in `private db!: Db` tell the compiler?",
+      "choices": [
+        "That `db` is set before use by something it cannot see",
+        "That `db` must never be assigned `null` at runtime",
+        "That `db` is set once and then becomes read-only",
+        "That reads of `db` get a runtime null check inserted"
+      ],
+      "answer": 0,
+      "why": "The definite-assignment assertion switches off the initialisation check for that field, typically for frameworks that inject values after construction. Nothing is emitted, so if the promise is wrong you get `undefined` at runtime. It says nothing about later assignments or immutability.",
+      "tags": [
+        "classes",
+        "assertions"
+      ],
+      "level": 2,
+      "asked": "Common in ORM entities and Angular code; strong candidates explain that it moves the risk rather than removing it."
+    },
+    {
+      "id": "ts-077",
+      "q": "What are the types of `a` and `b`?",
+      "code": "let a = 'dark';\nconst b = 'dark';",
+      "lang": "ts",
+      "choices": [
+        "`string` and `string`",
+        "`'dark'` and `'dark'`",
+        "`'dark'` and `string`",
+        "`string` and `'dark'`"
+      ],
+      "answer": 3,
+      "why": "A `let` can be reassigned, so its literal type is widened to `string`. A `const` primitive can never change, so it keeps the literal type `'dark'`. This is why passing a `let` to a parameter typed `'dark' | 'light'` fails.",
+      "tags": [
+        "literals",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "The foundation for understanding every 'string is not assignable to ...' error."
+    },
+    {
+      "id": "ts-078",
+      "q": "Why does the last call fail, and what is the cleanest fix?",
+      "code": "type Method = 'GET' | 'POST';\nfunction send(o: { url: string; method: Method }) {}\nconst opts = { url: '/api', method: 'GET' };\nsend(opts);",
+      "lang": "ts",
+      "choices": [
+        "`method` widened to `string`; annotate `opts` or add `as const` to it",
+        "`url` is not a `Method`; move `method` to be the first property instead",
+        "`opts` has an extra property; spread it into a new object in the call",
+        "Literal unions cannot be passed via a variable; inline the object literal"
+      ],
+      "answer": 0,
+      "why": "A mutable object's properties are widened, so `method` is `string`. Annotating (`const opts: SendOptions = ...`) or `as const` keeps the literal. Inlining also works because it is contextually typed, but it is a workaround, not the rule the other options state.",
+      "tags": [
+        "literals",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "Extremely common with fetch options and config objects; the follow-up is usually 'annotate or satisfies?'."
+    },
+    {
+      "id": "ts-079",
+      "q": "What does TypeScript infer as the return type of `level`?",
+      "code": "function level(score: number) {\n  if (score > 90) return 'high';\n  return 'low';\n}",
+      "lang": "ts",
+      "choices": [
+        "`string`, as return values are always widened",
+        "`string | undefined`, for the fall-through",
+        "`'high'`, the first return statement wins",
+        "`'high' | 'low'`"
+      ],
+      "answer": 3,
+      "why": "Literal return values are collected into a union of literal types, so callers can compare against exactly `'high'` or `'low'`. The value only widens to `string` when assigned to a mutable location. Every path returns, so there is no `undefined`.",
+      "tags": [
+        "literals",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "Checks whether you know when inference keeps literals, which decides if a switch over the result is exhaustive."
+    },
+    {
+      "id": "ts-080",
+      "q": "What is the type of `row`?",
+      "code": "const row = [42, 'Ann'];",
+      "lang": "ts",
+      "choices": [
+        "`[number, string]`, a tuple",
+        "`(string | number)[]`",
+        "`readonly [42, 'Ann']`, a literal tuple",
+        "`any[]`, due to the mixed types"
+      ],
+      "answer": 1,
+      "why": "Array literals are inferred as arrays of the union of their element types, not as tuples, because arrays are usually grown and iterated. Add a tuple annotation for `[number, string]`, or `as const` for the readonly literal tuple.",
+      "tags": [
+        "tuples",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "Explains why functions returning pairs need an annotation, which leads to the tuple follow-ups."
+    },
+    {
+      "id": "ts-081",
+      "q": "What is `Role` here?",
+      "code": "const ROLE = { Admin: 'admin', Editor: 'editor' } as const;\ntype Role = (typeof ROLE)[keyof typeof ROLE];",
+      "lang": "ts",
+      "choices": [
+        "`'Admin' | 'Editor'`, the keys",
+        "`string`, since values widen",
+        "`'admin' | 'editor'`",
+        "`typeof ROLE`, the object type"
+      ],
+      "answer": 2,
+      "why": "`keyof typeof ROLE` is the keys, and indexing with them gives the value types, which `as const` kept as literals. This 'enum-like object' gives you a runtime object to iterate plus a union type, with no `enum` emit. Without `as const` it would be `string`.",
+      "tags": [
+        "as-const",
+        "enums"
+      ],
+      "level": 2,
+      "asked": "The standard enum alternative in modern codebases; you should be able to write it from memory."
+    },
+    {
+      "id": "ts-082",
+      "q": "In this handler, why is `e.key` typed with no annotation on `e`?",
+      "code": "window.addEventListener('keydown', (e) => {\n  console.log(e.key);\n});",
+      "lang": "ts",
+      "choices": [
+        "Implicit `any` is allowed for callback parameters, even under the `strict` flag",
+        "The DOM library marks every event handler parameter as `any`",
+        "Contextual typing: the `'keydown'` overload fixes `e` as `KeyboardEvent`",
+        "TypeScript infers `e` from how the body uses it, i.e. from `e.key`"
+      ],
+      "answer": 2,
+      "why": "The callback's parameter type comes from where the function is passed: `addEventListener` maps `'keydown'` to `KeyboardEvent`. TypeScript never infers parameter types from how the body uses them. Move the arrow into a separate `const` and the context is lost, giving an implicit-`any` error.",
+      "tags": [
+        "inference",
+        "functions"
+      ],
+      "level": 1,
+      "asked": "Contextual typing explains when annotations are needed and when they are noise."
+    },
+    {
+      "id": "ts-083",
+      "q": "In TypeScript 5.2+, what does this do?",
+      "code": "declare const ids: string[] | number[];\nconst doubled = ids.map((x) => x);",
+      "lang": "ts",
+      "choices": [
+        "Fails: the two `map` signatures of the union cannot be called together",
+        "Fails: you must narrow with `Array.isArray` before calling any array method",
+        "Compiles: `x` is `any`, because the union of signatures is ambiguous",
+        "Compiles: `x` is `string | number` and `doubled` is `(string | number)[]`"
+      ],
+      "answer": 3,
+      "why": "Since TS 5.2, calling methods like `map`, `filter` and `find` on a union of array types treats it as an array of the element union. Older versions reported that the union's signatures were not compatible. `Array.isArray` would not help anyway: both members are arrays.",
+      "tags": [
+        "unions",
+        "arrays"
+      ],
+      "level": 3,
+      "asked": "Probes whether you understand calling methods on unions and have kept up with the fix."
+    },
+    {
+      "id": "ts-084",
+      "q": "What is the type of `id`?",
+      "code": "type A = { id: string };\ntype B = { id: number };\ndeclare const v: A & B;\nconst id = v.id;",
+      "lang": "ts",
+      "choices": [
+        "`string | number`, a union of both",
+        "`string`, as the first type wins",
+        "`never`",
+        "A compile error on the `A & B` type"
+      ],
+      "answer": 2,
+      "why": "An intersection requires both: `id` must be a `string` and a `number` at once, which is `never`. TypeScript does not report the conflict when you write `A & B`. `interface B extends A` would report the incompatibility, which is one reason to prefer `extends` for object shapes.",
+      "tags": [
+        "intersections",
+        "interfaces"
+      ],
+      "level": 2,
+      "asked": "Explains a silent failure mode of intersections and the practical case for `extends`."
+    },
+    {
+      "id": "ts-085",
+      "q": "`type Status = 'draft' | 'live' | 'archived'`. Which approach makes adding a fourth status a compile error at every place that labels statuses?",
+      "choices": [
+        "`const labels: Partial<Record<Status, string>>`, so missing keys are flagged",
+        "`const labels = new Map<Status, string>()`, with one `set` call per status",
+        "`const labels: Record<Status, string>` with one entry per status",
+        "`const labels: { [key: string]: string }` with the three current keys"
+      ],
+      "answer": 2,
+      "why": "`Record<Status, string>` requires a key for every member, so a new status is flagged until you add its label. `Partial` makes every key optional, a `Map` is never checked for completeness, and a string index signature accepts any keys at all.",
+      "tags": [
+        "unions",
+        "exhaustiveness"
+      ],
+      "level": 2,
+      "asked": "A lookup table is often cleaner than a switch; interviewers like hearing that it can be exhaustive too."
+    },
+    {
+      "id": "ts-086",
+      "q": "Why does this call fail under `strict`?",
+      "code": "function total(xs: number[]) { return xs.reduce((a, b) => a + b, 0); }\nconst prices: readonly number[] = [1, 2];\ntotal(prices);",
+      "lang": "ts",
+      "choices": [
+        "`reduce` is not one of the methods that exist on `readonly number[]`",
+        "Readonly arrays can only be passed to generic functions",
+        "`readonly` arrays cannot hold numeric literals like `1`",
+        "`total` could mutate the array, so a readonly one is refused"
+      ],
+      "answer": 3,
+      "why": "`number[]` has `push`, `sort` and friends; `readonly number[]` does not, so it is not assignable to the mutable type. If `total` does not mutate, type its parameter `readonly number[]`: it then accepts both. Non-mutating methods like `reduce` exist on readonly arrays.",
+      "tags": [
+        "readonly",
+        "arrays"
+      ],
+      "level": 2,
+      "asked": "Leads into 'type parameters by what the function needs', a sign of good API design."
+    },
+    {
+      "id": "ts-087",
+      "q": "In TypeScript 5.0+, which line fails to compile?",
+      "code": "enum Dir { Up, Down }\nconst a: Dir = Dir.Up;\nconst b: Dir = 1;\nconst c: Dir = 5;",
+      "lang": "ts",
+      "choices": [
+        "Neither `b` nor `c`: numeric enums accept any number",
+        "Only `c`, because 5 is not a value of any `Dir` member",
+        "`b` and `c`, because raw numbers need `Dir.` access",
+        "Only `a`, because `Dir.Up` has the value 0, which is falsy"
+      ],
+      "answer": 1,
+      "why": "TS 5.0 made all enums union enums: a numeric literal is assignable only if it matches a member's value. `1` is `Dir.Down`, so `b` compiles; `5` does not. Older versions accepted any number, which made numeric enums leaky.",
+      "tags": [
+        "enums"
+      ],
+      "level": 3,
+      "asked": "Checks whether your enum knowledge is current; many people still repeat the pre-5.0 'any number' rule."
+    },
+    {
+      "id": "ts-088",
+      "q": "Why does the assignment fail?",
+      "code": "enum Status { Active = 'active', Closed = 'closed' }\nconst s: Status = 'active';",
+      "lang": "ts",
+      "choices": [
+        "String enum members must be written in upper case to be assignable",
+        "The value must come from `Status.Active`, not a string literal",
+        "`const` cannot hold a string enum value; use a `let` declaration instead",
+        "Enums need `as const` before their members can be used"
+      ],
+      "answer": 1,
+      "why": "String enums are nominal in this direction: a matching string literal is not assignable to the enum type. That is why values parsed from JSON need a cast or a mapping to become `Status`, and a key reason teams prefer `'active' | 'closed'` unions for API fields.",
+      "tags": [
+        "enums",
+        "boundary"
+      ],
+      "level": 2,
+      "asked": "The practical cost of enums at API boundaries; a strong answer ties it to parsing JSON."
+    },
+    {
+      "id": "ts-089",
+      "q": "What does a regular (non-`const`) `enum Color { Red, Green }` compile to?",
+      "choices": [
+        "Nothing: like interfaces and type aliases, enums are erased completely",
+        "A frozen array `['Red', 'Green']` that is indexed by position",
+        "A union of the numbers 0 and 1, with no runtime representation of names",
+        "A runtime object mapping names to values and numbers back to names"
+      ],
+      "answer": 3,
+      "why": "Enums are one of the few TypeScript features that emit JavaScript: an object with `Red: 0` and, for numeric enums, a reverse mapping `0: 'Red'`. That emitted code is why Node's type stripping and `erasableSyntaxOnly` reject enums.",
+      "tags": [
+        "enums",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Knowing what emits code is increasingly relevant now that Node runs TypeScript by stripping types."
+    },
+    {
+      "id": "ts-090",
+      "q": "Why can `(n) => n * 2` be passed where `(value: number, index: number, array: number[]) => number` is expected?",
+      "choices": [
+        "Extra parameters are filled in by an implicit `any` rest parameter",
+        "It cannot: the callback must declare all three parameters to match",
+        "A function taking fewer parameters can safely ignore extra arguments",
+        "Parameter counts are only compared when `strictFunctionTypes` is switched off"
+      ],
+      "answer": 2,
+      "why": "Calling a function with extra arguments is harmless in JavaScript, so TypeScript lets a shorter parameter list satisfy a longer one. The reverse, a callback that requires more parameters than will be passed, is an error. `strictFunctionTypes` affects parameter types, not counts.",
+      "tags": [
+        "functions",
+        "assignability"
+      ],
+      "level": 2,
+      "asked": "Explains why every `map` callback compiles, and tests how you reason about assignability."
+    },
+    {
+      "id": "ts-091",
+      "q": "Why does this signature end with `= {}`?",
+      "code": "function list({ page = 1, size = 20 }: { page?: number; size?: number } = {}) {\n  return { page, size };\n}",
+      "lang": "ts",
+      "choices": [
+        "It sets the return type of `list` to an object literal",
+        "It makes `page` and `size` required inside the body",
+        "It is required for destructuring to type-check at all",
+        "It lets callers write `list()` with no argument at all"
+      ],
+      "answer": 3,
+      "why": "Without the default, calling `list()` would destructure `undefined` and throw, and the parameter would be required. The inner defaults make `page` and `size` plain `number` in the body; the outer `= {}` makes the whole argument optional.",
+      "tags": [
+        "functions",
+        "optional"
+      ],
+      "level": 1,
+      "asked": "The options-object pattern is standard for API functions; this checks you can type it correctly."
+    },
+    {
+      "id": "ts-092",
+      "q": "What is the type of `setName` when you destructure the result of `useField()`?",
+      "code": "function useField() {\n  let v = '';\n  return [v, (next: string) => { v = next; }];\n}\nconst [name, setName] = useField();",
+      "lang": "ts",
+      "choices": [
+        "`(next: string) => void`, the setter itself",
+        "`string | ((next: string) => void)`",
+        "`[string, (next: string) => void]`",
+        "`unknown`, because array returns are not inferred"
+      ],
+      "answer": 1,
+      "why": "The returned array literal is inferred as `(string | ((next: string) => void))[]`, so each destructured element is the whole union and neither is usable without narrowing. Add `as const` to the return or annotate the return type as a tuple.",
+      "tags": [
+        "tuples",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "Anyone who has written a hook-style helper has hit this; the fix shows you understand tuple inference."
+    },
+    {
+      "id": "ts-093",
+      "q": "What do labels like `start` and `end` add in `type Range = [start: number, end: number]`?",
+      "choices": [
+        "Documentation in hovers and signatures; the type is still a pair",
+        "Runtime property names, so `range.start` works on the value",
+        "They let the tuple be destructured by name as an object",
+        "A requirement to pass the two values as an object literal `{ start, end }`"
+      ],
+      "answer": 0,
+      "why": "Tuple labels are purely for readability: editors show them in hovers, and they appear in rest-parameter signatures. The value is still an array indexed by position, so `range.start` does not exist.",
+      "tags": [
+        "tuples",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Quick check on reading types; a strong answer mentions they document rest-parameter signatures."
+    },
+    {
+      "id": "ts-094",
+      "q": "`input` is a `string`. Why does `input as number` fail to compile?",
+      "choices": [
+        "`as` only works on values typed `any` or `unknown`",
+        "`as` cannot be used on primitive types, only objects",
+        "Neither type is assignable to the other, so tsc refuses",
+        "`as` would need a runtime conversion, which tsc never emits"
+      ],
+      "answer": 2,
+      "why": "An assertion is allowed only when one type is assignable to the other; `string` and `number` do not overlap, so tsc says to go through `unknown` first. That double cast silences the error but converts nothing: use `Number(input)` for a real conversion.",
+      "tags": [
+        "assertions",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Separates people who think `as` converts values from people who know it only changes the compiler's view."
+    },
+    {
+      "id": "ts-095",
+      "q": "What does tsc report for `B`?",
+      "code": "interface A { id: string }\ninterface B extends A { id: number }",
+      "lang": "ts",
+      "choices": [
+        "Nothing: `B`'s `id` overrides `A`'s, as in a class",
+        "Nothing, but `id` becomes `never` on `B`",
+        "An error: `B` incorrectly extends `A`",
+        "Nothing: `id` on `B` becomes `string | number`"
+      ],
+      "answer": 2,
+      "why": "`extends` checks that the new interface is assignable to the base, so an incompatible property type is reported where you wrote it. The intersection `A & { id: number }` silently produces `id: never` instead, which is why `extends` gives better errors.",
+      "tags": [
+        "interfaces",
+        "intersections"
+      ],
+      "level": 2,
+      "asked": "Pairs with the intersection question; interviewers like the 'better error messages' reasoning."
+    },
+    {
+      "id": "ts-096",
+      "q": "What is the difference between `private secret` and `#secret` on a class?",
+      "choices": [
+        "`private` is compile-time only; `#secret` is enforced by JavaScript at runtime",
+        "`#secret` is compile-time only; `private` is enforced by the JavaScript engine",
+        "`private` fields are shared by instances; `#` fields are per-instance only",
+        "`#secret` may be read by subclasses, while `private` hides it from them too"
+      ],
+      "answer": 0,
+      "why": "TypeScript's `private` disappears when compiled, so `(obj as any).secret` or plain JavaScript can still read it. `#secret` is a JavaScript private field: inaccessible outside the class body at runtime, including to subclasses. Neither is shared between instances.",
+      "tags": [
+        "classes",
+        "fundamentals"
+      ],
+      "level": 2,
+      "asked": "Checks you know which guarantees come from TypeScript and which from JavaScript."
+    },
+    {
+      "id": "ts-097",
+      "q": "Under `strict`, what does tsc report for this class?",
+      "code": "interface Handler { handle(msg: string): void }\nclass Log implements Handler {\n  handle(msg) { console.log(msg); }\n}",
+      "lang": "ts",
+      "choices": [
+        "Nothing: `msg` is inferred as `string` from the interface",
+        "An error: `msg` implicitly has an `any` type",
+        "Nothing: `implements` switches off implicit-any checks",
+        "An error: `Log` must use `extends`, not `implements`"
+      ],
+      "answer": 1,
+      "why": "`implements` only checks the finished class against the interface; it does not contextually type the class's members. So `msg` has no type and `noImplicitAny` reports it. Annotate the parameter yourself.",
+      "tags": [
+        "classes",
+        "interfaces"
+      ],
+      "level": 3,
+      "asked": "A surprise for most people; knowing it shows you understand what `implements` does and does not do."
+    },
+    {
+      "id": "ts-098",
+      "q": "Why does this type fail to compile?",
+      "code": "type Scores = {\n  [player: string]: number;\n  name: string;\n};",
+      "lang": "ts",
+      "choices": [
+        "`name` is a string key, so its type must fit the `number` index signature",
+        "An index signature must be the last member written in the type literal",
+        "Index signatures are only allowed in interfaces, not type aliases",
+        "The `player` placeholder must be written as `key` in an index signature"
+      ],
+      "answer": 0,
+      "why": "A string index signature says every string key maps to `number`, and `name` is a string key, so it must be a `number` too. Split the data: `{ name: string; scores: Record<string, number> }`. Member order and the placeholder name do not matter.",
+      "tags": [
+        "index-signatures",
+        "modelling"
+      ],
+      "level": 2,
+      "asked": "Shows whether you can model a dictionary alongside fixed fields without reaching for `any`."
+    },
+    {
+      "id": "ts-099",
+      "q": "What is the type of `k`?",
+      "code": "type Dict = { [key: string]: number };\ntype K = keyof Dict;\ndeclare const k: K;",
+      "lang": "ts",
+      "choices": [
+        "`string`, the index signature key type",
+        "`string | number`",
+        "`never`, as there are no named keys",
+        "`'key'`, the placeholder name"
+      ],
+      "answer": 1,
+      "why": "JavaScript converts numeric property keys to strings, so a string index signature also accepts number keys and `keyof` reports `string | number`. That is why `keyof T` is often wrapped as `Extract<keyof T, string>` or `string & keyof T` in generic code.",
+      "tags": [
+        "index-signatures",
+        "keyof"
+      ],
+      "level": 3,
+      "asked": "Explains the `string & keyof T` idiom you see in library code."
+    },
+    {
+      "id": "ts-100",
+      "q": "Which line fails to compile?",
+      "code": "type Load<T> = { status: 'idle' } | { status: 'ok'; data: T }\n  | { status: 'error'; message: string };\nfunction view(s: Load<string[]>) {\n  if (s.status === 'error') return s.message;   // line A\n  if (s.status !== 'idle') return s.data.length; // line B\n  return s.data;                                  // line C\n}",
+      "lang": "ts",
+      "choices": [
+        "Line A, because `message` is not on every member",
+        "Line B, because `!== 'idle'` cannot narrow a union type",
+        "Line C, because only `idle` remains and it has no `data`",
+        "No line: `data` is treated as optional on the idle member"
+      ],
+      "answer": 2,
+      "why": "After the first check removes `error`, `!== 'idle'` leaves only `ok`, so line B is fine. What reaches line C is `{ status: 'idle' }`, which has no `data`. Negative checks narrow just like positive ones.",
+      "tags": [
+        "unions",
+        "narrowing"
+      ],
+      "level": 1,
+      "asked": "The loading/ok/error union is the most common app-state type; reading narrowing through several checks is basic fluency."
+    },
+    {
+      "id": "ts-101",
+      "q": "A cached state `{ status: 'done'; at: Date }` is saved with `JSON.stringify` and read back with `JSON.parse(...) as State`. What is wrong?",
+      "choices": [
+        "Nothing: `JSON.parse` revives `Date` objects when the type says `Date`",
+        "`status` comes back as a plain `string`, so the union no longer narrows",
+        "`at` comes back as an ISO string, but the type still claims it is a `Date`",
+        "`JSON.stringify` throws on `Date` values unless a replacer function is given"
+      ],
+      "answer": 2,
+      "why": "`Date` serialises to an ISO string and `JSON.parse` does not know your types, so `state.at.getTime()` throws although it type-checks. `status` survives as the same string, which still narrows at runtime; only the cast is the lie. Parse and convert on the way in.",
+      "tags": [
+        "boundary",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "A classic localStorage and API bug; interviewers want to hear 'the cast lies, parse on the way in'."
+    },
+    {
+      "id": "ts-102",
+      "q": "Why does `x.a` fail to compile?",
+      "code": "type N =\n  | { meta: { kind: 'a' }; a: number }\n  | { meta: { kind: 'b' }; b: string };\nfunction read(x: N) {\n  if (x.meta.kind === 'a') return x.a;\n}",
+      "lang": "ts",
+      "choices": [
+        "Discriminants must be `string`, and `kind` is an object literal type",
+        "The discriminant is nested, so checking it narrows `x.meta`, not `x`",
+        "`meta` needs to be marked `readonly` before its fields can narrow",
+        "`===` narrows only when the literal is written on the left side"
+      ],
+      "answer": 1,
+      "why": "A discriminant must be a property of the union members themselves; a literal-typed field one level down does not narrow the parent. Lift `kind` to the top level. Neither `readonly` nor operand order affects narrowing.",
+      "tags": [
+        "unions",
+        "narrowing"
+      ],
+      "level": 3,
+      "asked": "Comes up when API payloads nest their type tag; knowing the limit tells you when to reshape the data."
+    },
+    {
+      "id": "ts-103",
+      "q": "Why does the call fail to compile?",
+      "code": "type Handler = ((x: string) => void) | ((x: number) => void);\ndeclare const handle: Handler;\nhandle('a');",
+      "lang": "ts",
+      "choices": [
+        "A union of functions cannot be called until it is narrowed with `typeof`",
+        "The call resolves to the first member, so `x` must be a `string & number`",
+        "`'a'` must be wrapped as `String('a')` to match the first signature",
+        "The argument must satisfy every member, so its type is `string & number`"
+      ],
+      "answer": 3,
+      "why": "Calling a union of functions is only safe with an argument every member accepts, so parameters are intersected: `string & number`, which is `never`. Unions of functions are callable, just rarely usefully. Model it as one function taking `string | number`.",
+      "tags": [
+        "unions",
+        "functions"
+      ],
+      "level": 3,
+      "asked": "Shows you can reason about why an error mentions `never`, instead of guessing at casts."
+    },
+    {
+      "id": "ts-104",
+      "q": "In TypeScript 5.1+, which function compiles under `strict`?",
+      "code": "function a(): undefined {}\nfunction b(): void {}\nfunction c(): string | undefined {}",
+      "lang": "ts",
+      "choices": [
+        "Only `b`, because a missing return means `void`",
+        "`a` and `b`, but not `c`",
+        "All three, since each return type allows `undefined`",
+        "`b` and `c`, because `undefined` needs a `return`"
+      ],
+      "answer": 1,
+      "why": "Since TS 5.1 a function whose declared return type is `undefined` may omit `return` entirely, just like `void`. A union such as `string | undefined` still needs an explicit return on every path, so `c` is error 2355.",
+      "tags": [
+        "functions",
+        "void"
+      ],
+      "level": 3,
+      "asked": "Probes whether your mental model of `void` versus `undefined` is current."
+    },
+    {
+      "id": "ts-105",
+      "q": "What is the type of `id` on the last line?",
+      "code": "function fail(msg: string): never {\n  throw new Error(msg);\n}\ndeclare const param: string | undefined;\nconst id = param ?? fail('id is required');",
+      "lang": "ts",
+      "choices": [
+        "`string | undefined`, because `fail` may return",
+        "`string | never`, which stays as written in hovers",
+        "`string`, because a `never` operand adds nothing",
+        "`unknown`, because the two operands' types differ"
+      ],
+      "answer": 2,
+      "why": "`never` means the call does not complete, so it contributes nothing to the union: `string | never` is `string`. This makes a throwing helper a neat way to enforce required values inline. The `never` annotation is what tells tsc that `fail` cannot return.",
+      "tags": [
+        "never",
+        "null"
+      ],
+      "level": 2,
+      "asked": "A practical `never` use; interviewers like it more than the textbook definition."
+    },
+    {
+      "id": "ts-106",
+      "q": "`onChange?: (value: string) => void` is an optional prop. What is the idiomatic way to call it?",
+      "choices": [
+        "`onChange?.(value)`, which calls it only if it is defined",
+        "`onChange!(value)`, because the parent always passes it",
+        "`onChange(value)`, as optional functions become no-ops",
+        "`(onChange as Function)(value)`, to satisfy the checker"
+      ],
+      "answer": 0,
+      "why": "Optional call syntax short-circuits to `undefined` when the function is missing. `!` asserts it exists and crashes when it does not, and nothing turns a missing function into a no-op for you.",
+      "tags": [
+        "optional",
+        "functions"
+      ],
+      "level": 1,
+      "asked": "Quick fluency check with optional callbacks, common in component and event APIs."
+    },
+    {
+      "id": "ts-107",
+      "q": "What is `Options`?",
+      "code": "const defaults = { retries: 3, timeoutMs: 5000, verbose: false };\ntype Options = typeof defaults;",
+      "lang": "ts",
+      "choices": [
+        "`{ retries: 3; timeoutMs: 5000; verbose: false }`",
+        "`{ retries: number; timeoutMs: number; verbose: boolean }`",
+        "`'object'`, the string that `typeof` returns at runtime",
+        "`{ retries?: number; timeoutMs?: number; verbose?: boolean }`"
+      ],
+      "answer": 1,
+      "why": "In a type position, `typeof` asks for the declared type of a value, and the object's properties were widened because they are mutable. The runtime `typeof` operator is a different thing. Nothing becomes optional unless you wrap it in `Partial`.",
+      "tags": [
+        "type-ops",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "Deriving types from values keeps one source of truth; interviewers look for it."
+    },
+    {
+      "id": "ts-108",
+      "q": "How do you type a function that also carries a property, like `fetcher` with a `fetcher.retries` number?",
+      "choices": [
+        "`type Fetcher = { (url: string): Promise<Response>; retries: number }`",
+        "`type Fetcher = ((url: string) => Promise<Response>) | { retries: number }`",
+        "`interface Fetcher extends Function { retries: number; url: string }`",
+        "It cannot be typed, because functions cannot have properties in TypeScript"
+      ],
+      "answer": 0,
+      "why": "An object type with a call signature describes something callable that also has properties. The union means 'either a function or an object', and extending `Function` loses the parameter types. TypeScript also recognises property assignments on function declarations (`fetcher.retries = 3`).",
+      "tags": [
+        "functions",
+        "interfaces"
+      ],
+      "level": 2,
+      "asked": "Call signatures show up in library types; being able to write one shows you can read them."
+    },
+    {
+      "id": "ts-109",
+      "q": "Why do many codebases wrap `JSON.parse` in a helper that returns `unknown`?",
+      "choices": [
+        "`JSON.parse` returns `any`, which silently disables checking on everything that follows",
+        "`JSON.parse` returns `object`, which is too narrow for arrays, numbers and plain strings",
+        "`JSON.parse` returns `string`, which must be cast before any property is accessible",
+        "`JSON.parse` is untyped in lib.dom, so every call to it is an implicit-any error"
+      ],
+      "answer": 0,
+      "why": "The lib declares `JSON.parse(text): any`, so the result flows anywhere without a check. Returning `unknown` forces callers to validate or narrow before use. The other options misstate its declared return type.",
+      "tags": [
+        "unknown",
+        "boundary"
+      ],
+      "level": 1,
+      "asked": "Shows you know where `any` enters a codebase without anyone typing it."
+    },
+    {
+      "id": "ts-110",
+      "q": "What does `(string & {})` achieve in this type?",
+      "code": "type Size = 'sm' | 'md' | 'lg' | (string & {});\nconst a: Size = 'md';\nconst b: Size = '42px';",
+      "lang": "ts",
+      "choices": [
+        "It rejects `'42px'`, so only the three preset sizes are allowed",
+        "It accepts any string but keeps the presets in autocomplete",
+        "It turns `Size` into a branded, nominal string type",
+        "It forces custom strings through a type assertion"
+      ],
+      "answer": 1,
+      "why": "Plain `'sm' | ... | string` collapses to `string`, and editors lose the suggestions. `string & {}` is still every string but is not reduced, so the literals survive for autocomplete while arbitrary strings are accepted.",
+      "tags": [
+        "literals",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "A common pattern in design-system and library props; recognising it shows you read real-world types."
+    },
+    {
+      "id": "ts-111",
+      "q": "Why does the last line fail, and what is a clean fix?",
+      "code": "const SIZES = ['sm', 'md', 'lg'] as const;\ntype Size = (typeof SIZES)[number];\ndeclare const input: string;\nif (SIZES.includes(input)) { /* ... */ }",
+      "lang": "ts",
+      "choices": [
+        "`includes` needs a readonly argument; pass `input as const`",
+        "`as const` arrays have no `includes`; convert with `Array.from`",
+        "`includes` takes a `Size`; write a guard `isSize(x): x is Size`",
+        "`input` is `string`, so compare with `SIZES.indexOf(input) > 0`"
+      ],
+      "answer": 2,
+      "why": "On `readonly ('sm'|'md'|'lg')[]`, `includes` expects the element type, so an arbitrary `string` is rejected. Wrap it in a guard: `(SIZES as readonly string[]).includes(x)` inside `isSize(x: string): x is Size`, which also narrows `input` for the caller. `indexOf` has the same parameter type.",
+      "tags": [
+        "as-const",
+        "guards"
+      ],
+      "level": 3,
+      "asked": "Validating a string against an allowed list is daily work; interviewers want the guard, not a scattered cast."
+    },
+    {
+      "id": "ts-112",
+      "q": "What are the types of `a` and `b`?",
+      "code": "const a = document.querySelector('input');\nconst b = document.querySelector('#email');",
+      "lang": "ts",
+      "choices": [
+        "`HTMLInputElement | null` and `HTMLInputElement | null`",
+        "`HTMLInputElement` and `Element`, as both are found",
+        "`Element | null` and `Element | null`",
+        "`HTMLInputElement | null` and `Element | null`"
+      ],
+      "answer": 3,
+      "why": "`querySelector` has an overload keyed on tag names, so `'input'` maps to `HTMLInputElement`. An id selector could match anything, so it returns `Element`. Both may find nothing, hence `| null`.",
+      "tags": [
+        "dom",
+        "null"
+      ],
+      "level": 2,
+      "asked": "Everyday DOM typing; the follow-up is usually how to get an input from `'#email'` safely."
+    },
+    {
+      "id": "ts-113",
+      "q": "What does the type argument in `document.querySelector<HTMLInputElement>('#email')` check?",
+      "choices": [
+        "It checks the matched element's tag name at runtime before returning it",
+        "It returns `null` whenever the match is not an `<input>` element",
+        "It fails to compile unless the selector string starts with `input`",
+        "Nothing: it is an unchecked cast of the result to that element type"
+      ],
+      "answer": 3,
+      "why": "The generic overload just lets you pick the return type, so it is a cast written differently. If `#email` is a `<div>`, `.value` is `undefined`. For a checked version, test `el instanceof HTMLInputElement`.",
+      "tags": [
+        "dom",
+        "assertions"
+      ],
+      "level": 2,
+      "asked": "Many people think generic arguments are checks; this separates them from those who know they are casts."
+    },
+    {
+      "id": "ts-114",
+      "q": "Why prefer `satisfies` over an annotation here?",
+      "code": "const routes = {\n  home: '/',\n  about: '/about',\n} satisfies Record<string, string>;\nroutes.hme;",
+      "lang": "ts",
+      "choices": [
+        "With the annotation, `routes.hme` compiles as `string`; here it is caught",
+        "`satisfies` also checks at runtime that each value is a route that exists",
+        "The annotation would turn `home` and `about` into optional properties",
+        "`satisfies` is the only form that allows `routes` to be exported"
+      ],
+      "answer": 0,
+      "why": "Annotating as `Record<string, string>` makes every string key valid, so a typo compiles and returns `undefined`. `satisfies` checks the shape but keeps the inferred type with its exact keys, so `hme` is an error. Nothing is checked at runtime either way.",
+      "tags": [
+        "satisfies",
+        "index-signatures"
+      ],
+      "level": 2,
+      "asked": "The canonical argument for `satisfies`; a strong answer names the lost-keys problem specifically."
+    },
+    {
+      "id": "ts-115",
+      "q": "What does `as const satisfies Record<string, `/${string}`>` give you on a routes object?",
+      "choices": [
+        "Readonly literal values that are also checked against the constraint",
+        "A type widened to the constraint, then made readonly at every level down",
+        "A runtime freeze plus a runtime check of each path's leading slash",
+        "Literal values that may be reassigned later, as long as they fit"
+      ],
+      "answer": 0,
+      "why": "`as const` keeps each value as a readonly literal like `'/about'`; `satisfies` then checks those values fit the template-literal constraint without widening them. Neither does anything at runtime: `as const` does not call `Object.freeze`.",
+      "tags": [
+        "satisfies",
+        "as-const"
+      ],
+      "level": 2,
+      "asked": "A modern config idiom; explaining both halves shows you understand what each operator contributes."
+    },
+    {
+      "id": "ts-116",
+      "q": "What is `K`?",
+      "code": "type A = { id: number; name: string };\ntype B = { id: number; total: number };\ntype K = keyof (A | B);",
+      "lang": "ts",
+      "choices": [
+        "`'id' | 'name' | 'total'`",
+        "`'name' | 'total'`",
+        "`never`",
+        "`'id'`"
+      ],
+      "answer": 3,
+      "why": "A value of type `A | B` is only guaranteed to have the keys both members share, so `keyof` of a union is the intersection of the key sets. `keyof (A & B)` would give all three. This is why you cannot read `name` without narrowing first.",
+      "tags": [
+        "keyof",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "Tests whether you reason about unions as 'one of these values' rather than 'all these fields'."
+    },
+    {
+      "id": "ts-117",
+      "q": "What is the type of `result`?",
+      "code": "declare function getUser(): Promise<{ id: number }>;\ndeclare function getTags(): Promise<string[]>;\nconst result = await Promise.all([getUser(), getTags()]);",
+      "lang": "ts",
+      "choices": [
+        "`({ id: number } | string[])[]`",
+        "`[{ id: number }, string[]]`",
+        "`Promise<[{ id: number }, string[]]>`",
+        "`unknown[]`"
+      ],
+      "answer": 1,
+      "why": "`Promise.all` is typed with a mapped tuple, so an array literal of promises gives a tuple of their resolved values, in order. `await` unwraps the outer promise. That is what makes `const [user, tags] = await Promise.all(...)` fully typed.",
+      "tags": [
+        "async",
+        "tuples"
+      ],
+      "level": 2,
+      "asked": "Parallel fetching is daily work, and interviewers like candidates who know the destructured result stays typed."
+    },
+    {
+      "id": "ts-118",
+      "q": "What does tsc report?",
+      "code": "async function total() {\n  return 42;\n}\nconst n: number = total();",
+      "lang": "ts",
+      "choices": [
+        "Nothing: `async` functions return their value directly",
+        "An error: `async` functions must declare a return type",
+        "Nothing: tsc inserts the missing `await` for you when compiling",
+        "An error: `Promise<number>` is not assignable to `number`"
+      ],
+      "answer": 3,
+      "why": "An `async` function always returns a promise, so its inferred return type is `Promise<number>`. You need `await total()` inside an async context. Return type annotations are optional, though `Promise<number>` would be the correct one.",
+      "tags": [
+        "async",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Basic, but it catches people who treat `async` as decoration."
+    },
+    {
+      "id": "ts-119",
+      "q": "`isAdmin(user)` returns `Promise<boolean>`. What does tsc report for `if (isAdmin(user)) { ... }`?",
+      "choices": [
+        "Nothing: a promise is always truthy, so the condition is valid code",
+        "Nothing, but the `if` body waits for the promise to settle before it runs",
+        "Nothing, but the `if` body waits for the promise to settle first",
+        "An error: the condition is always true because the promise is defined"
+      ],
+      "answer": 3,
+      "why": "TS reports error 2801 when a promise is used directly as a condition, since a promise object is always truthy. It catches the missing `await` that would otherwise grant admin to everyone. `if` does not generally require `boolean`; this check is specific to promises.",
+      "tags": [
+        "async",
+        "errors"
+      ],
+      "level": 2,
+      "asked": "A security-shaped bug; knowing tsc catches it, and when it cannot, shows real experience."
+    },
+    {
+      "id": "ts-120",
+      "q": "This compiles. Why is it still a bug?",
+      "code": "async function saveAll(items: string[]) {\n  items.forEach(async (item) => {\n    await save(item);\n  });\n}\ndeclare function save(x: string): Promise<void>;",
+      "lang": "ts",
+      "choices": [
+        "`forEach` ignores the returned promises, so `saveAll` resolves at once",
+        "`forEach` runs the callbacks one at a time and ignores the `await`",
+        "`forEach` rejects async callbacks at runtime by throwing a TypeError",
+        "`await` inside a callback blocks the whole event loop until done"
+      ],
+      "answer": 0,
+      "why": "`forEach` expects a callback returning `void`, and a function returning a promise is assignable to that, so tsc is silent. The promises are dropped: `saveAll` resolves before saving finishes and rejections go unhandled. Use `for...of` with `await` or `await Promise.all(items.map(save))`.",
+      "tags": [
+        "async",
+        "functions"
+      ],
+      "level": 2,
+      "asked": "One of the most common async bugs; the lint rule `no-misused-promises` exists because tsc allows it."
+    },
+    {
+      "id": "ts-121",
+      "q": "In a `.ts` file with no `import` or `export`, why does `const name = 'Ann';` fail to compile?",
+      "choices": [
+        "`name` is a reserved word in TypeScript, so it cannot be a variable name",
+        "String literals cannot be assigned to a `const` in a global scope",
+        "Top-level `const` declarations are only allowed inside ES module files",
+        "The file is a global script, so it clashes with the DOM's global `name`"
+      ],
+      "answer": 3,
+      "why": "A file without top-level `import`/`export` is a script, and its declarations share the global scope with lib.dom, which declares `window.name`. Adding `export {}` (or any import) makes it a module with its own scope; `moduleDetection: force` does the same project-wide.",
+      "tags": [
+        "modules",
+        "fundamentals"
+      ],
+      "level": 2,
+      "asked": "Baffling the first time; the fix shows you understand scripts versus modules."
+    },
+    {
+      "id": "ts-122",
+      "q": "What does this line declare?",
+      "code": "declare const user: { id: number; name: string };\nconst { id: number } = user;",
+      "lang": "ts",
+      "choices": [
+        "A variable `id` with the type `number`",
+        "A variable named `number` holding `user.id`",
+        "A compile error, as `number` is a reserved type",
+        "A variable `id` checked to be a number at runtime"
+      ],
+      "answer": 1,
+      "why": "In destructuring, `key: name` renames, so this creates a variable called `number`. Types go after the whole pattern: `const { id }: { id: number } = user`. It compiles, which is what makes it a trap.",
+      "tags": [
+        "fundamentals",
+        "functions"
+      ],
+      "level": 1,
+      "asked": "A classic stumble when typing destructured parameters; spotting it is a quick fluency check."
+    },
+    {
+      "id": "ts-123",
+      "q": "What is the difference between `string[]` and `Array<string>`?",
+      "choices": [
+        "`Array<string>` is a class instance; `string[]` is a plain object",
+        "`string[]` is fixed-length; `Array<string>` can grow and shrink",
+        "None: they are two spellings of the same type",
+        "`Array<string>` allows holes; `string[]` requires dense arrays"
+      ],
+      "answer": 2,
+      "why": "`T[]` is shorthand for `Array<T>`, and `readonly T[]` is shorthand for `ReadonlyArray<T>`. Style guides pick one for consistency; the generic form can read better for complex element types like `Array<string | number>`.",
+      "tags": [
+        "arrays",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "A warm-up question; the good answer adds the readonly equivalent."
+    },
+    {
+      "id": "ts-124",
+      "q": "A `User` type comes from the API. The UI adds `isSelected`. Which is the better model?",
+      "choices": [
+        "Add `isSelected?: boolean` to `User` so both layers share one type",
+        "Keep `User` as is and track selection as a `Set<User['id']>` alongside",
+        "Cast API responses with `as User & { isSelected: boolean }` on arrival",
+        "Create a class `SelectableUser extends User` and convert every item"
+      ],
+      "answer": 1,
+      "why": "Selection is UI state, not part of the entity, so keeping a set of ids avoids polluting the API type and avoids copying every item to toggle one. An optional field blurs the contract for every other consumer, and the cast claims a property that is not there.",
+      "tags": [
+        "modelling",
+        "state"
+      ],
+      "level": 2,
+      "asked": "Separating server data from UI state is a recurring design question in CRUD interviews."
+    },
+    {
+      "id": "ts-125",
+      "q": "What does tsc report for this signature?",
+      "code": "function find(query?: string, limit: number) {\n  return [];\n}",
+      "lang": "ts",
+      "choices": [
+        "Nothing; callers may simply pass `undefined` for `query`",
+        "An error: a required parameter cannot follow an optional one",
+        "Nothing; `limit` becomes optional because it follows `query`",
+        "An error only at call sites that leave out the `query` argument"
+      ],
+      "answer": 1,
+      "why": "Optional parameters must come after all required ones, because positional arguments cannot skip a slot. Either move `limit` first, give `query` a default, or type it `string | undefined` so callers pass `undefined` explicitly.",
+      "tags": [
+        "functions",
+        "optional"
+      ],
+      "level": 1,
+      "asked": "It checks you know how optional parameters map to positional arguments, a common source of awkward APIs."
+    },
+    {
+      "id": "ts-126",
+      "q": "How do callers see the parameter `name` in this function?",
+      "code": "function greet(name = 'friend') {\n  return `Hi ${name}`;\n}",
+      "lang": "ts",
+      "choices": [
+        "As a required `string`, since the default only applies inside",
+        "As the literal type `'friend'`, inferred from the default",
+        "As `name?: string`, so it can be omitted or passed `undefined`",
+        "As `any`, since the parameter has no explicit type annotation"
+      ],
+      "answer": 2,
+      "why": "A default value makes the parameter optional to callers and gives it the widened type of the default, here `string`. Passing `undefined` also triggers the default; the literal type is widened just as it is for a `let`.",
+      "tags": [
+        "functions",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "Reading inferred signatures in editor tooltips is daily work, and defaults are the most common source of optional parameters."
+    },
+    {
+      "id": "ts-127",
+      "q": "Why does the call on the last line fail to compile?",
+      "code": "function move(x: number, y: number) {}\nconst point = [10, 20];\nmove(...point);",
+      "lang": "ts",
+      "choices": [
+        "`point` is `number[]`, which could hold any number of values",
+        "Spread arguments are only allowed for rest parameters in TS",
+        "`point` is inferred as `[number, number]`, which is read-only",
+        "The array literal is widened to `(number | undefined)[]`"
+      ],
+      "answer": 0,
+      "why": "Array literals infer as `number[]`, whose length is unknown, so TypeScript cannot prove there are exactly two arguments. Annotate `point` as `[number, number]` or write `[10, 20] as const`; spreading a tuple into fixed parameters is allowed.",
+      "tags": [
+        "tuples",
+        "functions"
+      ],
+      "level": 2,
+      "asked": "It shows whether you understand the array-versus-tuple distinction in inference, which also bites with `Math.max(...xs)` style code."
+    },
+    {
+      "id": "ts-128",
+      "q": "Which assignment does tsc reject?",
+      "code": "type Compare = (a: number, b: number) => number;\nconst c1: Compare = (a) => a;\nconst c2: Compare = () => 0;\nconst c3: Compare = (a, b, c) => a - b;",
+      "lang": "ts",
+      "choices": [
+        "`c1`, because it ignores the second argument",
+        "`c2`, because it declares no parameters at all",
+        "`c3`, because it expects a third argument",
+        "None of them, since only return types are checked"
+      ],
+      "answer": 2,
+      "why": "A function with fewer parameters is assignable to a type with more, since ignoring extra arguments is safe; that is why `arr.map((x) => x)` works. A function that needs a third argument would read `undefined`, so `c3` is rejected.",
+      "tags": [
+        "functions",
+        "assignability"
+      ],
+      "level": 1,
+      "asked": "It tests the parameter-count rule behind every callback you pass to `map`, `forEach` or an event API."
+    },
+    {
+      "id": "ts-129",
+      "q": "What does tsc report for this function under `strict`?",
+      "code": "function label(s: 'draft' | 'live'): string {\n  if (s === 'draft') return 'Draft';\n}",
+      "lang": "ts",
+      "choices": [
+        "Nothing; the function returns `undefined` for `live` at runtime",
+        "Nothing unless `noImplicitReturns` is also switched on",
+        "An error that `s` is `never` after the `draft` check",
+        "An error: the function lacks an ending return statement"
+      ],
+      "answer": 3,
+      "why": "With a declared return type that does not include `undefined`, falling off the end of the function is an error regardless of `noImplicitReturns`. That flag covers functions without such a return type; here the annotation alone is enough.",
+      "tags": [
+        "functions",
+        "config"
+      ],
+      "level": 2,
+      "asked": "Annotating return types on exported functions is a common team rule, and this is one of the bugs it catches."
+    },
+    {
+      "id": "ts-130",
+      "q": "With `exactOptionalPropertyTypes` enabled, what happens here?",
+      "code": "type Profile = { nickname?: string };\nconst p: Profile = { nickname: undefined };",
+      "lang": "ts",
+      "choices": [
+        "It compiles, because `?` always means `string | undefined`",
+        "An error: optional properties cannot be set in a literal",
+        "It compiles, and the key is removed from the object at runtime",
+        "An error: `undefined` is not assignable to `string` here"
+      ],
+      "answer": 3,
+      "why": "The flag separates \"key absent\" from \"key present with value `undefined`\". A `?` property may be missing, but if present it must be a `string`; to allow both, write `nickname?: string | undefined`. It matters for PATCH bodies and spreads, where an explicit `undefined` overwrites a value.",
+      "tags": [
+        "config",
+        "optional"
+      ],
+      "level": 3,
+      "asked": "Strong candidates connect it to real bugs, like `{ ...user, ...patch }` wiping a field because the patch held `undefined`."
+    },
+    {
+      "id": "ts-131",
+      "q": "With `noImplicitOverride` on, what does tsc report?",
+      "code": "class Repo {\n  save() { return 'base'; }\n}\nclass UserRepo extends Repo {\n  save() { return 'user'; }\n}",
+      "lang": "ts",
+      "choices": [
+        "An error: `save` must carry the `override` modifier",
+        "An error: base methods must be marked `virtual` to be overridden",
+        "Nothing; overriding a method only needs a matching signature",
+        "Nothing, but `super.save()` must be called in the override"
+      ],
+      "answer": 0,
+      "why": "Under `noImplicitOverride`, a subclass member that replaces a base member must say `override`, and `override` on a member with no base counterpart is an error. It catches silent breakage when a base method is renamed. TypeScript has no `virtual` keyword.",
+      "tags": [
+        "classes",
+        "config"
+      ],
+      "level": 2,
+      "asked": "It shows familiarity with the stricter flags beyond `strict` and with how renames break class hierarchies."
+    },
+    {
+      "id": "ts-132",
+      "q": "With `verbatimModuleSyntax` on, why does tsc reject line 1 of `app.ts`?",
+      "code": "// types.ts: export interface User { id: string }\nimport { User } from './types';\nconst u: User = { id: '1' };",
+      "lang": "ts",
+      "choices": [
+        "Interfaces cannot be imported, only re-declared per file",
+        "The import path needs a `.js` extension under this flag",
+        "`User` is only used as a type, so the import must be type-only",
+        "Named imports are not allowed; use a default import instead"
+      ],
+      "answer": 2,
+      "why": "The flag makes emit predictable: imports without `type` are kept verbatim, so importing something that exists only as a type would leave a runtime import of a missing export. Write `import type { User }` or `import { type User }`.",
+      "tags": [
+        "modules",
+        "config"
+      ],
+      "level": 2,
+      "asked": "The flag is the modern default for bundler and Node projects, and its error is one of the first new TS users hit."
+    },
+    {
+      "id": "ts-133",
+      "q": "In TypeScript 5.8+, with `erasableSyntaxOnly` on, which declaration does tsc reject?",
+      "code": "type Id = string;\ninterface User { id: Id }\nenum Role { Admin, Editor }\ndeclare const current: User;",
+      "lang": "ts",
+      "choices": [
+        "The `type` alias, as aliases need runtime metadata",
+        "The `interface`, as it must be converted to a type",
+        "The `enum`, as it emits a runtime object",
+        "The `declare const`, as it has no initialiser"
+      ],
+      "answer": 2,
+      "why": "`erasableSyntaxOnly` allows only syntax that can be deleted to leave valid JavaScript, which is what Node 24 type stripping does. Enums, namespaces with values and constructor parameter properties generate code, so they are rejected; types, interfaces and `declare` simply vanish.",
+      "tags": [
+        "config",
+        "enums"
+      ],
+      "level": 2,
+      "asked": "With Node running `.ts` files directly, interviewers ask which TypeScript features still need a compiler."
+    },
+    {
+      "id": "ts-134",
+      "q": "You run `node app.ts` on Node 24 and the file contains a type error. What happens?",
+      "choices": [
+        "Node refuses to start and prints the tsc diagnostic",
+        "Node strips the types and runs the code without checking",
+        "Node prints the type error as a warning, then runs it",
+        "Node runs it only when a tsconfig.json sits next to it"
+      ],
+      "answer": 1,
+      "why": "Node replaces type annotations with whitespace and executes the JavaScript; it never type-checks and ignores tsconfig. You still run `tsc --noEmit` in CI or the editor to catch type errors.",
+      "tags": [
+        "node",
+        "config"
+      ],
+      "level": 1,
+      "asked": "It separates \"TypeScript runs\" from \"TypeScript checked it\", which is the whole point of a CI type-check step."
+    },
+    {
+      "id": "ts-135",
+      "q": "What does this constructor do?",
+      "code": "class User {\n  constructor(public name: string, private age: number) {}\n}",
+      "lang": "ts",
+      "choices": [
+        "Declares two parameters but does not store them anywhere",
+        "Declares and assigns two fields, one public and one private",
+        "Declares two fields that are both readonly after construction",
+        "Creates a public field and a parameter only visible in the body"
+      ],
+      "answer": 1,
+      "why": "An accessibility modifier on a constructor parameter makes it a parameter property: TypeScript declares the field and emits `this.name = name`. Because it emits code, it is not allowed under `erasableSyntaxOnly`; readonly needs the `readonly` keyword.",
+      "tags": [
+        "classes",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "The shorthand is everywhere in NestJS and Angular services, so you must read it at a glance."
+    },
+    {
+      "id": "ts-136",
+      "q": "Which line fails to compile?",
+      "code": "class Base { protected token = 'x'; }\nclass Api extends Base {\n  auth() { return this.token; }     // A\n}\nconst api = new Api();\napi.auth();                         // B\napi.token;                          // C",
+      "lang": "ts",
+      "choices": [
+        "Line A, because `protected` members are hidden from subclasses",
+        "Line B, because `auth` returns a protected value",
+        "Line C, because `token` is only visible inside the hierarchy",
+        "None, since `protected` is only enforced at runtime"
+      ],
+      "answer": 2,
+      "why": "`protected` members are accessible within the class and its subclasses but not from outside code. Returning the value from a public method is allowed; the check is on where the member is accessed, and like `private` it is compile-time only.",
+      "tags": [
+        "classes",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Access modifiers come up in any OOP-flavoured interview, and TS adds the twist that they vanish at runtime."
+    },
+    {
+      "id": "ts-137",
+      "q": "What does tsc report for the last line?",
+      "code": "class Cart {\n  items: number[] = [];\n  get total() { return this.items.reduce((a, b) => a + b, 0); }\n}\nnew Cart().total = 10;",
+      "lang": "ts",
+      "choices": [
+        "An error: `total` is a read-only property",
+        "Nothing; the assignment is silently ignored at runtime",
+        "Nothing; `total` is a plain `number` field on the type",
+        "An error: getters cannot be accessed on a new instance"
+      ],
+      "answer": 0,
+      "why": "A getter without a setter is typed as a read-only property, so assigning to it is a compile error. At runtime in a module (strict mode) the assignment would throw a TypeError rather than being ignored.",
+      "tags": [
+        "classes",
+        "readonly"
+      ],
+      "level": 1,
+      "asked": "Computed properties on models and view-models are common, and knowing TS treats them as readonly avoids pointless casts."
+    },
+    {
+      "id": "ts-138",
+      "q": "Does the last line compile?",
+      "code": "const config = Object.freeze({\n  port: 3000,\n  db: { host: 'localhost' },\n});\nconfig.db.host = 'prod-db';",
+      "lang": "ts",
+      "choices": [
+        "No, because `Object.freeze` returns a deeply readonly type",
+        "Yes, because `Object.freeze` returns the original mutable type",
+        "No, because `host` was inferred as the literal `localhost`",
+        "Yes, because the readonly type is only one level deep"
+      ],
+      "answer": 3,
+      "why": "`Object.freeze` returns `Readonly<T>`, which marks only the top-level properties readonly, matching the runtime behaviour where nested objects stay mutable. `config.port = 1` would fail; nested writes compile and succeed.",
+      "tags": [
+        "readonly",
+        "immutability"
+      ],
+      "level": 2,
+      "asked": "Shallow versus deep immutability is a classic follow-up whenever `readonly` or `const` comes up."
+    },
+    {
+      "id": "ts-139",
+      "q": "What is the type of `entries`?",
+      "code": "const stock = { apples: 3, pears: 5 };\nconst entries = Object.entries(stock);",
+      "lang": "ts",
+      "choices": [
+        "`['apples' | 'pears', number][]`",
+        "`(['apples', number] | ['pears', number])[]`",
+        "`[string, any][]`",
+        "`[string, number][]`"
+      ],
+      "answer": 3,
+      "why": "Because object types are open (a value may carry extra keys), `Object.entries` returns `string` keys, paired with the union of property value types. It is the same reasoning that makes `Object.keys` return `string[]`.",
+      "tags": [
+        "inference",
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "It tests whether you understand why the standard library is deliberately loose about keys, rather than calling it a TS bug."
+    },
+    {
+      "id": "ts-140",
+      "q": "Why does this fail under `strict`, and what is the usual fix?",
+      "code": "type User = { id: string; name: string };\ndeclare const users: User[];\nconst byId = users.reduce((acc, u) => {\n  acc[u.id] = u;\n  return acc;\n}, {});",
+      "lang": "ts",
+      "choices": [
+        "`reduce` cannot return objects; build the map with `forEach`",
+        "`acc` is `{}`, which has no index signature; pass `reduce<Record<string, User>>`",
+        "`u` is inferred as `unknown`; annotate it as `(acc, u: User)`",
+        "`acc` is `any`, which `strict` forbids; annotate it as `object`"
+      ],
+      "answer": 1,
+      "why": "The accumulator type is inferred from the initial value `{}`, which cannot be indexed by a string. Supplying the type argument, or typing the seed as `{} as Record<string, User>`, gives `acc` a usable type. `Object.fromEntries` or `Map` are common alternatives.",
+      "tags": [
+        "inference",
+        "arrays"
+      ],
+      "level": 2,
+      "asked": "Grouping and indexing with `reduce` is everyday CRUD code, and this error is one juniors often silence with `any`."
+    },
+    {
+      "id": "ts-141",
+      "q": "What type does TypeScript give `json`, and is it accurate?",
+      "code": "const json = JSON.stringify(undefined);",
+      "lang": "ts",
+      "choices": [
+        "`string`, although the value is `undefined`",
+        "`string | undefined`, and it is accurate",
+        "`never`, since stringifying `undefined` throws",
+        "`string`, and the value is the text `'undefined'`"
+      ],
+      "answer": 0,
+      "why": "The standard library declares `JSON.stringify` as returning `string`, but it returns `undefined` for `undefined`, functions and symbols. It is a deliberate convenience over soundness, so code that stringifies optional values should handle the undefined case itself.",
+      "tags": [
+        "soundness",
+        "boundary"
+      ],
+      "level": 3,
+      "asked": "It shows you know the type definitions are hand-written approximations, not a guarantee from the runtime."
+    },
+    {
+      "id": "ts-142",
+      "q": "Why does `const theme: string = localStorage.getItem('theme');` fail under `strict`?",
+      "choices": [
+        "`getItem` returns `any`, which cannot be assigned to `string`",
+        "`getItem` returns `unknown` and needs a type guard first",
+        "`getItem` returns a `Promise`, so it needs an `await`",
+        "`getItem` returns `string | null` for a missing key"
+      ],
+      "answer": 3,
+      "why": "Web Storage returns `null` when the key is absent, and the DOM types encode that. Handle it with `?? 'light'` or a check; asserting with `!` only hides the first-visit case.",
+      "tags": [
+        "dom",
+        "null"
+      ],
+      "level": 1,
+      "asked": "Persisting preferences is a standard take-home feature, and the null case is exactly what first-time users hit."
+    },
+    {
+      "id": "ts-143",
+      "q": "Given a `FormData` from a submitted form, why does `const email: string = data.get('email');` fail?",
+      "choices": [
+        "`get` returns `string[]`, since a field may repeat",
+        "`get` returns `FormDataEntryValue | null`: a string, a File, or null",
+        "`get` returns `unknown`, since form fields are untyped input",
+        "`get` returns `string | undefined` when the field is empty"
+      ],
+      "answer": 1,
+      "why": "A form field can be a text value or a `File` from a file input, and a missing name gives `null`. Narrow with `typeof v === 'string'` before using it; an empty text input yields an empty string, not `null`.",
+      "tags": [
+        "dom",
+        "narrowing"
+      ],
+      "level": 2,
+      "asked": "React 19 form actions hand you `FormData` directly, so reading it safely is now common in interviews."
+    },
+    {
+      "id": "ts-144",
+      "q": "Why does `e.target.value` fail to compile here?",
+      "code": "const input = document.querySelector('input')!;\ninput.addEventListener('input', (e) => {\n  console.log(e.target.value);\n});",
+      "lang": "ts",
+      "choices": [
+        "`e` is typed `Event`, and `e.target` is `EventTarget | null`",
+        "`e` is typed `any`, which `strict` rejects without annotation",
+        "`e.target` is `HTMLInputElement`, but `value` is optional",
+        "The listener needs the `InputEvent<HTMLInputElement>` generic"
+      ],
+      "answer": 0,
+      "why": "The event's target could be any node (events bubble), so the DOM types give `EventTarget | null`. Use the `input` variable you already have, or `e.currentTarget` with a check; `InputEvent` is not generic.",
+      "tags": [
+        "dom",
+        "narrowing"
+      ],
+      "level": 2,
+      "asked": "It checks whether you understand why `target` and `currentTarget` differ, not just how to silence the error."
+    },
+    {
+      "id": "ts-145",
+      "q": "What is the type of `port`?",
+      "code": "const port = process.env.PORT;",
+      "lang": "ts",
+      "choices": [
+        "`string`, always defined in a Node process",
+        "`number`, since ports are numeric",
+        "`string | undefined`",
+        "`any`, since environment values are untyped"
+      ],
+      "answer": 2,
+      "why": "`@types/node` types `process.env` as a dictionary of `string | undefined`: every value is text, and any key may be missing. Parse and validate once at startup, e.g. `Number(process.env.PORT ?? 3000)` or a schema.",
+      "tags": [
+        "node",
+        "null"
+      ],
+      "level": 1,
+      "asked": "Config handling is where many production crashes start; a strong answer mentions validating env at boot."
+    },
+    {
+      "id": "ts-146",
+      "q": "What does tsc report for this function?",
+      "code": "async function save(): void {\n  await fetch('/api');\n}",
+      "lang": "ts",
+      "choices": [
+        "Nothing; `void` means the caller ignores the result",
+        "An error: `await` cannot be used in a `void` function",
+        "Nothing, but the call sites receive `undefined`",
+        "An error: an async function must return a `Promise` type"
+      ],
+      "answer": 3,
+      "why": "An async function always returns a promise, so its annotated return type must be `Promise<...>`, here `Promise<void>`. Leaving the annotation off would infer that automatically.",
+      "tags": [
+        "async",
+        "functions"
+      ],
+      "level": 1,
+      "asked": "It is a quick check that you know `async` changes the return type, which matters when typing callbacks and props."
+    },
+    {
+      "id": "ts-147",
+      "q": "What is the type of `err` in this `.catch` callback under `strict`?",
+      "code": "fetch('/api').catch((err) => {\n  console.log(err.message);\n});",
+      "lang": "ts",
+      "choices": [
+        "`unknown`, just like a `catch` clause variable",
+        "`Error`, since promises reject with errors",
+        "`any`, so `err.message` compiles unchecked",
+        "`TypeError`, the error `fetch` rejects with"
+      ],
+      "answer": 2,
+      "why": "`useUnknownInCatchVariables` only affects `try/catch` clauses; the lib types declare the rejection reason as `any`, so the callback parameter is `any`. Annotate it as `(err: unknown)` yourself to get the same safety.",
+      "tags": [
+        "async",
+        "errors"
+      ],
+      "level": 2,
+      "asked": "It reveals whether you know where `strict` stops, which matters when an error handler itself crashes."
+    },
+    {
+      "id": "ts-148",
+      "q": "With `lib` set to `[\"es2020\", \"dom\"]`, why does this fail to compile?",
+      "code": "try {\n  JSON.parse('{');\n} catch (e) {\n  throw new Error('Bad config', { cause: e });\n}",
+      "lang": "ts",
+      "choices": [
+        "The options argument to `Error` is only typed from `es2022`",
+        "`cause` must be an `Error`, and `e` is `unknown`",
+        "A caught error cannot be rethrown under `strict`",
+        "`Error` needs `new.target` support from `es2022` targets"
+      ],
+      "answer": 0,
+      "why": "The two-argument `Error` constructor and the `cause` property arrived in ES2022, so the lib typings only include them when `lib` (or `target`) covers `es2022`. `cause` is typed `unknown`, so passing the caught value is fine.",
+      "tags": [
+        "errors",
+        "config"
+      ],
+      "level": 2,
+      "asked": "Error chaining with `cause` is the modern way to add context without losing the original stack."
+    },
+    {
+      "id": "ts-149",
+      "q": "What is the type of `c`?",
+      "code": "declare const a: { id: number; name: string };\nconst c = { ...a, id: String(a.id) };",
+      "lang": "ts",
+      "choices": [
+        "`{ id: string; name: string }`",
+        "`{ id: string | number; name: string }`",
+        "`{ id: number; name: string }`",
+        "An error, since the spread types conflict"
+      ],
+      "answer": 0,
+      "why": "Spread types follow runtime semantics: later properties overwrite earlier ones, so `id` takes the type of the last assignment. This is how DTO mappers change a field type without a cast.",
+      "tags": [
+        "inference",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Mapping entities to DTOs with spreads is routine, and interviewers check you know what type comes out."
+    },
+    {
+      "id": "ts-150",
+      "q": "In React 19 with `@types/react` 19, what is the type of `items`?",
+      "code": "import { useState } from 'react';\nfunction List() {\n  const [items, setItems] = useState([]);\n  return null;\n}",
+      "lang": "ts",
+      "choices": [
+        "`any[]`, since the array literal has no elements",
+        "`unknown[]`, the safe default for an empty array",
+        "`never[]`, so pushing any item later fails",
+        "`undefined[]`, from the empty initial state"
+      ],
+      "answer": 2,
+      "why": "State type is inferred from the initial value, and an empty array literal in that position infers `never[]`. Pass the type argument, `useState<Todo[]>([])`, whenever the initial value does not show the eventual shape.",
+      "tags": [
+        "react",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "It is the most common React-with-TS error, and a quick way to tell who has written typed React."
+    },
+    {
+      "id": "ts-151",
+      "q": "Why does `setUser(loaded)` fail to compile?",
+      "code": "type User = { id: string };\nfunction Profile({ loaded }: { loaded: User }) {\n  const [user, setUser] = useState(null);\n  setUser(loaded);\n}",
+      "lang": "ts",
+      "choices": [
+        "`useState(null)` infers the state type as just `null`",
+        "State setters cannot be called during render",
+        "`loaded` must be spread into a new object first",
+        "`useState` needs an initialiser function for objects"
+      ],
+      "answer": 0,
+      "why": "The state type is inferred from the initial value, which is only `null`. Write `useState<User | null>(null)` so later values fit. Calling a setter during render is a logic issue React reports at runtime, not a type error.",
+      "tags": [
+        "react",
+        "null"
+      ],
+      "level": 1,
+      "asked": "Loading-then-data state is in every React app, so typing it right is a basic expectation."
+    },
+    {
+      "id": "ts-152",
+      "q": "In React 19 types, what does tsc report for `ref.current.focus()`?",
+      "code": "import { useRef } from 'react';\nfunction Search() {\n  const ref = useRef<HTMLInputElement>(null);\n  const focus = () => ref.current.focus();\n  return <input ref={ref} />;\n}",
+      "lang": "tsx",
+      "choices": [
+        "Nothing; the ref is typed `HTMLInputElement` once attached",
+        "`useRef` requires a second type argument for DOM elements",
+        "`current` is readonly, so calling a method on it is rejected",
+        "`ref.current` is possibly null, so it needs `?.` or a check"
+      ],
+      "answer": 3,
+      "why": "In React 19 types, `useRef<T>(null)` returns `RefObject<T | null>`, and the ref really is `null` before mount and after unmount. Use `ref.current?.focus()`; the old mutable-versus-readonly ref split was removed in React 19 types.",
+      "tags": [
+        "react",
+        "null"
+      ],
+      "level": 2,
+      "asked": "Refs to inputs are standard for focus management and accessibility, and the null check reflects the real lifecycle."
+    },
+    {
+      "id": "ts-153",
+      "q": "In `@types/react` 18+, what does tsc report for the usage on the last line?",
+      "code": "import type { FC } from 'react';\nconst Card: FC = () => <div />;\nconst page = <Card>Hello</Card>;",
+      "lang": "tsx",
+      "choices": [
+        "Nothing; `FC` always includes an optional `children` prop",
+        "Nothing; JSX children are not type-checked against props",
+        "An error: `Card` takes no props, so it rejects `children`",
+        "An error: `FC` components must declare a return type"
+      ],
+      "answer": 2,
+      "why": "Since React 18 types, `FC` no longer adds `children` implicitly; a component accepts children only if its props say so, e.g. `{ children: ReactNode }` or `PropsWithChildren`. Children are checked like any other prop.",
+      "tags": [
+        "react",
+        "fundamentals"
+      ],
+      "level": 2,
+      "asked": "It shows whether your React-TS knowledge predates or follows the React 18 type changes many tutorials still ignore."
+    },
+    {
+      "id": "ts-154",
+      "q": "How should a component that wraps arbitrary content type its `children` prop?",
+      "choices": [
+        "`children: React.ReactNode`",
+        "`children: JSX.Element`, which accepts any JSX",
+        "`children: React.ReactElement[]`, for lists of elements",
+        "`children: string | object`, the two runtime shapes"
+      ],
+      "answer": 0,
+      "why": "`ReactNode` covers everything React can render: elements, strings, numbers, arrays, `null`, `undefined` and booleans. `JSX.Element` accepts only a single element, so plain text or a conditional `null` fails.",
+      "tags": [
+        "react",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Layout and card components take children constantly, so this is a quick screen of practical React-TS."
+    },
+    {
+      "id": "ts-155",
+      "q": "Why does the call on the last line fail, when `o` is not a fresh object literal?",
+      "code": "type Options = { retries?: number; verbose?: boolean };\nfunction run(o: Options) {}\nconst o = { retry: 3 };\nrun(o);",
+      "lang": "ts",
+      "choices": [
+        "`run` requires at least one property to be present on its argument",
+        "Excess property checks apply to every argument, not only to object literals",
+        "`retry` is inferred as the literal `3`, which is not assignable to `number`",
+        "All of `Options` is optional, and `o` shares none of its properties"
+      ],
+      "answer": 3,
+      "why": "A type whose properties are all optional is a \"weak type\", and TypeScript rejects assigning a value that shares no properties with it, which catches typos like `retry`. Excess property checks alone would not fire here, since `o` is not a fresh literal.",
+      "tags": [
+        "assignability",
+        "optional"
+      ],
+      "level": 3,
+      "asked": "Option bags are everywhere, and knowing this rule explains why some typos are caught and others are not."
+    },
+    {
+      "id": "ts-156",
+      "q": "What is the type of `x` in the `else` branch?",
+      "code": "function norm(x: string | readonly string[]) {\n  if (Array.isArray(x)) return x;\n  else return x;\n}",
+      "lang": "ts",
+      "choices": [
+        "`string`, since the readonly array was narrowed away",
+        "`readonly string[]`, since `isArray` rejects readonly",
+        "`string | readonly string[]`, as nothing was removed",
+        "`never`, since every case was handled by the `if`"
+      ],
+      "answer": 2,
+      "why": "`Array.isArray` is declared as `arg is any[]`, and a `readonly string[]` is not assignable to the mutable `any[]`, so the false branch cannot exclude it. It is a long-standing library typing gap; `typeof x === 'string'` narrows cleanly instead.",
+      "tags": [
+        "narrowing",
+        "readonly"
+      ],
+      "level": 3,
+      "asked": "It shows you can debug narrowing that \"should\" work by reading the guard's declared signature."
+    },
+    {
+      "id": "ts-157",
+      "q": "What is the type of `x` inside the `if`?",
+      "code": "function count(x: unknown) {\n  if (Array.isArray(x)) {\n    return x.length;\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "`unknown[]`, keeping the elements safely unknown",
+        "`any[]`, so element access is unchecked from here",
+        "`never[]`, since the element type cannot be known",
+        "`object`, since arrays are objects at runtime"
+      ],
+      "answer": 1,
+      "why": "Because the guard is typed `arg is any[]`, narrowing `unknown` with it yields `any[]`, quietly reintroducing `any`. When validating untrusted input, follow it with element checks or annotate as `unknown[]` yourself.",
+      "tags": [
+        "narrowing",
+        "unknown"
+      ],
+      "level": 2,
+      "asked": "It catches a subtle way `any` leaks back into code that was carefully typed `unknown` at the boundary."
+    },
+    {
+      "id": "ts-158",
+      "q": "What is the type of `body`?",
+      "code": "declare const includeMeta: boolean;\nconst body = {\n  name: 'Ann',\n  ...(includeMeta && { meta: { v: 1 } }),\n};",
+      "lang": "ts",
+      "choices": [
+        "`{ name: string; meta: { v: number } | false }`",
+        "`{ name: string; meta?: { v: number } }`",
+        "`{ name: string; meta: { v: number } }`",
+        "An error, because `false` cannot be spread"
+      ],
+      "answer": 1,
+      "why": "Spreading `false` adds nothing at runtime, and TypeScript models a spread of `false | { meta }` as an optional property. It is a common idiom for conditional request fields; `includeMeta ? { meta } : {}` gives the same type.",
+      "tags": [
+        "inference",
+        "optional"
+      ],
+      "level": 3,
+      "asked": "Building request payloads with conditional fields is routine, and the resulting type decides how the API client is checked."
+    },
+    {
+      "id": "ts-159",
+      "q": "Why does the last line fail to compile?",
+      "code": "const state = { items: [], loading: false };\nstate.items.push('apple');",
+      "lang": "ts",
+      "choices": [
+        "`items` is inferred as `never[]` from the empty literal",
+        "`state` is a `const`, so its arrays cannot be changed",
+        "`items` is inferred as `readonly unknown[]` by default",
+        "`push` is not allowed on arrays inside object literals"
+      ],
+      "answer": 0,
+      "why": "An empty array inside an object literal has nothing to infer from, so under `strict` it becomes `never[]`, and nothing is assignable to `never`. Annotate the object (e.g. `{ items: [] as string[] }`) or give it a type.",
+      "tags": [
+        "inference",
+        "arrays"
+      ],
+      "level": 2,
+      "asked": "Initial state objects for reducers and stores hit this constantly, and the fix shows you know where inference gets its information."
+    },
+    {
+      "id": "ts-160",
+      "q": "What does tsc report for this declaration?",
+      "code": "const make: () => { id: number } = () => { id: 1 };",
+      "lang": "ts",
+      "choices": [
+        "Nothing; the arrow returns the object `{ id: 1 }` as written",
+        "An error: object literals need an `as` assertion here",
+        "Nothing, but `id` is typed as the literal `1`",
+        "An error: the braces are a block, so it returns `void`"
+      ],
+      "answer": 3,
+      "why": "After `=>`, a `{` starts a function body, so `id: 1` is a label and an expression statement, and the function returns nothing. Wrap the object in parentheses, `() => ({ id: 1 })`; the type annotation is what turns this silent JS bug into a compile error.",
+      "tags": [
+        "functions",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "It is a classic JS trap that TypeScript catches, and interviewers like candidates who can explain the parse."
+    },
+    {
+      "id": "ts-161",
+      "q": "This compiles under `strict`. What happens at runtime?",
+      "code": "class UserRepo {\n  private table = 'users';\n  find(id: string) { return `${this.table}/${id}`; }\n}\nconst { find } = new UserRepo();\nfind('42');",
+      "lang": "ts",
+      "choices": [
+        "It returns `'users/42'`, since class methods are auto-bound",
+        "It throws, because `this` is `undefined` in `find`",
+        "It returns `'undefined/42'`, reading a global",
+        "It returns `undefined`, as `find` exits early"
+      ],
+      "answer": 1,
+      "why": "Class bodies run in strict mode and methods are not bound, so a detached `find` gets `this === undefined` and reading `this.table` throws a TypeError. TypeScript does not catch it unless the method declares a `this` parameter; arrow-function properties or `.bind` fix it.",
+      "tags": [
+        "classes",
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "Passing methods as callbacks (event handlers, `map`) is where this bites, and TS will not warn you by default."
+    },
+    {
+      "id": "ts-162",
+      "q": "This compiles. What is wrong with the `update` helper?",
+      "code": "type User = { id: string; name: string };\nfunction update(u: User, patch: Partial<User>): User {\n  return { ...u, ...patch };\n}\nupdate({ id: '1', name: 'Ann' }, { name: undefined });",
+      "lang": "ts",
+      "choices": [
+        "The result claims `name: string` but holds `undefined` at runtime",
+        "Nothing, because spreads skip properties whose value is `undefined`",
+        "The `id` can be changed by the patch, which `Partial` should forbid",
+        "The spread order is reversed, so the patch is always discarded"
+      ],
+      "answer": 0,
+      "why": "Spreading copies own properties even when their value is `undefined`, so `name` is overwritten. By default `Partial` allows explicit `undefined`, so tsc accepts it; `exactOptionalPropertyTypes` makes the call an error. Changing `id` is a design concern, not the type hole here.",
+      "tags": [
+        "utility-types",
+        "soundness"
+      ],
+      "level": 3,
+      "asked": "PATCH handlers built on `Partial` are common, and this is how \"the name went blank\" bugs get into production."
+    },
+    {
+      "id": "ts-163",
+      "q": "What does tsc report for `Summary`?",
+      "code": "type User = { id: string; name: string };\ntype Summary = Pick<User, 'id' | 'email'>;",
+      "lang": "ts",
+      "choices": [
+        "Nothing; `Summary` gets `id` and an `email: unknown`",
+        "An error only when a `Summary` value is created",
+        "Nothing; the missing key is silently dropped",
+        "An error: `'email'` does not satisfy `keyof User`"
+      ],
+      "answer": 3,
+      "why": "`Pick<T, K>` constrains `K extends keyof T`, so a key that is not on `User` is rejected where the type is written. Note that `Omit` does not have this constraint, so a typo in an `Omit` key compiles.",
+      "tags": [
+        "utility-types",
+        "keyof"
+      ],
+      "level": 1,
+      "asked": "Deriving DTO types with `Pick` is routine, and it pays to know which utilities check their keys."
+    },
+    {
+      "id": "ts-164",
+      "q": "Which annotation accepts the value `['a', 1]`?",
+      "choices": [
+        "`string[] | number[]`",
+        "`(string | number)[]`",
+        "`[number, string]`",
+        "`Array<string> & Array<number>`"
+      ],
+      "answer": 1,
+      "why": "`(string | number)[]` is one array whose elements may be either type, so mixing is allowed. `string[] | number[]` means the whole array is all strings or all numbers, and the tuple has the wrong order.",
+      "tags": [
+        "unions",
+        "arrays"
+      ],
+      "level": 1,
+      "asked": "Where the parentheses go changes the meaning completely, and this distinction shows up in API response types."
+    },
+    {
+      "id": "ts-165",
+      "q": "Which line fails to compile?",
+      "code": "let status: 'draft' | 'live' = 'draft';\nlet text: string = 'hello';\ntext = status;   // A\nstatus = text;   // B",
+      "lang": "ts",
+      "choices": [
+        "Line A, because a union cannot be assigned to `string`",
+        "Line B, because `string` is wider than the union",
+        "Lines A and B, as the two types are unrelated",
+        "Neither line, because both hold string values"
+      ],
+      "answer": 1,
+      "why": "Every member of `'draft' | 'live'` is a string, so assigning the union to `string` is fine. The reverse would allow any text into `status`, so it is rejected; you need a guard or validation to go from `string` to the union.",
+      "tags": [
+        "literals",
+        "assignability"
+      ],
+      "level": 1,
+      "asked": "Assignability direction between literal unions and `string` is the root of many \"why won't this compile\" questions."
+    },
+    {
+      "id": "ts-166",
+      "q": "What is the type of `total`?",
+      "code": "declare const data: any;\nconst total = data.items.length * 2;",
+      "lang": "ts",
+      "choices": [
+        "`any`, since it comes from an `any` value",
+        "`number`, since `*` always produces a number",
+        "`unknown`, since `data.items` is unchecked",
+        "An error, since `any` members cannot be read"
+      ],
+      "answer": 1,
+      "why": "Property access on `any` stays `any`, but the arithmetic operators `*`, `-` and `/` always yield `number`, so `total` looks safely typed even though nothing about `data` was checked. That is how `any` hides behind plausible types.",
+      "tags": [
+        "unknown",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "It shows how `any` can launder itself into ordinary-looking types, which is why reviewers chase it at the source."
+    },
+    {
+      "id": "ts-167",
+      "q": "What does tsc report?",
+      "code": "let count: number;\nconsole.log(count + 1);",
+      "lang": "ts",
+      "choices": [
+        "An error: `count` is used before being assigned",
+        "Nothing; `count` is `undefined`, so it logs `NaN`",
+        "Nothing; declared numbers default to `0`",
+        "An error: `let` declarations must have an initialiser"
+      ],
+      "answer": 0,
+      "why": "Definite assignment analysis tracks whether a variable has been assigned on every path before it is read. A declaration without an initialiser is fine; reading it before assignment is the error.",
+      "tags": [
+        "fundamentals",
+        "control-flow"
+      ],
+      "level": 1,
+      "asked": "A quick check that you know TS tracks assignment, not just types."
+    },
+    {
+      "id": "ts-168",
+      "q": "With `noUncheckedIndexedAccess` on, which loop compiles?",
+      "code": "declare const names: string[];\nfor (let i = 0; i < names.length; i++) names[i].trim(); // A\nfor (const n of names) n.trim();                      // B",
+      "lang": "ts",
+      "choices": [
+        "Only A, since the bounds check proves the index is valid",
+        "Only B, since `for...of` yields `string` elements",
+        "Both, since arrays are exempt from the flag",
+        "Neither, since elements are `string | undefined`"
+      ],
+      "answer": 1,
+      "why": "The flag adds `undefined` to every indexed read, and TypeScript does not relate `i < names.length` to the index, so A fails. Iteration yields the element type directly, so `for...of`, `map` and `forEach` are unaffected.",
+      "tags": [
+        "config",
+        "arrays"
+      ],
+      "level": 2,
+      "asked": "The flag is increasingly default in new projects, and knowing its ergonomics shows you have lived with it."
+    },
+    {
+      "id": "ts-169",
+      "q": "Under plain `strict`, what are the types of `a` and `b`?",
+      "code": "declare const xs: number[];\nconst a = xs[xs.length - 1];\nconst b = xs.at(-1);",
+      "lang": "ts",
+      "choices": [
+        "`number` and `number`",
+        "`number | undefined` for both",
+        "`number` and `number | undefined`",
+        "`number | undefined` and `number`"
+      ],
+      "answer": 2,
+      "why": "Index access returns the element type unless `noUncheckedIndexedAccess` is on, while `at()` is declared as returning `T | undefined`. Both are `undefined` for an empty array; only `at` admits it.",
+      "tags": [
+        "arrays",
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "It tests whether you know which array APIs are honest about missing elements."
+    },
+    {
+      "id": "ts-170",
+      "q": "In a `.tsx` file, why does `const user = <User>data;` fail to parse?",
+      "choices": [
+        "Angle-bracket assertions were removed in TypeScript 5",
+        "The angle brackets are read as a JSX element named `User`",
+        "Assertions to interfaces are not allowed in TSX files",
+        "`data` must be `unknown` before it can be asserted"
+      ],
+      "answer": 1,
+      "why": "In TSX, `<User>` starts a JSX element, so the old assertion syntax is ambiguous and disallowed. Use `data as User`, which works in every file type.",
+      "tags": [
+        "assertions",
+        "react"
+      ],
+      "level": 1,
+      "asked": "It explains why codebases standardise on `as`, and shows you have worked in TSX."
+    },
+    {
+      "id": "ts-171",
+      "q": "Does the last line compile?",
+      "code": "class Cat { name = ''; }\nclass Dog { name = ''; }\nconst pet: Cat = new Dog();",
+      "lang": "ts",
+      "choices": [
+        "No, because `Dog` does not extend `Cat`",
+        "Yes, but only because both fields are initialised",
+        "No, because class instances are nominally typed",
+        "Yes, because the two classes have the same shape"
+      ],
+      "answer": 3,
+      "why": "TypeScript compares class instance types structurally, so any object with a `name: string` is a `Cat`. Inheritance is not required; adding a `private` or `#private` member is what makes a class behave nominally.",
+      "tags": [
+        "classes",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Structural typing surprises people from C# or Java, which is why it is asked in almost every TS screen."
+    },
+    {
+      "id": "ts-172",
+      "q": "Why is the assignment rejected?",
+      "code": "class A { private secret = 1; }\nclass B { private secret = 1; }\nconst a: A = new B();",
+      "lang": "ts",
+      "choices": [
+        "Private members are compared by declaration, not by shape",
+        "Private members are removed from the type, leaving `{}`",
+        "The initial values differ in their declared literal types",
+        "Classes with any private member cannot be assigned at all"
+      ],
+      "answer": 0,
+      "why": "Two types with a `private` or `protected` member are only compatible if that member comes from the same declaration, so `B` is not an `A` despite identical shapes. Subclasses of `A` remain assignable, since they inherit that declaration.",
+      "tags": [
+        "classes",
+        "assignability"
+      ],
+      "level": 3,
+      "asked": "It is the exception to structural typing, and one way to get nominal behaviour for domain types."
+    },
+    {
+      "id": "ts-173",
+      "q": "What does tsc report for the interface?",
+      "code": "type Shape = { kind: 'circle'; r: number } | { kind: 'square'; s: number };\ninterface Labelled extends Shape {\n  label: string;\n}",
+      "lang": "ts",
+      "choices": [
+        "An error: an interface cannot extend a union type",
+        "Nothing; the interface extends whichever member matches",
+        "Nothing; the interface becomes a union of labelled shapes",
+        "An error: `extends` requires a class or another interface"
+      ],
+      "answer": 0,
+      "why": "An interface needs a single object type (or intersection of them) with statically known members to extend; a union is not one. Use an intersection instead: `type Labelled = Shape & { label: string }`, which distributes over the members.",
+      "tags": [
+        "interfaces",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "It shows you know when you have to reach for `type` and intersections instead of `interface`."
+    },
+    {
+      "id": "ts-174",
+      "q": "What does tsc report?",
+      "code": "interface Settings { theme: string }\ninterface Settings { fontSize: number }\nconst s: Settings = { theme: 'dark' };",
+      "lang": "ts",
+      "choices": [
+        "A duplicate identifier error on the second interface",
+        "Nothing; the second declaration replaces the first",
+        "An error: property `fontSize` is missing",
+        "Nothing; merged interface members become optional"
+      ],
+      "answer": 2,
+      "why": "Interfaces with the same name in the same scope merge their members, so `Settings` requires both properties. The same code with two `type` aliases would be a duplicate identifier error; merging is what lets libraries augment types like `Window`.",
+      "tags": [
+        "interfaces",
+        "declarations"
+      ],
+      "level": 1,
+      "asked": "Declaration merging is the concrete difference between `interface` and `type` that interviewers want you to name."
+    },
+    {
+      "id": "ts-175",
+      "q": "With `noPropertyAccessFromIndexSignature` on, which line fails?",
+      "code": "type Env = { NODE_ENV: string; [key: string]: string | undefined };\ndeclare const env: Env;\nenv.NODE_ENV;     // A\nenv.API_URL;      // B\nenv['API_URL'];   // C",
+      "lang": "ts",
+      "choices": [
+        "Line A, since declared properties need brackets too",
+        "Line B, since `API_URL` comes only from the index signature",
+        "Line C, since bracket access is disallowed by the flag",
+        "None, since the flag only affects `Record` types"
+      ],
+      "answer": 1,
+      "why": "The flag forces bracket syntax for keys that exist only via an index signature, so reading a maybe-missing key looks different from reading a declared one. Declared properties keep dot access.",
+      "tags": [
+        "config",
+        "index-signatures"
+      ],
+      "level": 3,
+      "asked": "It shows familiarity with the stricter optional flags and the reasoning behind them."
+    },
+    {
+      "id": "ts-176",
+      "q": "What is the difference between `// @ts-expect-error` and `// @ts-ignore`?",
+      "choices": [
+        "`@ts-expect-error` silences only the next line; `@ts-ignore` the whole block",
+        "`@ts-expect-error` also stops the line from running at runtime",
+        "`@ts-ignore` is removed in TypeScript 5 and only `@ts-expect-error` works",
+        "`@ts-expect-error` itself errors if the next line has no error"
+      ],
+      "answer": 3,
+      "why": "Both suppress errors on the following line, but `@ts-expect-error` reports \"unused directive\" once the error goes away, so stale suppressions get cleaned up. That also makes it the tool for type-level tests that assert something should not compile.",
+      "tags": [
+        "config",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Teams usually lint for `@ts-expect-error` with a description; knowing why shows care for maintenance."
+    },
+    {
+      "id": "ts-177",
+      "q": "A package has no types, and you add `declare module 'legacy-charts';` to a `.d.ts`. What do its imports become?",
+      "choices": [
+        "Typed as `any`, so every use is unchecked",
+        "Typed as `unknown`, so each use needs a type guard first",
+        "Typed from the package's JavaScript source by inference",
+        "Typed as `never`, so any use is a compile error"
+      ],
+      "answer": 0,
+      "why": "A shorthand ambient module declaration without a body makes every import from it `any`. It unblocks a build but gives no safety, so a better next step is a small hand-written declaration for the functions you actually use.",
+      "tags": [
+        "declarations",
+        "modules"
+      ],
+      "level": 2,
+      "asked": "Untyped dependencies still happen, and interviewers want to hear the trade-off, not just the workaround."
+    },
+    {
+      "id": "ts-178",
+      "q": "What is an `@types/*` package?",
+      "choices": [
+        "A runtime polyfill that adds type checks to a library",
+        "Declarations for a JS library, from the DefinitelyTyped repo",
+        "A TypeScript rewrite of a library, maintained by its authors",
+        "A tsconfig preset tuned for a particular library"
+      ],
+      "answer": 1,
+      "why": "Packages like `@types/node` or `@types/express` hold only `.d.ts` files, written by the community in the DefinitelyTyped repo, for libraries that do not ship their own types. They can drift from the library version, so keep their major versions in step.",
+      "tags": [
+        "declarations",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Everyone installs these; knowing where they come from helps when the types and the runtime disagree."
+    },
+    {
+      "id": "ts-179",
+      "q": "A Vite project builds and runs even though the editor shows type errors. Why?",
+      "choices": [
+        "Vite type-checks only files imported by `index.html`",
+        "Vite reports type errors only in production builds",
+        "Vite ignores errors unless `strict` is set in tsconfig",
+        "Vite strips types per file and never type-checks them"
+      ],
+      "answer": 3,
+      "why": "Vite (via esbuild or Oxc) removes types file by file for speed and does not run the type checker. That is why templates run `tsc --noEmit` (or `tsc -b`) in the build script and CI.",
+      "tags": [
+        "config",
+        "tooling"
+      ],
+      "level": 1,
+      "asked": "It separates transpiling from type-checking, a distinction behind many \"it built but it is broken\" stories."
+    },
+    {
+      "id": "ts-180",
+      "q": "What does `skipLibCheck: true` skip?",
+      "choices": [
+        "Type-checking of all `.d.ts` files, yours included",
+        "Type-checking of every file inside `node_modules`",
+        "Resolution of `@types` packages not listed in `types`",
+        "Checking that imported libraries match their versions"
+      ],
+      "answer": 0,
+      "why": "It skips checking declaration files for internal consistency, which speeds builds and avoids conflicts between third-party typings. Your `.ts` code is still checked against those declarations, but errors inside your own `.d.ts` files also go unreported.",
+      "tags": [
+        "config",
+        "declarations"
+      ],
+      "level": 2,
+      "asked": "Nearly every template sets it, and knowing its cost stops you from hiding mistakes in hand-written declarations."
+    },
+    {
+      "id": "ts-181",
+      "q": "A Node project sets `\"lib\": [\"es2022\"]` in tsconfig. What happens to `document.title` in a shared helper?",
+      "choices": [
+        "It compiles, since `target` decides the available globals",
+        "It fails: `Cannot find name 'document'`",
+        "It compiles, since `@types/node` includes the DOM types",
+        "It fails only when the helper is run under Node"
+      ],
+      "answer": 1,
+      "why": "`lib` decides which built-in declarations exist; without `dom`, browser globals like `document` and `window` are unknown. That is a useful guard in server code, and a common surprise when sharing code between front and back end.",
+      "tags": [
+        "config",
+        "dom"
+      ],
+      "level": 2,
+      "asked": "It shows you know `lib` and `target` are separate knobs, a frequent tsconfig confusion."
+    },
+    {
+      "id": "ts-182",
+      "q": "With `\"types\": [\"node\"]` in tsconfig, a Vitest test using global `describe` stops compiling. Why?",
+      "choices": [
+        "Vitest only exposes globals in `.test.js` files",
+        "Global test functions require `isolatedModules`",
+        "`@types/node` declares its own conflicting `describe`",
+        "A `types` list limits which `@types` globals load"
+      ],
+      "answer": 3,
+      "why": "By default every package under `node_modules/@types` contributes globals; a `types` array restricts that to the listed ones. Add `vitest/globals` to the list, or import `describe` explicitly from `vitest`.",
+      "tags": [
+        "config",
+        "testing"
+      ],
+      "level": 2,
+      "asked": "Global type pollution between test runners and app code is a common monorepo headache."
+    },
+    {
+      "id": "ts-183",
+      "q": "tsconfig maps `\"@/*\": [\"./src/*\"]` under `paths`. `tsc` builds, but `node dist/index.js` fails to find `@/db`. Why?",
+      "choices": [
+        "`paths` is not rewritten in the emitted JavaScript",
+        "`paths` only works with `moduleResolution: node10`",
+        "Node requires the alias to also be in `.npmrc`",
+        "tsc only rewrites aliases when `baseUrl` is set"
+      ],
+      "answer": 0,
+      "why": "tsc leaves import specifiers as written, so `@/db` stays in the emitted JS and Node has no idea what it means. Bundlers read `paths` themselves; for plain Node use package.json `imports` (`#db`) or a build step that rewrites aliases.",
+      "tags": [
+        "config",
+        "modules"
+      ],
+      "level": 2,
+      "asked": "It is a very common \"works in the editor, fails in production\" bug on Node back ends."
+    },
+    {
+      "id": "ts-184",
+      "q": "What does `// @ts-check` at the top of a `.js` file do?",
+      "choices": [
+        "Converts the file to TypeScript during the build",
+        "Requires every function in the file to have JSDoc",
+        "Enables runtime checks of JSDoc `@param` types",
+        "Type-checks the file using inference and JSDoc types"
+      ],
+      "answer": 3,
+      "why": "The comment opts one JavaScript file into checking by the TypeScript language service (or tsc with `allowJs`), using inference plus JSDoc annotations like `@param {string} name`. Nothing changes at runtime.",
+      "tags": [
+        "declarations",
+        "tooling"
+      ],
+      "level": 1,
+      "asked": "Gradual migration questions often start here: how do you get type safety before renaming files?"
+    },
+    {
+      "id": "ts-185",
+      "q": "You move an inline `onChange` handler for an `<input>` into a named function. Which parameter type fits it?",
+      "choices": [
+        "`e: React.ChangeEvent<HTMLInputElement>`",
+        "`e: Event`, the DOM event the browser dispatches",
+        "`e: React.InputEvent<string>`, typed by the value",
+        "`e: HTMLInputElement`, the element that changed"
+      ],
+      "answer": 0,
+      "why": "Inline handlers get their type from the `onChange` prop by contextual typing; a standalone function needs it spelt out. `ChangeEvent<HTMLInputElement>` types `e.currentTarget.value` and `e.target.value` as `string`. React passes its own synthetic event, not the DOM `Event`.",
+      "tags": [
+        "react",
+        "dom"
+      ],
+      "level": 1,
+      "asked": "Forms are most of CRUD UI work, and this is the first annotation everyone needs."
+    },
+    {
+      "id": "ts-186",
+      "q": "Which props type lets a `Button` component accept every native `<button>` attribute plus a `variant`?",
+      "choices": [
+        "`{ variant: 'primary' | 'ghost' } & Partial<HTMLButtonElement>`",
+        "`Partial<HTMLElement> & { variant: 'primary' | 'ghost' }`",
+        "`{ variant: 'primary' | 'ghost'; [attr: string]: unknown }`",
+        "`ComponentProps<'button'> & { variant: 'primary' | 'ghost' }`"
+      ],
+      "answer": 3,
+      "why": "`ComponentProps<'button'>` is the prop type React accepts for a `<button>`: attributes, event handlers and `ref` in React 19. `HTMLButtonElement` describes the DOM node itself, with methods and read-only fields, not JSX props.",
+      "tags": [
+        "react",
+        "utility-types"
+      ],
+      "level": 2,
+      "asked": "Design-system components wrap native elements all the time, and this is the idiomatic way to keep their full API."
+    },
+    {
+      "id": "ts-187",
+      "q": "Why do many codebases write the context hook like this?",
+      "code": "const AuthContext = createContext<Auth | null>(null);\nexport function useAuth() {\n  const ctx = useContext(AuthContext);\n  if (!ctx) throw new Error('useAuth needs <AuthProvider>');\n  return ctx;\n}",
+      "lang": "ts",
+      "choices": [
+        "Consumers get `Auth` rather than `Auth | null`, and a missing provider fails loudly",
+        "Contexts must default to `null`, or React throws an error at render time",
+        "`useContext` cannot be called in components directly, only in custom hooks",
+        "The `throw` makes React retry the render once the provider has mounted"
+      ],
+      "answer": 0,
+      "why": "There is no sensible default `Auth`, so the context is typed nullable; the hook narrows it once, so every caller receives `Auth`, and forgetting the provider gives a clear error instead of `undefined` crashes deep in the tree.",
+      "tags": [
+        "react",
+        "null"
+      ],
+      "level": 2,
+      "asked": "It is the standard typed-context pattern, and interviewers ask why you would not just use a fake default object."
+    },
+    {
+      "id": "ts-188",
+      "q": "What does this props type achieve?",
+      "code": "type LinkProps = { href: string; onClick?: never };\ntype ActionProps = { onClick: () => void; href?: never };\ntype Props = { label: string } & (LinkProps | ActionProps);",
+      "lang": "ts",
+      "choices": [
+        "`href` and `onClick` become required props on every usage",
+        "A usage may pass `href` or `onClick`, but not both together",
+        "`never` removes the props, so neither can be passed at all",
+        "It compiles, but TS cannot check which variant is in use"
+      ],
+      "answer": 1,
+      "why": "Each variant forbids the other's key with an optional `never`, so passing both matches neither member, while each alone matches one. Without the `never` keys, excess property checks on unions are too lenient to reject both.",
+      "tags": [
+        "react",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "Mutually exclusive props are a common component-API question, and this is the typed answer."
+    },
+    {
+      "id": "ts-189",
+      "q": "In an Express 5 app with `@types/express`, why does `req.body.emial` compile without complaint?",
+      "choices": [
+        "Express infers `req.body` from the JSON sent by the client",
+        "Typos in property names are only reported by ESLint",
+        "`req.body` is `unknown`, which permits property reads",
+        "`req.body` is typed `any` unless you supply a body type"
+      ],
+      "answer": 3,
+      "why": "The `Request` type's body parameter defaults to `any`, so every access compiles. Even with `Request<{}, {}, CreateUser>` it is only a claim; validate the body with a schema to get a type you can trust.",
+      "tags": [
+        "node",
+        "boundary"
+      ],
+      "level": 1,
+      "asked": "API handlers are where untrusted data enters, and interviewers want to hear that types alone do not protect you there."
+    },
+    {
+      "id": "ts-190",
+      "q": "With Zod 4, what is `User`?",
+      "code": "import { z } from 'zod';\nconst UserSchema = z.object({\n  email: z.email(),\n  age: z.number().int().optional(),\n});\ntype User = z.infer<typeof UserSchema>;",
+      "lang": "ts",
+      "choices": [
+        "`{ email: string; age?: number | undefined }`",
+        "`{ email: string; age: number | null }`",
+        "`{ email: Email; age?: Int }`, using branded types",
+        "`unknown`, until the schema has parsed a value"
+      ],
+      "answer": 0,
+      "why": "`z.infer` derives the static type from the schema, so the schema is the single source of truth for validation and typing. `.optional()` means the key may be absent or `undefined`; `null` would need `.nullable()`, and refinements like `email` or `int` do not brand the type.",
+      "tags": [
+        "validation",
+        "boundary"
+      ],
+      "level": 1,
+      "asked": "Schema-first typing is the standard answer to \"how do you type API input\", so knowing what `infer` yields matters."
+    },
+    {
+      "id": "ts-191",
+      "q": "What is the type of `r.data` inside the `if`?",
+      "code": "import { z } from 'zod';\nconst Id = z.object({ id: z.string() });\ndeclare const input: unknown;\nconst r = Id.safeParse(input);\nif (r.success) r.data;",
+      "lang": "ts",
+      "choices": [
+        "`{ id: string } | undefined`",
+        "`unknown`, since `input` was unknown",
+        "`{ id: string }`",
+        "`any`, since Zod returns loose types"
+      ],
+      "answer": 2,
+      "why": "`safeParse` returns a discriminated union on `success`, so checking it narrows to the branch with `data`. On the other branch you get `error` instead; `parse` would throw rather than return.",
+      "tags": [
+        "validation",
+        "narrowing"
+      ],
+      "level": 2,
+      "asked": "It connects runtime validation with discriminated-union narrowing, two things interviewers like to see together."
+    },
+    {
+      "id": "ts-192",
+      "q": "A handler validates `?page=2` with `z.object({ page: z.number() })` and every request fails. Why?",
+      "choices": [
+        "Query strings are parsed lazily, so `page` is `undefined` at validation",
+        "Express converts numeric query values to `bigint`, not `number`",
+        "Zod refuses integers unless the schema adds `.int()` to the number type",
+        "Query values are strings, so `z.number()` rejects `\"2\"`; use `z.coerce.number()`"
+      ],
+      "answer": 3,
+      "why": "URL query parameters always arrive as strings (or arrays of strings). `z.coerce.number()` runs `Number(value)` before validating; add `.int().positive()` so that `\"abc\"` (NaN) and negatives are still rejected.",
+      "tags": [
+        "validation",
+        "node"
+      ],
+      "level": 2,
+      "asked": "Pagination parameters are in every CRUD API, and this is the classic first bug when adding validation."
+    },
+    {
+      "id": "ts-193",
+      "q": "What are `z.input<typeof S>` and `z.output<typeof S>`?",
+      "code": "import { z } from 'zod';\nconst S = z.object({\n  createdAt: z.string().transform((s) => new Date(s)),\n});",
+      "lang": "ts",
+      "choices": [
+        "`{ createdAt: Date }` for each, as transforms apply to both",
+        "`{ createdAt: string }` and `{ createdAt: Date }`",
+        "`{ createdAt: Date }` and `{ createdAt: string }`",
+        "`{ createdAt: string }` for each, as transforms are untyped"
+      ],
+      "answer": 1,
+      "why": "A transform makes the schema accept one shape and produce another: input is what you parse (the JSON string), output is what `parse` returns (a `Date`). `z.infer` is the output type, so a form or client type should use `z.input`.",
+      "tags": [
+        "validation",
+        "boundary"
+      ],
+      "level": 3,
+      "asked": "It shows you understand that one schema can describe two different types, which matters when sharing schemas with a client."
+    },
+    {
+      "id": "ts-194",
+      "q": "What does the generic parameter actually check here?",
+      "code": "async function getJson<T>(url: string): Promise<T> {\n  const res = await fetch(url);\n  return res.json();\n}\nconst user = await getJson<User>('/api/me');",
+      "lang": "ts",
+      "choices": [
+        "Only that `User` is a valid type; the body is never checked",
+        "That the response body has every property of `User`",
+        "That the response `Content-Type` matches `User`",
+        "That `/api/me` returns an object rather than an array or null"
+      ],
+      "answer": 0,
+      "why": "`res.json()` returns `Promise<any>`, which is assignable to `Promise<T>`, so the generic is an assertion with nicer syntax. To make the type true, accept a schema (`getJson(url, UserSchema)`) and validate before returning.",
+      "tags": [
+        "generics",
+        "boundary"
+      ],
+      "level": 2,
+      "asked": "Typed fetch wrappers are a favourite exercise, and the strong answer points out where the lie is."
+    },
+    {
+      "id": "ts-195",
+      "q": "What happens to `import type { User } from './models'` in the emitted JavaScript?",
+      "choices": [
+        "It is kept as an import so that `User` is available at runtime",
+        "It is kept, but the bundler removes it later if it is unused",
+        "It is converted to a `require` call when targeting CommonJS",
+        "It is removed entirely, since it can only refer to types"
+      ],
+      "answer": 3,
+      "why": "A type-only import is always erased, so it never loads the module or causes a side effect, and it cannot be used as a value. That makes it safe to import types from server-only or heavy modules.",
+      "tags": [
+        "modules",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "It connects to circular-import and bundle-size questions, and to the `verbatimModuleSyntax` rule."
+    },
+    {
+      "id": "ts-196",
+      "q": "In TypeScript 5.5+, what does `isolatedDeclarations` require of a library's exported functions?",
+      "choices": [
+        "That every export lives in its own file with its own `.d.ts`",
+        "Explicit types wherever a `.d.ts` would need inference",
+        "That exported functions take no generic type parameters",
+        "That `declaration` is off, since tools generate the files instead"
+      ],
+      "answer": 1,
+      "why": "The flag demands that each file's declarations can be emitted without type-checking other files, which usually means explicit return types on exports. That lets fast tools generate `.d.ts` files in parallel, the same idea as `isolatedModules` for JS output.",
+      "tags": [
+        "config",
+        "declarations"
+      ],
+      "level": 3,
+      "asked": "It shows awareness of how monorepos and libraries speed up builds, and why explicit export types are a team convention."
+    },
+    {
+      "id": "ts-197",
+      "q": "In a monorepo, what do `composite: true` and project `references` give you?",
+      "choices": [
+        "Per-package builds that `tsc -b` orders and skips when unchanged",
+        "A single program that type-checks every package together as one unit",
+        "Automatic publishing of each package to the npm registry",
+        "Shared `node_modules` between packages without a workspace tool"
+      ],
+      "answer": 0,
+      "why": "Each referenced project builds separately, emitting `.d.ts` files and a `.tsbuildinfo`; `tsc -b` builds them in dependency order and skips up-to-date ones. Consumers type-check against the declarations rather than re-checking the source.",
+      "tags": [
+        "config",
+        "tooling"
+      ],
+      "level": 3,
+      "asked": "Build times in a TS monorepo are a real mid-level concern, and references are the built-in answer."
+    },
+    {
+      "id": "ts-198",
+      "q": "tsconfig has `outDir: \"dist\"` and no `rootDir`. After adding `scripts/seed.ts` next to `src/`, the output moves from `dist/index.js` to `dist/src/index.js`. Why?",
+      "choices": [
+        "tsc always mirrors the path from `package.json` into `outDir`",
+        "Scripts are compiled first, so they claim the top of `dist`",
+        "`outDir` is ignored when a file lives outside the `src` folder",
+        "Without `rootDir`, output mirrors the common root of all inputs"
+      ],
+      "answer": 3,
+      "why": "When `rootDir` is not set, tsc uses the longest common directory of the input files; including a file outside `src` raises that root to the project folder. Set `rootDir: \"src\"` (and keep scripts in a separate config) so the layout stays stable.",
+      "tags": [
+        "config",
+        "tooling"
+      ],
+      "level": 2,
+      "asked": "It is a classic \"the start script broke after an unrelated change\" debugging story."
+    },
+    {
+      "id": "ts-199",
+      "q": "Which setting lets you write `import config from './config.json'` with a typed result?",
+      "choices": [
+        "`resolveJsonModule`, which types the file from its content",
+        "`allowJs`, which treats JSON as JavaScript source",
+        "`esModuleInterop`, which adds a default export to JSON",
+        "`types: [\"json\"]`, which adds a global JSON module declaration"
+      ],
+      "answer": 0,
+      "why": "With `resolveJsonModule`, tsc reads the JSON file and infers its type (strings widen to `string`). On Node ESM you also need an import attribute: `with { type: 'json' }`.",
+      "tags": [
+        "config",
+        "modules"
+      ],
+      "level": 1,
+      "asked": "Importing config and fixtures is common, and it shows you know the tsconfig flags beyond `strict`."
+    },
+    {
+      "id": "ts-200",
+      "q": "Without `esModuleInterop`, why can `import express from 'express'` fail to type-check?",
+      "choices": [
+        "Express is ESM-only and has no default export at all",
+        "Express types are only visible through `import type`",
+        "Default imports are disallowed when `strict` is enabled",
+        "Express is CommonJS (`export =`), with no default export"
+      ],
+      "answer": 3,
+      "why": "CommonJS modules export a single `module.exports` value, declared with `export =`. The interop flag (on by default in modern configs, together with `allowSyntheticDefaultImports`) lets you treat it as a default export and emits helpers so it works at runtime.",
+      "tags": [
+        "config",
+        "modules"
+      ],
+      "level": 2,
+      "asked": "Mixed CJS and ESM is still daily life on Node, and this is its most common TypeScript symptom."
+    },
+    {
+      "id": "ts-201",
+      "q": "What does `\"strict\": true` do in tsconfig?",
+      "choices": [
+        "Enables a family of checks, such as `strictNullChecks`",
+        "Enables runtime checks that throw when a value has the wrong type",
+        "Makes tsc treat all warnings as errors, including unused variables",
+        "Turns on JavaScript strict mode, which is its only effect"
+      ],
+      "answer": 0,
+      "why": "`strict` is shorthand for several checks, including `strictNullChecks`, `noImplicitAny`, `strictFunctionTypes` and `useUnknownInCatchVariables`, and new ones join it in later versions. You can still turn one off individually. Unused-variable checks are separate flags.",
+      "tags": [
+        "config",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Knowing that `strict` grows with new releases explains why upgrades sometimes introduce new errors."
+    },
+    {
+      "id": "ts-202",
+      "q": "With `noUnusedParameters` on, how do you keep an Express error middleware's unused `next` parameter?",
+      "choices": [
+        "Add `// @ts-ignore` above the function declaration",
+        "Rename it with a leading underscore, such as `_next`",
+        "Mark it optional with `next?`, which exempts it",
+        "Remove it, since Express identifies middleware by its name"
+      ],
+      "answer": 1,
+      "why": "Parameters whose names start with `_` are exempt from the unused check. Removing it is wrong for Express: error middleware is recognised by having four parameters, so the position must stay.",
+      "tags": [
+        "config",
+        "node"
+      ],
+      "level": 1,
+      "asked": "It combines a TS flag with an Express quirk, both of which catch people in real code."
+    },
+    {
+      "id": "ts-203",
+      "q": "The `User` entity has `passwordHash`. Which type best describes the user your API returns?",
+      "choices": [
+        "`Omit<User, 'passwordHash'>`, built by an explicit mapper",
+        "`User`, and the handler deletes the field before sending",
+        "`Partial<User>`, so any field may be left out of the reply",
+        "`Record<string, unknown>`, as responses are just JSON"
+      ],
+      "answer": 0,
+      "why": "A separate response type states what leaves the server, and a mapper that builds it field by field means a new secret column is not leaked by accident. Types do not strip properties at runtime, so returning a full `User` typed as the smaller type would still send the hash.",
+      "tags": [
+        "modelling",
+        "boundary"
+      ],
+      "level": 1,
+      "asked": "DTOs versus entities is a core CRUD design question, and the runtime-versus-type distinction is the key insight."
+    },
+    {
+      "id": "ts-204",
+      "q": "A React front end and a Node API live in one repo. What is the usual way to share request and response types?",
+      "choices": [
+        "Copy the types into each app so they can change independently",
+        "Generate types from the database at build time in each app",
+        "Import the API's source files directly from the front end with relative paths",
+        "A shared workspace package, ideally holding schemas the types come from"
+      ],
+      "answer": 3,
+      "why": "A shared package (in npm, pnpm or Yarn workspaces) keeps one definition, and exporting schemas lets both sides validate as well as type. Relative imports into the API drag server code and dependencies into the client bundle; copies drift.",
+      "tags": [
+        "modelling",
+        "tooling"
+      ],
+      "level": 2,
+      "asked": "Full-stack TS roles ask this to see whether you have maintained a contract between two apps."
+    },
+    {
+      "id": "ts-205",
+      "q": "A back end publishes an OpenAPI spec. What is the main benefit of generating client types from it (e.g. with `openapi-typescript`)?",
+      "choices": [
+        "Client types track the spec, so API changes break the build",
+        "Responses are validated at runtime without any schema library",
+        "The generated client works offline by mocking every endpoint",
+        "The front end can skip handling error responses entirely"
+      ],
+      "answer": 0,
+      "why": "Generated types keep the client aligned with the spec, and regenerating after an API change turns a renamed field into compile errors. They are still static types: runtime validation or contract tests are needed if the server can drift from its spec.",
+      "tags": [
+        "boundary",
+        "tooling"
+      ],
+      "level": 2,
+      "asked": "Contract-first APIs are common across teams and languages, e.g. an ASP.NET back end with a TS front end."
+    },
+    {
+      "id": "ts-206",
+      "q": "In TypeScript 5.5+, what is the type of `values`?",
+      "code": "declare const results: PromiseSettledResult<number>[];\nconst values = results\n  .filter((r) => r.status === 'fulfilled')\n  .map((r) => r.value);",
+      "lang": "ts",
+      "choices": [
+        "An error: `value` does not exist on a rejected result",
+        "`unknown[]`, since `allSettled` hides the value type",
+        "`(number | undefined)[]`, from the rejected entries",
+        "`number[]`, as the filter infers a type predicate"
+      ],
+      "answer": 3,
+      "why": "Since 5.5, a callback like `(r) => r.status === 'fulfilled'` that narrows its parameter is inferred as a type predicate, so `filter` returns `PromiseFulfilledResult<number>[]`. Before 5.5 you needed an explicit `r is PromiseFulfilledResult<number>` annotation.",
+      "tags": [
+        "async",
+        "narrowing"
+      ],
+      "level": 3,
+      "asked": "Batch operations with `allSettled` are common, and knowing when TS infers predicates saves you boilerplate."
+    },
+    {
+      "id": "ts-207",
+      "q": "With `@types/express`, what is the type of `req.params.id` in this handler?",
+      "code": "import express from 'express';\nconst app = express();\napp.get('/users/:id', (req, res) => {\n  res.json({ id: req.params.id });\n});",
+      "lang": "ts",
+      "choices": [
+        "`string`, parsed from the `:id` in the route pattern",
+        "`string | undefined`, since route params may be missing",
+        "`number`, since the segment looks like an identifier",
+        "`any`, since Express has no types for route params"
+      ],
+      "answer": 0,
+      "why": "The Express types parse the path literal with template literal types, so `'/users/:id'` gives `params: { id: string }`. Parameters are always strings; convert and validate them yourself, and a typo like `req.params.userId` becomes a compile error.",
+      "tags": [
+        "node",
+        "template-literals"
+      ],
+      "level": 2,
+      "asked": "It shows you know what the framework types give you for free and what still needs validation."
+    },
+    {
+      "id": "ts-208",
+      "q": "Which dispatch does tsc reject?",
+      "code": "type Action =\n  | { type: 'add'; text: string }\n  | { type: 'clear' };\ndeclare const dispatch: (a: Action) => void;\ndispatch({ type: 'clear' });            // A\ndispatch({ type: 'add' });              // B\ndispatch({ type: 'add', text: 'milk' }); // C",
+      "lang": "ts",
+      "choices": [
+        "Line A, since every action needs a payload",
+        "Line B, since `add` requires `text`",
+        "Line C, since `text` is not on every member",
+        "None, since `type` is all TS checks"
+      ],
+      "answer": 1,
+      "why": "The object literal must match one member of the union; with `type: 'add'` only the member requiring `text` fits. This is why typed reducers catch missing payloads at the call site.",
+      "tags": [
+        "react",
+        "unions"
+      ],
+      "level": 1,
+      "asked": "Typed reducer actions are a staple of React-TS interviews, and this is the payoff they bring."
+    },
+    {
+      "id": "ts-209",
+      "q": "Which class declaration is valid?",
+      "code": "interface Saves { save(): void }\ninterface Loads { load(): void }\nclass Base {}\nclass Other {}",
+      "lang": "ts",
+      "choices": [
+        "`class Repo extends Base, Other {}`",
+        "`class Repo implements Base extends Other {}`",
+        "`class Repo extends Base implements Saves, Loads {}`",
+        "`class Repo implements Saves, extends Base {}` with `save` defined"
+      ],
+      "answer": 2,
+      "why": "A class extends at most one class and may implement any number of interfaces, with `extends` written first. `implements` only checks the shape; it does not inherit any code.",
+      "tags": [
+        "classes",
+        "interfaces"
+      ],
+      "level": 1,
+      "asked": "A basic OOP check, often followed by \"then how would you share behaviour between two classes?\""
+    },
+    {
+      "id": "ts-210",
+      "q": "Does the call on the last line compile?",
+      "code": "function total(xs: readonly number[]) {\n  return xs.reduce((a, b) => a + b, 0);\n}\nconst prices: number[] = [3, 4];\ntotal(prices);",
+      "lang": "ts",
+      "choices": [
+        "Yes, because a mutable array can be passed as a readonly one",
+        "No, because a mutable array is not a `readonly number[]`",
+        "No, because `reduce` is not declared on `readonly` array types",
+        "Yes, but only after spreading it into a new array"
+      ],
+      "answer": 0,
+      "why": "Mutable arrays have every method readonly arrays have, so they are assignable to them; the parameter type just promises the function will not mutate the argument. The reverse, passing a readonly array to a `number[]` parameter, is the direction that fails.",
+      "tags": [
+        "readonly",
+        "arrays"
+      ],
+      "level": 1,
+      "asked": "Typing parameters as readonly is a cheap way to document intent, and interviewers check you know it does not burden callers."
+    },
+    {
+      "id": "ts-211",
+      "q": "What is the type of `x` inside the `if`?",
+      "code": "type Email = { kind: 'email'; subject?: string };\ntype Sms = { kind: 'sms' };\nfunction f(x: Email | Sms) {\n  if ('subject' in x) return x;\n}",
+      "lang": "ts",
+      "choices": [
+        "`never`, since `in` ignores keys that are optional",
+        "`Email | Sms`, since `subject` is optional",
+        "`Email & { subject: string }`, a refined type",
+        "`Email`, since only `Email` declares `subject`"
+      ],
+      "answer": 3,
+      "why": "The `in` check keeps union members that declare the key, even as optional, and drops those that do not. It does not make `subject` defined; it only tells you the key exists on the object.",
+      "tags": [
+        "narrowing",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "The `in` operator is the go-to guard for unions without a shared discriminant, and its handling of optional keys is a common follow-up."
+    },
+    {
+      "id": "ts-212",
+      "q": "What is `u` in the `getLabel` callback?",
+      "code": "function Select<T>(p: { options: T[]; getLabel: (o: T) => string }) {\n  return null;\n}\ntype User = { id: string; name: string };\ndeclare const users: User[];\nconst el = <Select options={users} getLabel={(u) => u.name} />;",
+      "lang": "tsx",
+      "choices": [
+        "`unknown`, until you pass `<Select<User>>` explicitly",
+        "`User`, inferred from the `options` prop",
+        "`any`, since JSX props are not generic",
+        "`T`, left unresolved inside the callback"
+      ],
+      "answer": 1,
+      "why": "Generic components infer their type parameters from props just like function calls, so `options={users}` fixes `T` as `User` and the callback is contextually typed. Explicit JSX type arguments exist but are rarely needed.",
+      "tags": [
+        "react",
+        "generics"
+      ],
+      "level": 2,
+      "asked": "Reusable tables and selects are generic components, and interviewers probe whether you can type one."
+    },
+    {
+      "id": "ts-213",
+      "q": "Why does tsc reject this effect?",
+      "code": "useEffect(async () => {\n  const res = await fetch('/api/todos');\n  setTodos(await res.json());\n}, []);",
+      "lang": "ts",
+      "choices": [
+        "`useEffect` callbacks may not call state setters directly",
+        "The dependency array must also list `fetch` and `setTodos`",
+        "`await` is not allowed inside React hook callbacks",
+        "An async function returns a Promise, not a cleanup or nothing"
+      ],
+      "answer": 3,
+      "why": "The effect callback must return `void` or a cleanup function, and an async function always returns a promise, which React would try to call on cleanup. Define an async function inside the effect and call it, ideally with an `AbortController` for cleanup.",
+      "tags": [
+        "react",
+        "async"
+      ],
+      "level": 1,
+      "asked": "It is one of the first React-TS errors people hit, and the fix leads naturally into race conditions and cleanup."
+    },
+    {
+      "id": "ts-214",
+      "q": "What is the advantage of parsing `process.env` with a schema at startup?",
+      "code": "const Env = z.object({\n  DATABASE_URL: z.url(),\n  PORT: z.coerce.number().default(3000),\n});\nexport const env = Env.parse(process.env);",
+      "lang": "ts",
+      "choices": [
+        "It makes `process.env` values encrypted in memory at runtime",
+        "The app fails at boot on bad config, and `env` is fully typed",
+        "It lets TypeScript read the `.env` file during compilation",
+        "It removes the need to set environment variables in production"
+      ],
+      "answer": 1,
+      "why": "Validating once turns scattered `string | undefined` reads into one typed object with real numbers and defaults, and a missing variable crashes the deploy immediately instead of on the first request that needs it. The types come from the schema, not from the environment.",
+      "tags": [
+        "validation",
+        "node"
+      ],
+      "level": 2,
+      "asked": "Fail-fast config is a mark of production experience and appears in most back-end interviews."
+    },
+    {
+      "id": "ts-215",
+      "q": "What does tsc report for the last line?",
+      "code": "declare const start: Date;\ndeclare const end: Date;\nconst ms = end - start;",
+      "lang": "ts",
+      "choices": [
+        "Nothing; subtracting two dates yields the gap in milliseconds",
+        "An error: arithmetic needs `number`, `bigint` or `any` operands",
+        "Nothing, but `ms` is typed `Date` rather than `number`",
+        "An error: `Date` objects can only be compared with `<`"
+      ],
+      "answer": 1,
+      "why": "JavaScript coerces dates to numbers here, but TypeScript only allows arithmetic on number-like types. Write `end.getTime() - start.getTime()`; relational comparisons like `start < end` are allowed.",
+      "tags": [
+        "fundamentals",
+        "dom"
+      ],
+      "level": 1,
+      "asked": "Date maths comes up in every booking or reporting feature, and TS pushes you to the explicit form."
+    },
+    {
+      "id": "ts-216",
+      "q": "Which line fails to compile?",
+      "code": "const qty = '5';\nconst a = qty + 2;   // A\nconst b = qty * 2;   // B\nconst c = +qty * 2;  // C",
+      "lang": "ts",
+      "choices": [
+        "Line A, because `+` cannot mix strings and numbers",
+        "Line B, because `*` needs a number on the left",
+        "Line C, because unary `+` is not allowed on strings",
+        "None, because JavaScript coerces all three"
+      ],
+      "answer": 1,
+      "why": "`+` with a string is concatenation, which TS allows (giving `'52'`). Other arithmetic operators require number-like operands, so `qty * 2` is an error even though JS would coerce it. Unary `+` is an explicit conversion and gives `number`.",
+      "tags": [
+        "fundamentals",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "Form inputs are strings, and this is where TS forces the conversion JS would do silently."
+    },
+    {
+      "id": "ts-217",
+      "q": "What does tsc report?",
+      "code": "function find(id: string) {\n  if (id === 5) return null;\n  return { id };\n}",
+      "lang": "ts",
+      "choices": [
+        "Nothing; the comparison is simply always `false`",
+        "An error: the types `string` and `number` have no overlap",
+        "Nothing, since `===` compares values of any type",
+        "An error: `id` must be converted with `Number(id)` first"
+      ],
+      "answer": 1,
+      "why": "TypeScript flags comparisons between types that can never be equal, because they are almost always bugs, such as an ID that is a number in one layer and a string in another. `==` gets the same check.",
+      "tags": [
+        "fundamentals",
+        "unions"
+      ],
+      "level": 1,
+      "asked": "ID type mismatches between API, database and UI are common; this is how TS surfaces them."
+    },
+    {
+      "id": "ts-218",
+      "q": "What does tsc report for this catch clause?",
+      "code": "try {\n  await save();\n} catch (err: Error) {\n  console.error(err.message);\n}",
+      "lang": "ts",
+      "choices": [
+        "An error: a catch variable may only be annotated `any` or `unknown`",
+        "Nothing; the annotation narrows `err` to `Error`",
+        "Nothing, but a non-Error throw becomes `undefined`",
+        "An error: `await` is not allowed inside `try`"
+      ],
+      "answer": 0,
+      "why": "Anything can be thrown, so TypeScript will not let you claim the catch variable is an `Error`. Leave it as `unknown` and narrow with `err instanceof Error`.",
+      "tags": [
+        "errors",
+        "unknown"
+      ],
+      "level": 1,
+      "asked": "Error handling code is where type assumptions crash hardest, so interviewers check you do not assume `Error`."
+    },
+    {
+      "id": "ts-219",
+      "q": "What does tsc report for the last line?",
+      "code": "class User {\n  static count = 0;\n  constructor(public name: string) { User.count++; }\n}\nconst u = new User('Ann');\nconsole.log(u.count);",
+      "lang": "ts",
+      "choices": [
+        "Nothing; statics are also visible on each instance",
+        "An error: static fields cannot be changed",
+        "Nothing, but it logs `undefined` at runtime",
+        "An error: `count` does not exist on type `User`"
+      ],
+      "answer": 3,
+      "why": "Static members live on the constructor, `User.count`, not on instances, so the instance type has no `count`. The class name in a type position means the instance type; the static side is `typeof User`.",
+      "tags": [
+        "classes",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "A simple check of the instance versus static split, which trips up people coming from other languages."
+    },
+    {
+      "id": "ts-220",
+      "q": "A React component file contains JSX. Which extension must it use for tsc to accept the JSX?",
+      "choices": [
+        "`.ts`",
+        "`.tsx`",
+        "`.jsx.ts`",
+        "`.d.tsx`"
+      ],
+      "answer": 1,
+      "why": "TypeScript only parses JSX in `.tsx` files, since `<T>` in `.ts` means a type assertion. The `jsx` compiler option then controls how it is emitted (`react-jsx` for the modern runtime).",
+      "tags": [
+        "react",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "A warm-up that often leads into why `<T>` assertions are not used in TSX."
+    },
+    {
+      "id": "ts-221",
+      "q": "What does tsc report?",
+      "code": "const range: [number, number] = [1, 5, 10];",
+      "lang": "ts",
+      "choices": [
+        "An error: source has 3 elements but target allows only 2",
+        "Nothing; extra elements are ignored by tuples",
+        "Nothing; the type widens to `number[]`",
+        "An error: tuple types cannot be created from array literals"
+      ],
+      "answer": 0,
+      "why": "A fixed tuple type records its length, so a literal with more elements is rejected. Optional (`[number, number?]`) and rest (`[number, ...number[]]`) elements exist when the length varies.",
+      "tags": [
+        "tuples",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Tuples model pairs like ranges and coordinates, and knowing they check length is basic fluency."
+    },
+    {
+      "id": "ts-222",
+      "q": "What does tsc report for the last line?",
+      "code": "type Point = { x: number; y: number };\nconst p: Point = { x: 1, y: 2 };\np.z = 3;",
+      "lang": "ts",
+      "choices": [
+        "Nothing; objects can gain properties at runtime",
+        "An error only because `p` was declared with `const`",
+        "Nothing; `p` widens to `Point & { z: number }`",
+        "An error: property `z` does not exist on type `Point`"
+      ],
+      "answer": 3,
+      "why": "An object type lists the properties you may use, and adding one later is rejected even though JavaScript allows it. Declare the full shape up front, or use a `Map`/`Record` for dynamic keys. `const` only stops reassigning `p` itself.",
+      "tags": [
+        "fundamentals",
+        "modelling"
+      ],
+      "level": 1,
+      "asked": "Building objects incrementally is a JS habit TypeScript pushes back on, so it comes up early."
+    },
+    {
+      "id": "ts-223",
+      "q": "How do you annotate the return type of an arrow function?",
+      "choices": [
+        "`const f = (n: number): string => String(n);`",
+        "`const f: string = (n: number) => String(n);`",
+        "`const f = (n: number) => string: String(n);`",
+        "`const f = <string>(n: number) => String(n);`"
+      ],
+      "answer": 0,
+      "why": "The return annotation goes after the parameter list and before the arrow. Annotating the variable as `string` claims the function is a string, and `<string>` before the parameters declares a type parameter named `string`, not a return type.",
+      "tags": [
+        "functions",
+        "fundamentals"
+      ],
+      "level": 1,
+      "asked": "Basic syntax fluency; teams often require return types on exported functions."
+    },
+    {
+      "id": "ts-224",
+      "q": "What does tsc report?",
+      "code": "type User = { id: string; name: string };\nfunction strip(u: User) {\n  delete u.name;\n}",
+      "lang": "ts",
+      "choices": [
+        "Nothing; `delete` works on any property",
+        "An error: parameters cannot be modified in place",
+        "Nothing, but `u` becomes `Partial<User>` afterwards",
+        "An error: the operand of `delete` must be optional"
+      ],
+      "answer": 3,
+      "why": "Under `strictNullChecks`, deleting a required property would leave a value that no longer matches its type, so it is rejected. Build a new object without the field, e.g. `const { name, ...rest } = u`.",
+      "tags": [
+        "fundamentals",
+        "optional"
+      ],
+      "level": 2,
+      "asked": "Removing sensitive fields before a response is common, and TS steers you to non-mutating code."
+    },
+    {
+      "id": "ts-225",
+      "q": "Why does this compile, and what is the risk?",
+      "code": "const labels: Record<string, string> = { title: 'Title', body: 'Body' };\nconst l = labels.tittle;",
+      "lang": "ts",
+      "choices": [
+        "Compiles because `labels` has an index signature, so typos are allowed",
+        "Compiles because `Record` checks keys only when the object is created",
+        "Compiles because property typos are warnings, not errors, in TS",
+        "Compiles because `tittle` is inferred as a new optional property"
+      ],
+      "answer": 0,
+      "why": "With `string` keys, every property name is valid and typed `string`, so a misspelt key compiles and yields `undefined`. Using a key union, `Record<'title' | 'body', string>`, or `satisfies` keeps the literal keys checked.",
+      "tags": [
+        "index-signatures",
+        "modelling"
+      ],
+      "level": 2,
+      "asked": "Translation and config maps are often typed this way, and the silent-typo risk is what a reviewer spots."
+    },
+    {
+      "id": "ts-226",
+      "q": "What is the type of `user.age` on the `return` line?",
+      "code": "type User = { age: number | null };\nfunction next(user: User) {\n  if (typeof user.age === 'number') {\n    return user.age + 1;\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "`number | null`, since only locals can be narrowed",
+        "`number`, since the property access path was narrowed",
+        "`any`, since narrowing a property widens it",
+        "`never`, since `null` is also an object"
+      ],
+      "answer": 1,
+      "why": "Narrowing works on reference paths like `user.age`, not only on plain variables, as long as nothing in between could reassign it. It does not narrow `user` itself; a discriminated union is needed for that.",
+      "tags": [
+        "narrowing",
+        "null"
+      ],
+      "level": 2,
+      "asked": "Checking nullable fields in place is common, and knowing it works avoids needless local copies."
+    },
+    {
+      "id": "ts-227",
+      "q": "What is the type of `u` inside the `if`?",
+      "code": "type User = { address?: { city: string } };\nfunction f(u: User | undefined) {\n  if (u?.address) {\n    return u;\n  }\n}",
+      "lang": "ts",
+      "choices": [
+        "`User | undefined`, as `?.` does not narrow",
+        "`never`, since `address` is optional",
+        "`{ address: { city: string } }`, with `address` required",
+        "`User`, as a truthy chain implies `u` is defined"
+      ],
+      "answer": 3,
+      "why": "If `u?.address` is truthy, `u` cannot be `undefined`, so TS narrows `u` to `User`, and `u.address` to the defined object too. The object type itself is not rewritten to make `address` required.",
+      "tags": [
+        "narrowing",
+        "optional"
+      ],
+      "level": 2,
+      "asked": "Optional chaining in conditions is idiomatic, and knowing it narrows the whole chain saves redundant checks."
+    },
+    {
+      "id": "ts-228",
+      "q": "Why does the last line fail to compile?",
+      "code": "type Res = { status: 'ok'; data: string } | { status: 'error' };\nfunction ok() {\n  return { status: 'ok', data: 'x' };\n}\nconst r: Res = ok();",
+      "lang": "ts",
+      "choices": [
+        "The inferred return type widens `status` to `string`",
+        "`ok()` returns an object, but `Res` needs a class instance",
+        "`data` is optional in `Res`, but required in the result",
+        "Unions cannot be the declared type of a `const`"
+      ],
+      "answer": 0,
+      "why": "Without contextual type, object literal properties widen, so `ok` returns `{ status: string; data: string }`, which matches neither member. Annotate the function's return type as `Res` (or use `as const`) so the literal is kept.",
+      "tags": [
+        "literals",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "It explains why explicit return types on functions that build union values save a lot of confusion."
+    },
+    {
+      "id": "ts-229",
+      "q": "What does tsc report for this condition?",
+      "code": "class Repo {\n  save(): boolean { return true; }\n}\ndeclare const repo: Repo;\nif (repo.save) console.log('saved');",
+      "lang": "ts",
+      "choices": [
+        "Nothing; it checks whether `save` exists on the object",
+        "An error: class methods cannot be used in boolean contexts",
+        "Nothing; methods are converted to their return value",
+        "An error: the condition is always true; was a call intended?"
+      ],
+      "answer": 3,
+      "why": "Since the method is not optional, testing it for truthiness is always true and almost certainly a missing `()`. TypeScript reports it, unless the function is optional or used inside the block.",
+      "tags": [
+        "functions",
+        "fundamentals"
+      ],
+      "level": 2,
+      "asked": "A forgotten call is a sneaky bug, and it shows TS catches logic errors, not only type mismatches."
+    },
+    {
+      "id": "ts-230",
+      "q": "This compiles. What does it log?",
+      "code": "const user = { id: 1, name: 'Ann' };\nconsole.log(`Hello ${user}`);",
+      "lang": "ts",
+      "choices": [
+        "`Hello Ann`, via the object's `name`",
+        "`Hello [object Object]`",
+        "`Hello {\"id\":1,\"name\":\"Ann\"}`",
+        "Nothing; it throws a TypeError"
+      ],
+      "answer": 1,
+      "why": "Template literals call `String()` on each value, and TypeScript accepts any type there. The typescript-eslint rule `restrict-template-expressions` is what catches objects slipping into strings.",
+      "tags": [
+        "fundamentals",
+        "tooling"
+      ],
+      "level": 2,
+      "asked": "It shows where the compiler stops and linting takes over, a distinction good teams rely on."
+    },
+    {
+      "id": "ts-231",
+      "q": "In a project with both `dom` and `@types/node`, why does `const t: number = setTimeout(tick, 100);` fail?",
+      "choices": [
+        "Node's overload wins and returns a `Timeout` object",
+        "`setTimeout` returns `void` in both environments",
+        "`setTimeout` returns `Promise<number>` in Node 24",
+        "A callback must be an arrow function, not a name"
+      ],
+      "answer": 0,
+      "why": "With Node types loaded, the global `setTimeout` resolves to Node's declaration, which returns `NodeJS.Timeout`. Portable code types the handle as `ReturnType<typeof setTimeout>`.",
+      "tags": [
+        "node",
+        "dom"
+      ],
+      "level": 2,
+      "asked": "Shared front-end and back-end code hits this constantly, and the portable annotation is a telling answer."
+    },
+    {
+      "id": "ts-232",
+      "q": "`tsc` prints type errors, yet the `dist` folder is updated with new JavaScript. Why?",
+      "choices": [
+        "Type errors in `.ts` files are only warnings by default",
+        "Only files without errors are written to `outDir`",
+        "tsc emits the last successful build from its cache",
+        "`noEmitOnError` is off by default, so tsc emits anyway"
+      ],
+      "answer": 3,
+      "why": "Types do not affect emit, so tsc writes output even when checking fails unless `noEmitOnError` is set. The exit code is still non-zero, which is what CI should rely on.",
+      "tags": [
+        "config",
+        "tooling"
+      ],
+      "level": 2,
+      "asked": "It shows you understand emit and checking are separate, which matters for build scripts and deploys."
+    },
+    {
+      "id": "ts-233",
+      "q": "In React 19, what is the type of `user`?",
+      "code": "import { useState } from 'react';\ntype User = { id: string };\nfunction Profile() {\n  const [user, setUser] = useState<User>();\n  return null;\n}",
+      "lang": "ts",
+      "choices": [
+        "`User | undefined`, as no initial value was passed",
+        "`User`, since the type argument was given",
+        "`User | null`, the default for empty state",
+        "An error: `useState` requires an argument"
+      ],
+      "answer": 0,
+      "why": "Calling `useState` with no initial value uses an overload that adds `undefined`, matching the runtime. Pick `undefined` or an explicit `null` deliberately and handle it when rendering.",
+      "tags": [
+        "react",
+        "optional"
+      ],
+      "level": 2,
+      "asked": "Typing loading state is routine, and it reveals whether you know how overloads shape hook types."
+    },
+    {
+      "id": "ts-234",
+      "q": "What does `Object.values(Status)` return at runtime?",
+      "code": "enum Status { Active, Closed }\nconst all = Object.values(Status);",
+      "lang": "ts",
+      "choices": [
+        "`['Active', 'Closed']`",
+        "`[0, 1]`",
+        "`['Active', 'Closed', 0, 1]`",
+        "`[{ Active: 0 }, { Closed: 1 }]`"
+      ],
+      "answer": 2,
+      "why": "Numeric enums compile to an object with reverse mappings, so it holds both `Active: 0` and `0: 'Active'`. Iterating it for a dropdown yields names and numbers; string enums or `as const` objects avoid the surprise.",
+      "tags": [
+        "enums"
+      ],
+      "level": 3,
+      "asked": "Building select options from an enum is common, and this runtime shape causes duplicated entries."
+    },
+    {
+      "id": "ts-235",
+      "q": "In TypeScript 5.6+, what does tsc report for this function?",
+      "code": "function isNumeric(s: string) {\n  if (/^\\d+$/) return true;\n  return false;\n}",
+      "lang": "ts",
+      "choices": [
+        "Nothing; the regex is tested against `s` implicitly",
+        "An error: a regex literal must be assigned first",
+        "Nothing, but the function always returns `false`",
+        "An error: this kind of expression is always truthy"
+      ],
+      "answer": 3,
+      "why": "TS 5.6 reports conditions that are syntactically always truthy or always nullish, such as a regex literal, an object literal or an arrow function. Here the author forgot `.test(s)`; at runtime the function would always return `true`.",
+      "tags": [
+        "fundamentals",
+        "control-flow"
+      ],
+      "level": 3,
+      "asked": "It shows you keep up with how newer releases catch logic bugs, not only type mismatches."
+    },
+    {
+      "id": "ts-236",
+      "q": "With `target: es2022` (so class fields use define semantics), what does tsc report?",
+      "code": "class Price {\n  doubled = this.amount * 2;\n  constructor(private amount: number) {}\n}",
+      "lang": "ts",
+      "choices": [
+        "Nothing; parameter properties are assigned before fields",
+        "An error: `amount` is used before it is initialised",
+        "Nothing, but `doubled` ends up as `NaN` at runtime",
+        "An error: field initialisers cannot reference `this`"
+      ],
+      "answer": 1,
+      "why": "With native class fields, field initialisers run before the constructor body that assigns parameter properties, so `this.amount` is still `undefined`. TS reports it; compute `doubled` in the constructor or as a getter.",
+      "tags": [
+        "classes",
+        "config"
+      ],
+      "level": 3,
+      "asked": "Field initialisation order changed with standard class fields, and it breaks code migrated from older targets."
+    },
+    {
+      "id": "ts-237",
+      "q": "This compiles. What happens at runtime?",
+      "code": "class Money {\n  constructor(public cents: number) {}\n  format() { return `£${(this.cents / 100).toFixed(2)}`; }\n}\nconst copy = structuredClone(new Money(500));\ncopy.format();",
+      "lang": "ts",
+      "choices": [
+        "It throws, because the clone is a plain object",
+        "It returns `'£5.00'`, as the clone is a `Money`",
+        "It throws, because class instances cannot be cloned",
+        "It returns `'£NaN'`, as `cents` is lost"
+      ],
+      "answer": 0,
+      "why": "`structuredClone` copies data but not the prototype, so the copy has `cents` but no `format`. Its signature returns the input type `T`, so TS believes the method exists. The same applies after a JSON round-trip.",
+      "tags": [
+        "classes",
+        "soundness"
+      ],
+      "level": 3,
+      "asked": "Class instances crossing clone, cache or JSON boundaries is a real source of \"is not a function\" errors."
+    },
+    {
+      "id": "ts-238",
+      "q": "A project compiles to `target: es5`. Why can `err instanceof NotFoundError` be false for a thrown `NotFoundError`?",
+      "choices": [
+        "ES5 has no `instanceof` operator, so TS emits a shim",
+        "`instanceof` compares names, and ES5 minifies them",
+        "Custom errors are thrown as strings under ES5",
+        "The ES5 `Error` subclass loses its prototype chain"
+      ],
+      "answer": 3,
+      "why": "Down-levelled `extends Error` calls `Error` as a function, which returns a new object with `Error.prototype`, so the subclass prototype is lost. The old fix is `Object.setPrototypeOf(this, new.target.prototype)`; targeting ES2015+ avoids it.",
+      "tags": [
+        "errors",
+        "classes"
+      ],
+      "level": 3,
+      "asked": "Legacy build targets still exist, and this bug explains a line of boilerplate seen in older codebases."
+    },
+    {
+      "id": "ts-239",
+      "q": "What does the constraint `T extends {}` exclude?",
+      "code": "function keep<T extends {}>(value: T) {\n  return value;\n}",
+      "lang": "ts",
+      "choices": [
+        "`null` and `undefined`, but no other values",
+        "Primitives such as strings and numbers",
+        "Arrays and functions, as they are not plain objects",
+        "Nothing; `{}` accepts every possible value"
+      ],
+      "answer": 0,
+      "why": "`{}` means \"any non-nullish value\", so strings and numbers qualify, but `null` and `undefined` do not. It is how `NonNullable<T>` is defined (`T & {}`); use `object` to rule out primitives.",
+      "tags": [
+        "generics",
+        "null"
+      ],
+      "level": 3,
+      "asked": "The `{}` versus `object` versus `unknown` distinction trips up many, and shows up in library signatures."
+    },
+    {
+      "id": "ts-240",
+      "q": "An Express handler does `res.json(user)` where `user` is an instance with `private passwordHash`. Is the hash sent?",
+      "choices": [
+        "No; `private` fields are skipped by `JSON.stringify`",
+        "Yes, but only when `strict` is turned off in tsconfig",
+        "No; TypeScript strips private fields from the emitted class",
+        "Yes; `private` is compile-time only and the field is serialised"
+      ],
+      "answer": 3,
+      "why": "TS `private` only restricts access in type-checked code; the property is an ordinary own property at runtime, so it serialises. `#passwordHash` would not be serialised, but the real fix is mapping to an explicit response type.",
+      "tags": [
+        "classes",
+        "boundary"
+      ],
+      "level": 3,
+      "asked": "Leaking secrets in API responses is a real security bug, and it tests whether you know what `private` means."
+    },
+    {
+      "id": "ts-241",
+      "q": "This compiles under `strict`. What does it show about `readonly`?",
+      "code": "const frozen: { readonly count: number } = { count: 1 };\nconst open: { count: number } = frozen;\nopen.count = 2;",
+      "lang": "ts",
+      "choices": [
+        "Readonly properties are assignable to mutable ones, so it leaks",
+        "Readonly objects are copied when assigned to a mutable type",
+        "The last line throws at runtime, as `count` is frozen",
+        "The assignment fails at runtime due to the readonly flag"
+      ],
+      "answer": 0,
+      "why": "For object properties, `readonly` does not affect assignability, so an alias without it can mutate the \"readonly\" object. It is a compile-time promise about one reference, not a runtime freeze; `readonly` arrays, by contrast, are not assignable to mutable arrays.",
+      "tags": [
+        "readonly",
+        "soundness"
+      ],
+      "level": 3,
+      "asked": "It separates people who think `readonly` is immutability from those who know it is a view-level hint."
+    },
+    {
+      "id": "ts-242",
+      "q": "Why do teams add typescript-eslint with type-aware rules on top of `tsc --strict`?",
+      "choices": [
+        "tsc does not check `.tsx` files unless ESLint runs first",
+        "Rules like `no-floating-promises` catch bugs tsc allows",
+        "ESLint replaces tsc, so the build no longer needs it",
+        "Strict mode only applies once ESLint has approved a file"
+      ],
+      "answer": 1,
+      "why": "tsc checks types, not intent: an un-awaited promise, a misused `async` callback or an object in a template string are all type-correct. Type-aware lint rules use the checker to flag those patterns.",
+      "tags": [
+        "tooling",
+        "async"
+      ],
+      "level": 2,
+      "asked": "It shows you know the limits of the compiler and how teams cover them in CI."
+    },
+    {
+      "id": "ts-243",
+      "q": "In TypeScript 5.2+, what does `using` do in this function?",
+      "code": "async function report() {\n  await using conn = await pool.connect();\n  return conn.query('select 1');\n}",
+      "lang": "ts",
+      "choices": [
+        "It imports `conn` into the module scope once the function returns",
+        "It marks `conn` readonly so it cannot be reassigned in the body",
+        "It retries `pool.connect()` until a connection is available",
+        "It disposes `conn` via `Symbol.asyncDispose` when the scope exits"
+      ],
+      "answer": 3,
+      "why": "Explicit resource management calls the object's `[Symbol.asyncDispose]` (or `[Symbol.dispose]` for `using`) when the block exits, even on a throw, replacing `try/finally` cleanup. The object must declare that method for tsc to accept it.",
+      "tags": [
+        "async",
+        "node"
+      ],
+      "level": 2,
+      "asked": "Releasing connections and file handles reliably is a real back-end concern, and `using` is the new idiom."
+    },
+    {
+      "id": "ts-244",
+      "q": "Which statement about TypeScript enums is accurate?",
+      "choices": [
+        "String enums allow assigning any matching string literal",
+        "Enums are the only syntax that `erasableSyntaxOnly` rejects",
+        "A `const enum` is inlined, but breaks with `isolatedModules` across files",
+        "Numeric enums prevent any plain number from being assigned"
+      ],
+      "answer": 2,
+      "why": "`const enum` members are inlined at use sites, which needs type information from other files, so single-file transpilers cannot do it and `isolatedModules` restricts it. String enums reject raw literals, and namespaces or parameter properties are also non-erasable.",
+      "tags": [
+        "enums",
+        "config"
+      ],
+      "level": 2,
+      "asked": "Enums still appear in older codebases, and knowing the tooling constraints informs whether to migrate."
+    },
+    {
+      "id": "ts-245",
+      "q": "You receive `{ \"total\": \"19.99\" }` from an API typed as `{ total: number }`. What does `order.total + 5` evaluate to?",
+      "choices": [
+        "`24.99`, as TypeScript converts it to the declared type",
+        "A runtime TypeError from the type mismatch",
+        "A compile error, since the JSON does not match",
+        "`\"19.995\"`, since the runtime value is a string"
+      ],
+      "answer": 3,
+      "why": "Types are erased and never convert values, so a string that the type calls a number concatenates. Decimal amounts are often sent as strings; validate with a schema (`z.coerce.number()` or a decimal type) at the boundary.",
+      "tags": [
+        "boundary",
+        "validation"
+      ],
+      "level": 1,
+      "asked": "It is the plainest demonstration that types describe expectations, not data, which interviewers want to hear."
     }
   ]
 }

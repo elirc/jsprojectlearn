@@ -581,6 +581,2360 @@
       "tags": ["promises", "errors"],
       "level": 2,
       "asked": "The `.then(ok, fail)` versus `.then(ok).catch(fail)` difference is a favourite because it looks equivalent and is not."
+    },
+    {
+      "id": "jsa-040",
+      "q": "In Node 24 or a browser, what order do these log?",
+      "code": "setTimeout(() => {\n  console.log('t1');\n  Promise.resolve().then(() => console.log('p2'));\n}, 0);\nsetTimeout(() => console.log('t2'), 0);\nPromise.resolve().then(() => console.log('p1'));",
+      "lang": "js",
+      "choices": ["p1 t1 p2 t2", "t1 p2 t2 p1", "p1 t1 t2 p2", "t1 t2 p1 p2"],
+      "answer": 0,
+      "why": "The microtask queue drains after every task, not just after the script, so `p2` (queued inside the first timer) runs before the second timer. `p1 t1 t2 p2` was Node's behaviour before version 11, when it ran all expired timers as a batch; modern Node matches browsers.",
+      "tags": ["event-loop", "microtasks"],
+      "level": 2,
+      "asked": "It checks that you know microtasks drain between every pair of tasks, which is what makes promise code inside timers and event handlers predictable."
+    },
+    {
+      "id": "jsa-041",
+      "q": "Two independent promise chains start in the same task. What order do they log?",
+      "code": "Promise.resolve().then(() => console.log('a1')).then(() => console.log('a2'));\nPromise.resolve().then(() => console.log('b1')).then(() => console.log('b2'));",
+      "lang": "js",
+      "choices": ["b1 b2 a1 a2", "a1 b1 b2 a2", "a1 a2 b1 b2", "a1 b1 a2 b2"],
+      "answer": 3,
+      "why": "Each `.then` callback is queued only when the promise before it settles. Both first steps are queued up front, so `a1` and `b1` run first; each of those then queues its second step at the back of the queue. A chain does not run to the end in one go, which is what `a1 a2 b1 b2` assumes.",
+      "tags": ["promises", "microtasks"],
+      "level": 2,
+      "asked": "Interleaving is why two async flows that share state can see each other half-finished, even on one thread."
+    },
+    {
+      "id": "jsa-042",
+      "q": "In Node 24 (ES module), what order do these log?",
+      "code": "async function viaAsync() { return Promise.resolve('A'); }\nviaAsync().then(console.log);\nPromise.resolve('B').then(console.log);\nPromise.resolve().then(() => {}).then(() => console.log('C'));",
+      "lang": "js",
+      "choices": ["B A C", "A C B", "B C A", "A B C"],
+      "answer": 2,
+      "why": "Returning a promise from an async function makes the engine adopt it through that promise's `then`, which costs two extra microtask hops, so `A` arrives after the two-step chain `C`. `A B C` assumes an async function hands the inner promise straight back; it never does, because an async function always returns a fresh promise.",
+      "tags": ["async-await", "microtasks"],
+      "level": 3,
+      "asked": "Nobody should depend on this ordering; a strong answer says so, and explains that returning a promise adopts it rather than passing it through."
+    },
+    {
+      "id": "jsa-043",
+      "q": "In a browser tab or Node 24, what happens when this runs?",
+      "code": "setTimeout(() => console.log('timer'), 0);\nfunction spin() {\n  queueMicrotask(spin);\n}\nspin();",
+      "lang": "js",
+      "choices": [
+        "RangeError: Maximum call stack size exceeded, after a few thousand calls",
+        "'timer' never logs: the microtask queue never empties, so nothing else runs",
+        "'timer' logs once the engine yields to tasks every thousand or so microtasks",
+        "'timer' logs almost at once, because a due timer outranks microtasks"
+      ],
+      "answer": 1,
+      "why": "Each microtask queues another, and the event loop only moves to the next task once the microtask queue is empty, so the timer, rendering and input all starve while the CPU spins. There is no stack overflow, because each call starts on an empty stack, and no engine inserts yield points into the microtask queue.",
+      "tags": ["event-loop", "microtasks"],
+      "level": 2,
+      "asked": "The same starvation happens with a promise chain that recursively calls itself, and interviewers like candidates who know promises are not automatically \"non-blocking\"."
+    },
+    {
+      "id": "jsa-044",
+      "q": "What does `setTimeout(fn, 1000)` actually guarantee?",
+      "choices": [
+        "`fn` runs no sooner than 1000 ms later, once the stack and earlier tasks clear",
+        "`fn` runs within 1000 ms, and sooner if the event loop happens to be idle",
+        "`fn` runs 1000 ms later on a timer thread, in parallel with the main thread",
+        "`fn` runs exactly 1000 ms later, preempting any code that is running then"
+      ],
+      "answer": 0,
+      "why": "The delay is a minimum: when it expires the callback is queued as a task, and it waits behind the running code and any earlier tasks. JavaScript never preempts running code, and the callback runs on the same main thread, not a timer thread.",
+      "tags": ["timers", "event-loop"],
+      "level": 1,
+      "asked": "It is the root of every \"my timeout fired late\" bug report, and a good answer mentions background-tab throttling too."
+    },
+    {
+      "id": "jsa-045",
+      "q": "In Node 24, what does this log?",
+      "code": "const start = Date.now();\nsetTimeout(() => console.log(Date.now() - start >= 500), 100);\nwhile (Date.now() - start < 500) {}\nconsole.log('loop done');",
+      "lang": "js",
+      "choices": [
+        "true, and then 'loop done'",
+        "false, and then 'loop done'",
+        "'loop done', and then false",
+        "'loop done', and then true"
+      ],
+      "answer": 3,
+      "why": "The timer expires at 100 ms but cannot run until the synchronous loop, and the rest of the script, finish, so it fires after 'loop done' having waited at least 500 ms. Nothing interrupts running JavaScript, which is why a busy loop delays every timer, promise and request callback in the process.",
+      "tags": ["timers", "event-loop"],
+      "level": 1,
+      "asked": "It is the smallest demonstration of blocking the event loop, the cause of most \"the server stopped answering\" incidents in Node."
+    },
+    {
+      "id": "jsa-046",
+      "q": "In a browser, why does the user never see \"Loading…\" on the button?",
+      "code": "button.textContent = 'Loading…';\nconst report = buildHugeReport(); // ~3 s of synchronous work\nbutton.textContent = 'Done';",
+      "lang": "js",
+      "choices": [
+        "The DOM batches writes to the same node and keeps only the last one per frame",
+        "textContent updates are asynchronous, so the first one is still queued at the end",
+        "The browser only paints between tasks, and this task holds the thread until Done",
+        "The report runs first, because the engine hoists long synchronous calls to the top"
+      ],
+      "answer": 2,
+      "why": "Rendering is a step of the event loop that only happens when the current task (and its microtasks) finishes; by then the text is already 'Done'. The DOM write itself was immediate. Fixes are to yield before the heavy work (await `scheduler.yield()` or a `setTimeout`) or move the work to a Web Worker.",
+      "tags": ["event-loop", "performance"],
+      "level": 1,
+      "asked": "It connects the event loop to what users see, and the follow-up is how you would keep the page responsive during the work."
+    },
+    {
+      "id": "jsa-047",
+      "q": "What does this log?",
+      "code": "const p = Promise.resolve('x');\nlet seen = 'no';\np.then(() => { seen = 'yes'; });\nconsole.log(seen);",
+      "lang": "js",
+      "choices": ["yes", "no", "undefined", "Promise { <pending> }"],
+      "answer": 1,
+      "why": "`then` callbacks always run asynchronously, as microtasks, even when the promise is already fulfilled, so `console.log` runs first and sees 'no'. That guarantee is deliberate: code after `.then` behaves the same whether the value was cached or fetched.",
+      "tags": ["promises", "microtasks"],
+      "level": 2,
+      "asked": "It catches the belief that a resolved promise runs its callbacks immediately, which leads to reading state that has not been set yet."
+    },
+    {
+      "id": "jsa-048",
+      "q": "What does this log?",
+      "code": "const p = new Promise((resolve, reject) => {\n  resolve('first');\n  reject(new Error('second'));\n  throw new Error('third');\n});\np.then((v) => console.log('ok', v), (e) => console.log('err', e.message));",
+      "lang": "js",
+      "choices": ["ok first", "ok first, then an unhandled error", "err third", "err second"],
+      "answer": 0,
+      "why": "A promise settles once: the first `resolve` wins, and later `reject` calls, and even a throw inside the executor, are silently ignored. That silence is the danger, since an error thrown after an early `resolve` in your own wrapper simply disappears.",
+      "tags": ["promises", "errors"],
+      "level": 2,
+      "asked": "It tests whether you know a promise is settled exactly once, which matters when you wrap callback APIs that can call back twice."
+    },
+    {
+      "id": "jsa-049",
+      "q": "What does this log, and when?",
+      "code": "const inner = new Promise((r) => setTimeout(() => r('inner'), 50));\nconst outer = new Promise((resolve) => resolve(inner));\nouter.then((v) => console.log(v));",
+      "lang": "js",
+      "choices": [
+        "undefined, immediately",
+        "Promise { 'inner' }, after 50 ms",
+        "Promise { <pending> }, immediately",
+        "'inner', after about 50 ms"
+      ],
+      "answer": 3,
+      "why": "Resolving a promise with another promise (or any thenable) makes it follow that promise, so `outer` settles when `inner` does, with its value. Promises never nest: you can't get a promise of a promise, which is also why returning a promise from `.then` flattens.",
+      "tags": ["promises", "chaining"],
+      "level": 2,
+      "asked": "Knowing that `resolve` adopts thenables explains flattening in `.then`, `await` and async return values in one idea."
+    },
+    {
+      "id": "jsa-050",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const thenable = {\n  then(resolve) { console.log('then called'); resolve(42); },\n};\nconst v = await thenable;\nconsole.log(v);",
+      "lang": "js",
+      "choices": [
+        "42 alone; `then` is called silently",
+        "undefined, because `then` returned nothing",
+        "'then called', then 42",
+        "the object itself, since it isn't a real Promise"
+      ],
+      "answer": 2,
+      "why": "`await` treats any object with a callable `then` as a thenable and calls it, just like `Promise.resolve` does. That is how old promise libraries interoperate, and also why accidentally giving a returned object a `then` property makes `await` hang or behave oddly.",
+      "tags": ["async-await", "promises"],
+      "level": 3,
+      "asked": "It probes whether you know await works on duck-typed thenables, the reason query builders like Knex can be awaited directly."
+    },
+    {
+      "id": "jsa-051",
+      "q": "What does this log?",
+      "code": "Promise.resolve(1).then(2).then((v) => console.log(v));",
+      "lang": "js",
+      "choices": ["2", "1", "undefined", "TypeError: 2 is not a function"],
+      "answer": 1,
+      "why": "`then` ignores any argument that is not a function and passes the value through unchanged, so 1 reaches the last callback. No TypeError is thrown; the realistic version of this bug is `.then(doSomething())`, which calls the function immediately and passes its result in.",
+      "tags": ["promises", "chaining"],
+      "level": 2,
+      "asked": "The bug it models, `.then(fn())` instead of `.then(fn)`, turns up in real code review."
+    },
+    {
+      "id": "jsa-052",
+      "q": "What does this log?",
+      "code": "Promise.resolve('data')\n  .finally(() => 'ignored')\n  .then((v) => console.log(v));",
+      "lang": "js",
+      "choices": ["'data'", "Promise { 'data' }", "'ignored'", "undefined"],
+      "answer": 0,
+      "why": "`finally` is for cleanup: its callback gets no argument and its return value is ignored, so the original value passes through. Only a throw (or a rejected promise) from inside `finally` changes the outcome, and then the chain rejects with that error.",
+      "tags": ["promises", "chaining"],
+      "level": 2,
+      "asked": "It checks you would use `finally` for hiding a spinner or releasing a lock without accidentally changing the result."
+    },
+    {
+      "id": "jsa-053",
+      "q": "What does this log?",
+      "code": "Promise.reject(new Error('fetch failed'))\n  .finally(() => { throw new Error('cleanup failed'); })\n  .catch((e) => console.log(e.message));",
+      "lang": "js",
+      "choices": [
+        "fetch failed, then cleanup failed",
+        "Nothing: the cleanup error is unhandled",
+        "fetch failed",
+        "cleanup failed"
+      ],
+      "answer": 3,
+      "why": "An error thrown inside `finally` replaces whatever the chain was carrying, so the original 'fetch failed' is lost. Cleanup code that can fail should catch its own errors, or you will spend an incident debugging the wrong message.",
+      "tags": ["promises", "errors"],
+      "level": 3,
+      "asked": "It is the promise version of a masked exception, and strong candidates mention the same trap in try/finally."
+    },
+    {
+      "id": "jsa-054",
+      "q": "What does this log?",
+      "code": "Promise.resolve(1)\n  .then((v) => new Promise((r) => setTimeout(() => r(v + 1), 10)))\n  .then((v) => console.log(v));",
+      "lang": "js",
+      "choices": ["Promise { <pending> }", "1", "2", "undefined"],
+      "answer": 2,
+      "why": "When a `.then` callback returns a promise, the next step waits for it and receives its value, so the chain logs 2 after 10 ms. This flattening is what makes sequential async steps possible without nesting.",
+      "tags": ["promises", "chaining"],
+      "level": 1,
+      "asked": "It is the basic contract of a promise chain; weak answers expect a nested promise to be logged."
+    },
+    {
+      "id": "jsa-055",
+      "q": "`sendEmail` returns a promise. What is wrong with this chain?",
+      "code": "saveOrder(order)\n  .then(() => { sendEmail(order); })\n  .then(() => console.log('all done'));",
+      "lang": "js",
+      "choices": [
+        "'all done' never logs, because the braces make the callback return undefined",
+        "'all done' can log before the email is sent, and a failed send is unhandled",
+        "The chain runs sendEmail twice, once per `.then`, because callbacks are replayed",
+        "Nothing: a promise created inside `.then` is awaited automatically by the chain"
+      ],
+      "answer": 1,
+      "why": "Without `return`, the callback returns undefined, so the next step runs immediately and the email's promise floats free; if it rejects, nothing handles it. Arrow functions with braces need an explicit `return`. The chain does still continue, which is why the bug goes unnoticed.",
+      "tags": ["promises", "errors"],
+      "level": 2,
+      "asked": "The missing `return` in a `.then` is one of the most common real promise bugs; the linter rule for it is `promise/always-return` or TypeScript-ESLint `no-floating-promises`."
+    },
+    {
+      "id": "jsa-056",
+      "q": "In a browser, a promise rejects and nothing handles it. What happens?",
+      "choices": [
+        "The console logs 'Uncaught (in promise)', window gets `unhandledrejection`, and the page runs on",
+        "The rejection is dropped silently, since browsers only report synchronous errors",
+        "The browser retries the operation once and then throws inside the next task",
+        "The tab reloads, because the browser treats it like an uncaught exception"
+      ],
+      "answer": 0,
+      "why": "Browsers report it (console plus the `unhandledrejection` event, which is where error trackers such as Sentry hook in) but keep the page alive. Node 24 is the strict one: its default `--unhandled-rejections=throw` crashes the process.",
+      "tags": ["promises", "errors"],
+      "level": 1,
+      "asked": "It tests whether you know where unhandled async errors go in production front-ends, and how you would find out about them."
+    },
+    {
+      "id": "jsa-057",
+      "q": "What does 'run-to-completion' mean for JavaScript?",
+      "choices": [
+        "The engine finishes every pending promise before it executes new events",
+        "A script runs completely before any module it imports is evaluated",
+        "Each async function must finish before the next async function can start",
+        "Once a function starts, no other JS runs until it returns or hits an await"
+      ],
+      "answer": 3,
+      "why": "Nothing can interrupt synchronous JavaScript: event handlers, timers and promise callbacks all wait for the current code to reach a stopping point. `await` is such a point, so an async function can pause while others start; the one-at-a-time rule applies to synchronous stretches, not whole async functions.",
+      "tags": ["event-loop"],
+      "level": 1,
+      "asked": "It underpins why you never need locks for synchronous code in JavaScript, and why you do need care across `await`."
+    },
+    {
+      "id": "jsa-058",
+      "q": "`syncInventory()` usually takes 2 s but sometimes 8 s. What goes wrong?",
+      "code": "setInterval(async () => {\n  await syncInventory();\n}, 5000);",
+      "lang": "js",
+      "choices": [
+        "The interval pauses until the promise settles, so it drifts to 13 s between runs",
+        "Node throws, because setInterval callbacks are not allowed to return a promise",
+        "Slow runs overlap the next one; schedule the next run with setTimeout after the await",
+        "setInterval skips a tick whenever the callback is async, so runs are lost silently"
+      ],
+      "answer": 2,
+      "why": "setInterval ignores the returned promise and fires every 5 s regardless, so an 8 s run overlaps the next, and two syncs race on the same data. A self-rescheduling `setTimeout` (or a loop with `await sleep(5000)`) waits for each run to finish. It never pauses or skips on its own.",
+      "tags": ["timers", "concurrency"],
+      "level": 2,
+      "asked": "Polling jobs that overlap are a classic production bug; the fix shows you think about what happens when work is slower than expected."
+    },
+    {
+      "id": "jsa-059",
+      "q": "In Node 24, what happens when this ES module file runs?",
+      "code": "console.log('start');\nfunction load() {\n  const data = await fetch('/api');\n  return data;\n}",
+      "lang": "js",
+      "choices": [
+        "It logs 'start', then throws ReferenceError when load() is eventually called",
+        "SyntaxError at parse time, so not even the first line runs",
+        "It logs 'start', and `data` would be a pending promise if load() were called",
+        "It logs 'start'; `load` is made async implicitly because it contains await"
+      ],
+      "answer": 1,
+      "why": "`await` is only valid inside an async function (or at the top level of a module), so this is a parse error and the whole file is rejected before anything executes. Parse-time errors are why the log line does not appear, unlike a runtime error thrown later.",
+      "tags": ["async-await"],
+      "level": 1,
+      "asked": "An easy warm-up that checks you can read the error and know await needs an async context."
+    },
+    {
+      "id": "jsa-060",
+      "q": "What does this log?",
+      "code": "async function isAdmin(user) { return user.role === 'admin'; }\nif (isAdmin({ role: 'guest' })) console.log('granted');\nelse console.log('denied');",
+      "lang": "js",
+      "choices": [
+        "granted",
+        "TypeError: condition is a Promise",
+        "Nothing until the promise settles",
+        "denied"
+      ],
+      "answer": 0,
+      "why": "Without `await`, the condition is a Promise object, and every object is truthy, so this grants access to everyone. Nothing throws, which is what makes a missing await in a permission check a security bug; TypeScript-ESLint `no-misused-promises` catches it.",
+      "tags": ["async-await", "security"],
+      "level": 1,
+      "asked": "It is a short way to test whether you understand what an async function returns, with a real-world consequence."
+    },
+    {
+      "id": "jsa-061",
+      "q": "What does this log?",
+      "code": "const active = [1, 2, 3].filter(async (id) => id !== 2);\nconsole.log(active);",
+      "lang": "js",
+      "choices": ["[]", "Promise { [ 1, 3 ] }", "[ 1, 3 ]", "[ 1, 2, 3 ]"],
+      "answer": 3,
+      "why": "`filter` is synchronous and keeps an element when the callback's return value is truthy; an async callback returns a promise, which is always truthy. Compute the booleans first with `await Promise.all(ids.map(check))`, then filter by index.",
+      "tags": ["async-await", "arrays"],
+      "level": 2,
+      "asked": "It checks that you know array methods do not await, which also breaks `some`, `every`, `find` and `reduce` with async callbacks."
+    },
+    {
+      "id": "jsa-062",
+      "q": "What does this log?",
+      "code": "async function getName() { return 'Ada'; }\nconsole.log(`Hello ${getName()}`);",
+      "lang": "js",
+      "choices": [
+        "Hello Ada",
+        "Hello undefined",
+        "Hello [object Promise]",
+        "Hello Promise { Ada }"
+      ],
+      "answer": 2,
+      "why": "`getName()` returns a Promise, and interpolating an object calls its `toString`, giving '[object Promise]'. You need `await getName()` first; this exact string showing up in a UI or email is a tell-tale missing await.",
+      "tags": ["async-await"],
+      "level": 1,
+      "asked": "Recognising \"[object Promise]\" in output is a practical debugging skill interviewers like to see."
+    },
+    {
+      "id": "jsa-063",
+      "q": "In Node 24 (ES module), what happens?",
+      "code": "const users = await fetch('https://api.example.com/users').json();",
+      "lang": "js",
+      "choices": [
+        "`users` is a pending promise, because `json()` is itself async",
+        "TypeError: `.json` is not a function, since it is called on a Promise",
+        "SyntaxError, because `await` cannot prefix a method chain",
+        "`users` is the parsed JSON, since the await applies to the whole chain"
+      ],
+      "answer": 1,
+      "why": "Member access binds tighter than `await`, so `.json()` is called on the Promise that `fetch` returned, which has no such method. Write `const res = await fetch(url); const users = await res.json();` or wrap the first await in parentheses.",
+      "tags": ["fetch", "async-await"],
+      "level": 1,
+      "asked": "Operator precedence around await trips up juniors, and the error message is worth recognising on sight."
+    },
+    {
+      "id": "jsa-064",
+      "q": "In Node 24 (ES module), what happens?",
+      "code": "async function parse(json) { return JSON.parse(json); }\ntry {\n  parse('{bad');\n  console.log('no throw');\n} catch {\n  console.log('caught');\n}",
+      "lang": "js",
+      "choices": [
+        "'no throw', then the process exits on an unhandled rejection",
+        "'no throw', and the error is dropped silently",
+        "'caught', then an unhandled rejection warning",
+        "'caught', because JSON.parse throws synchronously"
+      ],
+      "answer": 0,
+      "why": "Inside an async function every throw, even a synchronous one, becomes a rejection of the returned promise. The un-awaited call returns normally, the try block completes, and the rejection goes unhandled, which crashes Node 24 by default. `await parse(...)` makes the catch work.",
+      "tags": ["async-await", "errors"],
+      "level": 2,
+      "asked": "It separates people who know try/catch only sees rejections you await from people who think it catches anything inside the block."
+    },
+    {
+      "id": "jsa-065",
+      "q": "In Node 24, what happens when this runs?",
+      "code": "function loadUser(id) {\n  if (!id) throw new TypeError('id required');\n  return fetchUser(id);\n}\nloadUser().catch(() => console.log('handled'));\nconsole.log('after');",
+      "lang": "js",
+      "choices": [
+        "'after', then 'handled'",
+        "'handled', then 'after'",
+        "'after' only; error swallowed",
+        "Uncaught TypeError; no logs"
+      ],
+      "answer": 3,
+      "why": "`loadUser` is not async, so the guard throws synchronously before any promise exists and `.catch` is never reached. A function that returns promises should fail through a rejection: mark it `async`, or wrap the body with `Promise.try` (ES2025, in Node 24).",
+      "tags": ["promises", "errors", "api-design"],
+      "level": 3,
+      "asked": "The 'sometimes throws, sometimes rejects' function is a real API design flaw; a strong answer names the fix and why callers need one failure channel."
+    },
+    {
+      "id": "jsa-066",
+      "q": "A `Db` class is only usable after an async `connect()`. How should you construct it?",
+      "choices": [
+        "Await connect inside a normal constructor; `new` pauses until that promise settles",
+        "Write `async constructor()`, and `await new Db()` resolves once connect finishes",
+        "Use a static async `create()` that builds the instance, awaits connect, returns it",
+        "Call connect in the constructor and make every method check a `ready` flag first"
+      ],
+      "answer": 2,
+      "why": "Constructors cannot be async (`async constructor` is a SyntaxError), and `await` inside a normal constructor is not allowed either. A static factory keeps the invariant 'if you have a Db, it is connected'; a ready flag technically works but pushes the check into every method and races on first use.",
+      "tags": ["async-await", "api-design"],
+      "level": 2,
+      "asked": "It shows whether you can design around a language limit, which comes up with database clients, SDKs and anything that needs async initialisation."
+    },
+    {
+      "id": "jsa-067",
+      "q": "In Node 24 (ES module), roughly how long does this take to reach the last line?",
+      "code": "const sleep = (ms) => new Promise((r) => setTimeout(r, ms));\nconst t = Date.now();\nconst a = sleep(200);\nconst b = sleep(200);\nawait a;\nawait b;\nconsole.log(Date.now() - t);",
+      "lang": "js",
+      "choices": ["About 0 ms", "About 100 ms", "About 200 ms", "About 400 ms"],
+      "answer": 2,
+      "why": "Both timers start when `sleep` is called, not when it is awaited, so they run concurrently and `await b` finds b already done: about 200 ms in total. 400 would need `await sleep(200)` twice. The work starts at the call; `await` only waits for the result.",
+      "tags": ["async-await", "performance"],
+      "level": 2,
+      "asked": "Understanding that promises are eager is the key to writing concurrent code without Promise.all, and to spotting accidental serialisation."
+    },
+    {
+      "id": "jsa-068",
+      "q": "In Node 24, what is wrong with this `sleep` helper?",
+      "code": "const sleep = (ms) => new Promise((resolve) => setTimeout(resolve(), ms));",
+      "lang": "js",
+      "choices": [
+        "It resolves immediately: `resolve()` runs now and its result goes to setTimeout",
+        "It never resolves, because setTimeout receives undefined and ignores it silently",
+        "Nothing: `resolve()` is evaluated lazily once the timer has elapsed",
+        "It rejects with a TypeError that setTimeout throws for a missing callback"
+      ],
+      "answer": 0,
+      "why": "The parentheses call `resolve` straight away, fulfilling the promise; setTimeout then throws for its undefined callback, but a throw inside the executor after resolve is ignored. So `await sleep(500)` returns at once with no error. Pass the function itself: `setTimeout(resolve, ms)`.",
+      "tags": ["timers", "promises"],
+      "level": 1,
+      "asked": "A small bug with a silent failure mode; it tests whether you can read a callback being called versus passed."
+    },
+    {
+      "id": "jsa-069",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "let stock = 10;\nconst get = async () => stock;\nconst set = async (v) => { stock = v; };\nasync function buyOne() { const s = await get(); await set(s - 1); }\nawait Promise.all([buyOne(), buyOne()]);\nconsole.log(stock);",
+      "lang": "js",
+      "choices": ["10", "It throws: two writers hit the same variable", "8", "9"],
+      "answer": 3,
+      "why": "Both calls read 10 before either writes, then both write 9: a lost update. Single-threaded does not mean race-free, because every `await` lets another flow run between the read and the write. The real-world fix is an atomic update in the database (`SET stock = stock - 1`) or a per-key lock.",
+      "tags": ["concurrency", "race"],
+      "level": 2,
+      "asked": "It tests the 'JavaScript is single-threaded so there are no races' myth, which fails the moment the read and write are separate awaits."
+    },
+    {
+      "id": "jsa-070",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const r = await Promise.all([1, Promise.resolve(2), 'x']);\nconsole.log(r);",
+      "lang": "js",
+      "choices": [
+        "[ 2 ]",
+        "[ 1, Promise { 2 }, 'x' ]",
+        "[ 1, 2, 'x' ]",
+        "TypeError: 1 is not a promise"
+      ],
+      "answer": 2,
+      "why": "Every combinator runs each entry through `Promise.resolve`, so plain values count as already-fulfilled promises and nested promises are unwrapped. That is handy when some entries come from a cache and some from the network.",
+      "tags": ["promises", "combinators"],
+      "level": 1,
+      "asked": "A quick check that you know combinators accept any iterable of values, not only promises."
+    },
+    {
+      "id": "jsa-071",
+      "q": "`ids` turned out to be empty. What happens?",
+      "code": "const ids = [];\nPromise.all(ids.map(fetchUser)).then((r) => console.log('all', r));\nPromise.race(ids.map(fetchUser)).then((r) => console.log('race', r));",
+      "lang": "js",
+      "choices": [
+        "'all []' and 'race undefined', at once",
+        "'all []' logs; race stays pending forever",
+        "A RangeError from each, for empty input",
+        "Neither logs; empty input leaves them pending"
+      ],
+      "answer": 1,
+      "why": "`Promise.all([])` fulfils immediately with an empty array, because there is nothing to wait for. `Promise.race([])` has no entrant that could ever settle it, so anything awaiting it hangs; guard empty input before racing. `Promise.any([])` rejects with an AggregateError instead.",
+      "tags": ["promises", "combinators"],
+      "level": 2,
+      "asked": "Edge cases on empty input are where a race-based timeout helper quietly hangs a request forever."
+    },
+    {
+      "id": "jsa-072",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const wait = (v, ms) => new Promise((r) => setTimeout(() => r(v), ms));\nconsole.log(await Promise.all([wait('slow', 60), wait('fast', 10)]));",
+      "lang": "js",
+      "choices": [
+        "[ 'slow', 'fast' ]",
+        "[ 'fast', undefined ]",
+        "[ 'slow' ]",
+        "[ 'fast', 'slow' ]"
+      ],
+      "answer": 0,
+      "why": "`Promise.all` puts each result at its input's index, whatever order they finish in, so you can destructure results positionally. `[ 'fast', 'slow' ]` is completion order, which Promise.all deliberately does not use.",
+      "tags": ["promises", "combinators"],
+      "level": 1,
+      "asked": "Destructuring `const [user, orders] = await Promise.all(...)` depends on this guarantee."
+    },
+    {
+      "id": "jsa-073",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "try {\n  await Promise.any([Promise.reject(new Error('a')), Promise.reject(new Error('b'))]);\n} catch (e) {\n  console.log(e.constructor.name, e.errors.length);\n}",
+      "lang": "js",
+      "choices": ["TypeError 2", "Error 2", "AggregateError 1", "AggregateError 2"],
+      "answer": 3,
+      "why": "`Promise.any` only rejects when every input rejects, and it then rejects with an `AggregateError` whose `errors` array holds each reason in input order. Catch code that only reads `e.message` loses the individual causes.",
+      "tags": ["promises", "combinators", "errors"],
+      "level": 2,
+      "asked": "It checks you know how to report failures from a fallback chain, such as trying three mirrors."
+    },
+    {
+      "id": "jsa-074",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const r = await Promise.allSettled([Promise.resolve(1), Promise.reject(new Error('no'))]);\nconsole.log(r.map((x) => x.status + ':' + (x.value ?? x.reason.message)));",
+      "lang": "js",
+      "choices": [
+        "[ 'fulfilled:1', 'rejected:Error: no' ]",
+        "[ 'ok:1', 'error:no' ]",
+        "[ 'fulfilled:1', 'rejected:no' ]",
+        "[ 'resolved:1', 'rejected:no' ]"
+      ],
+      "answer": 2,
+      "why": "Each settled result is `{ status: 'fulfilled', value }` or `{ status: 'rejected', reason }`. 'Resolved' is not a status: a promise can be resolved to another promise and still be pending, which is why the spec uses 'fulfilled'.",
+      "tags": ["promises", "combinators"],
+      "level": 2,
+      "asked": "Knowing the exact shape means you can filter failures without a trip to the docs in a live exercise."
+    },
+    {
+      "id": "jsa-075",
+      "q": "You wrap a slow `fetch` in `Promise.race` against a 5-second timeout, and the timeout wins. What happens to the request?",
+      "choices": [
+        "The losing promise is cancelled, so its socket is closed with a reset",
+        "It keeps running; the response is just ignored unless you abort it",
+        "It is paused, and resumes if you await the same fetch promise again",
+        "It rejects with an AbortError the moment the race settles"
+      ],
+      "answer": 1,
+      "why": "Promises have no cancellation: `race` just stops listening to the loser, so the request still uses a connection and the server still does the work. Pass an `AbortSignal` (for example `AbortSignal.timeout(5000)`) to fetch so the timeout actually tears it down.",
+      "tags": ["promises", "cancellation", "timeout"],
+      "level": 2,
+      "asked": "It separates 'I stopped waiting' from 'I stopped the work', which matters for server load and for non-idempotent requests."
+    },
+    {
+      "id": "jsa-076",
+      "q": "In Node 24 (ES module), what happens?",
+      "code": "const fail = (m, ms) => new Promise((_, rej) => setTimeout(() => rej(new Error(m)), ms));\ntry { await Promise.all([fail('a', 10), fail('b', 20)]); }\ncatch (e) { console.log('caught', e.message); }\nawait new Promise((r) => setTimeout(r, 50));\nconsole.log('still alive');",
+      "lang": "js",
+      "choices": [
+        "'caught a', then 'still alive'",
+        "'caught a', then a crash on unhandled 'b'",
+        "'caught b', then 'still alive'",
+        "'caught a' and 'caught b', then 'still alive'"
+      ],
+      "answer": 0,
+      "why": "`Promise.all` attaches a handler to every input up front, so the later rejection of 'b' counts as handled even though it is ignored. Contrast awaiting two promises one after another, where the second can reject before anything listens and crash Node.",
+      "tags": ["promises", "combinators", "errors"],
+      "level": 3,
+      "asked": "It tests a precise model of what \"handled\" means, which explains why Promise.all is safer than sequential awaits on pre-started work."
+    },
+    {
+      "id": "jsa-077",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const r = await Promise.race([\n  new Promise((_, rej) => setTimeout(() => rej(new Error('mirror A down')), 10)),\n  new Promise((res) => setTimeout(() => res('mirror B'), 50)),\n]).catch((e) => e.message);\nconsole.log(r);",
+      "lang": "js",
+      "choices": ["An unhandled rejection", "'AggregateError'", "'mirror B'", "'mirror A down'"],
+      "answer": 3,
+      "why": "`race` settles with whichever input settles first, and a rejection counts, so the quick failure wins. If you want the first success and to ignore failures, that is `Promise.any`.",
+      "tags": ["promises", "combinators"],
+      "level": 1,
+      "asked": "Confusing race with any is a common bug in fallback and mirror logic."
+    },
+    {
+      "id": "jsa-078",
+      "q": "`const parts = { user: getUser(), orders: getOrders() }` holds two promises. Which awaits both concurrently and keeps the keys?",
+      "choices": [
+        "`await Promise.allSettled(parts)`, which maps each key to its settled result",
+        "`await Promise.all(parts)`, since `all` accepts an object and resolves each value",
+        "`Object.fromEntries` over `Promise.all` of the entries mapped to `[k, await p]`",
+        "`await Promise.all(Object.values(parts))`, which returns an object with the same keys"
+      ],
+      "answer": 2,
+      "why": "The combinators take iterables and return arrays, so an object is rejected with a TypeError ('object is not iterable'). Mapping entries to `async ([k, p]) => [k, await p]`, awaiting them with `Promise.all`, and rebuilding with `Object.fromEntries` keeps the names; `Object.values` loses them.",
+      "tags": ["promises", "combinators"],
+      "level": 2,
+      "asked": "It shows you can compose the standard library instead of reaching for a utility package for a five-line need."
+    },
+    {
+      "id": "jsa-079",
+      "q": "What does this code do with the list of user ids?",
+      "code": "await ids.reduce(\n  (prev, id) => prev.then(() => saveUser(id)),\n  Promise.resolve(),\n);",
+      "lang": "js",
+      "choices": [
+        "Starts every save at once and waits for all of them, like Promise.all",
+        "Runs the saves one after another, stopping at the first rejection",
+        "Runs them one after another, skipping failures and carrying on",
+        "Only the final save is awaited; the rest run unobserved in the background"
+      ],
+      "answer": 1,
+      "why": "Each step chains onto the previous promise, so `saveUser(id)` for the next id only starts when the last one has fulfilled, and a rejection skips every later `.then`. It predates async/await; a `for...of` loop with `await` says the same thing more readably.",
+      "tags": ["promises", "chaining"],
+      "level": 2,
+      "asked": "You will meet this idiom in older codebases, and a strong answer offers the for...of rewrite."
+    },
+    {
+      "id": "jsa-080",
+      "q": "Which wraps a Node-style callback API `readConfig(path, (err, data) => ...)` as a promise?",
+      "choices": [
+        "`new Promise((res, rej) => readConfig(p, (err, d) => (err ? rej(err) : res(d))))`",
+        "`new Promise((res) => res(readConfig(p, (err, d) => d)))`, resolving on return",
+        "`new Promise((res, rej) => readConfig(p).then(res, rej))`, reusing its promise",
+        "`Promise.resolve(readConfig(p, (err, d) => (err ? err : d)))`, which waits for it"
+      ],
+      "answer": 0,
+      "why": "A callback API returns nothing useful, so you must settle the promise from inside the callback, routing `err` to reject. The other versions resolve with the function's synchronous return value (undefined) or assume it already returns a promise. In Node, `util.promisify` does this for you.",
+      "tags": ["promises", "api-design"],
+      "level": 2,
+      "asked": "Promisifying a callback API is a common live-coding warm-up, and the error branch is what they are watching for."
+    },
+    {
+      "id": "jsa-081",
+      "q": "In Node 24 (ES module), what happens?",
+      "code": "const p = new Promise(async (resolve) => {\n  const data = JSON.parse('{bad');\n  resolve(data);\n});\np.catch(() => console.log('caught'));",
+      "lang": "js",
+      "choices": [
+        "'caught', then an unhandled-rejection warning as well",
+        "Nothing logs, and the error is silently discarded",
+        "'caught', because any executor error rejects the promise",
+        "Nothing logs; p never settles, error unhandled"
+      ],
+      "answer": 3,
+      "why": "An async executor returns a promise that `new Promise` ignores: the throw rejects that hidden promise instead of `p`, so `p` never settles and the SyntaxError surfaces as an unhandled rejection, crashing Node 24. Never pass an async function to `new Promise`; write an async function instead.",
+      "tags": ["promises", "errors"],
+      "level": 3,
+      "asked": "The async-executor anti-pattern is flagged by ESLint `no-async-promise-executor`; interviewers like candidates who can explain why."
+    },
+    {
+      "id": "jsa-082",
+      "q": "`hide()` removes the spinner. Which guarantees it runs whether `loadOrders()` succeeds or fails?",
+      "choices": [
+        "`loadOrders().then(() => hide());` with no catch",
+        "`try { await loadOrders(); hide(); } catch {}`",
+        "`try { await loadOrders(); } finally { hide(); }`",
+        "`await loadOrders();` followed by `hide();` on the next line"
+      ],
+      "answer": 2,
+      "why": "`finally` runs after success and after an awaited rejection, which is exactly the cleanup contract. The other versions skip `hide()` whenever the load fails, leaving a spinner that never stops; the empty catch also hides the error.",
+      "tags": ["async-await", "errors"],
+      "level": 1,
+      "asked": "Stuck spinners are the most visible async bug in a CRUD UI, and finally is the simplest fix."
+    },
+    {
+      "id": "jsa-083",
+      "q": "`fetchUser` rejects. In Node 24 (ES module), what happens?",
+      "code": "async function getUser(id) {\n  return fetchUser(id).catch(console.error);\n}\nconst user = await getUser(7);\nconsole.log(user.name);",
+      "lang": "js",
+      "choices": [
+        "The error is logged, and `user.name` logs 'undefined'",
+        "The error is logged, then a TypeError reading `name` of undefined",
+        "The rejection propagates to the top level, so `user.name` never runs",
+        "The error is logged, and `user` is an empty object with no name"
+      ],
+      "answer": 1,
+      "why": "`.catch(console.error)` handles the rejection and resolves with console.error's return value, undefined, so the caller carries on with no user and fails later with a less helpful error. Log and rethrow, or return an explicit value the caller must check.",
+      "tags": ["promises", "errors"],
+      "level": 2,
+      "asked": "Catch-and-log-and-continue is a common smell; interviewers want to hear 'handle it where you can do something useful'."
+    },
+    {
+      "id": "jsa-084",
+      "q": "What does this log?",
+      "code": "const p = Promise.resolve(1);\nasync function a() { return p; }\nfunction b() { return p; }\nconsole.log(a() === p, b() === p);",
+      "lang": "js",
+      "choices": ["false true", "true false", "false false", "true true"],
+      "answer": 0,
+      "why": "An async function always creates and returns a new promise, which follows the returned one; a plain function hands back the same object. It matters when you cache promises for de-duplication, because wrapping the getter in `async` makes every call a new object.",
+      "tags": ["async-await", "promises"],
+      "level": 2,
+      "asked": "It tests your mental model of what `async` adds to a function, beyond making await legal."
+    },
+    {
+      "id": "jsa-085",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const wait = (v, ms) => new Promise((r) => setTimeout(() => r(v), ms));\nfor await (const v of [wait('a', 50), wait('b', 10)]) console.log(v);",
+      "lang": "js",
+      "choices": ["a", "TypeError: array is not async iterable", "b a", "a b"],
+      "answer": 3,
+      "why": "`for await` over a plain array awaits each element in index order, so it waits 50 ms for 'a' and then finds 'b' already done. It does not yield in completion order; for that you would race the remaining promises yourself.",
+      "tags": ["async-iteration", "promises"],
+      "level": 2,
+      "asked": "It checks whether you know `for await` works on sync iterables of promises and what order it gives you."
+    },
+    {
+      "id": "jsa-086",
+      "q": "Ten components call `getConfig()` at once during start-up. Which design makes one request and still lets a failed load be retried later?",
+      "choices": [
+        "Debounce `getConfig` so only the last call within 100 ms actually runs a request",
+        "Cache the resolved value after the first await and return it to later callers",
+        "Cache the promise, and drop it on rejection so a later call retries",
+        "Cache the promise forever, so every caller shares one pending or settled request"
+      ],
+      "answer": 2,
+      "why": "All ten calls arrive before the first response, so caching the value still fires ten requests; caching the in-flight promise shares one. Caching it forever also caches a failure, so drop it on rejection. A debounce would leave nine callers with nothing.",
+      "tags": ["concurrency", "caching", "promises"],
+      "level": 3,
+      "asked": "Request de-duplication is how token refresh and config loading avoid stampedes, and it is what React Query does internally."
+    },
+    {
+      "id": "jsa-087",
+      "q": "In this concurrency limiter, why can the workers share `next` without a lock?",
+      "code": "async function pool(items, limit, fn) {\n  let next = 0;\n  const worker = async () => {\n    while (next < items.length) await fn(items[next++]);\n  };\n  await Promise.all(Array.from({ length: limit }, worker));\n}",
+      "lang": "js",
+      "choices": [
+        "Each worker closes over its own copy of `next`, so nothing is shared",
+        "No await sits between the check and `next++`, so nothing interleaves",
+        "`++` on a `let` is atomic in V8, as it would be with an Atomics call",
+        "Promise.all runs the workers one at a time, so they never overlap"
+      ],
+      "answer": 1,
+      "why": "Only one piece of JavaScript runs at a time and it can only be interrupted at an `await`. The comparison and the increment happen in one synchronous stretch, so two workers can never take the same index. Put an await between them and you would get duplicates.",
+      "tags": ["concurrency", "event-loop"],
+      "level": 3,
+      "asked": "Writing a promise pool is a common take-home; explaining why the shared counter is safe shows real event-loop understanding."
+    },
+    {
+      "id": "jsa-088",
+      "q": "Using the same `pool(items, 3, fn)`, `fn` rejects for item 5 of 100. What happens?",
+      "choices": [
+        "The pool promise rejects at once, but the other two workers keep processing items",
+        "The failing worker retries item 5 until it succeeds, then continues",
+        "The pool promise resolves once all 100 items have been attempted, ignoring the error",
+        "The pool stops all workers immediately and no more items are processed"
+      ],
+      "answer": 0,
+      "why": "The failed worker exits its loop, so `Promise.all` rejects immediately, but nothing stops the other workers, which carry on through the list with nobody awaiting them. Decide the policy explicitly: catch per item and collect failures, or share an AbortSignal so workers stop.",
+      "tags": ["concurrency", "errors"],
+      "level": 2,
+      "asked": "Error semantics are what separate a toy pool from one you would trust in a batch job."
+    },
+    {
+      "id": "jsa-089",
+      "q": "You upload 1,000 files in chunks of 10 with `await Promise.all(chunk.map(upload))` per chunk. Why is a pool of 10 usually faster?",
+      "choices": [
+        "Promise.all runs a chunk sequentially, while a pool runs its slots in parallel",
+        "A pool compresses uploads in the background while earlier ones are in flight",
+        "A pool reuses one TCP connection, while each chunk opens ten new ones",
+        "Each chunk waits on its slowest file; a pool refills a slot at once"
+      ],
+      "answer": 3,
+      "why": "With chunking, one slow file holds nine idle slots until it finishes, so total time is the sum of each chunk's slowest item. A pool keeps all ten slots busy continuously. Connection reuse is the same either way, and Promise.all does start everything concurrently.",
+      "tags": ["concurrency", "performance"],
+      "level": 2,
+      "asked": "It checks that you can reason about utilisation, not just \"limit to N\"."
+    },
+    {
+      "id": "jsa-090",
+      "q": "A Node 24 script runs `await Promise.all(urls.map((u) => fetch(u)))` over 20,000 URLs. What typically goes wrong?",
+      "choices": [
+        "Promise.all rejects arrays over 10,000 entries with a RangeError",
+        "They run one at a time, because fetch shares a single socket",
+        "All start at once: sockets, memory and rate limits all suffer",
+        "fetch queues them internally at six per host, so it is slow but safe"
+      ],
+      "answer": 2,
+      "why": "Every request starts immediately, so you hold 20,000 pending responses, exhaust sockets or file descriptors, and trip the remote's rate limits; one failure then rejects the whole batch while the rest keep running. The six-per-host limit is a browser HTTP/1.1 rule, not something Node's fetch applies for you.",
+      "tags": ["concurrency", "fetch"],
+      "level": 2,
+      "asked": "It is the classic 'works on 10 items, falls over on 20,000' bug, and the answer should mention a concurrency limit and per-item error handling."
+    },
+    {
+      "id": "jsa-091",
+      "q": "Saves for the same document must never overlap, but different documents may save at the same time. Which structure fits?",
+      "choices": [
+        "One global mutex around every save, released when the save settles",
+        "A Map from document id to the promise of its latest queued save",
+        "A debounce per document, so only the latest save within a window runs",
+        "Promise.all over each document's pending saves, started together"
+      ],
+      "answer": 1,
+      "why": "Chaining each new save onto that document's last promise (`tail = tail.then(save, save)`) serialises per key while other keys proceed. A global mutex serialises everything; a debounce drops intermediate saves, which is fine for autosave drafts but not for an ordered log of changes.",
+      "tags": ["concurrency", "race"],
+      "level": 3,
+      "asked": "Per-key queues are how you prevent out-of-order writes without killing throughput, and the idea transfers to job queues."
+    },
+    {
+      "id": "jsa-092",
+      "q": "`fn` always rejects. How many times is it called?",
+      "code": "async function retry(fn, retries = 3) {\n  for (let attempt = 0; attempt <= retries; attempt++) {\n    try { return await fn(); }\n    catch (e) { if (attempt === retries) throw e; }\n  }\n}",
+      "lang": "js",
+      "choices": ["4", "1", "Forever, since the loop has no exit", "3"],
+      "answer": 0,
+      "why": "With `<=`, attempts 0 to 3 run: one initial call plus three retries, and the last failure is rethrown. Be explicit in naming (`maxAttempts` versus `retries`); off-by-one here means one extra call to a service that is already struggling.",
+      "tags": ["retry", "reliability"],
+      "level": 1,
+      "asked": "A small reading exercise that shows care with loop bounds in code that talks to other systems."
+    },
+    {
+      "id": "jsa-093",
+      "q": "`fn` returns a promise that rejects. How many times does `withRetry` call it?",
+      "code": "async function withRetry(fn, tries = 3) {\n  for (let i = 1; i <= tries; i++) {\n    try { return fn(); }\n    catch (e) { if (i === tries) throw e; }\n  }\n}",
+      "lang": "js",
+      "choices": ["0", "3", "4", "1"],
+      "answer": 3,
+      "why": "`return fn()` returns the promise without awaiting it, so the try block is left before the rejection happens and the catch never sees it: one call, and the caller gets the rejection. `return await fn()` keeps the rejection inside the try, which is the one place `return await` changes behaviour.",
+      "tags": ["retry", "async-await", "errors"],
+      "level": 3,
+      "asked": "Retry helpers that never retry pass unit tests with synchronous fakes; spotting this shows you understand where rejections surface."
+    },
+    {
+      "id": "jsa-094",
+      "q": "Which failures should an HTTP client retry automatically?",
+      "choices": [
+        "Any 4xx or 5xx response, since the server may have recovered by then",
+        "Only 500, because 502, 503 and 504 mean the server is permanently down",
+        "Network errors, 408, 429, 502, 503 and 504, honouring any Retry-After",
+        "400 and 422 as well, since validation might pass on a second attempt"
+      ],
+      "answer": 2,
+      "why": "Retry what is transient: dropped connections, timeouts, rate limits and gateway or overload errors. A 400, 401, 404 or 422 fails identically every time. Even on retryable codes, only retry non-idempotent requests like POST when they carry an idempotency key.",
+      "tags": ["retry", "http"],
+      "level": 2,
+      "asked": "It shows you know retries can make an outage worse, and which status codes actually signal \"try again\"."
+    },
+    {
+      "id": "jsa-095",
+      "q": "A request returns 429 with `Retry-After: 30`. What should your client do?",
+      "choices": [
+        "Retry at once with backoff starting at 100 ms, since 429 is always brief",
+        "Wait at least 30 s; the header can also be an HTTP date instead",
+        "Treat it as permanent and surface a failure, since the client was rejected",
+        "Wait 30 milliseconds, because Retry-After is given in milliseconds"
+      ],
+      "answer": 1,
+      "why": "RFC 9110 defines Retry-After as either delay-seconds or an HTTP date; the server is telling you exactly when it will accept you again. Retrying sooner just earns more 429s and may extend a ban. Use your own backoff only when the header is absent.",
+      "tags": ["retry", "rate-limit", "http"],
+      "level": 2,
+      "asked": "Integrations with Stripe, GitHub and most SaaS APIs depend on respecting rate-limit headers."
+    },
+    {
+      "id": "jsa-096",
+      "q": "What delay does this backoff give on attempt 3?",
+      "code": "const delay = (attempt) => Math.random() * Math.min(30_000, 500 * 2 ** attempt);",
+      "lang": "js",
+      "choices": [
+        "Between 0 and 4,000 ms",
+        "Between 4,000 and 30,000 ms",
+        "Between 0 and 1,500 ms",
+        "Exactly 4,000 ms"
+      ],
+      "answer": 0,
+      "why": "500 × 2³ is 4,000, which is under the 30 s cap, and `Math.random()` scales it to a random point from 0 to 4,000 ms: 'full jitter'. The randomness spreads out clients that all failed at the same moment, so they don't retry in lockstep.",
+      "tags": ["retry", "reliability"],
+      "level": 1,
+      "asked": "Reading a backoff formula and naming the cap shows you could implement one yourself."
+    },
+    {
+      "id": "jsa-097",
+      "q": "In Node 24 (ES module), what happens after \"done\" is logged?",
+      "code": "function withTimeout(p, ms) {\n  const t = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms));\n  return Promise.race([p, t]);\n}\nawait withTimeout(Promise.resolve('ok'), 5000);\nconsole.log('done');",
+      "lang": "js",
+      "choices": [
+        "The process crashes 5 s later with an unhandled \"timeout\" rejection",
+        "The process stays alive forever, because the timeout promise never settles",
+        "The process exits at once, since nothing awaits the timeout promise any more",
+        "The process stays alive about 5 s until the timer fires, then exits normally"
+      ],
+      "answer": 3,
+      "why": "The pending timer keeps Node's event loop alive, and when it fires the rejection is already handled by `race`, so the process exits cleanly but 5 s late. In a server the same leak piles up one live timer per request. Clear the timer in a `finally`, or use `AbortSignal.timeout`.",
+      "tags": ["timeout", "timers", "node"],
+      "level": 3,
+      "asked": "Timeout helpers that leak timers are a real cause of slow test runs and 'Jest did not exit' warnings."
+    },
+    {
+      "id": "jsa-098",
+      "q": "In a retry loop, what is the difference between a per-attempt timeout and an overall deadline?",
+      "choices": [
+        "The deadline is enforced by the server, the per-attempt timeout by the client",
+        "They are the same thing; one is the other multiplied by the attempt count",
+        "Per-attempt caps one call; the deadline caps the total, backoff included",
+        "Per-attempt covers backoff waits; the deadline covers only time on the network"
+      ],
+      "answer": 2,
+      "why": "Without a deadline, three 10 s attempts plus backoff can keep a user waiting 40 s; without a per-attempt timeout, one hung call eats the whole budget. Combine them: a fresh `AbortSignal.timeout` per attempt, merged with the deadline signal via `AbortSignal.any`.",
+      "tags": ["retry", "timeout"],
+      "level": 2,
+      "asked": "It shows you think about latency from the caller's point of view, not just about making the call eventually succeed."
+    },
+    {
+      "id": "jsa-099",
+      "q": "The user navigates away and `signal` aborts mid-request. What is wrong with this retry loop?",
+      "code": "for (let attempt = 1; ; attempt++) {\n  try { return await fetch(url, { signal }); }\n  catch (e) {\n    if (attempt >= 3) throw e;\n    await sleep(backoff(attempt));\n  }\n}",
+      "lang": "js",
+      "choices": [
+        "Nothing: an aborted fetch resolves with an empty response, which ends the loop",
+        "It retries a deliberate cancellation; rethrow at once when `e.name` is AbortError",
+        "It loops forever, because an aborted signal makes fetch hang instead of rejecting",
+        "It retries correctly, since each attempt creates a fresh signal automatically"
+      ],
+      "answer": 1,
+      "why": "An abort is the caller saying 'stop', not a transient failure: this loop sleeps through backoff and reports a failure instead of a cancellation. With the same aborted signal, every retry also rejects instantly. Check for AbortError (and the signal's reason) and rethrow immediately.",
+      "tags": ["retry", "cancellation"],
+      "level": 2,
+      "asked": "Cancellation-aware retries are the difference between a retry helper and a production-ready one."
+    },
+    {
+      "id": "jsa-100",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const c = new AbortController();\nconst p = fetch('https://example.com/report', { signal: c.signal });\nc.abort();\ntry { await p; } catch (e) { console.log(e.name); }",
+      "lang": "js",
+      "choices": ["AbortError", "TimeoutError", "TypeError", "CancelError"],
+      "answer": 0,
+      "why": "Aborting with no reason rejects the fetch with a DOMException named 'AbortError'; `AbortSignal.timeout` produces 'TimeoutError' instead, and a network failure is a TypeError. Checking `e.name` is how you tell a deliberate cancel apart from a real failure.",
+      "tags": ["cancellation", "fetch"],
+      "level": 1,
+      "asked": "Error handling code that shows a red \"request failed\" banner for a cancelled request is a common UX bug."
+    },
+    {
+      "id": "jsa-101",
+      "q": "How do you give a single `fetch` a 5-second timeout in current browsers and Node 24?",
+      "choices": [
+        "`setTimeout(() => fetch.cancel(url), 5000)` alongside it",
+        "`Promise.race` with a 5 s timer, which aborts the loser",
+        "`fetch(url, { timeout: 5000 })`, the built-in option",
+        "`fetch(url, { signal: AbortSignal.timeout(5000) })`"
+      ],
+      "answer": 3,
+      "why": "`AbortSignal.timeout(ms)` returns a signal that aborts itself with a TimeoutError, and fetch tears the request down when it fires. fetch has no `timeout` option (it is silently ignored), there is no `fetch.cancel`, and a race only stops you waiting.",
+      "tags": ["cancellation", "timeout", "fetch"],
+      "level": 1,
+      "asked": "Every service call needs a timeout; knowing the one-line modern version is expected."
+    },
+    {
+      "id": "jsa-102",
+      "q": "A search box reuses one controller. What happens to the second request?",
+      "code": "const c = new AbortController();\nfetch('/api/search?q=a', { signal: c.signal });\nc.abort(); // user typed again\nfetch('/api/search?q=ab', { signal: c.signal });",
+      "lang": "js",
+      "choices": [
+        "It runs, but aborts itself automatically after the first response arrives",
+        "It runs normally, because `abort()` only affects requests already in flight",
+        "It rejects at once with AbortError, because the signal is permanently aborted",
+        "It waits until the controller is reset, then runs with the same signal"
+      ],
+      "answer": 2,
+      "why": "An AbortSignal only goes one way: once aborted it stays aborted, and anything given it later rejects straight away. Create a new AbortController per request (and abort the previous one), which is what a React effect cleanup or a search handler should do.",
+      "tags": ["cancellation", "fetch"],
+      "level": 2,
+      "asked": "A 'search stopped working after the first keystroke' bug is usually this."
+    },
+    {
+      "id": "jsa-103",
+      "q": "What does this log?",
+      "code": "const c = new AbortController();\nc.abort(new Error('user left page'));\nconsole.log(c.signal.aborted, c.signal.reason.message);",
+      "lang": "js",
+      "choices": [
+        "TypeError: abort() takes no argument",
+        "true 'user left page'",
+        "true undefined",
+        "false 'user left page'"
+      ],
+      "answer": 1,
+      "why": "`abort(reason)` stores the reason on `signal.reason`, and APIs such as fetch reject with that reason, so you can tell 'user left page' from a timeout. With no argument the reason is a DOMException named AbortError.",
+      "tags": ["cancellation"],
+      "level": 1,
+      "asked": "Passing a reason makes cancellations debuggable in logs, and many developers do not know the parameter exists."
+    },
+    {
+      "id": "jsa-104",
+      "q": "`importRows(rows, signal)` awaits a database write per row across 50,000 rows. How do you make it stop promptly when the signal aborts?",
+      "choices": [
+        "Call `signal.throwIfAborted()` at the top of each iteration of the loop",
+        "Wrap the whole loop in `Promise.race` with a promise that listens for abort",
+        "Check `signal.reason` once the loop finishes and roll back if it is set",
+        "Nothing extra: a signal passed as a parameter stops the async function by itself"
+      ],
+      "answer": 0,
+      "why": "A signal is just an object with a flag and an event; your own code must check it. `throwIfAborted()` throws the signal's reason, so the loop exits with the same error fetch would give. A race would stop you awaiting while the writes carry on.",
+      "tags": ["cancellation", "async-await"],
+      "level": 1,
+      "asked": "It tests whether you can make your own long-running functions cancellable, not just call fetch with a signal."
+    },
+    {
+      "id": "jsa-105",
+      "q": "This cancellable `sleep` is called in a loop with one long-lived signal. What two problems does it have?",
+      "code": "function sleep(ms, signal) {\n  return new Promise((resolve, reject) => {\n    const t = setTimeout(resolve, ms);\n    signal.addEventListener('abort', () => { clearTimeout(t); reject(signal.reason); });\n  });\n}",
+      "lang": "js",
+      "choices": [
+        "It resolves twice on abort and leaks the timer when it completes",
+        "Nothing: abort listeners are removed automatically once the promise settles",
+        "It rejects with the wrong error and clears the timer too early",
+        "It ignores an already-aborted signal and never removes its listener"
+      ],
+      "answer": 3,
+      "why": "The 'abort' event fires once, so if the signal is already aborted the sleep just waits the full time; check `signal.aborted` first. And each call adds a listener that is never removed, so thousands pile up on the same signal. Use `{ once: true }` and remove it when the timer wins.",
+      "tags": ["cancellation", "timers"],
+      "level": 3,
+      "asked": "Writing an abortable helper correctly is a good senior-leaning exercise; these two bugs are what reviewers look for."
+    },
+    {
+      "id": "jsa-106",
+      "q": "The user clicks Cancel while `POST /orders` is in flight, and you abort the fetch. Was the order created?",
+      "choices": [
+        "Yes, always: once fetch has been called the server is certain to finish it",
+        "No: aborting the fetch sends the server a cancel that rolls the request back",
+        "Maybe: the server may have processed it already, so reconcile with a status check",
+        "No: the request body is only sent once the response headers have arrived"
+      ],
+      "answer": 2,
+      "why": "Aborting only stops the client listening and closes the connection; the server may have committed the order before noticing, or never noticed at all. That is why checkout uses idempotency keys and why the UI should re-check the order's state rather than assume.",
+      "tags": ["cancellation", "reliability"],
+      "level": 2,
+      "asked": "It checks you understand cancellation is client-side, which matters for payments and anything non-idempotent."
+    },
+    {
+      "id": "jsa-107",
+      "q": "In Node 24 (ES module), `res` arrived, and the body is still streaming. What happens?",
+      "code": "const c = new AbortController();\nconst res = await fetch(url, { signal: c.signal });\nc.abort();\nconst data = await res.json();",
+      "lang": "js",
+      "choices": [
+        "`data` is the full JSON, since the abort came after the response",
+        "`res.json()` rejects with AbortError: the signal also covers the body",
+        "`data` is whatever part of the body had arrived, parsed as far as it goes",
+        "`res.json()` hangs forever, waiting for a body that was cut off"
+      ],
+      "answer": 1,
+      "why": "The signal governs the whole exchange, including reading the body, so aborting after the headers errors the stream and `json()` rejects with the abort reason. That is how you cancel a large download half-way. Once the body has been fully consumed, aborting has no effect.",
+      "tags": ["cancellation", "fetch"],
+      "level": 2,
+      "asked": "It shows you know where fetch actually waits: once for headers, again for the body."
+    },
+    {
+      "id": "jsa-108",
+      "q": "In Node 24 (ES module), what happens?",
+      "code": "const res = new Response('{\"a\":1}');\nconst text = await res.text();\nconst data = await res.json();\nconsole.log(text, data);",
+      "lang": "js",
+      "choices": [
+        "TypeError: body already read",
+        "Logs the text, then {}",
+        "Logs the text, then undefined",
+        "Logs the text, then { a: 1 }"
+      ],
+      "answer": 0,
+      "why": "A body is a stream that can be consumed once; the second read throws 'Body is unusable'. Parse the text yourself with `JSON.parse(text)`, or call `res.clone()` before the first read when two consumers really need it.",
+      "tags": ["fetch", "streams"],
+      "level": 1,
+      "asked": "Logging a response body and then parsing it is where people hit this, usually while debugging something else."
+    },
+    {
+      "id": "jsa-109",
+      "q": "A DELETE returns `204 No Content`. In Node 24 (ES module), what does this do?",
+      "code": "const res = new Response(null, { status: 204 });\nconst data = await res.json();\nconsole.log(data);",
+      "lang": "js",
+      "choices": [
+        "It logs null",
+        "It logs an empty object {}",
+        "It logs undefined",
+        "It throws a SyntaxError"
+      ],
+      "answer": 3,
+      "why": "`json()` parses the body as JSON, and an empty body is not valid JSON ('Unexpected end of JSON input'). A shared API helper should check for 204 (or an empty body) before calling `json()`, rather than every delete showing an error toast.",
+      "tags": ["fetch", "errors"],
+      "level": 2,
+      "asked": "Generic fetch wrappers break on 204 all the time; the fix shows you have built one for real."
+    },
+    {
+      "id": "jsa-110",
+      "q": "What does the server receive as the body?",
+      "code": "await fetch('/api/users', {\n  method: 'POST',\n  body: { name: 'Ada' },\n});",
+      "lang": "js",
+      "choices": [
+        "Nothing: fetch rejects with a TypeError for a plain-object body",
+        "The JSON `{\"name\":\"Ada\"}`, with Content-Type application/json",
+        "The string `[object Object]`, with Content-Type text/plain",
+        "Form fields `name=Ada`, with Content-Type application/x-www-form-urlencoded"
+      ],
+      "answer": 2,
+      "why": "fetch does not serialise objects: a plain object is converted to a string, giving '[object Object]' as text/plain. Send `JSON.stringify(data)` with a `Content-Type: application/json` header; `URLSearchParams` or `FormData` bodies are the ones that get their content type set automatically.",
+      "tags": ["fetch", "http"],
+      "level": 1,
+      "asked": "A 400 from your own API with \"[object Object]\" in the logs is a rite of passage; it tests that you know fetch is low-level."
+    },
+    {
+      "id": "jsa-111",
+      "q": "What happens when you call an async generator function like `pages()`?",
+      "choices": [
+        "It returns a promise of an array of every value the body yields",
+        "It returns an async generator object; the body waits for the first `next()`",
+        "It runs the body up to the first `yield` and returns that value",
+        "It runs the body to the end and returns an array of promises"
+      ],
+      "answer": 1,
+      "why": "Calling any generator only creates the iterator object; nothing in the body runs until something calls `next()`, usually a `for await` loop. That laziness is the point: a paginated fetcher makes no request until someone consumes it.",
+      "tags": ["async-iteration", "generators"],
+      "level": 1,
+      "asked": "Laziness is the property that makes async generators good for pagination and streams."
+    },
+    {
+      "id": "jsa-112",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "async function* rows() {\n  try { yield 1; yield 2; yield 3; }\n  finally { console.log('cleanup'); }\n}\nfor await (const r of rows()) { console.log(r); if (r === 2) break; }\nconsole.log('end');",
+      "lang": "js",
+      "choices": ["1 2 cleanup end", "1 2 end cleanup", "1 2 3 cleanup end", "1 2 end"],
+      "answer": 0,
+      "why": "Leaving a `for await` early (break, return or throw) calls the iterator's `return()`, which resumes the generator at its paused `yield` as if it returned, so `finally` runs before the loop statement finishes. That is where you close a cursor or release a stream reader.",
+      "tags": ["async-iteration", "generators"],
+      "level": 2,
+      "asked": "It shows whether you trust generators to clean up resources, which matters when they wrap database cursors or connections."
+    },
+    {
+      "id": "jsa-113",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "async function* g() { yield 'a'; yield 'b'; }\nconst it = g();\nconst [x, y] = await Promise.all([it.next(), it.next()]);\nconsole.log(x.value, y.value);",
+      "lang": "js",
+      "choices": ["b b", "a undefined", "a a", "a b"],
+      "answer": 3,
+      "why": "An async generator queues `next()` calls and serves them in order, one resumption at a time, so concurrent callers each get the next value. Two callers never see the same item, which makes a shared generator a simple work queue.",
+      "tags": ["async-iteration", "generators"],
+      "level": 3,
+      "asked": "It probes whether you know async generators are safe to pull from concurrently, the basis of some worker-pool designs."
+    },
+    {
+      "id": "jsa-114",
+      "q": "The first match is on page 2 of 50. How many `api.list` calls does this make?",
+      "code": "async function* pages() {\n  let cursor = null;\n  do {\n    const res = await api.list({ cursor });\n    yield res.items;\n    cursor = res.next;\n  } while (cursor);\n}\nfor await (const items of pages()) if (items.some(isMatch)) break;",
+      "lang": "js",
+      "choices": ["1", "2", "3", "50"],
+      "answer": 1,
+      "why": "The generator is pulled one page at a time and pauses at `yield`; when the loop breaks after page 2, the generator is closed and never asks for page 3. An eager helper that collected all pages into an array first would make 50 calls.",
+      "tags": ["async-iteration", "pagination"],
+      "level": 2,
+      "asked": "Lazy pagination saves real API quota, and interviewers like candidates who can say exactly how many calls are made."
+    },
+    {
+      "id": "jsa-115",
+      "q": "What does an object need for `for await...of` to consume it?",
+      "choices": [
+        "A `then` method, so the loop can await the object as a whole",
+        "A `[Symbol.asyncIterator]()` method returning an object whose `next()` returns promises",
+        "An `async next()` method directly on the object, with no symbol required",
+        "A `length` property and numeric keys whose values are promises"
+      ],
+      "answer": 1,
+      "why": "`for await` looks up `Symbol.asyncIterator` and falls back to `Symbol.iterator`, awaiting each value. A bare `next` method is not enough, and a thenable is awaited once, not iterated. Streams, Node readables and async generators all implement the async iterator protocol.",
+      "tags": ["async-iteration"],
+      "level": 1,
+      "asked": "Knowing the protocol lets you wrap an event source or SDK cursor so it works with `for await`."
+    },
+    {
+      "id": "jsa-116",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "async function* g() { yield Promise.resolve(42); }\nfor await (const v of g()) console.log(v);",
+      "lang": "js",
+      "choices": ["42", "undefined", "Promise { <pending> }", "Promise { 42 }"],
+      "answer": 0,
+      "why": "`yield` inside an async generator awaits its operand, so consumers receive 42, never a promise. With a sync generator and a plain `for...of`, you would get the promise object itself.",
+      "tags": ["async-iteration", "generators"],
+      "level": 2,
+      "asked": "It checks your model of where awaiting happens in async iteration."
+    },
+    {
+      "id": "jsa-117",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "async function* produce() {\n  for (let i = 1; i <= 3; i++) { console.log('make', i); yield i; }\n}\nfor await (const v of produce()) console.log('use', v);",
+      "lang": "js",
+      "choices": [
+        "use 1, make 1, use 2, make 2, use 3, make 3",
+        "make 1, make 2, use 1, make 3, use 2, use 3",
+        "make 1, make 2, make 3, then use 1, use 2, use 3",
+        "make 1, use 1, make 2, use 2, make 3, use 3"
+      ],
+      "answer": 3,
+      "why": "Async generators are pull-based: the producer pauses at each `yield` until the consumer asks for the next value, so it never runs ahead. That is backpressure for free, the reason a generator over a paginated API or a file does not load everything into memory.",
+      "tags": ["async-iteration", "generators"],
+      "level": 2,
+      "asked": "The follow-up is usually \"what if the producer is faster than the consumer?\", and the answer is that it simply waits."
+    },
+    {
+      "id": "jsa-118",
+      "q": "In Node 24 or a browser, what is `res.body` on a fetch `Response`?",
+      "choices": [
+        "A promise that resolves with the parsed body, like `res.json()` does",
+        "A string holding the body, filled in once the download completes",
+        "A ReadableStream of Uint8Array chunks, or null when there is no body",
+        "A Node Buffer in Node and a Blob in the browser, matching the platform"
+      ],
+      "answer": 2,
+      "why": "`res.body` is a web ReadableStream of bytes, which is what `text()`, `json()` and `blob()` consume for you. Reading it directly lets you show download progress or process data as it arrives. It is null for bodiless responses such as 204.",
+      "tags": ["streams", "fetch"],
+      "level": 1,
+      "asked": "It opens the streaming conversation: progress bars, NDJSON, and AI-style token streaming all start from `res.body`."
+    },
+    {
+      "id": "jsa-119",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const stream = new ReadableStream({ start(c) { c.enqueue('a'); c.close(); } });\nconst reader = stream.getReader();\nconsole.log(await reader.read(), await reader.read());",
+      "lang": "js",
+      "choices": [
+        "{ value: 'a', done: false } { value: null, done: true }",
+        "{ value: 'a', done: false } { value: undefined, done: true }",
+        "{ value: 'a', done: true } { value: undefined, done: true }",
+        "{ value: 'a', done: false } { done: true }"
+      ],
+      "answer": 1,
+      "why": "`read()` resolves with iterator-style results: `done: false` with a value while data remains, then `done: true` once the stream is closed. The chunk that carries data is never marked done, which is why reader loops check `done` before using `value`.",
+      "tags": ["streams"],
+      "level": 1,
+      "asked": "The manual reader loop is still what you write in older browsers or when you need fine control."
+    },
+    {
+      "id": "jsa-120",
+      "q": "You need to write an upload stream to storage and hash it at the same time. What does `stream.tee()` give you?",
+      "choices": [
+        "Two branches, each getting every chunk; a slow branch makes the stream buffer for it",
+        "Two branches that split the chunks between them, alternating one chunk each",
+        "A copy of the whole stream buffered in memory first, then replayed to each reader",
+        "A single stream that can now be locked by two readers at the same time"
+      ],
+      "answer": 0,
+      "why": "`tee()` locks the original and returns two ReadableStreams that both see every chunk. The source is read at the pace of the faster branch, so chunks queue up in memory for the slower one; a hashing branch that stalls can therefore grow memory without bound.",
+      "tags": ["streams"],
+      "level": 3,
+      "asked": "It tests understanding of streams as single-consumer by default, and the memory cost of splitting one."
+    },
+    {
+      "id": "jsa-121",
+      "q": "A 2-byte UTF-8 character arrives split across two chunks. What does this log?",
+      "code": "const bytes = new TextEncoder().encode('é');\nconst d = new TextDecoder();\nconsole.log(d.decode(bytes.slice(0, 1)) + d.decode(bytes.slice(1)));",
+      "lang": "js",
+      "choices": [
+        "A TypeError on the first chunk",
+        "'é', decoded correctly",
+        "'e', with the accent lost",
+        "'��', two replacement characters"
+      ],
+      "answer": 3,
+      "why": "Each `decode` call without `{ stream: true }` treats its bytes as complete, so half a character becomes U+FFFD twice. `decode(chunk, { stream: true })`, or `TextDecoderStream`, keeps the partial bytes for the next chunk. It only shows up with non-ASCII text, which is why it slips through testing.",
+      "tags": ["streams", "encoding"],
+      "level": 3,
+      "asked": "Garbled accents in streamed output are a real bug in chat and log viewers; it tests byte versus character thinking."
+    },
+    {
+      "id": "jsa-122",
+      "q": "In Node 24, which reads a streamed text response chunk by chunk as strings?",
+      "choices": [
+        "`const r = res.body.getReader('text')`, then `r.read()` in a loop",
+        "`for await (const s of res.body)`, since fetch bodies yield strings",
+        "`for await (const s of res.body.pipeThrough(new TextDecoderStream()))`",
+        "`while (!done) { s = await res.text(); }`, reading one chunk per call"
+      ],
+      "answer": 2,
+      "why": "`res.body` yields Uint8Array chunks; piping through `TextDecoderStream` decodes them, handling characters split across chunks. `res.text()` reads the whole body once, and `getReader` has no text mode.",
+      "tags": ["streams", "fetch"],
+      "level": 2,
+      "asked": "Streaming responses from an AI API or a log tail are the everyday use; it tests you can wire up the pieces."
+    },
+    {
+      "id": "jsa-123",
+      "q": "This NDJSON reader works in development but fails intermittently in production. Why?",
+      "code": "for await (const chunk of res.body.pipeThrough(new TextDecoderStream())) {\n  for (const line of chunk.split('\\n')) {\n    if (line) handle(JSON.parse(line));\n  }\n}",
+      "lang": "js",
+      "choices": [
+        "TextDecoderStream sometimes drops the newline characters between records",
+        "Chunk boundaries fall mid-line, so JSON.parse gets half a record",
+        "JSON.parse cannot run inside a `for await` loop body on large inputs",
+        "The server must send each record as its own chunk, or NDJSON is invalid"
+      ],
+      "answer": 1,
+      "why": "Chunks are sized by the network, not by your records, so a line can be split across two chunks. Keep the text after the last newline in a buffer and prepend it to the next chunk, and flush it at the end. Locally, small fast responses tend to arrive in one chunk, hiding the bug.",
+      "tags": ["streams", "debugging"],
+      "level": 2,
+      "asked": "'Works locally, fails over a real network' is a strong hint about chunk boundaries, and interviewers want you to reach for it."
+    },
+    {
+      "id": "jsa-124",
+      "q": "What does a ReadableStream's `pull()` callback give you that enqueueing everything in `start()` does not?",
+      "choices": [
+        "The stream calls pull only when its queue is below the high-water mark",
+        "pull lets the consumer request a chunk by index rather than in order",
+        "pull caches every chunk, so the stream can be read twice by two readers",
+        "pull runs on a worker thread, so producing chunks never blocks the page"
+      ],
+      "answer": 0,
+      "why": "With `pull`, the stream asks for data only when there is room in its internal queue (`desiredSize > 0`), so a slow consumer slows the producer: backpressure. Enqueueing everything in `start` fills memory regardless of whether anyone is reading.",
+      "tags": ["streams", "backpressure"],
+      "level": 3,
+      "asked": "Backpressure is the concept behind every streaming interview question, in browsers and in Node alike."
+    },
+    {
+      "id": "jsa-125",
+      "q": "What is the difference between `readable.pipeThrough(t)` and `readable.pipeTo(w)`?",
+      "choices": [
+        "pipeThrough works in browsers only; pipeTo is the Node-only equivalent",
+        "pipeThrough buffers the whole stream first; pipeTo streams chunk by chunk",
+        "pipeThrough copies chunks; pipeTo moves them and empties the source",
+        "pipeThrough returns the transform's readable side; pipeTo returns a promise"
+      ],
+      "answer": 3,
+      "why": "pipeThrough takes a `{ writable, readable }` pair such as a TransformStream and returns its readable end, so calls chain. pipeTo sends to a WritableStream and returns a promise that settles when the pipe finishes or fails, which is where you catch errors. Both stream with backpressure in both environments.",
+      "tags": ["streams"],
+      "level": 2,
+      "asked": "Composing decode, parse and write steps is how streaming pipelines are built; it shows you can read one."
+    },
+    {
+      "id": "jsa-126",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const upper = new TransformStream({\n  transform(chunk, controller) { controller.enqueue(chunk.toUpperCase()); },\n});\nconst out = ReadableStream.from(['a', 'b']).pipeThrough(upper);\nconsole.log(await Array.fromAsync(out));",
+      "lang": "js",
+      "choices": [
+        "ReadableStream { locked: true }",
+        "[ 'a', 'b', 'A', 'B' ]",
+        "[ 'A', 'B' ]",
+        "[ 'AB' ]"
+      ],
+      "answer": 2,
+      "why": "Each chunk passes through `transform`, which enqueues the uppercased version on the readable side, and `Array.fromAsync` consumes the stream as an async iterable. Chunks stay separate; nothing concatenates them unless your transform does.",
+      "tags": ["streams"],
+      "level": 2,
+      "asked": "Writing a small TransformStream is the natural next step after reading one, and a quick live exercise."
+    },
+    {
+      "id": "jsa-127",
+      "q": "In Node 24, you `for await` over a fetch response's `res.body` and `break` after the first chunk. What happens to the stream?",
+      "choices": [
+        "It stays locked and open until the response object is garbage-collected",
+        "The stream is cancelled, so the underlying connection is released",
+        "It keeps downloading into memory so a later loop can resume it",
+        "It throws a TypeError, since a locked stream cannot be abandoned"
+      ],
+      "answer": 1,
+      "why": "Breaking out of async iteration calls the iterator's `return()`, which cancels the stream by default and releases the connection; pass `stream.values({ preventCancel: true })` if you only want to release the lock. It is the stream version of a generator's `finally`.",
+      "tags": ["streams", "async-iteration"],
+      "level": 3,
+      "asked": "Resource cleanup on early exit is what makes async iteration safer than hand-written reader loops."
+    },
+    {
+      "id": "jsa-128",
+      "q": "What does this log?",
+      "code": "try {\n  structuredClone({ id: 1, save() {} });\n} catch (e) {\n  console.log(e.name);\n}",
+      "lang": "js",
+      "choices": [
+        "DataCloneError",
+        "SyntaxError",
+        "Nothing: the method is dropped silently",
+        "TypeError"
+      ],
+      "answer": 0,
+      "why": "The structured clone algorithm copies data, not behaviour, and throws a DOMException named DataCloneError on functions (and DOM nodes). JSON.stringify would silently drop the method instead. The same rule applies to anything you `postMessage` to a worker.",
+      "tags": ["workers", "structured-clone"],
+      "level": 1,
+      "asked": "It checks you know what can cross a worker boundary before you design a message format."
+    },
+    {
+      "id": "jsa-129",
+      "q": "What does this log?",
+      "code": "const src = { when: new Date(0), tags: new Set(['a']), note: undefined };\nconst j = JSON.parse(JSON.stringify(src));\nconst s = structuredClone(src);\nconsole.log(typeof j.when, 'note' in j, '|', s.when instanceof Date, s.tags.size, 'note' in s);",
+      "lang": "js",
+      "choices": [
+        "object true | true 1 true",
+        "string false | false 0 false",
+        "string true | true 1 false",
+        "string false | true 1 true"
+      ],
+      "answer": 3,
+      "why": "The JSON round trip turns the Date into a string, the Set into `{}`, and drops the undefined property. `structuredClone` keeps Dates, Maps, Sets, typed arrays, undefined values and even cycles. It is the right deep-copy tool for plain data.",
+      "tags": ["structured-clone"],
+      "level": 2,
+      "asked": "The follow-up is usually \"and what can structuredClone not copy?\": functions, DOM nodes and class prototypes."
+    },
+    {
+      "id": "jsa-130",
+      "q": "You `postMessage` a class instance to a worker. What does this model show arrives?",
+      "code": "class Money {\n  constructor(c) { this.cents = c; }\n  format() { return `$${this.cents / 100}`; }\n}\nconst copy = structuredClone(new Money(250));\nconsole.log(copy.cents, typeof copy.format, copy instanceof Money);",
+      "lang": "js",
+      "choices": [
+        "250 function false",
+        "250 function true",
+        "250 undefined false",
+        "undefined undefined false"
+      ],
+      "answer": 2,
+      "why": "Structured clone copies own data properties into a plain object; the prototype chain, and so every method, is lost. Workers should exchange plain data and rebuild rich objects on the other side (for example `Money.fromJSON(msg)`).",
+      "tags": ["workers", "structured-clone"],
+      "level": 3,
+      "asked": "It shows you have actually passed data to a worker and hit the missing-method surprise."
+    },
+    {
+      "id": "jsa-131",
+      "q": "What does this log?",
+      "code": "const buf = new ArrayBuffer(1024);\nconst copy = structuredClone(buf, { transfer: [buf] });\nconsole.log(buf.byteLength, copy.byteLength);",
+      "lang": "js",
+      "choices": ["1024 1024", "0 1024", "1024 0", "0 0"],
+      "answer": 1,
+      "why": "Transferring moves ownership of the memory instead of copying it, so the original buffer is detached (length 0). `worker.postMessage(buf, [buf])` works the same way, which is how you hand a large image or file to a worker in constant time.",
+      "tags": ["workers", "structured-clone", "performance"],
+      "level": 3,
+      "asked": "Transferables are the key performance idea in worker messaging; strong candidates mention that the sender can no longer use the buffer."
+    },
+    {
+      "id": "jsa-132",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "try {\n  structuredClone({ id: 1, format() { return 'x'; } });\n} catch (e) {\n  console.log(e.name);\n}",
+      "lang": "js",
+      "choices": ["DataCloneError", "TypeError", "SyntaxError", "Nothing: the method is dropped"],
+      "answer": 0,
+      "why": "Structured clone (used by `postMessage`, `structuredClone` and IndexedDB) cannot copy functions, so it throws a DOMException named DataCloneError. It does not silently drop the method the way `JSON.stringify` would, which is why posting a class instance with methods to a worker fails loudly.",
+      "tags": ["workers", "structured-clone"],
+      "level": 1,
+      "asked": "The first worker bug most people hit; a good answer says to send plain data and keep the behaviour on each side."
+    },
+    {
+      "id": "jsa-133",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const copy = structuredClone(new Map([['k', { at: new Date(0) }]]));\nconsole.log(copy instanceof Map, copy.get('k').at instanceof Date);",
+      "lang": "js",
+      "choices": ["false false", "true false", "false true", "true true"],
+      "answer": 3,
+      "why": "Unlike a JSON round trip, structured clone understands built-in types: Map, Set, Date, RegExp, ArrayBuffer, typed arrays and Error all come back as the same kind of object. JSON would turn the Map into `{}` and the Date into a string.",
+      "tags": ["structured-clone"],
+      "level": 2,
+      "asked": "Checks you know why `structuredClone` replaced the `JSON.parse(JSON.stringify(x))` deep-copy trick."
+    },
+    {
+      "id": "jsa-134",
+      "q": "A worker throws an exception that nothing inside it catches. What does the page see?",
+      "choices": [
+        "A rejected promise from the last `postMessage` call the page made",
+        "The page script crashes with the same error at the `new Worker` line",
+        "An `error` event on the Worker object; the page itself keeps running",
+        "Nothing at all, because worker errors are only visible in its own console"
+      ],
+      "answer": 2,
+      "why": "Uncaught errors in a dedicated worker are reported to the page as an `error` event on the Worker object (with message, filename and line). `postMessage` returns nothing, so there is no promise to reject; a request/response wrapper must listen for `error` and fail its pending requests itself.",
+      "tags": ["workers", "errors"],
+      "level": 2,
+      "asked": "Shows whether you have built error handling around worker messaging rather than just the happy path."
+    },
+    {
+      "id": "jsa-135",
+      "q": "Which job belongs in a Web Worker?",
+      "choices": [
+        "Waiting on three slow `fetch` calls so they do not block the page",
+        "Parsing and aggregating a 40 MB CSV file the user just dropped in",
+        "Updating the DOM table with the rows returned by the API",
+        "Debouncing keystrokes in a search box before calling the server"
+      ],
+      "answer": 1,
+      "why": "Workers help with CPU-bound work that would block the main thread for hundreds of milliseconds, such as parsing a large file. Waiting on the network already doesn't block anything, workers cannot touch the DOM, and debouncing is cheap timer logic.",
+      "tags": ["workers", "performance"],
+      "level": 1,
+      "asked": "Interviewers want to hear that async I/O and CPU-heavy work are different problems with different fixes."
+    },
+    {
+      "id": "jsa-136",
+      "q": "In Node 24 (ES module), what order do these log in?",
+      "code": "async function report() {\n  let s = 0;\n  for (let i = 0; i < 3e8; i++) s += i;\n  return s;\n}\nsetTimeout(() => console.log('timer'), 0);\nconst p = report();\nconsole.log('after call');\nawait p; console.log('done');",
+      "lang": "js",
+      "choices": [
+        "after call, done, timer",
+        "after call, timer, then done later",
+        "after call, timer, done",
+        "timer, after call, done"
+      ],
+      "answer": 0,
+      "why": "`async` does not move work off the thread: the loop runs synchronously inside `report()` before 'after call' prints, and the await resumes in a microtask ahead of the timer. Heavy computation needs a worker or chunking, not the `async` keyword.",
+      "tags": ["async-await", "event-loop", "performance"],
+      "level": 1,
+      "asked": "Catches the belief that marking a function `async` makes it 'run in the background'."
+    },
+    {
+      "id": "jsa-137",
+      "q": "You wrap a worker in `call(type, payload)` that returns a promise. Replies can come back in any order. How do you match each reply to its caller?",
+      "choices": [
+        "Create a new Worker per call so each one only ever has one reply",
+        "Use `await worker.postMessage(...)`, which resolves with the reply",
+        "Resolve the oldest pending promise, since replies arrive in order",
+        "Send an id with each request, keep a Map of id to resolvers, look up the reply"
+      ],
+      "answer": 3,
+      "why": "An id-keyed Map of pending `{ resolve, reject }` pairs is the standard RPC shape over any message channel (workers, WebSockets, iframes). FIFO matching breaks as soon as the worker finishes a short job before a long one, a worker per call wastes start-up time, and `postMessage` returns undefined.",
+      "tags": ["workers", "promises", "api-design"],
+      "level": 2,
+      "asked": "This is the core of every worker helper library; drawing the Map of pending requests is what a strong answer does."
+    },
+    {
+      "id": "jsa-138",
+      "q": "What does `worker.terminate()` do to a task the worker is in the middle of?",
+      "choices": [
+        "It pauses the worker, and `worker.resume()` continues where it stopped",
+        "It waits for the current message handler to finish, then stops the worker",
+        "It stops the worker straight away; the task is abandoned and sends no reply",
+        "It throws an AbortError inside the handler so the worker can clean up"
+      ],
+      "answer": 2,
+      "why": "Terminate kills the worker thread immediately with no cleanup hook and no reply, so any caller waiting on a promise will hang unless your wrapper rejects pending requests itself. That makes it usable as a hard cancel for a runaway computation, which a signal cannot interrupt.",
+      "tags": ["workers", "cancellation"],
+      "level": 2,
+      "asked": "A good follow-up to 'how do you cancel CPU work': abort signals can't interrupt a busy loop, but terminating the worker can."
+    },
+    {
+      "id": "jsa-139",
+      "q": "Your app needs `SharedArrayBuffer` to share memory with a worker. In current browsers, what must the page do first?",
+      "choices": [
+        "Nothing: it has been available unconditionally since browsers added it",
+        "Be served with COOP and COEP headers so the page is cross-origin isolated",
+        "Ask for the user's permission through the Permissions API at start-up",
+        "Load the worker with `{ type: \"module\" }` so memory sharing is enabled"
+      ],
+      "answer": 1,
+      "why": "After Spectre, browsers only expose SharedArrayBuffer when `crossOriginIsolated` is true, which needs `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` (or credentialless). Those headers can break third-party embeds, which is why most apps copy or transfer data instead.",
+      "tags": ["workers", "security"],
+      "level": 3,
+      "asked": "Rarely needed in CRUD apps, but knowing the header cost explains why teams choose transfer over sharing."
+    },
+    {
+      "id": "jsa-140",
+      "q": "What is the difference between a service worker and a dedicated Web Worker?",
+      "choices": [
+        "A service worker sits between the page and the network and outlives the tab",
+        "A service worker can read the DOM, while a dedicated worker cannot",
+        "A dedicated worker is shared by all tabs, a service worker by only one",
+        "They are the same thing; \"service worker\" is the older name for it"
+      ],
+      "answer": 0,
+      "why": "A service worker is an event-driven proxy for fetches, push and offline caching, registered per scope and started by the browser as needed. A dedicated worker is a background thread owned by one page for computation. Neither can touch the DOM.",
+      "tags": ["workers"],
+      "level": 1,
+      "asked": "Candidates often mix the two up; the answer should mention offline caching versus off-main-thread CPU work."
+    },
+    {
+      "id": "jsa-141",
+      "q": "In Node 24 (ES module), roughly how long until this logs `[ 300, 300, 300 ]`?",
+      "code": "const wait = (ms) => new Promise((r) => setTimeout(() => r(ms), ms));\nconst out = await Array.fromAsync([wait(300), wait(300), wait(300)]);\nconsole.log(out);",
+      "lang": "js",
+      "choices": ["Immediately", "About 600 ms", "About 900 ms", "About 300 ms"],
+      "answer": 3,
+      "why": "The three timers start as soon as the array is built, so they run concurrently; `Array.fromAsync` just awaits each element in turn, and all three are done after about 300 ms. It only serialises work when the source is an async iterable that starts each step lazily.",
+      "tags": ["async-iteration", "promises"],
+      "level": 2,
+      "asked": "Tests whether you understand that promises start when created, not when awaited."
+    },
+    {
+      "id": "jsa-142",
+      "q": "In Node 24 (ES module), roughly how long until this logs `[ 1, 2, 3 ]`?",
+      "code": "async function* pages() {\n  for (const n of [1, 2, 3]) {\n    await new Promise((r) => setTimeout(r, 100));\n    yield n;\n  }\n}\nconsole.log(await Array.fromAsync(pages()));",
+      "lang": "js",
+      "choices": ["About 200 ms", "About 100 ms", "About 300 ms", "Immediately"],
+      "answer": 2,
+      "why": "An async generator does no work until someone asks for the next value, so `Array.fromAsync` drives it one page at a time: three sequential 100 ms waits. That laziness is what makes generators good for paging an API, and also why they are not a way to get concurrency.",
+      "tags": ["async-iteration", "generators"],
+      "level": 2,
+      "asked": "Pairs well with the array version: the difference is when the work starts."
+    },
+    {
+      "id": "jsa-143",
+      "q": "In Node 24 (ES module), what happens?",
+      "code": "const wait = (ms, fail) => new Promise((r, j) =>\n  setTimeout(() => (fail ? j(new Error('b')) : r('a')), ms));\ntry {\n  for await (const x of [wait(100), wait(10, true)]) console.log(x);\n} catch (e) { console.log('caught', e.message); }",
+      "lang": "js",
+      "choices": [
+        "It logs 'caught b' at 10 ms, before 'a'",
+        "The process crashes with an unhandled rejection 'b'",
+        "It logs 'a' and ignores the rejected promise",
+        "It logs 'a', then 'caught b'"
+      ],
+      "answer": 1,
+      "why": "The second promise rejects at 10 ms while the loop is still awaiting the first, and nothing has attached a handler to it yet, so Node 24 treats it as unhandled and exits. Use `Promise.all`/`allSettled` for an array of already-started promises; `for await` suits lazy sources.",
+      "tags": ["async-iteration", "errors", "node"],
+      "level": 3,
+      "asked": "A real production crash pattern; strong candidates explain 'handled later' versus 'handled in time'."
+    },
+    {
+      "id": "jsa-144",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const user = new AbortController();\nconst signal = AbortSignal.any([user.signal, AbortSignal.timeout(50)]);\nawait new Promise((r) => setTimeout(r, 80));\nconsole.log(signal.aborted, signal.reason.name);",
+      "lang": "js",
+      "choices": ["true TimeoutError", "true AggregateError", "true AbortError", "false undefined"],
+      "answer": 0,
+      "why": "`AbortSignal.any` aborts as soon as any input signal aborts, and takes that signal's reason, here the TimeoutError from `AbortSignal.timeout`. It is how you combine a user Cancel button with a deadline in one `signal` option.",
+      "tags": ["cancellation", "timeout"],
+      "level": 2,
+      "asked": "Combining cancellation sources used to need hand-written listener plumbing; knowing the built-in is a current-knowledge check."
+    },
+    {
+      "id": "jsa-145",
+      "q": "Inside a long async job that receives a `signal`, what does `signal.throwIfAborted()` do?",
+      "choices": [
+        "Waits until the signal aborts and then throws an AbortError",
+        "Registers the current function to be killed when the signal aborts",
+        "Aborts the signal immediately and throws its reason to the caller",
+        "Throws the signal's `reason` if it has already aborted, else does nothing"
+      ],
+      "answer": 3,
+      "why": "It is a synchronous check point: call it between steps (each page, row batch or retry) so a cancelled job stops at the next boundary. JavaScript cannot interrupt running code from outside, so your own functions only stop where they check.",
+      "tags": ["cancellation"],
+      "level": 1,
+      "asked": "Shows you know cancellation in JS is cooperative, not pre-emptive."
+    },
+    {
+      "id": "jsa-146",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const c = new AbortController();\nc.abort(new Error('user cancelled'));\nc.abort(new Error('page closed'));\nconsole.log(c.signal.reason.message);",
+      "lang": "js",
+      "choices": ["It throws: already aborted", "page closed", "user cancelled", "undefined"],
+      "answer": 2,
+      "why": "A signal aborts once. The second `abort()` is a no-op, so the reason stays the first one and abort listeners do not fire again. That makes it safe for several code paths (Cancel button, unmount, timeout) to call `abort()` on the same controller.",
+      "tags": ["cancellation"],
+      "level": 1,
+      "asked": "Checks you know abort is idempotent, which matters when cleanup code may run more than once."
+    },
+    {
+      "id": "jsa-147",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const thenable = {\n  then(resolve) { console.log('then called'); resolve(42); },\n};\nconsole.log(await thenable);",
+      "lang": "js",
+      "choices": [
+        "A TypeError: not a promise",
+        "then called, then 42",
+        "{ then: [Function: then] }",
+        "42 only"
+      ],
+      "answer": 1,
+      "why": "`await` (like `Promise.resolve` and returning from a `.then`) adopts any object with a callable `then`, calling it with resolve and reject. That is how old promise libraries and query builders such as Knex interoperate with native promises, and why putting a `then` method on a plain object is a trap.",
+      "tags": ["promises", "async-await"],
+      "level": 3,
+      "asked": "Explains why `await queryBuilder` runs a query, which confuses people new to ORMs and query builders."
+    },
+    {
+      "id": "jsa-148",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const p = Promise.resolve(1);\nconst q = Promise.resolve(p);\nconsole.log(p === q);",
+      "lang": "js",
+      "choices": [
+        "true",
+        "false, because q wraps p in a second layer",
+        "undefined",
+        "false, because a new promise is always created"
+      ],
+      "answer": 0,
+      "why": "`Promise.resolve` returns its argument unchanged when it is already a native promise from the same constructor, so no wrapper is created. Promises also never nest: resolving with a promise adopts its state, so a `Promise<Promise<T>>` cannot exist.",
+      "tags": ["promises"],
+      "level": 3,
+      "asked": "A precise-model question; strong candidates add that promises flatten, so double wrapping is impossible."
+    },
+    {
+      "id": "jsa-149",
+      "q": "A config loader might throw synchronously or return a promise. What does `Promise.try(load)` (ES2025, Node 24) give you?",
+      "choices": [
+        "It runs `load` on the next macrotask so it never blocks the caller",
+        "It swallows sync throws and resolves the promise with undefined instead",
+        "It retries `load` until it resolves or the retry limit is reached",
+        "A promise either way: a sync throw becomes a rejection you can `.catch`"
+      ],
+      "answer": 3,
+      "why": "`Promise.try(fn)` calls `fn` immediately and turns a return value, a returned promise or a thrown error into one promise. Without it, a sync throw escapes before `.catch` is attached; the old workaround was `Promise.resolve().then(fn)`, which also delayed the call by a tick.",
+      "tags": ["promises", "errors"],
+      "level": 2,
+      "asked": "A current-knowledge check; the strong answer names the old `new Promise` or `.then` workaround it replaces."
+    },
+    {
+      "id": "jsa-150",
+      "q": "In Node 24, what happens when this ES module runs?",
+      "code": "console.log('start');\nawait new Promise(() => {});\nconsole.log('end');",
+      "lang": "js",
+      "choices": [
+        "It logs 'start' and hangs forever, keeping the process alive",
+        "It logs 'start' and 'end', because top-level await has a timeout",
+        "It logs 'start', warns about an unsettled top-level await, and exits with code 13",
+        "It throws a SyntaxError, because await needs an async function"
+      ],
+      "answer": 2,
+      "why": "A promise that never settles doesn't keep the event loop alive on its own. When the loop empties with the module still waiting, Node prints 'Detected unsettled top-level await' and exits with code 13, which is the clue when a script mysteriously stops at an await.",
+      "tags": ["async-await", "node", "debugging"],
+      "level": 3,
+      "asked": "A debugging question: exit code 13 is a lost resolve call, usually a callback that never fired."
+    },
+    {
+      "id": "jsa-151",
+      "q": "How do you turn an image load into a promise you can `await`?",
+      "code": "function loadImage(src) {\n  return new Promise((resolve, reject) => {\n    const img = new Image();\n    // ???\n    img.src = src;\n  });\n}",
+      "lang": "js",
+      "choices": [
+        "`img.onload = resolve(img); img.onerror = reject(img);`",
+        "`img.onload = () => resolve(img); img.onerror = reject;`",
+        "`return img.onload;` so the promise resolves when the image loads",
+        "`await img.load(); resolve(img);` inside the executor"
+      ],
+      "answer": 1,
+      "why": "Wrap event-based APIs by calling resolve and reject from the success and failure handlers. The last option calls both functions immediately instead of passing them, so the promise resolves before the image has loaded, and returning from the executor is ignored.",
+      "tags": ["promises", "api-design"],
+      "level": 1,
+      "asked": "'Promisify this callback or event API' is a common live-coding warm-up."
+    },
+    {
+      "id": "jsa-152",
+      "q": "Fifty requests get 401 at the same moment because the access token expired. What should the refresh logic do?",
+      "choices": [
+        "Share one in-flight refresh promise; all 50 await it, then retry once",
+        "Retry each request after a short delay until the token becomes valid again",
+        "Let each request refresh the token itself, since refresh endpoints are cheap",
+        "Set `refreshing = true`, and have the other requests fail if the flag is set"
+      ],
+      "answer": 0,
+      "why": "Store the pending refresh promise and hand it to every caller, then clear it when it settles, so exactly one refresh happens. Fifty refreshes can invalidate each other if refresh tokens rotate, a boolean flag gives waiting callers nothing to wait on, and blind retries never get a token.",
+      "tags": ["concurrency", "promises", "fetch"],
+      "level": 2,
+      "asked": "A common real-world auth bug; interviewers like hearing about rotating refresh tokens as the reason it matters."
+    },
+    {
+      "id": "jsa-153",
+      "q": "A user debounces a search input by 300 ms. Which problem does debouncing NOT solve?",
+      "choices": [
+        "Wasting server capacity on queries the user never waited for",
+        "Firing requests for half-typed words such as \"wid\" in \"widget\"",
+        "Sending a request on every keystroke while the user is still typing",
+        "An older, slower response arriving after a newer one and overwriting it"
+      ],
+      "answer": 3,
+      "why": "Debouncing only reduces how many requests start; two requests can still be in flight when the user pauses, types, and pauses again, and they may finish out of order. You still need to abort the previous request or ignore stale responses.",
+      "tags": ["race", "fetch"],
+      "level": 2,
+      "asked": "Many candidates stop at 'debounce it'; the strong answer adds cancellation or a request id."
+    },
+    {
+      "id": "jsa-154",
+      "q": "A payment POST times out on the client, and the retry creates a second charge. What stops this?",
+      "choices": [
+        "Raising the client timeout so the first request always completes",
+        "Retrying POST only when the first attempt returned a 5xx status code",
+        "Sending an idempotency key the server uses to return the first result",
+        "Using PUT instead of POST, because PUT is always safe to retry"
+      ],
+      "answer": 2,
+      "why": "A timeout tells you nothing about whether the server processed the request. An `Idempotency-Key` header generated once per user action lets the server recognise the repeat and replay the stored response. Longer timeouts only make the ambiguity rarer, and changing the verb does not change the server logic.",
+      "tags": ["retry", "reliability", "http"],
+      "level": 2,
+      "asked": "Any interview touching payments or orders gets here; the key point is that timeouts are ambiguous."
+    },
+    {
+      "id": "jsa-155",
+      "q": "Your API retries a failing dependency 3 times, and the service that calls you also retries 3 times. The dependency goes down. What happens to its load?",
+      "choices": [
+        "It doubles, since two layers each add one more round of calls",
+        "It multiplies: each user call can become 16 calls to the dependency",
+        "It drops to zero, because callers back off as soon as it fails",
+        "It stays the same, because retries only happen after a failure"
+      ],
+      "answer": 1,
+      "why": "Retries multiply across layers: 4 attempts from the caller, each triggering 4 attempts from you, is 16 calls per user action, just as the dependency is struggling. Retry at one layer only, and use retry budgets or a circuit breaker so failures shed load instead of adding it.",
+      "tags": ["retry", "reliability"],
+      "level": 3,
+      "asked": "Retry amplification is how a small outage becomes a big one; mentioning where retries should live is the strong answer."
+    },
+    {
+      "id": "jsa-156",
+      "q": "In a browser tab, why might `await res.json()` on a 60 MB response freeze the UI even though it is awaited?",
+      "choices": [
+        "The body downloads asynchronously, but the JSON parse itself runs on the main thread",
+        "fetch downloads large bodies synchronously once they pass 50 MB",
+        "The browser disables rendering while any fetch body is still open",
+        "Awaiting a large promise holds the event loop until it settles"
+      ],
+      "answer": 0,
+      "why": "Only the network part is off-thread; building a huge object graph from JSON is CPU work on the main thread, so it becomes one long task. Paginate, stream NDJSON, or parse in a worker. Awaiting doesn't block anything by itself.",
+      "tags": ["fetch", "performance", "event-loop"],
+      "level": 2,
+      "asked": "Tests the difference between asynchronous I/O and synchronous CPU work hiding behind an await."
+    },
+    {
+      "id": "jsa-157",
+      "q": "Two open tabs of your app must not both refresh the auth token at once. Which browser API coordinates them?",
+      "choices": [
+        "A `Promise.race` between the two tabs’ refresh calls",
+        "A `setTimeout` offset per tab so the refreshes never overlap",
+        "A module-level `let refreshing` flag shared by both tabs",
+        "The Web Locks API: `navigator.locks.request('refresh', fn)`"
+      ],
+      "answer": 3,
+      "why": "Each tab has its own JavaScript heap, so an in-memory flag or promise only dedupes within one tab. `navigator.locks.request` grants a named lock to one context at a time across same-origin tabs and workers, and releases it when your callback's promise settles.",
+      "tags": ["concurrency", "race"],
+      "level": 3,
+      "asked": "Multi-tab races are a real source of logout bugs; knowing that each tab has its own heap is the key insight."
+    },
+    {
+      "id": "jsa-158",
+      "q": "After a user logs out in one tab, the other open tabs of your app should log out too. Which API is the simplest fit?",
+      "choices": [
+        "A dedicated Web Worker, since all tabs share the same worker",
+        "Polling `document.hidden` every second to detect other tabs",
+        "A `BroadcastChannel` that every tab listens on for a logout message",
+        "A shared `Promise` exported from the auth module in every tab"
+      ],
+      "answer": 2,
+      "why": "`new BroadcastChannel(\"auth\")` delivers messages to every same-origin tab, iframe and worker that opened a channel with that name. Module state is per tab, and a dedicated worker belongs to one page (a SharedWorker could work, but is more machinery). The `storage` event on localStorage is the older alternative.",
+      "tags": ["workers", "api-design"],
+      "level": 2,
+      "asked": "A practical multi-tab question; mentioning the older `storage` event trick shows breadth."
+    },
+    {
+      "id": "jsa-159",
+      "q": "Why is rejecting with a string, as in `reject(\"not found\")`, a bad habit?",
+      "choices": [
+        "Node 24 converts string rejections into a SyntaxError",
+        "A string carries no stack trace, name or cause, so the error is hard to trace",
+        "`Promise.all` ignores rejections whose reason is not an Error",
+        "Strings cannot be caught by `try/catch` around an `await`"
+      ],
+      "answer": 1,
+      "why": "You can reject with any value and `catch` still receives it, but only an Error records where it was created and supports `name`, `cause` and `instanceof` checks. Code downstream that reads `err.message` also gets undefined. Lint rules such as `prefer-promise-reject-errors` enforce this.",
+      "tags": ["promises", "errors"],
+      "level": 1,
+      "asked": "A code-review staple; the strong answer mentions stack traces and consistent error handling."
+    },
+    {
+      "id": "jsa-160",
+      "q": "A save handler awaits `validate(order)`, then `reserveStock(order)`, then `charge(order)`, each using the previous result. Should you use `Promise.all`?",
+      "choices": [
+        "No: the steps depend on each other, so sequential awaits are right",
+        "No, because `Promise.all` cannot run functions that take arguments",
+        "Yes, because running the three together is always faster",
+        "Yes, but only if each function also receives an AbortSignal"
+      ],
+      "answer": 0,
+      "why": "Parallelise only independent work. These steps have a data and business dependency (never charge before stock is reserved), so running them together would be a bug. The mistake to avoid is the opposite case: sequentially awaiting calls that do not depend on each other.",
+      "tags": ["async-await", "promises"],
+      "level": 1,
+      "asked": "Interviewers check you don't overcorrect after learning 'avoid sequential awaits'."
+    },
+    {
+      "id": "jsa-161",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const values = await Promise.all([1, Promise.resolve(2), 'three']);\nconsole.log(values);",
+      "lang": "js",
+      "choices": [
+        "A TypeError: 1 is not a promise",
+        "[ 2 ]",
+        "[ undefined, 2, undefined ]",
+        "[ 1, 2, 'three' ]"
+      ],
+      "answer": 3,
+      "why": "Every element goes through `Promise.resolve`, so plain values pass straight through and the result keeps input order. That lets you mix cached values and pending requests in one call.",
+      "tags": ["promises", "combinators"],
+      "level": 1,
+      "asked": "A quick check of what the combinators accept; useful when some values are cached and some are fetched."
+    },
+    {
+      "id": "jsa-162",
+      "q": "Your page memoises requests in `cache.set(url, fetch(url).then((r) => r.json()))`. The server is down for a minute. What goes wrong afterwards?",
+      "choices": [
+        "Each call blocks until the server comes back, then all resolve",
+        "Nothing: the next call retries because rejected promises expire",
+        "The rejected promise stays cached, so every later call fails instantly",
+        "The cache fills with duplicate promises for the same URL"
+      ],
+      "answer": 2,
+      "why": "A cached promise keeps whatever state it settled in, so a failure is cached forever. Delete the entry in a `.catch` (and rethrow), or cache only fulfilled values, so the next call tries again.",
+      "tags": ["caching", "promises", "errors"],
+      "level": 2,
+      "asked": "Promise caching is a common optimisation; forgetting to evict failures is the classic bug that follows it."
+    },
+    {
+      "id": "jsa-163",
+      "q": "An API allows 10 requests per second. You run your calls through a pool with a concurrency limit of 10. Are you within the rate limit?",
+      "choices": [
+        "Yes, because at most 10 requests are ever in flight together",
+        "Only if each request takes at least a second; fast ones exceed it",
+        "Yes, because the pool waits a second between each batch of 10",
+        "No, because a pool always sends all requests at the start"
+      ],
+      "answer": 1,
+      "why": "A concurrency limit caps how many run at once, not how many start per second: with 100 ms responses a pool of 10 sends about 100 per second. A rate limit needs a token bucket or a scheduled start time, often combined with a concurrency cap.",
+      "tags": ["concurrency", "rate-limit"],
+      "level": 2,
+      "asked": "Mixing up 'in flight' and 'per second' is common; the strong answer names a token bucket."
+    },
+    {
+      "id": "jsa-164",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "async function* numbers() {\n  yield Promise.resolve(1);\n  yield 2;\n}\nfor await (const n of numbers()) console.log(n, typeof n);",
+      "lang": "js",
+      "choices": [
+        "1 number, then 2 number",
+        "Promise object, then 2 number",
+        "Promise object, then Promise object",
+        "1 number only"
+      ],
+      "answer": 0,
+      "why": "Inside an async generator, `yield` awaits a promise before handing the value out, so consumers never see a raw promise. A sync generator used with `for await` would also unwrap it, but plain `for...of` over a sync generator would give you the promise itself.",
+      "tags": ["async-iteration", "generators"],
+      "level": 3,
+      "asked": "Checks the precise rules of async generators, which matters when you write paging helpers."
+    },
+    {
+      "id": "jsa-165",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "try {\n  const data = await fetch('data:application/json,{\"a\":1}').json();\n  console.log(data);\n} catch (e) {\n  console.log(e.name);\n}",
+      "lang": "js",
+      "choices": ["SyntaxError", "Promise { { a: 1 } }", "{ a: 1 }", "TypeError"],
+      "answer": 3,
+      "why": "`await` binds more loosely than the member call, so this runs `fetch(...).json()` on the promise, which has no `json` method: TypeError. Write `await (await fetch(url)).json()`, or better, two lines with a `res.ok` check in between.",
+      "tags": ["fetch", "async-await"],
+      "level": 1,
+      "asked": "A very common first-week bug; the two-line version with an `ok` check is what reviewers want to see."
+    },
+    {
+      "id": "jsa-166",
+      "q": "Node's `fs.readFile(path, (err, data) => { ... })` uses an error-first callback. What does that convention mean?",
+      "choices": [
+        "The callback runs only on failure; success returns the data",
+        "The callback is called before the file is read, then again after",
+        "The first argument is an error or null; results come after it",
+        "Errors are thrown synchronously, and the callback gets only data"
+      ],
+      "answer": 2,
+      "why": "Node callbacks take `(err, ...results)`: check `err` first, and only use the results when it is null. Throwing inside such a callback does not reach a surrounding `try/catch`, which is one reason promise-based APIs (`fs/promises`) replaced them.",
+      "tags": ["api-design", "errors", "node"],
+      "level": 1,
+      "asked": "Older codebases and libraries still use this style, and wrapping it in a promise is a common task."
+    },
+    {
+      "id": "jsa-167",
+      "q": "A dashboard view starts `setInterval(refresh, 5000)` when it opens. Users navigate between views all day. What goes wrong?",
+      "choices": [
+        "The browser merges identical intervals, so refresh runs once",
+        "Each visit adds another interval, so refreshes pile up and leak",
+        "The interval throws once its view is removed from the page",
+        "Nothing: intervals stop automatically when the view is hidden"
+      ],
+      "answer": 1,
+      "why": "An interval runs until `clearInterval` is called with its id, whatever happens to the DOM. Each visit adds one more, so requests multiply and the callbacks keep old views in memory. Clear it in the teardown path (a React effect cleanup, for example).",
+      "tags": ["timers", "debugging"],
+      "level": 1,
+      "asked": "Checks that you own cleanup for everything you start: timers, listeners and requests."
+    },
+    {
+      "id": "jsa-168",
+      "q": "In an old CommonJS script without top-level await, why do people write `(async () => { ... })()`?",
+      "choices": [
+        "It lets them use `await` inside it, since only async functions allow it",
+        "It stops the process from exiting until every promise has settled",
+        "It turns any errors inside into warnings instead of crashes",
+        "It makes the whole file run on a background thread"
+      ],
+      "answer": 0,
+      "why": "An async IIFE is a quick way to get an async function body at the top level of a CommonJS file. It returns a promise, so add `.catch(...)` to it, or a rejection inside becomes an unhandled rejection. ES modules can just use top-level await.",
+      "tags": ["async-await"],
+      "level": 1,
+      "asked": "Common in scripts and older Node code; strong candidates mention the missing `.catch`."
+    },
+    {
+      "id": "jsa-169",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const results = await Promise.allSettled([\n  Promise.resolve('a'), Promise.reject(new Error('b')), Promise.resolve('c'),\n]);\nconst ok = results.filter((r) => r.status === 'fulfilled').map((r) => r.value);\nconsole.log(ok);",
+      "lang": "js",
+      "choices": ["[ 'a', undefined, 'c' ]", "It throws Error: b", "[ 'a' ]", "[ 'a', 'c' ]"],
+      "answer": 3,
+      "why": "Each settled result is `{ status: 'fulfilled', value }` or `{ status: 'rejected', reason }`, and `allSettled` itself never rejects. Filtering on `status` is the standard way to keep the successes and report the failures separately.",
+      "tags": ["promises", "combinators"],
+      "level": 1,
+      "asked": "Bulk operations with partial failure are routine CRUD work, so the result shape is worth knowing cold."
+    },
+    {
+      "id": "jsa-170",
+      "q": "A page awaits `Promise.all([getUser(), getOrders()])`, and the orders service never responds. What does the user see?",
+      "choices": [
+        "The user data renders, and orders show an error after 30 s",
+        "An error, because `Promise.all` rejects promises that take too long",
+        "The page waits forever, since one pending promise holds up `all`",
+        "The user data renders at once, and orders render as undefined"
+      ],
+      "answer": 2,
+      "why": "`Promise.all` settles only when every input has fulfilled or one has rejected, and a hung request does neither. Give each call a timeout (`AbortSignal.timeout`), and consider rendering the parts independently so one slow service does not block the page.",
+      "tags": ["promises", "combinators", "timeout"],
+      "level": 1,
+      "asked": "Leads naturally into timeouts and partial rendering, which is what interviewers want to discuss."
+    },
+    {
+      "id": "jsa-171",
+      "q": "Inside a dedicated worker script, how do you send the finished result back to the page?",
+      "choices": [
+        "`return result` from the `onmessage` handler",
+        "`self.postMessage(result)`",
+        "`window.postMessage(result)`",
+        "`document.dispatchEvent(new CustomEvent(\"done\"))`"
+      ],
+      "answer": 1,
+      "why": "In a worker the global is `self` (a DedicatedWorkerGlobalScope), and `self.postMessage` fires a `message` event on the Worker object in the page. Return values from handlers are ignored, and there is no `window` or `document` in a worker.",
+      "tags": ["workers"],
+      "level": 1,
+      "asked": "The absolute basics of the worker API, often asked before a worker design question."
+    },
+    {
+      "id": "jsa-172",
+      "q": "What does `new Worker(new URL('./parse.js', import.meta.url), { type: 'module' })` let the worker script do?",
+      "choices": [
+        "Use `import`/`export`, so it can import your shared modules",
+        "Read and update the DOM through an imported `document`",
+        "Run on the main thread, like any other module script",
+        "Share variables with the page through ES module imports"
+      ],
+      "answer": 0,
+      "why": "A module worker loads its script as an ES module, so it can `import` your parsing code instead of using `importScripts`. It still gets its own separate copy of every module, with no shared state or DOM. Bundlers such as Vite recognise this `new URL(..., import.meta.url)` pattern.",
+      "tags": ["workers", "modules"],
+      "level": 1,
+      "asked": "Module workers are the modern default; knowing the bundler-friendly URL pattern shows hands-on use."
+    },
+    {
+      "id": "jsa-173",
+      "q": "In Node 24, what does this log?",
+      "code": "setTimeout((greeting, name) => console.log(greeting + ', ' + name), 10, 'Hi', 'Ada');",
+      "lang": "js",
+      "choices": [
+        "Nothing: the extra arguments are an error",
+        "10, Hi",
+        "undefined, undefined",
+        "Hi, Ada"
+      ],
+      "answer": 3,
+      "why": "Arguments after the delay are passed to the callback when it runs. It is an alternative to wrapping the call in an arrow function, which most people use instead because it reads more clearly.",
+      "tags": ["timers"],
+      "level": 1,
+      "asked": "A small API detail that shows up in code reviews of older code."
+    },
+    {
+      "id": "jsa-174",
+      "q": "In Node 24 (ES module), roughly how long does this take?",
+      "code": "const save = (id) => new Promise((r) => setTimeout(() => r(id), 200));\nfor (const id of [1, 2, 3]) await save(id);\nconsole.log('all saved');",
+      "lang": "js",
+      "choices": ["About 200 ms", "Immediately", "About 600 ms", "About 400 ms"],
+      "answer": 2,
+      "why": "An `await` inside `for...of` pauses the loop until each save finishes, so the three run one after another: about 600 ms. That is the right shape when order matters or the server must not be flooded; use `Promise.all` when the saves are independent.",
+      "tags": ["async-await", "performance"],
+      "level": 1,
+      "asked": "Pairs with the forEach trap; the strong answer says when sequential is actually what you want."
+    },
+    {
+      "id": "jsa-175",
+      "q": "Which async/await version behaves the same as this chain?",
+      "code": "function load(id) {\n  return getUser(id)\n    .then((u) => getTeam(u.teamId))\n    .catch(() => null);\n}",
+      "lang": "js",
+      "choices": [
+        "`async function load(id) { try { const u = getUser(id); return await getTeam(u.teamId); } catch { return null; } }`",
+        "`async function load(id) { try { const u = await getUser(id); return await getTeam(u.teamId); } catch { return null; } }`",
+        "`async function load(id) { try { const u = await getUser(id); return getTeam(u.teamId); } catch { return null; } }`",
+        "`async function load(id) { const u = await getUser(id); try { return await getTeam(u.teamId); } catch { return null; } }`"
+      ],
+      "answer": 1,
+      "why": "The `.catch` covers failures from both calls. Without `return await`, a rejection from `getTeam` skips the catch; putting only the second call in the try misses `getUser` failures; and dropping the first `await` reads `teamId` off a promise.",
+      "tags": ["async-await", "promises", "errors"],
+      "level": 1,
+      "asked": "Refactoring `.then` chains to async/await is routine, and this is where it quietly changes behaviour."
+    },
+    {
+      "id": "jsa-176",
+      "q": "What does `await` pause?",
+      "choices": [
+        "Only the current async function; other code keeps running",
+        "Every async function in the module, until the promise settles",
+        "Nothing: it only marks where a promise may be returned",
+        "The whole JavaScript thread, until the promise settles"
+      ],
+      "answer": 0,
+      "why": "At an `await`, the async function returns control to its caller, and the rest of the function is scheduled to resume when the promise settles. Meanwhile the event loop runs other tasks, clicks and requests. This is why one slow request does not freeze the page.",
+      "tags": ["async-await", "event-loop"],
+      "level": 1,
+      "asked": "A foundational check; 'it waits' is vague, 'it suspends this function and yields to the event loop' is the answer."
+    },
+    {
+      "id": "jsa-177",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "import { setTimeout as sleep } from 'node:timers/promises';\nconst v = await sleep(20, 'woke');\nconsole.log(v);",
+      "lang": "js",
+      "choices": ["20", "A Timeout object", "undefined", "woke"],
+      "answer": 3,
+      "why": "Node's `timers/promises` version of setTimeout returns a promise that resolves with the optional value after the delay, and accepts `{ signal }` for cancellation. It replaces hand-written `sleep` helpers in Node code.",
+      "tags": ["timers", "node"],
+      "level": 1,
+      "asked": "Shows familiarity with the promise-based Node APIs rather than wrapping everything by hand."
+    },
+    {
+      "id": "jsa-178",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const signal = AbortSignal.abort();\nconsole.log(signal.aborted, signal.reason.name);",
+      "lang": "js",
+      "choices": ["false AbortError", "false undefined", "true AbortError", "true TimeoutError"],
+      "answer": 2,
+      "why": "`AbortSignal.abort(reason?)` returns a signal that is already aborted, with a default AbortError reason. It is handy in tests, and for making a function bail out when its caller has already given up.",
+      "tags": ["cancellation"],
+      "level": 1,
+      "asked": "Useful for testing cancellation paths without timers."
+    },
+    {
+      "id": "jsa-179",
+      "q": "What is wrong with this save handler?",
+      "code": "function onSave() {\n  setSaving(true);\n  api.save(form);\n  setSaving(false);\n  showToast('Saved');\n}",
+      "lang": "js",
+      "choices": [
+        "Nothing: `api.save` blocks until the request completes",
+        "The toast shows before the request has finished or even failed",
+        "`setSaving(false)` throws because the request is still running",
+        "The request is cancelled as soon as `onSave` returns"
+      ],
+      "answer": 1,
+      "why": "`api.save` returns a promise immediately, so the spinner flips off and 'Saved' appears before the server answers, and a failure becomes an unhandled rejection. Make the handler async, `await` the save in try/catch, and clear the flag in `finally`.",
+      "tags": ["async-await", "errors"],
+      "level": 1,
+      "asked": "Missing awaits in UI handlers are a top code-review finding."
+    },
+    {
+      "id": "jsa-180",
+      "q": "In Node 24 (ES module), what order do these log in?",
+      "code": "const bus = new EventTarget();\nbus.addEventListener('saved', () => console.log('listener'));\nbus.dispatchEvent(new Event('saved'));\nconsole.log('after dispatch');",
+      "lang": "js",
+      "choices": [
+        "listener, after dispatch",
+        "after dispatch only",
+        "It depends on the event loop phase",
+        "after dispatch, listener"
+      ],
+      "answer": 0,
+      "why": "`dispatchEvent` (like Node's `emitter.emit`) calls listeners synchronously, one after another, before it returns. Events are not queued as tasks, so a slow listener blocks the code that dispatched the event.",
+      "tags": ["event-loop"],
+      "level": 2,
+      "asked": "Many assume events are asynchronous; knowing they aren't explains a whole class of ordering bugs."
+    },
+    {
+      "id": "jsa-181",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const isActive = async (id) => id > 2;\nconst active = [1, 2, 3].filter(isActive);\nconsole.log(active);",
+      "lang": "js",
+      "choices": [
+        "It logs [ Promise { true } ]",
+        "It logs [ 3 ]",
+        "It logs []",
+        "It logs [ 1, 2, 3 ]"
+      ],
+      "answer": 3,
+      "why": "`filter` does not await: every callback returns a promise, and any promise object is truthy, so nothing is removed. Resolve the checks first (`await Promise.all(ids.map(isActive))`), then filter by index.",
+      "tags": ["async-await", "arrays"],
+      "level": 2,
+      "asked": "The filter version of the forEach trap, and a likely follow-up when you answer that one well."
+    },
+    {
+      "id": "jsa-182",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const node = { name: 'root' };\nnode.self = node;\nconst copy = structuredClone(node);\nconsole.log(copy.self === copy, copy === node);",
+      "lang": "js",
+      "choices": ["It throws a TypeError", "true true", "true false", "false false"],
+      "answer": 2,
+      "why": "Structured clone tracks objects it has already copied, so cycles and shared references are preserved in the copy. `JSON.stringify` throws 'Converting circular structure to JSON' on the same object.",
+      "tags": ["structured-clone"],
+      "level": 2,
+      "asked": "Rounds out the structuredClone versus JSON comparison with cycles."
+    },
+    {
+      "id": "jsa-183",
+      "q": "You build a pool of image-processing workers in the browser. What is a sensible pool size?",
+      "choices": [
+        "One worker per image, so every image is processed at the same time",
+        "About `navigator.hardwareConcurrency - 1`, leaving a core for the page",
+        "Exactly one, because the browser only runs one worker at a time",
+        "A fixed 64, since idle workers cost nothing to keep around"
+      ],
+      "answer": 1,
+      "why": "CPU-bound work cannot go faster than the cores you have, and each worker costs start-up time and memory. Size the pool near the core count (leaving room for the main thread) and queue the jobs.",
+      "tags": ["workers", "concurrency", "performance"],
+      "level": 2,
+      "asked": "Links worker pools to concurrency limits, which interviewers like to see connected."
+    },
+    {
+      "id": "jsa-184",
+      "q": "In Node 24 (ES module), what happens?",
+      "code": "const stream = ReadableStream.from(['a', 'b', 'c']);\nconst text = await new Response(stream).text();\nconsole.log(text);",
+      "lang": "js",
+      "choices": [
+        "It rejects: chunks must be bytes",
+        "It logs '' because the stream is locked",
+        "It logs 'abc' once the stream ends",
+        "It logs 'a,b,c', joined by commas"
+      ],
+      "answer": 0,
+      "why": "A Response body must be a stream of bytes. Pipe string chunks through `new TextEncoderStream()` first, and then `.text()` gives you back \"abc\". Wrapping a stream in `new Response` is a handy way to collect it, as long as it carries bytes.",
+      "tags": ["streams", "encoding"],
+      "level": 3,
+      "asked": "Shows you know the text-versus-bytes boundary in web streams, which is where most stream bugs live."
+    },
+    {
+      "id": "jsa-185",
+      "q": "An import of 200 rows ends with 12 failures from `Promise.allSettled`. What is the best next step for the retry?",
+      "choices": [
+        "Treat all 200 as failed and roll back the saved ones by hand",
+        "Retry the rejected rows at once with no delay, until all succeed",
+        "Re-run the whole import, since partial results are unreliable",
+        "Retry only the rejected rows, keeping their index to report them"
+      ],
+      "answer": 3,
+      "why": "`allSettled` preserves input order, so each rejected result's index identifies the row. Retry just those with backoff and a cap, and report the ones that still fail; re-running everything duplicates writes unless the saves are idempotent.",
+      "tags": ["promises", "retry", "combinators"],
+      "level": 2,
+      "asked": "Partial failure handling is where bulk features go wrong in production."
+    },
+    {
+      "id": "jsa-186",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "async function save() {\n  try {\n    throw new Error('db down');\n  } finally {\n    return 'ok';\n  }\n}\nconsole.log(await save());",
+      "lang": "js",
+      "choices": [
+        "undefined",
+        "'ok' after an unhandled rejection warning",
+        "ok",
+        "It throws Error: db down"
+      ],
+      "answer": 2,
+      "why": "A `return` in `finally` overrides the pending throw, so the error vanishes and the promise fulfils with 'ok'. Keep `finally` for cleanup only; ESLint's `no-unsafe-finally` flags this.",
+      "tags": ["async-await", "errors"],
+      "level": 3,
+      "asked": "A code-review trap: an error swallowed by finally is very hard to debug later."
+    },
+    {
+      "id": "jsa-187",
+      "q": "In Node 24 (ES module), what happens?",
+      "code": "try {\n  queueMicrotask(() => { throw new Error('micro'); });\n} catch (e) {\n  console.log('caught');\n}\nconsole.log('after');",
+      "lang": "js",
+      "choices": [
+        "It logs 'after', and the error is silently ignored",
+        "It logs 'after', then crashes with an uncaught Error: micro",
+        "It logs 'after', then an unhandled rejection warning",
+        "It logs 'caught', then 'after'"
+      ],
+      "answer": 1,
+      "why": "The callback runs later, after the try block has finished, so the error is an uncaught exception, not a rejection: Node 24 crashes. Only errors in promise handlers become rejections; a raw microtask behaves like a timer callback.",
+      "tags": ["event-loop", "microtasks", "errors"],
+      "level": 3,
+      "asked": "Tests whether you know which error path a callback takes, which matters when writing scheduling helpers."
+    },
+    {
+      "id": "jsa-188",
+      "q": "In Node 24, what does this print?",
+      "code": "setTimeout(() => console.log('reminder'), 30 * 24 * 60 * 60 * 1000);\nsetTimeout(() => console.log('tick'), 50);",
+      "lang": "js",
+      "choices": [
+        "A TimeoutOverflowWarning, then 'reminder' at once and 'tick'",
+        "'tick', then a RangeError for the oversized delay",
+        "'tick' only, as the long timer is silently dropped",
+        "'tick' after 50 ms, then 'reminder' 30 days later"
+      ],
+      "answer": 0,
+      "why": "Delays are stored as signed 32-bit milliseconds (about 24.8 days); anything larger is treated as 1 ms, and Node warns. Browsers do the same without a warning. Schedule far-future work in a job scheduler or database, not a timer.",
+      "tags": ["timers", "node"],
+      "level": 3,
+      "asked": "A real production bug in reminder and subscription features; the fix is persistence, not a bigger timer."
+    },
+    {
+      "id": "jsa-189",
+      "q": "An API handler has a 2-second budget and calls three services in sequence. How should the timeouts on those calls be set?",
+      "choices": [
+        "A fixed 500 ms each, whatever the earlier calls used up",
+        "Two seconds each, so every call gets the full budget",
+        "No timeouts, and let the load balancer cut the request off",
+        "From one deadline: each call gets the time that remains"
+      ],
+      "answer": 3,
+      "why": "Per-call timeouts that ignore the others can add up to 6 s, long after the client gave up. Compute a deadline once and pass the remainder along (for example `AbortSignal.timeout(deadline - Date.now())`), so work stops when nobody is waiting.",
+      "tags": ["timeout", "cancellation", "reliability"],
+      "level": 3,
+      "asked": "Deadline propagation separates people who have debugged slow cascading requests from those who have not."
+    },
+    {
+      "id": "jsa-190",
+      "q": "A test checks that `loadUser(-1)` rejects. Why does it pass even when `loadUser` resolves?",
+      "code": "test('rejects bad ids', () => {\n  expect(loadUser(-1)).rejects.toThrow('invalid id');\n});",
+      "lang": "js",
+      "choices": [
+        "The test runner treats any returned promise as a pass",
+        "`.rejects` only works with Jest, not with Vitest",
+        "The assertion is never awaited, so the test ends before it runs",
+        "`toThrow` cannot match messages on rejected promises"
+      ],
+      "answer": 2,
+      "why": "The `.rejects` assertion is itself a promise. Without `await` (or `return`), the test finishes synchronously and passes, and the later assertion failure is lost or reported against another test. Write `await expect(...).rejects.toThrow(...)`.",
+      "tags": ["async-await", "errors", "testing"],
+      "level": 2,
+      "asked": "False-passing async tests are common; spotting the missing await is a quick signal of test experience."
+    },
+    {
+      "id": "jsa-191",
+      "q": "Your worker posts 'progress 10%', 'progress 20%' and then 'done' with three `postMessage` calls. In what order does the page receive them?",
+      "choices": [
+        "In any order, since each message travels separately",
+        "In the order sent, one 'message' event each",
+        "Only 'done', because later messages replace earlier ones",
+        "All three merged into a single event with an array"
+      ],
+      "answer": 1,
+      "why": "Messages on one channel are delivered in the order they were posted, each as its own event. Delivery is asynchronous though: they arrive as tasks on the page's event loop, so a busy main thread delays them.",
+      "tags": ["workers", "event-loop"],
+      "level": 2,
+      "asked": "Progress reporting from workers relies on this guarantee."
+    },
+    {
+      "id": "jsa-192",
+      "q": "A worker computes a report for a filter the user has since changed. How do you stop the stale result from being shown?",
+      "choices": [
+        "Tag each job with an id and ignore replies for any old id",
+        "Call `postMessage` again with the new filter; the old job is replaced",
+        "Wrap the call in `Promise.race` so the older reply is rejected",
+        "Pass an AbortSignal in `postMessage` so the worker stops at once"
+      ],
+      "answer": 0,
+      "why": "A busy worker can't process a cancel message until its current job ends, and signals can't be posted. Ignore stale replies by job id (or terminate and recreate the worker for long jobs). Posting again only queues a second job.",
+      "tags": ["workers", "race", "cancellation"],
+      "level": 2,
+      "asked": "The worker version of the search race; the strong answer weighs ignoring against terminating."
+    },
+    {
+      "id": "jsa-193",
+      "q": "You call an async function without `await` on purpose: `sendAnalytics(event)`. What should you add?",
+      "choices": [
+        "A `setTimeout` wrapper so it runs after the current request",
+        "`await` anyway, because unawaited calls are cancelled",
+        "Nothing: a promise nobody awaits cannot reject",
+        "A `.catch` that logs, so a failure is not an unhandled rejection"
+      ],
+      "answer": 3,
+      "why": "Fire-and-forget is fine for non-critical work, but a rejection with no handler crashes Node 24 and pollutes the browser console. Attach `.catch(log)` (or `void` it after handling) so the floating promise is deliberate, which also satisfies `no-floating-promises`.",
+      "tags": ["promises", "errors"],
+      "level": 1,
+      "asked": "Checks you can tell deliberate fire-and-forget from a forgotten await."
+    },
+    {
+      "id": "jsa-194",
+      "q": "In Node 24 (ES module), what does this log?",
+      "code": "const ac = new AbortController();\nconst job = new Promise((resolve, reject) => {\n  ac.signal.addEventListener('abort', () => reject(ac.signal.reason));\n});\nac.abort();\ntry { await job; } catch (e) { console.log(e.name); }",
+      "lang": "js",
+      "choices": ["Error", "Nothing: the listener was added too late", "AbortError", "TypeError"],
+      "answer": 2,
+      "why": "The listener was registered before `abort()`, so it fires synchronously during the call and rejects the promise with the default AbortError reason. Rejecting with `signal.reason` keeps the error name that callers check for.",
+      "tags": ["cancellation", "promises"],
+      "level": 1,
+      "asked": "The building block of every cancellable helper you write yourself."
+    },
+    {
+      "id": "jsa-195",
+      "q": "Why is `for await (const row of rows)` over a plain array of already-resolved values not an error?",
+      "code": "for await (const n of [1, 2, 3]) console.log(n);",
+      "lang": "js",
+      "choices": [
+        "It is an error: `for await` needs an async iterable",
+        "`for await` falls back to the sync iterator and awaits each value",
+        "The array is converted into a ReadableStream behind the scenes",
+        "It only works because the values are numbers, not objects"
+      ],
+      "answer": 1,
+      "why": "When there is no `Symbol.asyncIterator`, `for await` uses `Symbol.iterator` and awaits each value, so it logs 1, 2, 3. That is convenient, but it also means `for await` over an array of pending promises has the unhandled-rejection trap.",
+      "tags": ["async-iteration"],
+      "level": 2,
+      "asked": "Fills in the precise rule behind for-await, which explains both its convenience and its trap."
     }
   ]
 }

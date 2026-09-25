@@ -444,6 +444,1794 @@
       "tags": ["express", "operations"],
       "level": 2,
       "asked": "The Express version of the forwarded-headers question; wrong values break secure cookies, redirects and per-IP rate limits."
+    },
+    {
+      "id": "ne-030",
+      "q": "In Express 5, what happens when this route is registered?",
+      "code": "app.get('*', (req, res) => res.sendFile(indexHtml));",
+      "lang": "js",
+      "choices": [
+        "It matches every GET path, exactly as it did in Express 4",
+        "It throws at startup: a wildcard needs a name, such as /*splat",
+        "It only matches the literal path /*, since * is no longer special",
+        "It matches a single segment, so /a/b falls through to a 404"
+      ],
+      "answer": 1,
+      "why": "Express 5 uses path-to-regexp v8, where a bare `*` is a syntax error (\"Missing parameter name\"). Write `/*splat` (one or more segments) or `/{*splat}` to also match the root. The \"matches the literal path\" idea is wrong because the parser rejects it before any request arrives.",
+      "tags": ["express", "routing", "express-5"],
+      "level": 2,
+      "asked": "The most common breakage when upgrading an SPA fallback route from Express 4 to 5."
+    },
+    {
+      "id": "ne-031",
+      "q": "In Express 5, how do you declare one route that matches both `/users` and `/users/42`?",
+      "choices": [
+        "app.get('/users/:id?', handler)",
+        "app.get('/users/(:id)', handler)",
+        "app.get('/users{/:id}', handler)",
+        "app.get('/users/:id*', handler)"
+      ],
+      "answer": 2,
+      "why": "Express 5 marks optional parts with braces, so `{/:id}` makes the slash and parameter optional together. The Express 4 form `:id?` now throws \"Unexpected ?\" when the route is registered, and parentheses and `*` modifiers are no longer valid in path strings.",
+      "tags": ["express", "routing", "express-5"],
+      "level": 2,
+      "asked": "Tells the interviewer whether your Express knowledge is from before or after the v5 path syntax change."
+    },
+    {
+      "id": "ne-032",
+      "q": "What does `GET /users/me` return?",
+      "code": "app.get('/users/:id', (req, res) => res.send(`id=${req.params.id}`));\napp.get('/users/me', (req, res) => res.send('me'));",
+      "lang": "js",
+      "choices": [
+        "me, because a literal segment always outranks a parameter",
+        "A 404, because the two routes conflict and both are skipped",
+        "id=me, because the first matching route in order wins",
+        "An error at startup, because the two paths overlap"
+      ],
+      "answer": 2,
+      "why": "Express has no specificity ranking: it walks routes in registration order and the first match handles the request, so `:id` captures \"me\". Register `/users/me` first. Frameworks such as Fastify do rank static segments above parameters, which is where the \"literal wins\" belief comes from.",
+      "tags": ["express", "routing"],
+      "level": 1,
+      "asked": "A classic \"why is my /me endpoint hitting the wrong handler\" bug that shows you know routing is ordered."
+    },
+    {
+      "id": "ne-033",
+      "q": "What does `GET /a?skip=1` return?",
+      "code": "app.get('/a', (req, res, next) => {\n  if (req.query.skip) return next('route');\n  res.send('first');\n}, (req, res) => res.send('second'));\napp.get('/a', (req, res) => res.send('third'));",
+      "lang": "js",
+      "choices": [
+        "first",
+        "second",
+        "third",
+        "A 404"
+      ],
+      "answer": 2,
+      "why": "`next('route')` skips the remaining callbacks of the current route and moves to the next matching route, so 'second' is bypassed and the second `app.get('/a')` answers. Plain `next()` would have run 'second'.",
+      "tags": ["express", "routing", "middleware"],
+      "level": 3,
+      "asked": "Checks you know the difference between next(), next(err) and next(\"route\")."
+    },
+    {
+      "id": "ne-034",
+      "q": "In Express 5 with default settings, what is `req.query` for `GET /q?user[name]=x&tag=a&tag=b`?",
+      "choices": [
+        "{ user: { name: 'x' }, tag: ['a', 'b'] }",
+        "{ 'user[name]': 'x', tag: 'b' }",
+        "{ user: { name: 'x' }, tag: 'a,b' }",
+        "{ 'user[name]': 'x', tag: ['a', 'b'] }"
+      ],
+      "answer": 3,
+      "why": "Express 5 switched the default query parser from `qs` (\"extended\") to Node's `querystring` (\"simple\"): brackets are not expanded into nested objects, but repeated keys still become an array. Nested parsing needs `app.set('query parser', 'extended')`, the Express 4 default.",
+      "tags": ["express", "express-5", "validation"],
+      "level": 3,
+      "asked": "Shows you know a silent default changed in v5 and that query values can be arrays, not just strings."
+    },
+    {
+      "id": "ne-035",
+      "q": "A search route does `req.query.tag.toLowerCase()`. It works in testing, then throws `TypeError: toLowerCase is not a function` in production. What request caused it?",
+      "choices": [
+        "One with ?tag= and an empty value, which Express parses to null",
+        "One with ?tag=a&tag=b, which Express parses to an array",
+        "One with ?tag=123, which Express parses to a number",
+        "One with ?TAG=a, which leaves req.query.tag undefined"
+      ],
+      "answer": 1,
+      "why": "Query values are strings, arrays of strings (for repeated keys) or undefined; Express never converts to numbers or null. An array has no `toLowerCase`. Validate the query with a schema instead of trusting its shape; a missing key would throw \"Cannot read properties of undefined\" instead.",
+      "tags": ["express", "validation"],
+      "level": 2,
+      "asked": "Checks you treat the query string as untrusted input with a shape the client controls."
+    },
+    {
+      "id": "ne-036",
+      "q": "In an Express 5 ES module, a validation middleware does `req.query = schema.parse(req.query)`. What happens?",
+      "choices": [
+        "It works: later handlers see the parsed, typed values",
+        "It is ignored in dev mode but applied when NODE_ENV=production",
+        "It throws a TypeError, because req.query is a getter with no setter",
+        "It works, but Express re-parses the URL on the next read"
+      ],
+      "answer": 2,
+      "why": "In Express 5 `req.query` is a getter, so assigning to it throws in strict-mode code (every ES module) and is silently ignored in sloppy CommonJS. Store the parsed result elsewhere, for example `res.locals.query` or a typed `req.validated`. `req.body` is still a plain writable property.",
+      "tags": ["express", "express-5", "validation"],
+      "level": 3,
+      "asked": "A real upgrade bug in validation middleware; knowing it shows you have written one against v5."
+    },
+    {
+      "id": "ne-037",
+      "q": "In Express 5, what is `req.body` in this handler for a JSON POST?",
+      "code": "app.post('/orders', (req, res) => res.json({ body: req.body }));\napp.use(express.json());",
+      "lang": "js",
+      "choices": [
+        "The parsed JSON object, since middleware order does not matter",
+        "An empty object {}, because nothing has parsed the body yet",
+        "The raw JSON string, since express.json has not run yet",
+        "undefined, because the parser is registered after the route"
+      ],
+      "answer": 3,
+      "why": "Middleware runs in registration order, so the route handles the request before `express.json()` ever sees it. Express 5 leaves `req.body` undefined when no parser has run; Express 4 defaulted it to `{}`, which is where the empty-object answer comes from.",
+      "tags": ["express", "middleware"],
+      "level": 1,
+      "asked": "The most common \"req.body is undefined\" cause, and a quick test of whether you know order is behaviour."
+    },
+    {
+      "id": "ne-038",
+      "q": "With `app.use(express.json())`, a client POSTs a valid JSON string but sends `Content-Type: text/plain`. What is `req.body`?",
+      "choices": [
+        "The parsed object, because the parser sniffs the content",
+        "undefined, because the parser only handles JSON types",
+        "The raw string, because text bodies pass through as-is",
+        "A 415 error is sent before the route handler runs"
+      ],
+      "answer": 1,
+      "why": "`express.json()` checks the Content-Type against its `type` option (default `application/json`) and calls `next()` untouched when it does not match, so in Express 5 `req.body` stays undefined. It does not sniff, does not produce a string (that is `express.text()`), and does not reject with 415.",
+      "tags": ["express", "middleware"],
+      "level": 2,
+      "asked": "Debugging a client that forgot the header is a routine support task for API developers."
+    },
+    {
+      "id": "ne-039",
+      "q": "A client sends 2 MB of JSON to an app using `express.json()` with default options. What happens?",
+      "choices": [
+        "The body is parsed in full, since the limit only applies to uploads",
+        "The first 100kb is parsed and the remainder is silently discarded",
+        "The request hangs until the client gives up and closes the socket",
+        "next() receives an error with status 413 and type entity.too.large"
+      ],
+      "answer": 3,
+      "why": "The default `limit` is 100kb; bigger bodies become an error with `status: 413` and `type: 'entity.too.large'` that flows to your error handler. The parser never truncates, because half a JSON document is not valid JSON. Raise the limit per route rather than globally.",
+      "tags": ["express", "security", "errors"],
+      "level": 2,
+      "asked": "Checks you know body limits exist and how the error reaches your handler."
+    },
+    {
+      "id": "ne-040",
+      "q": "A client sends `{bad json` with `Content-Type: application/json`. With `express.json()` and no custom error handler, what does the client get?",
+      "choices": [
+        "A 400, because the parser calls next(err) with status 400",
+        "A 500, because JSON.parse threw inside the middleware",
+        "A 200, with req.body set to undefined in the route",
+        "A 422, because the body failed schema validation"
+      ],
+      "answer": 0,
+      "why": "body-parser catches the SyntaxError and forwards it with `status: 400` and `type: 'entity.parse.failed'`; Express's default handler uses that status. Your own error handler should respect `err.status` too, or every malformed body turns into a 500 and pages someone at night.",
+      "tags": ["express", "errors"],
+      "level": 2,
+      "asked": "Shows you know that error objects carry status and your handler should not flatten everything to 500."
+    },
+    {
+      "id": "ne-041",
+      "q": "In Express 5, what happens when `/report` is requested?",
+      "code": "app.get('/report', (req, res) => {\n  fs.readFile('missing.txt', (err, data) => {\n    if (err) throw err;\n    res.send(data);\n  });\n});\napp.use((err, req, res, next) => res.status(500).send('handled'));",
+      "lang": "js",
+      "choices": [
+        "The error handler replies handled, because Express 5 catches it",
+        "Express replies with its default 500 page and logs the stack",
+        "The request hangs, but the process stays up and keeps serving",
+        "The process crashes with an uncaught exception from the callback"
+      ],
+      "answer": 3,
+      "why": "Express 5 only forwards synchronous throws and rejected promises returned by the handler. A throw inside a later callback happens on a fresh stack Express is not on, so it becomes an uncaught exception. Call `next(err)` in the callback, or use `fs/promises` and `await`.",
+      "tags": ["express", "errors", "express-5"],
+      "level": 3,
+      "asked": "Separates people who know why Express 5 catches async errors from those who think it catches everything."
+    },
+    {
+      "id": "ne-042",
+      "q": "Why does this error handler check `res.headersSent`?",
+      "code": "app.use((err, req, res, next) => {\n  if (res.headersSent) return next(err);\n  res.status(500).json({ error: 'internal' });\n});",
+      "lang": "js",
+      "choices": [
+        "To skip logging errors for requests that were already answered",
+        "Because a response that started streaming cannot get a new status",
+        "Because Express 5 requires it before any call to res.status()",
+        "To send the 500 only when the client has not yet disconnected"
+      ],
+      "answer": 1,
+      "why": "Once headers are on the wire you cannot send a different status or body. Delegating to Express's default handler makes it destroy the socket, so the client sees an aborted response rather than a truncated one that looks complete. It is not a disconnect check and not a v5 requirement.",
+      "tags": ["express", "errors"],
+      "level": 3,
+      "asked": "A detail from the Express docs that shows you have written an error handler for streaming responses."
+    },
+    {
+      "id": "ne-043",
+      "q": "What is `res.locals` for?",
+      "choices": [
+        "Values scoped to one request, shared with later middleware and views",
+        "Values shared by every request, such as config loaded at startup",
+        "Response headers that Express will send when the handler finishes",
+        "Cookies that will be set on the client once the response is sent"
+      ],
+      "answer": 0,
+      "why": "`res.locals` is a fresh object per request; middleware can put the authenticated user or a request id there for later handlers and template rendering. App-wide values belong on `app.locals`, which is shared by every request and so must never hold per-user data.",
+      "tags": ["express", "middleware"],
+      "level": 1,
+      "asked": "A quick check that you know request-scoped state from app-scoped state."
+    },
+    {
+      "id": "ne-044",
+      "q": "An auth middleware sets `req.user`. In a TypeScript Express app, how do you make `req.user` type-check in every handler?",
+      "choices": [
+        "Cast in each handler: (req as AuthedRequest).user",
+        "Annotate the middleware as RequestHandler<User> so it flows on",
+        "Augment Express.Request with declaration merging in a .d.ts file",
+        "Add user to res.locals instead, since that is typed as any"
+      ],
+      "answer": 2,
+      "why": "Declaring `interface Request { user?: User }` inside `declare global { namespace Express { ... } }` merges the property into every handler's `req` type. Casting everywhere hides mistakes, and `RequestHandler`'s first type argument is route params, not extra request properties.",
+      "tags": ["express", "typescript", "middleware"],
+      "level": 2,
+      "asked": "Common in TypeScript Express codebases; shows you know declaration merging has a real use."
+    },
+    {
+      "id": "ne-045",
+      "q": "A request to `/orders` never gets a response and the client eventually times out. The logs show the auth middleware ran. What is the likely bug?",
+      "choices": [
+        "The auth middleware called next() twice on the same request",
+        "The auth middleware neither responded nor called next()",
+        "The route is registered with app.use instead of app.get",
+        "express.json() was registered after the auth middleware"
+      ],
+      "answer": 1,
+      "why": "Express only moves on when a middleware calls `next()` or ends the response; if a branch does neither (often a missed `else` or a forgotten `next()` after an async check), the request just waits. Calling `next()` twice causes \"headers already sent\" errors, not a hang.",
+      "tags": ["express", "middleware"],
+      "level": 1,
+      "asked": "The first thing to suspect when requests hang; interviewers want to hear you would check every branch."
+    },
+    {
+      "id": "ne-046",
+      "q": "A router is mounted with `app.use('/api', router)`. For `GET /api/orders?x=1`, what are `req.path` and `req.originalUrl` inside the router?",
+      "choices": [
+        "/api/orders and /api/orders",
+        "/orders and /api/orders?x=1",
+        "/orders and /orders?x=1",
+        "/api/orders and /orders?x=1"
+      ],
+      "answer": 1,
+      "why": "Mounting strips the mount path, so inside the router `req.path` and `req.url` start at `/orders`, and `req.baseUrl` is `/api`. `req.originalUrl` keeps the full URL including the query string, which is what access logs and redirects should use.",
+      "tags": ["express", "routing"],
+      "level": 2,
+      "asked": "Relevant when logging, building links or writing auth checks inside mounted routers."
+    },
+    {
+      "id": "ne-047",
+      "q": "In Express 5, `ordersRouter` is mounted at `/users/:userId/orders`. Why is `req.params.userId` undefined inside it?",
+      "code": "const ordersRouter = express.Router();\nordersRouter.get('/', (req, res) => res.json(req.params));\napp.use('/users/:userId/orders', ordersRouter);",
+      "lang": "js",
+      "choices": [
+        "Routers do not inherit parent params unless created with mergeParams",
+        "Mount paths cannot contain parameters, so userId never matches",
+        "Params are only available after express.json() has run",
+        "The value is on req.query.userId once a router is mounted"
+      ],
+      "answer": 0,
+      "why": "Each router has its own `req.params`, populated from its own route paths. `express.Router({ mergeParams: true })` makes it merge the parent's params in. Mount paths can contain parameters, which is why the route matched at all.",
+      "tags": ["express", "routing"],
+      "level": 2,
+      "asked": "The standard gotcha with nested resources such as /users/:id/orders."
+    },
+    {
+      "id": "ne-048",
+      "q": "What is the difference between `app.use('/admin', mw)` and `app.all('/admin', mw)`?",
+      "choices": [
+        "use runs for every HTTP method; all runs for GET and POST only",
+        "use runs before routes; all runs after routes have matched",
+        "use matches /admin only; all also matches /admin/anything",
+        "use matches /admin and anything under it; all matches /admin only"
+      ],
+      "answer": 3,
+      "why": "`app.use` matches the path as a prefix on segment boundaries, so `/admin/stats` runs the middleware but `/administrator` does not. `app.all` is a route for every method on the exact path. Both run for all methods; ordering depends only on registration order.",
+      "tags": ["express", "middleware", "routing"],
+      "level": 1,
+      "asked": "Checks you know why auth for a whole area goes on app.use or router.use."
+    },
+    {
+      "id": "ne-049",
+      "q": "What does the client receive?",
+      "code": "app.delete('/orders/:id', async (req, res) => {\n  await orders.remove(req.params.id);\n  res.status(204).json({ ok: true });\n});",
+      "lang": "js",
+      "choices": [
+        "Status 204 and the body {\"ok\":true}",
+        "Status 204 with an empty body",
+        "Status 200, because a body was sent",
+        "A 500: 204 responses cannot call json()"
+      ],
+      "answer": 1,
+      "why": "204 No Content means there is no body, so Node's HTTP layer drops whatever you write and Express strips the Content-Type. Nothing throws and the status is not upgraded to 200. If the client needs data, return 200 with the body instead.",
+      "tags": ["express", "http"],
+      "level": 2,
+      "asked": "Catches the \"the frontend never sees my success flag\" bug and checks you know what 204 means."
+    },
+    {
+      "id": "ne-050",
+      "q": "After a successful HTML form POST that creates an order, which call sends the browser to the new order page as a GET?",
+      "choices": [
+        "res.redirect(301, '/orders/7')",
+        "res.redirect(307, '/orders/7')",
+        "res.redirect(303, '/orders/7')",
+        "res.location('/orders/7').end()"
+      ],
+      "answer": 2,
+      "why": "303 See Other tells the client to fetch the new location with GET, which is the Post/Redirect/Get pattern that stops a refresh resubmitting the form. 307 preserves the POST method and body, 301 is permanent and cacheable, and a bare Location without a 3xx status is not a redirect.",
+      "tags": ["express", "http"],
+      "level": 2,
+      "asked": "Post/Redirect/Get is basic server-rendered CRUD; knowing 303 vs 307 shows HTTP fluency."
+    },
+    {
+      "id": "ne-051",
+      "q": "In Express 5, what is `req.params` for `GET /files/a/b/c.txt`?",
+      "code": "app.get('/files/*splat', (req, res) => res.json(req.params));",
+      "lang": "js",
+      "choices": [
+        "{ splat: 'a/b/c.txt' }",
+        "{ splat: ['a', 'b', 'c.txt'] }",
+        "{ '0': 'a/b/c.txt' }",
+        "{ splat: 'c.txt' }"
+      ],
+      "answer": 1,
+      "why": "Named wildcards in Express 5 capture one or more segments as an array of strings. Express 4 put the unnamed `*` match in `req.params[0]` as one string, which is the tempting answer. Join the segments yourself, and still guard against `..` before touching the filesystem.",
+      "tags": ["express", "routing", "express-5"],
+      "level": 3,
+      "asked": "Shows hands-on v5 experience; code that assumed a string breaks subtly on upgrade."
+    },
+    {
+      "id": "ne-052",
+      "q": "A handler does `res.json({ id: 10n })` because a Postgres BIGINT came back as a BigInt. What happens?",
+      "choices": [
+        "It sends {\"id\":10} since Express converts BigInt to Number",
+        "It sends {\"id\":\"10\"} since Express serialises BigInt as a string",
+        "It throws a TypeError, because JSON.stringify cannot serialise BigInt",
+        "It sends {\"id\":10n}, which the client fails to parse as JSON"
+      ],
+      "answer": 2,
+      "why": "`res.json` uses `JSON.stringify`, which throws \"Do not know how to serialize a BigInt\". Decide on a representation (usually a string, because JS numbers lose precision past 2^53) and map it in your response DTO. Express applies no BigInt conversion of its own.",
+      "tags": ["express", "dto"],
+      "level": 2,
+      "asked": "Real bug with BIGINT ids and ORMs; shows you think about the wire format of your DTOs."
+    },
+    {
+      "id": "ne-053",
+      "q": "Which statement about Express routing with default settings is true?",
+      "choices": [
+        "Paths are case-sensitive, so /Users and /users are different routes",
+        "A trailing slash is significant, so /users/ does not match /users",
+        "A GET route also answers HEAD requests, without a body",
+        "A POST to a GET-only path gets 405 Method Not Allowed"
+      ],
+      "answer": 2,
+      "why": "Express answers HEAD by running the GET handler and discarding the body. Routing is case-insensitive and non-strict by default, so `/Users/` matches `/users`. A wrong method gets a 404, not 405; if you want 405 with an `Allow` header you have to add it yourself.",
+      "tags": ["express", "routing", "http"],
+      "level": 2,
+      "asked": "Probes whether you know Express defaults rather than assuming REST-correct behaviour."
+    },
+    {
+      "id": "ne-054",
+      "q": "Express sends `ETag: W/\"5-qvTG...\"` on a GET. The browser repeats the request with `If-None-Match` set to that value. What does Express do by default?",
+      "choices": [
+        "Sends 200 with the full body, since ETags are only used by CDNs",
+        "Runs the handler, then sends 304 with no body if the ETag matches",
+        "Skips the handler entirely and sends 304 from its response cache",
+        "Sends 412 Precondition Failed, because the ETag is only weak"
+      ],
+      "answer": 1,
+      "why": "Express generates a weak ETag from the body in `res.send`, and if the request is fresh it replaces the response with a 304. The handler still runs and still queries the database; only bandwidth is saved. Express has no response cache, and 412 applies to If-Match on writes.",
+      "tags": ["express", "caching", "http"],
+      "level": 3,
+      "asked": "Checks you know what ETags save and what they do not, a common caching follow-up."
+    },
+    {
+      "id": "ne-055",
+      "q": "Why do many teams call `app.disable('x-powered-by')`?",
+      "choices": [
+        "It stops Express advertising itself in an X-Powered-By header",
+        "It disables Express's default error page in production",
+        "It turns off automatic ETag generation for every response",
+        "It stops Express trusting X-Forwarded-For from any client"
+      ],
+      "answer": 0,
+      "why": "Express adds `X-Powered-By: Express` to every response. Removing it is minor hardening: it makes fingerprinting slightly harder and saves bytes. `helmet()` removes it as well. ETags, error pages and proxy trust are separate settings.",
+      "tags": ["express", "security"],
+      "level": 1,
+      "asked": "A small hardening detail often raised in security-flavoured Express questions."
+    },
+    {
+      "id": "ne-056",
+      "q": "You want errors in RFC 9457 format. What Content-Type does this send?",
+      "code": "res.type('application/problem+json')\n  .status(404)\n  .json({ title: 'Order not found', status: 404 });",
+      "lang": "js",
+      "choices": [
+        "application/json; charset=utf-8, because json() overwrites it",
+        "text/html, because res.type expects a file extension",
+        "application/problem+json; charset=utf-8",
+        "application/problem+json, with no charset parameter"
+      ],
+      "answer": 2,
+      "why": "`res.json` only sets `application/json` when no Content-Type is already present, so the earlier `res.type` survives and Express appends a charset. That makes this the idiomatic way to send Problem Details from Express. `res.type` accepts full MIME types as well as extensions.",
+      "tags": ["express", "errors", "http"],
+      "level": 3,
+      "asked": "Shows you can produce standard error responses rather than an ad-hoc shape."
+    },
+    {
+      "id": "ne-057",
+      "q": "A Stripe webhook route must verify a signature over the exact bytes received. The app uses `app.use(express.json())` globally. What is the fix?",
+      "choices": [
+        "Call JSON.stringify(req.body) and verify the signature over that",
+        "Register the webhook route with express.raw() before express.json()",
+        "Increase the express.json() limit so that the body is not truncated",
+        "Read req.rawBody, which express.json() stores alongside req.body"
+      ],
+      "answer": 1,
+      "why": "Re-serialising a parsed object does not reproduce the original bytes (key order and whitespace differ), so the signature fails. Mount that route with `express.raw({ type: 'application/json' })` ahead of the global parser to get a Buffer. Express does not keep a `req.rawBody` unless you add a `verify` hook.",
+      "tags": ["express", "middleware", "webhooks"],
+      "level": 3,
+      "asked": "A real integration bug; knowing the fix shows you have wired payment webhooks before."
+    },
+    {
+      "id": "ne-058",
+      "q": "Which event do you listen for to write an access log line with the final status code and duration?",
+      "choices": [
+        "req.on('end'), which fires once the request body is fully read",
+        "res.on('close'), which fires only when the client aborts early",
+        "res.on('finish'), when the response is handed off to the OS",
+        "app.on('response'), which Express emits after every handler"
+      ],
+      "answer": 2,
+      "why": "`finish` fires once the last byte of the response has been handed to the OS, so `res.statusCode` is final. `close` fires when the underlying connection closes, including after normal completion, so it is not only for aborts. Express emits no app-level 'response' event.",
+      "tags": ["express", "logging", "middleware"],
+      "level": 2,
+      "asked": "Checks you could write request-logging middleware yourself rather than only install morgan."
+    },
+    {
+      "id": "ne-059",
+      "q": "With Express 5 defaults, what does `app.use(express.urlencoded())` put in `req.body` for the form body `a[b]=1&c=2`?",
+      "choices": [
+        "{ a: { b: 1 }, c: 2 }",
+        "{ 'a[b]': '1', c: '2' }",
+        "{ a: { b: '1' }, c: '2' }",
+        "{ 'a[b]': 1, c: 2 }"
+      ],
+      "answer": 1,
+      "why": "Express 5 changed the `extended` default to false, so forms are parsed with `querystring`: bracket keys stay flat and every value is a string. `extended: true` uses `qs` and nests them. Neither parser turns strings into numbers; that is your validation layer's job.",
+      "tags": ["express", "express-5", "middleware"],
+      "level": 2,
+      "asked": "Probes whether you know form values are strings and that v5 changed the parser default."
+    },
+    {
+      "id": "ne-060",
+      "q": "In Express 5, what does `err` hold when the port is already in use?",
+      "code": "app.listen(3000, (err) => {\n  if (err) console.error('listen failed', err.code);\n});",
+      "lang": "js",
+      "choices": [
+        "Nothing: the callback only runs on success, and the error crashes",
+        "An error with code EADDRINUSE, passed to the listen callback",
+        "Nothing: Express silently picks the next free port instead",
+        "A string message, because Express wraps errors for logging"
+      ],
+      "answer": 1,
+      "why": "Express 5 forwards the server's `error` event to the `listen` callback, so a taken port arrives as an error with code `EADDRINUSE`. In Express 4 the callback was only a `listening` listener and the error was an unhandled `error` event. Neither version picks another port.",
+      "tags": ["express", "express-5", "operations"],
+      "level": 3,
+      "asked": "A small v5 change that matters for startup error handling in scripts and tests."
+    },
+    {
+      "id": "ne-061",
+      "q": "A route validates the body with `z.object({ name: z.string() }).parse(req.body)`. The client sends `{ \"name\": \"Ann\", \"isAdmin\": true }`. What does `parse` return in Zod 4?",
+      "choices": [
+        "{ name: 'Ann' }, since unknown keys are stripped",
+        "{ name: 'Ann', isAdmin: true }, unchanged",
+        "Nothing: it throws because isAdmin is unknown",
+        "{ name: 'Ann', isAdmin: undefined }"
+      ],
+      "answer": 0,
+      "why": "By default `z.object` strips keys it does not declare, which protects you from mass assignment when the parsed object goes straight to the database. `.strict()` (or `z.strictObject`) rejects unknown keys instead, and `.passthrough()`/`z.looseObject` keeps them.",
+      "tags": ["validation", "zod", "security"],
+      "level": 2,
+      "asked": "Connects validation to mass assignment, which is what interviewers want you to notice."
+    },
+    {
+      "id": "ne-062",
+      "q": "An endpoint accepts `?includeArchived=false` and validates it with `z.coerce.boolean()`. What value does the handler get?",
+      "choices": [
+        "false, because coerce understands the string \"false\"",
+        "A ZodError, since \"false\" is not a boolean literal",
+        "undefined, because query strings cannot carry booleans",
+        "true, because Boolean(\"false\") is true for any non-empty string"
+      ],
+      "answer": 3,
+      "why": "`z.coerce.boolean()` just calls `Boolean(input)`, and every non-empty string is truthy. For query flags use `z.stringbool()` (Zod 4), which maps \"true\"/\"false\"/\"1\"/\"0\" and similar, or an explicit enum. It is a real bug: the archive filter silently inverts.",
+      "tags": ["validation", "zod"],
+      "level": 3,
+      "asked": "A sharp-edged detail that shows you have actually validated query strings, not only JSON bodies."
+    },
+    {
+      "id": "ne-063",
+      "q": "What does this return for `GET /orders?page=2`?",
+      "code": "const Query = z.object({ page: z.coerce.number().int().min(1).default(1) });\napp.get('/orders', (req, res) => res.json(Query.parse(req.query)));",
+      "lang": "js",
+      "choices": [
+        "{\"page\":\"2\"}, because query values are always strings",
+        "{\"page\":1}, because the default wins over the query value",
+        "{\"page\":2}, coerced from the string and checked as an integer",
+        "A 500, because z.coerce cannot run on an Express query object"
+      ],
+      "answer": 2,
+      "why": "Query values arrive as strings, so `z.coerce.number()` converts \"2\" to 2 before `.int().min(1)` validate it; `.default(1)` only applies when the key is missing. Without coercion the schema would reject \"2\" as the wrong type.",
+      "tags": ["validation", "zod", "express"],
+      "level": 1,
+      "asked": "Pagination parameters are in every CRUD API; this checks you validate and type them."
+    },
+    {
+      "id": "ne-064",
+      "q": "A `GET /users/:id` handler returns `res.json(await db.user.findUnique({ where: { id } }))`. What is the main problem?",
+      "choices": [
+        "It returns the whole row, including fields like passwordHash",
+        "res.json cannot serialise objects that come from an ORM",
+        "findUnique returns a promise, and res.json does not await it",
+        "Route params must be parsed by express.json() before use"
+      ],
+      "answer": 0,
+      "why": "Sending the database row couples your API to your schema and leaks every column, including secrets added later. Map to a response DTO (or `select` only public fields). The await is present, ORM results are plain objects, and params never go through the body parser.",
+      "tags": ["dto", "security", "express"],
+      "level": 1,
+      "asked": "The standard reason for response DTOs, asked in almost every API design discussion."
+    },
+    {
+      "id": "ne-065",
+      "q": "A handler does `const id = Number(req.params.id)` and passes it to the database. What happens for `GET /orders/abc` if nothing else checks it?",
+      "choices": [
+        "Express rejects it with a 400, because params are typed",
+        "Number returns NaN, which reaches the query as an invalid id",
+        "Number throws a TypeError, which Express turns into a 500",
+        "Number returns 0, which fetches the first order in the table"
+      ],
+      "answer": 1,
+      "why": "`Number('abc')` is `NaN`; it does not throw, and Express does no param typing. Depending on the driver you get a 500 or an odd query. Validate params with a schema (`z.coerce.number().int().positive()`) and return 400. Note `Number('')` is 0, another reason not to hand-roll it.",
+      "tags": ["validation", "express"],
+      "level": 2,
+      "asked": "Checks you validate route params as carefully as bodies."
+    },
+    {
+      "id": "ne-066",
+      "q": "With Zod, why write `type CreateOrder = z.infer<typeof CreateOrderSchema>` instead of a separate interface?",
+      "choices": [
+        "z.infer makes the TypeScript type enforce the rules at runtime",
+        "Interfaces cannot describe objects that arrive over the network",
+        "The runtime schema and the static type cannot drift apart",
+        "Zod refuses to parse into a type it did not generate itself"
+      ],
+      "answer": 2,
+      "why": "With one schema as the source of truth, adding a field updates both validation and the type. A hand-written interface compiles fine while the schema quietly disagrees. Types are erased at runtime, so the checks still come from `parse`, not from the inferred type.",
+      "tags": ["validation", "zod", "typescript"],
+      "level": 2,
+      "asked": "Shows you understand that types stop at the boundary and how to keep them honest."
+    },
+    {
+      "id": "ne-067",
+      "q": "Why should `ordersService.create` take a validated DTO rather than Express's `req` and `res`?",
+      "choices": [
+        "Express objects cannot be passed across module boundaries",
+        "Services must be synchronous, and req and res are async",
+        "Passing req is slower, since Express copies it on each call",
+        "It can then be tested and reused with no HTTP involved"
+      ],
+      "answer": 3,
+      "why": "A service that only sees plain inputs can be called from a test, a queue worker or a CLI, and its rules do not depend on HTTP details. Routes translate HTTP into a function call and back. The other options are not real constraints: req and res can be passed anywhere, but should not be.",
+      "tags": ["architecture", "express", "testing"],
+      "level": 2,
+      "asked": "The core of \"how do you structure an Express API\", asked in most backend interviews."
+    },
+    {
+      "id": "ne-068",
+      "q": "Why do Express projects usually split `app.js` (builds the app) from `server.js` (calls `listen`)?",
+      "choices": [
+        "Express 5 refuses to start when listen() is in the same module",
+        "Tests can import the app and drive it without opening a port",
+        "It lets app.js be ESM while server.js stays in CommonJS",
+        "Cluster mode needs listen() to live in a separate file"
+      ],
+      "answer": 1,
+      "why": "Supertest can take the app function directly and runs it on an ephemeral in-memory server, so tests never fight over ports or leave a server running. `server.js` stays tiny: read config, build the app, listen, handle shutdown.",
+      "tags": ["architecture", "testing", "express"],
+      "level": 1,
+      "asked": "A concrete signal that you have written integration tests for an Express API."
+    },
+    {
+      "id": "ne-069",
+      "q": "The environment has `ENABLE_CACHE=false`. What does this do?",
+      "code": "if (process.env.ENABLE_CACHE) {\n  app.use(cacheMiddleware);\n}",
+      "lang": "js",
+      "choices": [
+        "Skips the middleware, because Node parses \"false\" as false",
+        "Throws, because process.env values must be read with getEnv()",
+        "Skips the middleware, because unset and \"false\" are both falsy",
+        "Enables the cache, because the non-empty string \"false\" is truthy"
+      ],
+      "answer": 3,
+      "why": "Every `process.env` value is a string (or undefined), and any non-empty string is truthy. Parse config once at startup, for example with a Zod schema using `z.stringbool()`, and pass typed values around instead of reading `process.env` everywhere.",
+      "tags": ["config"],
+      "level": 1,
+      "asked": "An easy but telling config bug; the follow-up is \"how would you centralise config?\"."
+    },
+    {
+      "id": "ne-070",
+      "q": "Which versions does the range `^0.2.3` allow?",
+      "choices": [
+        "Any 0.x.y at or above 0.2.3, since the major version is 0",
+        "Any version at or above 0.2.3 and below 1.0.0",
+        "Exactly 0.2.3, since caret ranges pin 0.x versions",
+        "Any 0.2.x at or above 0.2.3, but not 0.3.0"
+      ],
+      "answer": 3,
+      "why": "Caret allows changes that do not modify the left-most non-zero part. For 0.x packages that part is the minor, so `^0.2.3` means `>=0.2.3 <0.3.0`. The reasoning is that semver treats 0.x minors as potentially breaking. It is not exact pinning; that needs `0.2.3` with no operator.",
+      "tags": ["npm", "semver"],
+      "level": 3,
+      "asked": "A follow-up to \"what does ^ mean\" that separates people who have read the semver rules."
+    },
+    {
+      "id": "ne-071",
+      "q": "In CI, why run `npm ci` rather than `npm install`?",
+      "choices": [
+        "It installs exactly what the lockfile says and fails if package.json disagrees",
+        "It skips devDependencies, so the build image ends up smaller and faster",
+        "It updates the lockfile to the newest versions allowed by the ranges",
+        "It installs packages globally, so each job can reuse the same cache"
+      ],
+      "answer": 0,
+      "why": "`npm ci` deletes node_modules, installs the lockfile verbatim and errors if the lockfile and package.json are out of sync, giving reproducible builds. `npm install` may rewrite the lockfile. Skipping dev dependencies is `--omit=dev`, a separate flag.",
+      "tags": ["npm", "ci"],
+      "level": 1,
+      "asked": "Asked to check you know how builds stay reproducible."
+    },
+    {
+      "id": "ne-072",
+      "q": "How do you install only runtime dependencies in a production Docker image?",
+      "choices": [
+        "npm install --production-only",
+        "npm ci --omit=dev",
+        "npm ci --no-lockfile",
+        "npm prune --dev"
+      ],
+      "answer": 1,
+      "why": "`--omit=dev` leaves devDependencies out; combined with `npm ci` it is reproducible too. `npm install` with `NODE_ENV=production` also omits them, which surprises people when a build step needs TypeScript. The other flags either do not exist or throw away the lockfile.",
+      "tags": ["npm", "docker"],
+      "level": 2,
+      "asked": "Checks you have built a lean Node image, a common deploy discussion."
+    },
+    {
+      "id": "ne-073",
+      "q": "A React component library lists `react` under `peerDependencies`. Why not under `dependencies`?",
+      "choices": [
+        "peerDependencies are installed faster, because npm caches them globally",
+        "The app must supply one shared React, not a second private copy",
+        "peerDependencies are only needed at build time, not when the app runs",
+        "npm refuses to publish packages that list react as a normal dependency"
+      ],
+      "answer": 1,
+      "why": "A peer dependency says \"I plug into the host's copy\". Two React copies break hooks with \"Invalid hook call\", and two copies of a plugin host are similarly broken. npm 7+ installs peers automatically and reports conflicts; it does not make them build-only.",
+      "tags": ["npm"],
+      "level": 2,
+      "asked": "Shows you understand why duplicate packages cause bugs, not just where to type the name."
+    },
+    {
+      "id": "ne-074",
+      "q": "A vulnerable version of `semver` is pulled in three levels deep, and the direct dependency has not released a fix. What is the npm-native way to force a patched version?",
+      "choices": [
+        "Add semver to your own dependencies at the patched version",
+        "Edit node_modules/semver/package.json and commit the change",
+        "Set an overrides entry for semver in package.json",
+        "Run npm audit fix --force until the warning disappears"
+      ],
+      "answer": 2,
+      "why": "`overrides` (npm 8.3+) replaces a package version anywhere in the tree, and the lockfile records it. Adding it as a direct dependency only installs a second copy beside the nested one. `audit fix --force` may jump semver-major versions of your direct dependencies and break things.",
+      "tags": ["npm", "security"],
+      "level": 2,
+      "asked": "A practical supply-chain question; the strong answer mentions testing and removing the override later."
+    },
+    {
+      "id": "ne-075",
+      "q": "What does `npm audit fix --force` risk that plain `npm audit fix` does not?",
+      "choices": [
+        "It uploads your lockfile to the registry for analysis",
+        "It installs semver-major upgrades that may break your code",
+        "It removes the vulnerable packages with no replacement",
+        "It disables npm audit checks in CI from then on"
+      ],
+      "answer": 1,
+      "why": "Plain `audit fix` stays within your declared ranges. `--force` will move a dependency across a major version to reach a fixed release, which can change APIs. Run the tests after any audit fix, and read the advisory: many are unreachable in your use.",
+      "tags": ["npm", "security"],
+      "level": 2,
+      "asked": "Checks that you treat dependency updates as code changes."
+    },
+    {
+      "id": "ne-076",
+      "q": "What does `npx prisma migrate dev` do if Prisma is in your devDependencies?",
+      "choices": [
+        "Downloads the latest Prisma into a temporary cache and runs it",
+        "Runs the prisma binary from node_modules/.bin in your project",
+        "Installs Prisma globally, then runs the globally installed copy",
+        "Fails, because npx only runs packages that are not installed"
+      ],
+      "answer": 1,
+      "why": "npx prefers the local binary in `node_modules/.bin`, so everyone runs the version pinned by the lockfile. It only downloads to a cache when the command is not installed. npm scripts get the same `.bin` folder on their PATH, which is why `\"migrate\": \"prisma migrate dev\"` works.",
+      "tags": ["npm"],
+      "level": 1,
+      "asked": "A warm-up that checks you know where CLI tools come from in a Node project."
+    },
+    {
+      "id": "ne-077",
+      "q": "You run `npm run test -- --watch`. What does the `--` do?",
+      "choices": [
+        "Passes --watch through to the command in the test script",
+        "Tells npm to run the test script with a watcher of its own",
+        "Runs the pretest script in watch mode before the tests start",
+        "Marks --watch as an npm flag rather than one for the script"
+      ],
+      "answer": 0,
+      "why": "Everything after `--` is appended to the script's command line, so `\"test\": \"vitest\"` runs `vitest --watch`. Without the separator npm tries to interpret the flag itself. npm has no built-in watcher.",
+      "tags": ["npm"],
+      "level": 1,
+      "asked": "Everyday npm usage; interviewers use it to check hands-on experience."
+    },
+    {
+      "id": "ne-078",
+      "q": "What does the `engines` field in package.json do, for example `\"engines\": { \"node\": \">=22\" }`?",
+      "choices": [
+        "Downloads a matching Node version before any npm script runs",
+        "Picks which Node binary npm uses for this project's scripts",
+        "Documents the supported Node versions; npm warns on a mismatch",
+        "Makes npm compile the package's code for that Node version"
+      ],
+      "answer": 2,
+      "why": "npm warns when the running Node does not match, and only fails installs when `engine-strict` is set. It never downloads or switches Node; use nvm, fnm, Volta or `.nvmrc` for that. Deployment platforms often read `engines` to choose a runtime.",
+      "tags": ["npm", "runtime"],
+      "level": 1,
+      "asked": "Small but practical: how do you stop a teammate running the project on an old Node."
+    },
+    {
+      "id": "ne-079",
+      "q": "A package's package.json has `\"exports\": { \".\": \"./index.js\" }`. What happens when you `import x from 'lib/src/internal.js'`?",
+      "choices": [
+        "It works, because exports only affects require(), not import",
+        "It works, but prints a deprecation warning once per process",
+        "It works in development and fails only in a production build",
+        "Node throws ERR_PACKAGE_PATH_NOT_EXPORTED"
+      ],
+      "answer": 3,
+      "why": "Once `exports` is defined it is the complete public surface: any subpath not listed is blocked, for both `import` and `require`. That is how libraries stop consumers depending on internals. Reaching in means a fork or a patch, not a workaround.",
+      "tags": ["npm", "modules"],
+      "level": 3,
+      "asked": "Checks you have hit this during an upgrade and understand package encapsulation."
+    },
+    {
+      "id": "ne-080",
+      "q": "A project has `\"type\": \"module\"` in package.json. How does Node treat `server.js` and `legacy.cjs`?",
+      "choices": [
+        "ES modules for each, since type applies to every file",
+        "server.js as ESM, legacy.cjs as CommonJS",
+        "CommonJS for each, until you pass --experimental-modules",
+        "server.js as CommonJS, legacy.cjs as ESM"
+      ],
+      "answer": 1,
+      "why": "`\"type\": \"module\"` makes `.js` files ES modules; `.cjs` is always CommonJS and `.mjs` is always ESM, whatever the type field says. Without the field `.js` defaults to CommonJS. No flag has been needed since Node 12.",
+      "tags": ["modules"],
+      "level": 1,
+      "asked": "The basic rule behind most \"Cannot use import statement outside a module\" errors."
+    },
+    {
+      "id": "ne-081",
+      "q": "In a Node 24 ES module, what happens here?",
+      "code": "const uploads = path.join(__dirname, 'uploads');",
+      "lang": "js",
+      "choices": [
+        "It works, because Node defines __dirname in every module",
+        "It gives the working directory, not the file's directory",
+        "ReferenceError: __dirname is not defined in ES module scope",
+        "It works, but only if the file has a .mjs extension"
+      ],
+      "answer": 2,
+      "why": "`__dirname`, `__filename` and `require` are CommonJS wrapper variables and do not exist in ESM. Use `import.meta.dirname` and `import.meta.filename` (Node 20.11+), or `fileURLToPath(new URL('.', import.meta.url))` on older versions. `process.cwd()` is the working directory, which is a different thing.",
+      "tags": ["modules"],
+      "level": 2,
+      "asked": "The first error most people hit when moving an Express app to ESM."
+    },
+    {
+      "id": "ne-082",
+      "q": "In a Node 24 ES module, `db.js` exists next to this file. What happens?",
+      "code": "import { pool } from './db';",
+      "lang": "js",
+      "choices": [
+        "It works: Node tries .js, .mjs and .cjs in turn",
+        "ERR_MODULE_NOT_FOUND: relative ESM imports need the extension",
+        "It works only if db.js has a default export as well",
+        "It loads ./db/index.js, and fails when that is missing"
+      ],
+      "answer": 1,
+      "why": "Node's ESM resolver is URL-based and does no extension guessing or directory index lookup, so you must write `./db.js`. Bundlers and TypeScript's old `node` resolution guessed extensions, which is why code that worked in a bundle fails in plain Node.",
+      "tags": ["modules"],
+      "level": 2,
+      "asked": "Common when converting a project to ESM; checks you know Node is stricter than bundlers."
+    },
+    {
+      "id": "ne-083",
+      "q": "How do you load `config.json` in a Node 24 ES module?",
+      "choices": [
+        "import config from './config.json';",
+        "const config = require('./config.json');",
+        "import config from './config.json' with { type: 'json' };",
+        "import * as config from './config.json?json';"
+      ],
+      "answer": 2,
+      "why": "JSON modules need an import attribute; without it Node throws ERR_IMPORT_ATTRIBUTE_MISSING. `require` is not defined in ESM unless you create one with `createRequire`. The attribute exists so a server cannot swap a JSON URL for executable JavaScript.",
+      "tags": ["modules"],
+      "level": 2,
+      "asked": "Checks you know current ESM syntax rather than bundler-only conveniences."
+    },
+    {
+      "id": "ne-084",
+      "q": "Why is `export const pool = new Pool(...)` in `db.js` effectively a singleton?",
+      "choices": [
+        "pg detects a second Pool for the same database and reuses the first",
+        "Node evaluates a module once and caches it, so every import shares it",
+        "const exports are frozen, so no other file can create a second pool",
+        "ES modules run in their own worker thread with one shared instance"
+      ],
+      "answer": 1,
+      "why": "Both module systems cache a module after its first evaluation, so every importer gets the same `pool` object. That is why a module-level pool or Prisma client is the normal pattern. `const` only stops reassignment of the binding; it does not prevent another `new Pool` elsewhere.",
+      "tags": ["modules", "database"],
+      "level": 2,
+      "asked": "Links module caching to connection pooling, which comes up in every Node data-access question."
+    },
+    {
+      "id": "ne-085",
+      "q": "What does `--env-file=.env` do in Node 24 when a variable is already set in the real environment?",
+      "code": "# .env contains PORT=4000\nPORT=5000 node --env-file=.env server.js",
+      "lang": "sh",
+      "choices": [
+        "process.env.PORT is 4000, since the file overrides the environment",
+        "Node refuses to start, because PORT is defined in two places",
+        "process.env.PORT is \"4000,5000\", as both values are merged",
+        "process.env.PORT is 5000, because the real environment wins"
+      ],
+      "answer": 3,
+      "why": "Node's built-in env-file loader does not overwrite variables that are already set, matching dotenv's default. That lets a platform's real environment override a committed development file. Node has loaded .env files natively since 20.6, so dotenv is optional.",
+      "tags": ["config", "runtime"],
+      "level": 2,
+      "asked": "Checks you know the precedence rule, which decides whether prod secrets or a stale file win."
+    },
+    {
+      "id": "ne-086",
+      "q": "Why validate all configuration with a schema when the process starts, rather than reading `process.env` where it is needed?",
+      "choices": [
+        "process.env becomes read-only after the first request is handled",
+        "A missing or malformed value crashes at boot, not hours later",
+        "Reading process.env inside handlers leaks secrets into logs",
+        "Schema validation encrypts secrets while they sit in memory"
+      ],
+      "answer": 1,
+      "why": "Failing fast turns a typo in `DATABASE_URL` into a deploy that never becomes healthy, rather than a 500 on the first request that touches the database. Parsing once also gives typed values (numbers, booleans, URLs) instead of strings scattered through the code.",
+      "tags": ["config", "validation"],
+      "level": 2,
+      "asked": "A standard design question; the strong answer mentions readiness checks and rollbacks."
+    },
+    {
+      "id": "ne-087",
+      "q": "In Node, what type does `process.env.PORT` have after `process.env.PORT = 8080`?",
+      "choices": [
+        "number",
+        "string",
+        "bigint",
+        "undefined"
+      ],
+      "answer": 1,
+      "why": "`process.env` coerces every assigned value to a string, so it reads back as \"8080\". That is why `port + 1` gives \"80801\". Convert once at startup (`Number(process.env.PORT ?? 3000)` or a schema) and pass numbers around.",
+      "tags": ["config"],
+      "level": 1,
+      "asked": "A quick check that you know environment variables are always strings."
+    },
+    {
+      "id": "ne-088",
+      "q": "With pino, what does this line write?",
+      "code": "logger.error('payment failed', err);",
+      "lang": "js",
+      "choices": [
+        "The message plus err serialised under an err key with its stack",
+        "The message only; err is treated as a format argument and dropped",
+        "Two separate log lines, one for the message and one for the error",
+        "A TypeError, because pino requires an object as its first argument"
+      ],
+      "answer": 1,
+      "why": "Pino's signature is `(mergingObject?, message?, ...interpolationValues)`. A string first means extra arguments only fill `%s`-style placeholders, so the error vanishes. Write `logger.error({ err }, 'payment failed')` and pino's err serialiser records type, message and stack.",
+      "tags": ["logging", "pino"],
+      "level": 3,
+      "asked": "A real bug that silently removes stack traces from production logs."
+    },
+    {
+      "id": "ne-089",
+      "q": "A pino logger is created with `level: 'info'`. What happens to `logger.debug({ order }, 'priced')`?",
+      "choices": [
+        "It is written, tagged debug, for the log system to filter later",
+        "It is buffered in memory and flushed if an error is logged next",
+        "It throws, because debug is not enabled on this logger",
+        "It is discarded before the object is serialised, so it is cheap"
+      ],
+      "answer": 3,
+      "why": "Below-threshold methods are no-ops, so the call costs little more than a function call. Buffer-until-error is a pattern some loggers offer but not pino's default. Change the level at runtime (for example via an env var) when you need debug output.",
+      "tags": ["logging", "pino"],
+      "level": 1,
+      "asked": "Checks you know levels are a cost control as well as a filter."
+    },
+    {
+      "id": "ne-090",
+      "q": "In a pino-based Express app, what does `req.log.child({ orderId })` give you?",
+      "choices": [
+        "A second log file that only contains this order's lines",
+        "A logger that adds orderId to every line it writes",
+        "A logger with a lower level, just for this request",
+        "A copy of the request object with orderId attached"
+      ],
+      "answer": 1,
+      "why": "A child logger inherits the parent's bindings (such as the request id from pino-http) and adds its own, so every line carries both without repeating them at each call. It writes to the same destination and keeps the parent's level unless you set one.",
+      "tags": ["logging", "pino"],
+      "level": 2,
+      "asked": "Shows you know how to make logs searchable per request or per entity."
+    },
+    {
+      "id": "ne-091",
+      "q": "Which pino option stops `Authorization` headers and passwords appearing in logs?",
+      "choices": [
+        "redact: ['req.headers.authorization', '*.password']",
+        "serializers: { req: false, password: false }",
+        "level: 'secure', with secrets masked by level",
+        "transport: { target: 'pino-mask', options: {} }"
+      ],
+      "answer": 0,
+      "why": "`redact` takes paths (wildcards allowed) and replaces those values with \"[Redacted]\" before the line is written. Serialisers customise how an object is logged but do not accept `false` to hide a key, and there is no secure level. Redaction is a safety net; avoid logging whole request bodies in the first place.",
+      "tags": ["logging", "pino", "security"],
+      "level": 2,
+      "asked": "Leaking tokens into logs is a common incident; interviewers like a concrete prevention."
+    },
+    {
+      "id": "ne-092",
+      "q": "Why is `pino-pretty` usually used only in development?",
+      "choices": [
+        "It is not thread-safe, so it corrupts output under load",
+        "It requires a TTY and crashes inside Docker containers",
+        "Production log systems want the raw one-line JSON",
+        "It strips the error stack traces from logged errors"
+      ],
+      "answer": 2,
+      "why": "Log collectors parse JSON lines into searchable fields; coloured, multi-line text defeats that and costs CPU. Keep the service writing JSON to stdout and pipe it through pino-pretty on your machine. It works without a TTY and keeps stacks, so those are not the reasons.",
+      "tags": ["logging", "pino"],
+      "level": 1,
+      "asked": "Checks you know logs are data for machines first."
+    },
+    {
+      "id": "ne-093",
+      "q": "What does this test need to run?",
+      "code": "import request from 'supertest';\nimport { buildApp } from '../src/app.js';\n\nconst res = await request(buildApp()).get('/health');\nassert.equal(res.status, 200);",
+      "lang": "js",
+      "choices": [
+        "A server started on port 3000 before the test file runs",
+        "Nothing extra: supertest binds the app to an ephemeral port",
+        "A mock of the http module so that no socket is opened",
+        "NODE_ENV=test, because supertest refuses to run otherwise"
+      ],
+      "answer": 1,
+      "why": "Given an app (a request handler function), supertest starts it on a random free port for the request and closes it afterwards. That is why exporting a `buildApp()` without calling `listen` matters. It opens real sockets on localhost; nothing is mocked.",
+      "tags": ["testing", "express"],
+      "level": 1,
+      "asked": "The baseline API-testing question in Node interviews."
+    },
+    {
+      "id": "ne-094",
+      "q": "Why can you pass an Express `app` straight to `http.createServer(app)`?",
+      "choices": [
+        "Express subclasses http.Server, so app is already a server",
+        "createServer checks for Express and wraps it in an adapter",
+        "app is a function with the (req, res) request-listener shape",
+        "app exports a toServer() method that createServer calls"
+      ],
+      "answer": 2,
+      "why": "An Express app is itself a function `(req, res, next)`, so it fits Node's request-listener signature. `app.listen` is literally `http.createServer(this).listen(...)`. That is also how you attach a WebSocket server to the same HTTP server.",
+      "tags": ["express", "runtime"],
+      "level": 2,
+      "asked": "Shows you understand what Express is underneath, useful for WebSocket and HTTPS setups."
+    },
+    {
+      "id": "ne-095",
+      "q": "Why is `express.static('public')` registered before the auth middleware in many apps?",
+      "choices": [
+        "Static files cannot be served after any middleware has run",
+        "Public assets are then served without running the auth check",
+        "Auth middleware corrupts binary file responses such as images",
+        "Express only compresses files that are served before auth runs"
+      ],
+      "answer": 1,
+      "why": "Order decides who sees what: middleware registered before auth is public, after auth is protected. CSS, images and the login page must load for logged-out users, and skipping auth for them saves work. Put files that need protection behind the auth middleware or serve them through a route.",
+      "tags": ["express", "middleware", "security"],
+      "level": 1,
+      "asked": "Another angle on \"order is behaviour\" that also tests basic access control."
+    },
+    {
+      "id": "ne-096",
+      "q": "What does `requireRole('admin')` need to return for this to work?",
+      "code": "router.delete('/users/:id', requireRole('admin'), deleteUser);",
+      "lang": "js",
+      "choices": [
+        "A boolean, which Express uses to decide whether to continue",
+        "A promise that resolves once the user's role has been checked",
+        "A middleware function (req, res, next) that closes over the role",
+        "A router, so Express can mount it in front of this route"
+      ],
+      "answer": 2,
+      "why": "It is a middleware factory: calling it with the role returns a closure that checks `req.user.role` and either calls `next()` or sends 403. Express ignores return values from middleware, so a boolean does nothing, and an async function returning a promise still has to call next or respond.",
+      "tags": ["express", "middleware", "auth"],
+      "level": 1,
+      "asked": "Checks you can write parameterised middleware, a very common take-home pattern."
+    },
+    {
+      "id": "ne-097",
+      "q": "What does a final `app.use((req, res) => res.status(404).json({ error: 'not found' }))` do?",
+      "choices": [
+        "It runs before every route and blocks paths that are unknown",
+        "It handles only thrown NotFoundError instances from routes",
+        "It sends 404 for any request that no earlier route handled",
+        "It overrides Express's 404 only when NODE_ENV=production"
+      ],
+      "answer": 2,
+      "why": "A two-argument middleware at the end is only reached when nothing earlier ended the response, which is the definition of an unmatched route. It must sit after all routes and before the four-argument error handler. Thrown errors skip it and go to the error handler.",
+      "tags": ["express", "errors", "routing"],
+      "level": 1,
+      "asked": "Checks you know how to give an API a consistent JSON 404 instead of Express's HTML one."
+    },
+    {
+      "id": "ne-098",
+      "q": "Services throw `new NotFoundError('order')`. What is the usual way to turn that into a 404 in Express 5?",
+      "choices": [
+        "Catch it in every route and call res.status(404) by hand",
+        "Give the error a status and map it in the central error handler",
+        "Throw it with next(404) so that Express picks the status itself",
+        "Return it from the handler; Express reads the status field"
+      ],
+      "answer": 1,
+      "why": "A typed error with a `status` (or a mapping in the handler) keeps services HTTP-agnostic while one place decides the response shape. Express 5 forwards the throw from an async handler. Try/catch in every route duplicates that logic, and `next(404)` passes a number, not an error.",
+      "tags": ["express", "errors", "architecture"],
+      "level": 2,
+      "asked": "The mid-level answer to \"what is your error-handling strategy in an API?\""
+    },
+    {
+      "id": "ne-099",
+      "q": "What changes in an Express app when `NODE_ENV=production`?",
+      "choices": [
+        "Express enables gzip compression and clustering automatically",
+        "The default error handler hides stacks and views get cached",
+        "Body size limits are raised, because traffic is assumed to be real",
+        "Nothing: Express ignores NODE_ENV and only libraries read it"
+      ],
+      "answer": 1,
+      "why": "Express reads NODE_ENV into `app.get('env')`: in production the default error handler returns only the status message, and view templates are cached. It does not compress, cluster or change limits. Many libraries and `npm install` also behave differently, so set it everywhere you deploy.",
+      "tags": ["express", "config", "operations"],
+      "level": 2,
+      "asked": "Checks you know NODE_ENV has real effects, and that forgetting it leaks stack traces."
+    },
+    {
+      "id": "ne-100",
+      "q": "Where should gzip or Brotli compression of API responses usually happen?",
+      "choices": [
+        "In the handler, by calling zlib.gzipSync on every response body",
+        "Only on the client, since browsers decompress for free anyway",
+        "In the database driver, which compresses rows before sending",
+        "At the reverse proxy or CDN, or with compression middleware"
+      ],
+      "answer": 3,
+      "why": "Compression is CPU work; a proxy or CDN does it outside your event loop and can cache the result. The `compression` middleware is a reasonable fallback. `gzipSync` in a handler blocks the event loop for every request, and the client cannot decompress what was never compressed.",
+      "tags": ["express", "performance"],
+      "level": 2,
+      "asked": "Tests whether you think about where work runs, not just whether it happens."
+    },
+    {
+      "id": "ne-101",
+      "q": "An upload route uses multer with `memoryStorage()` and no limits. What is the risk?",
+      "choices": [
+        "Uploaded files are written to disk with world-readable permissions",
+        "The first upload blocks all later requests until it finishes",
+        "A few huge uploads hold whole files in RAM and can exhaust memory",
+        "Multer strips the Content-Type, so every file is saved as text"
+      ],
+      "answer": 2,
+      "why": "Memory storage buffers each file completely in the process's heap. Without `limits: { fileSize, files }`, a handful of large uploads can crash the service. Set limits, and for big files stream to disk or directly to object storage. Uploads are streamed asynchronously, so they do not block other requests.",
+      "tags": ["express", "security", "uploads"],
+      "level": 2,
+      "asked": "File uploads are a standard CRUD feature and a standard denial-of-service vector."
+    },
+    {
+      "id": "ne-102",
+      "q": "How do you run a different stricter rate limit on `POST /login` than on the rest of the API with express-rate-limit?",
+      "choices": [
+        "Call app.use(limiter) twice; Express keeps the stricter of the two",
+        "Set the rate limit in express.json() options for the login route",
+        "Put the login route in its own process with its own global limit",
+        "Pass a dedicated limiter as middleware on that route only"
+      ],
+      "answer": 3,
+      "why": "Limiters are ordinary middleware, so `app.post('/login', loginLimiter, login)` applies a tighter window just there while a looser global limiter covers everything else. Two global `app.use` calls both run; nothing picks the stricter one, and body-parser has no rate options.",
+      "tags": ["express", "security", "rate-limiting"],
+      "level": 2,
+      "asked": "Brute-force protection on login is expected knowledge for anyone building auth."
+    },
+    {
+      "id": "ne-103",
+      "q": "Which statement about cookies in Express 5 is correct?",
+      "choices": [
+        "res.cookie() is built in; reading req.cookies needs cookie-parser",
+        "res.cookie() and req.cookies each need the cookie-parser package",
+        "req.cookies is built in; setting cookies needs express-session",
+        "Express 5 removed cookies in favour of the Set-Cookie header"
+      ],
+      "answer": 0,
+      "why": "`res.cookie(name, value, options)` ships with Express and writes the Set-Cookie header. Parsing the incoming Cookie header into `req.cookies` (and verifying signed cookies) is done by the `cookie-parser` middleware. express-session manages its own cookie separately.",
+      "tags": ["express", "cookies"],
+      "level": 1,
+      "asked": "Checks hands-on familiarity with the Express request and response APIs."
+    },
+    {
+      "id": "ne-104",
+      "q": "What does a signed cookie from `cookie-parser` protect against?",
+      "choices": [
+        "The client reading the value, because it is encrypted",
+        "The client changing the value without detection",
+        "Scripts in the page reading the cookie via document.cookie",
+        "The cookie being sent over plain HTTP connections"
+      ],
+      "answer": 1,
+      "why": "A signed cookie carries an HMAC of the value using your secret; a tampered value fails verification and shows up as false in `req.signedCookies`. The value itself is still readable, so do not put secrets in it. Script access and transport are controlled by `httpOnly` and `secure`.",
+      "tags": ["express", "cookies", "security"],
+      "level": 2,
+      "asked": "Signing versus encryption is a frequent security clarification."
+    },
+    {
+      "id": "ne-105",
+      "q": "Which Express typing lets TypeScript check `req.params.id` and `req.body.qty` in a route handler?",
+      "choices": [
+        "Request<{ id: string }, unknown, { qty: number }>",
+        "Request<{ qty: number }, { id: string }>",
+        "Request & { params: { id: number } }",
+        "RequestHandler<{ id: number; qty: number }>"
+      ],
+      "answer": 0,
+      "why": "Express's `Request` generics are, in order: route params, response body, request body, query. Params are always strings in the types because they are strings at runtime. The annotation is still a claim, not a check, so the body must be validated before you trust `qty`.",
+      "tags": ["express", "typescript"],
+      "level": 2,
+      "asked": "Common in TypeScript backends; the strong answer adds that the generic is not validation."
+    },
+    {
+      "id": "ne-106",
+      "q": "You use `app.route('/orders').get(list).post(create)`. What does `app.route` give you?",
+      "choices": [
+        "A separate router with its own middleware stack and error handler",
+        "One path declared once, with method handlers chained on it",
+        "Automatic 405 responses for methods that you have not declared",
+        "A route that is registered lazily, on the first matching request"
+      ],
+      "answer": 1,
+      "why": "`app.route(path)` returns a single Route so you can chain `.get`, `.post` and so on without repeating the path string, which avoids typos. It is not a separate router and does not add 405 handling; unmatched methods still fall through to 404.",
+      "tags": ["express", "routing"],
+      "level": 1,
+      "asked": "A small API-surface question that tells the interviewer you have read Express code."
+    },
+    {
+      "id": "ne-107",
+      "q": "What does `node --watch server.js` do in Node 24?",
+      "choices": [
+        "Restarts the process when an imported file changes",
+        "Hot-swaps changed functions without restarting the process",
+        "Runs server.js under nodemon, if nodemon is installed",
+        "Watches the event loop and logs any blocking operations"
+      ],
+      "answer": 0,
+      "why": "Watch mode (stable since Node 22) restarts the process when the entry file or anything it imports changes, which replaces nodemon for most projects. It is a restart, not hot module replacement, so in-memory state is lost each time.",
+      "tags": ["runtime", "tooling"],
+      "level": 1,
+      "asked": "Checks your tooling knowledge is current with built-in Node features."
+    },
+    {
+      "id": "ne-108",
+      "q": "In Node 24, you run `node server.ts` directly. Which of these makes it fail?",
+      "choices": [
+        "An interface declaration used as a type annotation",
+        "A generic function such as function first<T>(xs: T[])",
+        "An enum declaration, such as enum Status { Open }",
+        "A type-only import written as import type { User }"
+      ],
+      "answer": 2,
+      "why": "Node runs TypeScript by stripping erasable syntax, replacing types with whitespace. Enums, namespaces and parameter properties generate runtime code, so Node throws ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX. Use a const object plus a union type, or enable `erasableSyntaxOnly` in tsconfig to catch it at compile time.",
+      "tags": ["runtime", "typescript"],
+      "level": 2,
+      "asked": "Checks you know what native TypeScript in Node does and does not do."
+    },
+    {
+      "id": "ne-109",
+      "q": "In Node 24 with native type stripping, why does this crash with \"does not provide an export named 'User'\"?",
+      "code": "// types.ts: export interface User { id: number }\nimport { User } from './types.ts';\nconst u: User = { id: 1 };",
+      "lang": "ts",
+      "choices": [
+        "Node needs the .js extension on TypeScript imports, even for .ts files",
+        "Interfaces are erased, so the runtime import asks for a missing export",
+        "Stripping only works in CommonJS files, not in ES modules",
+        "Exported interfaces must be declared with export type instead"
+      ],
+      "answer": 1,
+      "why": "Type stripping does not know that `User` is only a type, so the import stays and the ES module linker finds no such export. Write `import type { User }` (and turn on `verbatimModuleSyntax` so tsc enforces it). Node resolves `.ts` extensions as written, so the path is fine.",
+      "tags": ["runtime", "typescript", "modules"],
+      "level": 3,
+      "asked": "A current gotcha that shows you have actually run TypeScript on Node without a build step."
+    },
+    {
+      "id": "ne-110",
+      "q": "What does `GET /download` return in Express 5?",
+      "code": "app.get('/download', (req, res) => res.sendFile('reports/latest.pdf'));",
+      "lang": "js",
+      "choices": [
+        "The file, resolved against the current working directory",
+        "The file, resolved against the directory of the calling module",
+        "An error: the path must be absolute or you must pass a root option",
+        "A 404, because sendFile only serves files from express.static roots"
+      ],
+      "answer": 2,
+      "why": "`res.sendFile` refuses relative paths, which avoids resolving against whatever the working directory happens to be. Pass `{ root: import.meta.dirname }` or an absolute path. With `root`, Express also rejects `..` segments, which helps against path traversal.",
+      "tags": ["express", "filesystem"],
+      "level": 2,
+      "asked": "Common first-use error, and a chance to mention path traversal safety."
+    },
+    {
+      "id": "ne-111",
+      "q": "A client sends `Accept: image/png` to this route. What happens?",
+      "code": "app.get('/orders/7', (req, res) => res.format({\n  'application/json': () => res.json(order),\n  'text/html': () => res.render('order', { order }),\n}));",
+      "lang": "js",
+      "choices": [
+        "Express sends the JSON, since it is the first entry listed",
+        "Express sends the HTML, since browsers always accept it",
+        "The request hangs, since neither callback is ever called",
+        "Express passes a 406 Not Acceptable error to next()"
+      ],
+      "answer": 3,
+      "why": "`res.format` negotiates against the Accept header; when nothing matches and there is no `default` callback it forwards a 406 error. Add a `default` entry if you would rather fall back to JSON. Without an Accept header at all, the first entry wins.",
+      "tags": ["express", "http"],
+      "level": 3,
+      "asked": "Content negotiation comes up when one route serves both a browser and an API client."
+    },
+    {
+      "id": "ne-112",
+      "q": "In an integration test, why use `request.agent(app)` instead of `request(app)` for a login-then-fetch flow?",
+      "choices": [
+        "The agent reuses a single TCP port, so the tests run faster",
+        "The agent keeps cookies between requests, like a browser",
+        "The agent follows redirects, which plain request() never does",
+        "The agent starts the app once and keeps it listening afterwards"
+      ],
+      "answer": 1,
+      "why": "A supertest agent stores Set-Cookie responses and sends them on later requests, so a session cookie from `POST /login` authenticates `GET /me`. Separate `request(app)` calls share nothing. Redirect following is opt-in with `.redirects(n)` on either.",
+      "tags": ["testing", "express", "sessions"],
+      "level": 2,
+      "asked": "Checks you can test authenticated routes realistically rather than bypassing auth."
+    },
+    {
+      "id": "ne-113",
+      "q": "A body fails validation on two fields. What does `schema.safeParse(body)` return in Zod 4?",
+      "choices": [
+        "{ success: false, error } with an issue for each failing field",
+        "{ success: false, error } with only the first failing field",
+        "It throws a ZodError that lists both of the failing fields",
+        "null, with the individual issues logged to the console"
+      ],
+      "answer": 0,
+      "why": "Zod collects every issue in one pass, so the client can fix all fields at once; `safeParse` returns a result object instead of throwing. `z.flattenError(error)` or `z.treeifyError(error)` reshape the issues into a per-field form for a 400 response.",
+      "tags": ["validation", "zod"],
+      "level": 1,
+      "asked": "Checks you know how to return all field errors, which frontends need for forms."
+    },
+    {
+      "id": "ne-114",
+      "q": "You write a `validate(schema)` middleware. What should it do when parsing succeeds?",
+      "choices": [
+        "Call next() and leave req.body untouched, so handlers can re-parse it",
+        "Send 200 at once, since the request body is now known to be valid",
+        "Store the parsed result (req.body or res.locals) and call next()",
+        "Throw a sentinel error that the router treats as a success signal"
+      ],
+      "answer": 2,
+      "why": "The parsed output is the valuable part: unknown keys stripped, strings coerced, defaults applied. Replace `req.body` (writable) or put the result on `res.locals`; `req.query` is a getter in Express 5, so it cannot be reassigned. Leaving the raw body means handlers work with unvalidated data.",
+      "tags": ["validation", "middleware", "express"],
+      "level": 2,
+      "asked": "Writing this middleware is a common take-home task; the detail is keeping the parsed output."
+    },
+    {
+      "id": "ne-115",
+      "q": "What does `app.param('id', loadOrder)` do?",
+      "choices": [
+        "Declares that :id must be numeric in every route of the app",
+        "Runs loadOrder whenever a route with an :id parameter matches",
+        "Renames the :id route parameter to loadOrder in req.params",
+        "Adds id to req.query when a route does not define it"
+      ],
+      "answer": 1,
+      "why": "`app.param` registers a callback `(req, res, next, value)` that runs once per request before the handlers of any route containing that parameter, often used to load the entity or 404. It does no type validation on its own; you still check the value inside the callback.",
+      "tags": ["express", "routing"],
+      "level": 3,
+      "asked": "A less common Express feature; knowing it shows depth, and the trade-off is hidden control flow."
+    },
+    {
+      "id": "ne-116",
+      "q": "What does the client receive from `res.json(undefined)` in Express 5?",
+      "choices": [
+        "A 500, because undefined cannot be serialised",
+        "The string \"undefined\" with a text/plain type",
+        "A 204 No Content with no Content-Type header",
+        "A 200 with an empty body and a JSON Content-Type"
+      ],
+      "answer": 3,
+      "why": "`JSON.stringify(undefined)` returns undefined, so Express sends an empty body while still labelling it JSON, and `response.json()` in the client throws on it. It usually means a missing `return` or `await`. Return `null`, a 404 or a 204 deliberately instead.",
+      "tags": ["express", "dto"],
+      "level": 3,
+      "asked": "Shows you can diagnose the \"Unexpected end of JSON input\" error from the server side."
+    },
+    {
+      "id": "ne-117",
+      "q": "In CommonJS, why does `exports = { createOrder }` export nothing?",
+      "choices": [
+        "It rebinds the local exports variable, not module.exports",
+        "exports is read-only, so the assignment throws silently",
+        "Object literals must be exported with export default",
+        "The export only takes effect after the first require()"
+      ],
+      "answer": 0,
+      "why": "`exports` starts as a reference to `module.exports`; reassigning it points the local variable elsewhere and `require` still returns the original empty object. Write `module.exports = { ... }` or add properties with `exports.createOrder = ...`.",
+      "tags": ["modules"],
+      "level": 2,
+      "asked": "A classic CommonJS question that still shows up in codebases being migrated."
+    },
+    {
+      "id": "ne-118",
+      "q": "What does this log?",
+      "code": "// counter.mjs\nexport let n = 1;\nexport function inc() { n++; }\n\n// main.mjs\nimport { n, inc } from './counter.mjs';\ninc();\nconsole.log(n);",
+      "lang": "js",
+      "choices": [
+        "1",
+        "2",
+        "undefined",
+        "A TypeError"
+      ],
+      "answer": 1,
+      "why": "ES module imports are live bindings to the exporter's variable, so the importer sees the updated value 2. CommonJS `const { n } = require(...)` copies the value at require time and would log 1. The importer still cannot assign to `n` itself.",
+      "tags": ["modules"],
+      "level": 3,
+      "asked": "Probes whether you understand ESM beyond syntax, relevant when migrating CommonJS code."
+    },
+    {
+      "id": "ne-119",
+      "q": "When is a dynamic `await import('./reports/pdf.js')` a good choice in a Node service?",
+      "choices": [
+        "Always, because dynamic imports are cached while static imports are not",
+        "When the module is heavy and only some requests or commands need it",
+        "When the module is CommonJS, which static import cannot load in Node",
+        "When you need the import to run synchronously before the app starts"
+      ],
+      "answer": 1,
+      "why": "Dynamic import defers loading until the code path runs, which trims startup time and memory for rarely used, heavy dependencies. Both forms are cached. Static `import` can load CommonJS, and dynamic import is asynchronous, not synchronous.",
+      "tags": ["modules", "performance"],
+      "level": 2,
+      "asked": "Checks you know import() is a tool for lazy loading, not a module-system workaround."
+    },
+    {
+      "id": "ne-120",
+      "q": "What does an npm workspace setup (`\"workspaces\": [\"packages/*\"]`) give a monorepo?",
+      "choices": [
+        "Each package gets its own lockfile and separate node_modules",
+        "Packages are published together as one tarball to the registry",
+        "One install links local packages to each other, with one lockfile",
+        "Local packages are copied into each other's dist folder on build"
+      ],
+      "answer": 2,
+      "why": "Workspaces install everything from the root with one lockfile and symlink local packages into node_modules, so `api` can depend on `shared` without publishing it. Run scripts per package with `npm run build -w shared`. Nothing is copied or bundled together.",
+      "tags": ["npm", "tooling"],
+      "level": 2,
+      "asked": "Monorepos with a shared types package are common in fullstack TypeScript shops."
+    },
+    {
+      "id": "ne-121",
+      "q": "You get a merge conflict in package-lock.json. What is the usual fix?",
+      "choices": [
+        "Delete the lockfile and commit the result of a fresh npm install",
+        "Resolve package.json, then run npm install to regenerate the lock",
+        "Keep whichever side has more lines, then run npm ci to confirm",
+        "Add package-lock.json to .gitignore so the conflict cannot recur"
+      ],
+      "answer": 1,
+      "why": "npm can resolve lockfile conflict markers itself: fix package.json first, then `npm install` rewrites a consistent lockfile. Deleting the lockfile re-resolves every transitive dependency, pulling in untested versions, and ignoring it loses reproducible installs.",
+      "tags": ["npm", "git"],
+      "level": 2,
+      "asked": "An everyday team-work question; the wrong answer (delete it) is a real red flag."
+    },
+    {
+      "id": "ne-122",
+      "q": "You publish a library that has a committed package-lock.json. What do consumers get?",
+      "choices": [
+        "Your exact dependency versions, since the lock is published with it",
+        "Whatever their resolver picks within your package.json ranges",
+        "An install error if their lockfile disagrees with yours",
+        "Your locked versions in development and theirs in production"
+      ],
+      "answer": 1,
+      "why": "package-lock.json is not honoured for dependencies: the consumer's own lockfile governs the whole tree, resolved from your declared ranges. That is why libraries must test against their range, not just their lock. `npm-shrinkwrap.json` is the rarely appropriate exception.",
+      "tags": ["npm"],
+      "level": 3,
+      "asked": "Separates application and library thinking about dependency locking."
+    },
+    {
+      "id": "ne-123",
+      "q": "What does `npm outdated` show?",
+      "choices": [
+        "Packages with known vulnerabilities, grouped by severity",
+        "Installed versions next to the wanted and latest versions",
+        "Packages that no longer receive updates from their authors",
+        "Dependencies listed in package.json that are never imported"
+      ],
+      "answer": 1,
+      "why": "`npm outdated` lists current, wanted (highest version within your range) and latest for each dependency. Vulnerabilities come from `npm audit`, and unused dependencies need a tool such as knip or depcheck. It is the starting point for a routine upgrade.",
+      "tags": ["npm"],
+      "level": 1,
+      "asked": "A practical warm-up about keeping dependencies healthy."
+    },
+    {
+      "id": "ne-124",
+      "q": "How should a service tell production from staging for its own feature switches?",
+      "choices": [
+        "Read NODE_ENV, setting it to staging on the staging servers",
+        "Detect the hostname at startup and compare it to a known list",
+        "Keep separate git branches with hard-coded values per stage",
+        "Use explicit settings such as APP_ENV or per-feature variables"
+      ],
+      "answer": 3,
+      "why": "NODE_ENV is a build/runtime mode that libraries read (\"production\" enables optimisations); staging should run with NODE_ENV=production so it behaves like prod. Deployment identity and feature switches belong in their own variables. Hostname checks and per-branch code are brittle.",
+      "tags": ["config", "operations"],
+      "level": 2,
+      "asked": "A common confusion; the strong answer is \"staging should be production-like\"."
+    },
+    {
+      "id": "ne-125",
+      "q": "Where should a Node service in Kubernetes or a PaaS get its database password?",
+      "choices": [
+        "From a .env file committed next to the Dockerfile",
+        "From a secret store, injected as an env var or file",
+        "Hard-coded in config.ts, since the image is private",
+        "From a query-string parameter on the health check"
+      ],
+      "answer": 1,
+      "why": "Secrets live in a managed store (Kubernetes Secrets, a cloud secret manager, Vault) and reach the process at runtime as environment variables or mounted files. Anything baked into the image or the repo is visible to everyone with read access and lasts forever in history.",
+      "tags": ["config", "security"],
+      "level": 1,
+      "asked": "Basic secret hygiene is checked in almost every backend interview."
+    },
+    {
+      "id": "ne-126",
+      "q": "What does `pino-http` add to an Express app?",
+      "choices": [
+        "A request logger that attaches req.log and logs each response",
+        "A transport that ships logs to a hosted service over HTTP",
+        "Middleware that hides HTTP headers from all log output",
+        "An HTTP endpoint for changing the log level at runtime"
+      ],
+      "answer": 0,
+      "why": "pino-http creates a child logger per request (with a request id) at `req.log`, and writes one line per completed response with method, url, status and response time. Shipping logs is the platform's job, and redaction is configured, not automatic.",
+      "tags": ["logging", "pino", "express"],
+      "level": 2,
+      "asked": "Shows you know the standard Node logging stack, not just console.log."
+    },
+    {
+      "id": "ne-127",
+      "q": "A request arrives with `x-request-id: abc123` from the gateway. Why should your logger use that id rather than generate a new one?",
+      "choices": [
+        "Generated ids would collide once several instances are running",
+        "Express rejects requests that carry an id you did not generate",
+        "So one search finds the request in every service's logs",
+        "Pino can only index ids that come from request headers"
+      ],
+      "answer": 2,
+      "why": "Propagating the incoming id (and forwarding it on outgoing calls) correlates one user action across the gateway, your API and downstream services. Generate one only when the header is missing, and trust it only from your own infrastructure. UUIDs do not collide in practice.",
+      "tags": ["logging", "operations"],
+      "level": 2,
+      "asked": "Correlation ids are the core of debugging distributed requests."
+    },
+    {
+      "id": "ne-128",
+      "q": "Which of these is fine to log at info level for a login request?",
+      "choices": [
+        "The request body, so failed logins can be replayed for debugging",
+        "The user id and outcome, with the password and token left out",
+        "The Authorization header, trimmed to its first 20 characters",
+        "The password hash, since hashes cannot be reversed"
+      ],
+      "answer": 1,
+      "why": "Log who, what and the result; never credentials, tokens or hashes. Request bodies contain passwords, a partial bearer token can still be enough to use, and leaked hashes can be cracked offline. Logs are copied to many systems with weaker access controls than your database.",
+      "tags": ["logging", "security"],
+      "level": 1,
+      "asked": "Tests basic judgement about sensitive data, which interviewers weigh heavily."
+    },
+    {
+      "id": "ne-129",
+      "q": "In Node 24's built-in test runner, what does this do?",
+      "code": "import { test, mock } from 'node:test';\nconst send = mock.fn(async () => ({ id: 'm1' }));\nawait notifyUser({ send }, 42);\nassert.equal(send.mock.callCount(), 1);",
+      "lang": "js",
+      "choices": [
+        "Replaces every send() call in the process with the fake",
+        "Creates a spy function and checks it was called once",
+        "Stubs the network so that notifyUser makes no requests",
+        "Fails, because mock.fn needs a --experimental flag"
+      ],
+      "answer": 1,
+      "why": "`mock.fn` returns a tracked function you pass in as a dependency; `mock.calls` and `callCount()` record how it was used. It affects only code that receives it, which is why injecting dependencies makes Node code easy to test. The mocking API is stable and needs no flag.",
+      "tags": ["testing"],
+      "level": 2,
+      "asked": "Checks you can test Node code without installing Jest or Vitest."
+    },
+    {
+      "id": "ne-130",
+      "q": "An API test suite shares one database. Tests pass alone but fail when run together. What is the usual cause?",
+      "choices": [
+        "Supertest opens too many sockets once there are many tests",
+        "Node caches HTTP responses between separate test files",
+        "Express keeps route state between separate buildApp() calls",
+        "Tests leave or depend on rows that other tests also touch"
+      ],
+      "answer": 3,
+      "why": "Shared data couples tests: one inserts a user with the same email another expects to create, or counts rows another test added. Reset or truncate between tests, wrap each in a rolled-back transaction, or give each test unique data. Node and supertest do not cache responses.",
+      "tags": ["testing", "database"],
+      "level": 2,
+      "asked": "Test isolation is one of the most common reasons API suites become flaky."
+    },
+    {
+      "id": "ne-131",
+      "q": "Why pass dependencies into `buildApp({ ordersRepo, mailer })` rather than importing them at the top of each route file?",
+      "choices": [
+        "Express only accepts services that are passed into buildApp()",
+        "Tests can pass fakes without module-mocking tricks",
+        "Imports are slower than function arguments at runtime",
+        "It lets each route choose its own database connection"
+      ],
+      "answer": 1,
+      "why": "Manual dependency injection keeps the wiring in one place: production passes real implementations, tests pass in-memory fakes or a test database. Hard imports force module mocking, which is fragile with ESM. Performance is not the reason.",
+      "tags": ["architecture", "testing"],
+      "level": 2,
+      "asked": "The Node answer to \"how do you do dependency injection without a framework?\""
+    },
+    {
+      "id": "ne-132",
+      "q": "Which folder layout scales best as an Express API grows past a dozen resources?",
+      "choices": [
+        "By feature: orders/ holds its routes, schema, service and repository",
+        "By type: routes/, services/ and repositories/ at the top level",
+        "One file per HTTP method: get.js, post.js, put.js and delete.js",
+        "Everything in app.js, split only when a file reaches 5,000 lines"
+      ],
+      "answer": 0,
+      "why": "Feature folders keep everything a change touches together, so adding a field to orders edits one folder, and a feature can be moved or deleted as a unit. Layer-first folders work for small apps but spread each change across the tree. Either is defensible; the reasoning is what interviewers want.",
+      "tags": ["architecture"],
+      "level": 2,
+      "asked": "Opinion-with-reasons question; interviewers want trade-offs, not a single right answer."
+    },
+    {
+      "id": "ne-133",
+      "q": "Why map a database row to a response object with a function like `toOrderDto(row)` before sending it?",
+      "choices": [
+        "Express refuses to send objects with prototype methods attached",
+        "The API contract stops changing whenever the schema changes",
+        "It is required before res.json() can apply compression",
+        "Database rows are immutable, so they must be copied first"
+      ],
+      "answer": 1,
+      "why": "A mapping layer decides exactly which fields leave the server and in what shape, so a column rename or a new secret column does not silently change or leak through the API. It is also where you format dates, BigInts and money consistently.",
+      "tags": ["dto", "architecture"],
+      "level": 1,
+      "asked": "The \"why DTOs\" question that appears in both Node and .NET interviews."
+    },
+    {
+      "id": "ne-134",
+      "q": "Why validate `limit` with something like `z.coerce.number().int().min(1).max(100)` on a list endpoint?",
+      "choices": [
+        "So one request cannot ask for millions of rows at once",
+        "Because Postgres rejects LIMIT values above 100 by default",
+        "Because Express caps query numbers at 100 unless configured",
+        "So the response can be cached by the CDN under a fixed key"
+      ],
+      "answer": 0,
+      "why": "Without a cap, `?limit=1000000` makes the database, the server and the network do enormous work for one request, which is an easy denial-of-service. Postgres and Express impose no such limits. Pick a sensible default and a maximum.",
+      "tags": ["validation", "pagination", "security"],
+      "level": 1,
+      "asked": "Pagination input is a standard place to check defensive thinking."
+    },
+    {
+      "id": "ne-135",
+      "q": "With `express-session`, what does `saveUninitialized: false` do?",
+      "choices": [
+        "It refuses to create sessions for users who are not logged in",
+        "It avoids storing a session or setting a cookie until one is modified",
+        "It keeps sessions in memory only, so they never reach the store",
+        "It stops the session cookie being sent over plain HTTP connections"
+      ],
+      "answer": 1,
+      "why": "With `saveUninitialized: false`, anonymous visitors who never touch `req.session` get no row in the store and no cookie, which saves storage and helps with cookie-consent rules. It does not enforce login, pick the store, or set `secure`; those are separate options.",
+      "tags": ["express", "sessions"],
+      "level": 2,
+      "asked": "Checks you have configured sessions rather than copy-pasting options."
+    },
+    {
+      "id": "ne-136",
+      "q": "Behind a TLS-terminating load balancer, session cookies with `cookie: { secure: true }` are never set. Why?",
+      "choices": [
+        "Secure cookies need a signed certificate on the Node process itself",
+        "Load balancers strip every Set-Cookie header by default",
+        "Express sees plain HTTP from the balancer unless trust proxy is set",
+        "Secure cookies only work when sameSite is also set to none"
+      ],
+      "answer": 2,
+      "why": "express-session only sets a secure cookie when `req.secure` is true. Behind a proxy, the connection to Node is HTTP; `app.set('trust proxy', 1)` makes Express honour `X-Forwarded-Proto: https`. Load balancers pass Set-Cookie through, and sameSite is unrelated.",
+      "tags": ["express", "sessions", "operations"],
+      "level": 3,
+      "asked": "A real deploy-day bug; knowing it shows you have run Express behind a proxy."
+    },
+    {
+      "id": "ne-137",
+      "q": "With the `cors` package, which option lets the browser send cookies to your API from `https://app.example.com`?",
+      "choices": [
+        "cors({ origin: '*', credentials: true })",
+        "cors({ origin: 'https://app.example.com', credentials: true })",
+        "cors({ origin: true, allowCookies: 'always', maxAge: 600 })",
+        "cors({ credentials: 'include', origin: 'same-site' })"
+      ],
+      "answer": 1,
+      "why": "Credentialed requests require `Access-Control-Allow-Credentials: true` and a specific origin; browsers reject a wildcard origin with credentials. The client also needs `credentials: 'include'` on fetch. `origin: true` reflects any origin, which with credentials lets every site make logged-in requests.",
+      "tags": ["express", "cors", "security"],
+      "level": 2,
+      "asked": "CORS with cookies is a frequent integration headache for fullstack developers."
+    },
+    {
+      "id": "ne-138",
+      "q": "You add `express-rate-limit` with its default memory store to an API that runs as four replicas. What is the effective limit per client?",
+      "choices": [
+        "Exactly the configured limit, since replicas share the store",
+        "Zero, since replicas reject requests from unknown instances",
+        "The configured limit, but only counted on the first replica",
+        "Up to four times the limit, since each replica counts alone"
+      ],
+      "answer": 3,
+      "why": "The memory store lives in each process, so a client spread across replicas by the load balancer gets a fresh allowance on each one. Use a shared store (Redis, for example via `rate-limit-redis`) for a real global limit, or enforce limits at the gateway.",
+      "tags": ["express", "rate-limiting", "scaling"],
+      "level": 2,
+      "asked": "Tests whether you think about horizontal scaling when adding in-process state."
+    },
+    {
+      "id": "ne-139",
+      "q": "Why does `helmet()` break an app that loads a chart library from a CDN with a `<script>` tag?",
+      "choices": [
+        "Helmet blocks outbound requests from Node to CDN hosts",
+        "Its default Content-Security-Policy only allows same-origin scripts",
+        "Helmet strips script tags from HTML responses rendered by Express",
+        "The Cross-Origin-Resource-Policy header blocks incoming scripts"
+      ],
+      "answer": 1,
+      "why": "Helmet's default CSP includes `script-src 'self'`, so the browser refuses scripts from other origins. Add the CDN to `script-src` (ideally with Subresource Integrity) or self-host the file. CORP controls who may embed your resources, not which scripts your page loads.",
+      "tags": ["express", "security", "helmet"],
+      "level": 2,
+      "asked": "A common first-deploy issue with helmet; the fix shows you understand CSP."
+    },
+    {
+      "id": "ne-140",
+      "q": "In an Express 5 handler, how do you stop an expensive database query when the client disconnects?",
+      "choices": [
+        "Nothing is needed: Express cancels pending awaits on disconnect",
+        "Listen for req 'close', abort a controller, pass its signal on",
+        "Call res.end() in a finally block to release the query early",
+        "Set server.requestTimeout to 0 so cancelled requests stop"
+      ],
+      "answer": 1,
+      "why": "Node emits `close` when the connection goes away; aborting an `AbortController` there lets `fetch`, many drivers and your own loops stop work early. Express does not cancel promises, and `res.end()` only ends the response. Check `res.writableFinished` so a normal close does not abort completed work.",
+      "tags": ["express", "performance"],
+      "level": 3,
+      "asked": "Shows awareness that abandoned requests still cost server resources."
+    },
+    {
+      "id": "ne-141",
+      "q": "What does `res.end()` do differently from `res.send('')`?",
+      "choices": [
+        "res.end() finishes with no Express processing such as ETag or Content-Type",
+        "res.end() keeps the connection open, while res.send() closes the socket",
+        "res.end() sets the status to 204, while res.send('') always sends 200",
+        "res.end() is asynchronous, while res.send() writes the whole body at once"
+      ],
+      "answer": 0,
+      "why": "`res.end` is Node's raw ServerResponse method: it just finishes the response. `res.send` is Express sugar that sets Content-Type, Content-Length and an ETag before calling `end`. Neither changes the status on its own, and keep-alive is decided by the connection, not by which you call.",
+      "tags": ["express", "http"],
+      "level": 2,
+      "asked": "Checks you know where Express ends and Node's http module begins."
+    },
+    {
+      "id": "ne-142",
+      "q": "A route runs `const sorted = bigArray.sort(...)` over 2 million items on every request. What does this do to other requests?",
+      "choices": [
+        "Nothing: Express runs each request handler in its own thread",
+        "They slow down only if they also call sort() at the same time",
+        "They wait: the sort blocks the event loop until it finishes",
+        "Node pauses the sort to serve them, then resumes it afterwards"
+      ],
+      "answer": 2,
+      "why": "Handlers run on one JavaScript thread; synchronous CPU work runs to completion and every other request, timer and health check waits. Move the work to the database, cache the result, paginate, or offload to a worker thread. Node does not pre-empt running JavaScript.",
+      "tags": ["express", "event-loop", "performance"],
+      "level": 1,
+      "asked": "The practical form of \"what blocks the event loop\", asked in nearly every Node interview."
+    },
+    {
+      "id": "ne-143",
+      "q": "Why is `app.use(express.json({ limit: '10mb' }))` a poor fix when one upload route needs large bodies?",
+      "choices": [
+        "express.json ignores limits larger than 1mb",
+        "The limit then applies to every JSON route",
+        "The limit must be a number of bytes, not a string",
+        "Large limits disable the parser's JSON validation"
+      ],
+      "answer": 1,
+      "why": "A global 10 MB limit lets any endpoint be fed 10 MB bodies to parse on the event loop. Keep a small global default and mount a larger parser only on the route that needs it, or stream uploads to storage. String sizes such as '10mb' are accepted.",
+      "tags": ["express", "security", "middleware"],
+      "level": 2,
+      "asked": "Checks you scope risky settings to where they are needed."
+    },
+    {
+      "id": "ne-144",
+      "q": "Where does `app.set('json spaces', 2)` belong?",
+      "choices": [
+        "In production, so logs from res.json are easier to read",
+        "Nowhere: Express 5 removed the setting in favour of res.pretty()",
+        "In development only, since it pretty-prints res.json output",
+        "In tests, because supertest cannot parse compact JSON"
+      ],
+      "answer": 2,
+      "why": "The setting indents every `res.json` body, which is handy when reading responses by hand but adds bytes to every response in production. Supertest and every client parse compact JSON fine. Express 5 still supports it.",
+      "tags": ["express", "config"],
+      "level": 1,
+      "asked": "A small check on Express settings and on thinking about payload size."
+    },
+    {
+      "id": "ne-145",
+      "q": "Where should the DTO schema for `POST /orders` live in a feature-folder Express project?",
+      "choices": [
+        "In the database migration that creates the orders table",
+        "In a global schemas.js shared by every feature in the app",
+        "Inside the route handler, defined again on every request",
+        "In orders/, next to the routes and service that use it"
+      ],
+      "answer": 3,
+      "why": "Keeping `orders.schema.ts` beside the routes and service means one folder owns the contract, and the schema is created once at module load. Defining it inside the handler rebuilds it per request. Migrations describe storage, not the API contract, and the two should be allowed to differ.",
+      "tags": ["architecture", "validation", "dto"],
+      "level": 1,
+      "asked": "Checks you keep request contracts separate from database schema."
     }
   ]
 }

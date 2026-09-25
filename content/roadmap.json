@@ -11,7 +11,7 @@
       "tagline": "Make the computer do something",
       "goal": "Write, run and debug a small JavaScript program without copying it from anywhere.",
       "outcome": "You can read a short program and predict what it prints.",
-      "hours": 14,
+      "hours": 15.6,
       "modules": [
         {
           "id": "m-values",
@@ -27,7 +27,9 @@
             { "kind": "read", "doc": "HANDBOOK.md", "anchor": "#1-values-and-types", "title": "Handbook §1 — values and types", "minutes": 20 },
             { "kind": "build", "project": "js/01-fizzbuzz", "title": "FizzBuzz — separate deciding from printing", "minutes": 45 },
             { "kind": "build", "project": "js/03-rot13", "title": "ROT13 — one clean reusable function", "minutes": 40 },
-            { "kind": "drill", "deck": "js-fundamentals", "count": 12, "title": "Types and coercion drill" }
+            { "kind": "drill", "deck": "js-fundamentals", "count": 12, "title": "Types and coercion drill" },
+            { "kind": "guide", "guide": "equality-and-coercion", "title": "Equality and coercion", "minutes": 13 },
+            { "kind": "guide", "guide": "intl-and-temporal", "title": "Intl and Temporal", "minutes": 12 }
           ]
         },
         {
@@ -42,7 +44,8 @@
           "steps": [
             { "kind": "build", "project": "js/02-count-characters", "title": "Count characters — Map vs object, and the __proto__ trap", "minutes": 50 },
             { "kind": "build", "project": "js/05-text-to-hex", "title": "Text to hex — input validation at the edge", "minutes": 45 },
-            { "kind": "drill", "deck": "js-fundamentals", "count": 10, "title": "Strings and loops drill" }
+            { "kind": "drill", "deck": "js-fundamentals", "count": 10, "title": "Strings and loops drill" },
+            { "kind": "guide", "guide": "strings-unicode-and-regex", "title": "Strings, Unicode and regular expressions", "minutes": 13 }
           ]
         },
         {
@@ -58,7 +61,9 @@
             { "kind": "read", "doc": "HANDBOOK.md", "anchor": "#2-variables-and-scope", "title": "Handbook §2–3 — scope, closures, functions", "minutes": 30 },
             { "kind": "build", "project": "js/06-rock-paper-scissors", "title": "Rock paper scissors — rules as data, separate from I/O", "minutes": 45 },
             { "kind": "build", "project": "js/09-best-stock-trade", "title": "Best stock trade — naming intermediate values", "minutes": 35 },
-            { "kind": "drill", "deck": "js-fundamentals", "count": 14, "title": "Scope and closures drill" }
+            { "kind": "drill", "deck": "js-fundamentals", "count": 14, "title": "Scope and closures drill" },
+            { "kind": "guide", "guide": "closures-and-scope", "title": "Closures and scope", "minutes": 14 },
+            { "kind": "guide", "guide": "this-and-binding", "title": "`this` and binding", "minutes": 12 }
           ]
         },
         {
@@ -74,7 +79,10 @@
             { "kind": "read", "doc": "HANDBOOK.md", "anchor": "#4-arrays-and-objects", "title": "Handbook §4–5 — arrays, objects, Map and Set", "minutes": 30 },
             { "kind": "build", "project": "js/26-array-utils", "title": "Array utils — the sort traps and friends", "minutes": 50 },
             { "kind": "build", "project": "js/25-deep-equal", "title": "Deep equal — how equality really works", "minutes": 45 },
-            { "kind": "drill", "deck": "js-arrays-objects", "count": 15, "title": "Collections and immutability drill" }
+            { "kind": "drill", "deck": "js-arrays-objects", "count": 15, "title": "Collections and immutability drill" },
+            { "kind": "guide", "guide": "immutability-and-copying", "title": "Immutability and copying", "minutes": 13 },
+            { "kind": "guide", "guide": "maps-sets-and-weak-refs", "title": "Maps, Sets and weak references", "minutes": 13 },
+            { "kind": "guide", "guide": "iterators-and-generators", "title": "Iterators and generators", "minutes": 12 }
           ]
         }
       ]
@@ -86,7 +94,7 @@
       "tagline": "The habits that separate a beginner from a junior",
       "goal": "Write code someone else can change next month without breaking it, and prove it with tests.",
       "outcome": "You instinctively split pure logic from side effects, and you write a test before you write the fix.",
-      "hours": 26,
+      "hours": 27,
       "modules": [
         {
           "id": "m-decide-vs-do",
@@ -117,7 +125,8 @@
             { "kind": "build", "project": "js/13-cipher-suite", "title": "Cipher suite — every plug-in has the same shape", "minutes": 60 },
             { "kind": "build", "project": "js/40-state-machine", "title": "State machine — states as data, not booleans", "minutes": 60 },
             { "kind": "build", "project": "js/38-event-emitter", "title": "Event emitter — decoupling with a pub/sub seam", "minutes": 50 },
-            { "kind": "drill", "deck": "js-arrays-objects", "count": 10, "title": "Data-driven code drill" }
+            { "kind": "drill", "deck": "js-arrays-objects", "count": 10, "title": "Data-driven code drill" },
+            { "kind": "guide", "guide": "prototypes-and-classes", "title": "Prototypes and classes", "minutes": 12 }
           ]
         },
         {
@@ -134,7 +143,8 @@
             { "kind": "build", "project": "js/11-password-generator", "title": "Password generator — options objects vs flag soup", "minutes": 45 },
             { "kind": "build", "project": "js/33-date-utils", "title": "Date utils — the worst API in the standard library", "minutes": 50 },
             { "kind": "build", "project": "js/32-money-cart", "title": "Money and carts — never store money in a float", "minutes": 50 },
-            { "kind": "drill", "deck": "js-modern", "count": 8, "title": "Modern JavaScript APIs drill" }
+            { "kind": "drill", "deck": "js-modern", "count": 8, "title": "Modern JavaScript APIs drill" },
+            { "kind": "guide", "guide": "numbers-and-money", "title": "Numbers, money and precision", "minutes": 12 }
           ]
         },
         {
@@ -150,7 +160,8 @@
             { "kind": "read", "doc": "HANDBOOK.md", "anchor": "#7-errors", "title": "Handbook §7 — errors", "minutes": 20 },
             { "kind": "build", "project": "js/30-custom-errors", "title": "Custom errors — an error type per failure mode", "minutes": 45 },
             { "kind": "build", "project": "js/31-validator", "title": "Validator — collect every problem, not just the first", "minutes": 60 },
-            { "kind": "build", "project": "js/29-bank-account", "title": "Bank account — encapsulation protects an invariant", "minutes": 50 }
+            { "kind": "build", "project": "js/29-bank-account", "title": "Bank account — encapsulation protects an invariant", "minutes": 50 },
+            { "kind": "guide", "guide": "json-edge-cases", "title": "JSON edge cases", "minutes": 12 }
           ]
         },
         {
@@ -166,7 +177,9 @@
             { "kind": "guide", "guide": "testing-strategy", "title": "Guide — a testing strategy you can defend in an interview", "minutes": 30 },
             { "kind": "build", "project": "js/45-mini-test-framework", "title": "Build a test framework in 100 lines", "minutes": 70 },
             { "kind": "build", "project": "js/58-test-runner-v2", "title": "Test runner v2 — async tests, hooks, reporters", "minutes": 60 },
-            { "kind": "drill", "deck": "testing-quality", "count": 15, "title": "Testing drill" }
+            { "kind": "drill", "deck": "testing-quality", "count": 15, "title": "Testing drill" },
+            { "kind": "guide", "guide": "test-doubles-in-practice", "title": "Test doubles in practice", "minutes": 13 },
+            { "kind": "guide", "guide": "flaky-tests", "title": "Flaky tests: causes, diagnosis and policy", "minutes": 13 }
           ]
         }
       ]
@@ -178,7 +191,7 @@
       "tagline": "Learn what React is doing for you before you let it",
       "goal": "Build an interactive page with plain JavaScript, holding state in data rather than in the DOM.",
       "outcome": "You can explain what React actually buys you, because you have done it by hand.",
-      "hours": 24,
+      "hours": 26.6,
       "modules": [
         {
           "id": "m-dom-state",
@@ -211,7 +224,8 @@
             { "kind": "guide", "guide": "html-semantics-and-forms", "title": "Guide — HTML that does the work for you", "minutes": 40 },
             { "kind": "guide", "guide": "accessibility-fundamentals", "title": "Guide — accessibility you are accountable for", "minutes": 45 },
             { "kind": "drill", "deck": "html-css", "count": 10, "title": "HTML and forms drill" },
-            { "kind": "drill", "deck": "accessibility", "count": 12, "title": "Accessibility drill" }
+            { "kind": "drill", "deck": "accessibility", "count": 12, "title": "Accessibility drill" },
+            { "kind": "guide", "guide": "responsive-images", "title": "Responsive images", "minutes": 13 }
           ]
         },
         {
@@ -227,7 +241,8 @@
             { "kind": "build", "project": "js/28-debounce-throttle", "title": "Debounce and throttle — write both from scratch", "minutes": 50 },
             { "kind": "build", "project": "js/54-search-as-you-type", "title": "Search as you type — debounce plus request cancellation", "minutes": 60 },
             { "kind": "build", "project": "js/46-stopwatch", "title": "Stopwatch — why setInterval drifts", "minutes": 40 },
-            { "kind": "drill", "deck": "js-browser", "count": 10, "title": "Events and timing drill" }
+            { "kind": "drill", "deck": "js-browser", "count": 10, "title": "Events and timing drill" },
+            { "kind": "guide", "guide": "dom-events-and-delegation", "title": "DOM events and delegation", "minutes": 14 }
           ]
         },
         {
@@ -243,7 +258,13 @@
           ],
           "steps": [
             { "kind": "guide", "guide": "css-layout-and-responsive", "title": "Guide — layout and responsive design", "minutes": 45 },
-            { "kind": "drill", "deck": "html-css", "count": 15, "title": "CSS layout drill" }
+            { "kind": "drill", "deck": "html-css", "count": 15, "title": "CSS layout drill" },
+            { "kind": "guide", "guide": "css-cascade-layers-specificity", "title": "The cascade, specificity and layers", "minutes": 13 },
+            { "kind": "guide", "guide": "flexbox-deep-dive", "title": "Flexbox deep dive", "minutes": 13 },
+            { "kind": "guide", "guide": "css-grid-deep-dive", "title": "CSS Grid deep dive", "minutes": 13 },
+            { "kind": "guide", "guide": "css-custom-properties-theming", "title": "Custom properties and theming", "minutes": 14 },
+            { "kind": "guide", "guide": "css-transitions-animations", "title": "CSS transitions and animations", "minutes": 13 },
+            { "kind": "guide", "guide": "colour-contrast-and-motion", "title": "Colour, contrast and motion", "minutes": 14 }
           ]
         },
         {
@@ -259,7 +280,10 @@
             { "kind": "guide", "guide": "package-managers-and-builds", "title": "Guide — npm, lockfiles, bundlers and the build step", "minutes": 35 },
             { "kind": "read", "doc": "HANDBOOK.md", "anchor": "#9-modules-esm", "title": "Handbook §9 — modules", "minutes": 15 },
             { "kind": "build", "project": "js/62-markdown-previewer", "title": "Markdown previewer — a real multi-module app", "minutes": 60 },
-            { "kind": "drill", "deck": "js-modern", "count": 10, "title": "Modules and tooling drill" }
+            { "kind": "drill", "deck": "js-modern", "count": 10, "title": "Modules and tooling drill" },
+            { "kind": "guide", "guide": "es-modules-in-depth", "title": "ES modules in depth", "minutes": 14 },
+            { "kind": "guide", "guide": "modern-js-features", "title": "Modern JavaScript, ES2020 to ES2026", "minutes": 13 },
+            { "kind": "guide", "guide": "bundle-budgets-and-code-splitting", "title": "Bundle budgets and code splitting", "minutes": 13 }
           ]
         },
         {
@@ -278,7 +302,9 @@
             { "kind": "build", "project": "js/64-kanban", "title": "Kanban — drag and drop driven by state", "minutes": 75 },
             { "kind": "build", "project": "js/60-router", "title": "Client-side router — the URL as state", "minutes": 60 },
             { "kind": "build", "project": "js/34-csv-parser", "title": "CSV parser — why split(',') can't parse", "minutes": 50 },
-            { "kind": "drill", "deck": "js-modern", "count": 10, "title": "Modern JavaScript drill" }
+            { "kind": "drill", "deck": "js-modern", "count": 10, "title": "Modern JavaScript drill" },
+            { "kind": "guide", "guide": "browser-storage-compared", "title": "Browser storage compared", "minutes": 14 },
+            { "kind": "guide", "guide": "history-api-client-routing", "title": "History API and client routing", "minutes": 14 }
           ]
         }
       ]
@@ -290,7 +316,7 @@
       "tagline": "Where beginners' code quietly breaks",
       "goal": "Fetch data correctly: sequenced, cancelled, retried, rate-limited, and with errors handled.",
       "outcome": "You can explain the event loop and debug a race condition on purpose rather than by shuffling awaits.",
-      "hours": 17,
+      "hours": 19.2,
       "modules": [
         {
           "id": "m-event-loop",
@@ -305,7 +331,10 @@
             { "kind": "read", "doc": "HANDBOOK.md", "anchor": "#8-asynchrony", "title": "Handbook §8 — asynchrony and the five async traps", "minutes": 35 },
             { "kind": "build", "project": "js/57-my-promise", "title": "Implement Promise from scratch", "minutes": 90 },
             { "kind": "build", "project": "js/42-promise-pool", "title": "Promise pool — bounded concurrency", "minutes": 60 },
-            { "kind": "drill", "deck": "js-async", "count": 18, "title": "Async and event loop drill" }
+            { "kind": "drill", "deck": "js-async", "count": 18, "title": "Async and event loop drill" },
+            { "kind": "guide", "guide": "js-event-loop-in-depth", "title": "The event loop in depth", "minutes": 14 },
+            { "kind": "guide", "guide": "js-promise-patterns", "title": "Promise patterns and combinators", "minutes": 12 },
+            { "kind": "guide", "guide": "js-async-await-pitfalls", "title": "async/await pitfalls", "minutes": 12 }
           ]
         },
         {
@@ -320,7 +349,10 @@
           "steps": [
             { "kind": "guide", "guide": "http-fundamentals", "title": "Guide — HTTP from the wire up", "minutes": 45 },
             { "kind": "guide", "guide": "browser-rendering-and-network", "title": "Guide — what the browser does with a URL", "minutes": 30 },
-            { "kind": "drill", "deck": "http-rest", "count": 20, "title": "HTTP drill" }
+            { "kind": "drill", "deck": "http-rest", "count": 20, "title": "HTTP drill" },
+            { "kind": "guide", "guide": "http-status-codes-in-depth", "title": "Status codes in depth", "minutes": 12 },
+            { "kind": "guide", "guide": "http-caching-end-to-end", "title": "HTTP caching end to end", "minutes": 13 },
+            { "kind": "guide", "guide": "cors-explained", "title": "CORS, properly", "minutes": 12 }
           ]
         },
         {
@@ -338,7 +370,12 @@
             { "kind": "build", "project": "js/50-weather-cli", "title": "Weather CLI — a real network client end to end", "minutes": 50 },
             { "kind": "build", "project": "js/76-rate-limiter", "title": "Rate limiter — token bucket, from scratch", "minutes": 55 },
             { "kind": "build", "project": "js/56-async-emitter", "title": "Async emitter — cancellation with AbortSignal", "minutes": 50 },
-            { "kind": "drill", "deck": "http-rest", "count": 10, "title": "Consuming APIs drill" }
+            { "kind": "drill", "deck": "http-rest", "count": 10, "title": "Consuming APIs drill" },
+            { "kind": "guide", "guide": "js-cancellation-abortcontroller", "title": "Cancellation with AbortController", "minutes": 11 },
+            { "kind": "guide", "guide": "js-retries-timeouts-backoff", "title": "Retries, timeouts and backoff", "minutes": 13 },
+            { "kind": "guide", "guide": "js-concurrency-limiting", "title": "Limiting concurrency", "minutes": 13 },
+            { "kind": "guide", "guide": "js-async-iteration-streams", "title": "Async iteration and web streams", "minutes": 14 },
+            { "kind": "guide", "guide": "fetch-in-depth", "title": "fetch in depth", "minutes": 14 }
           ]
         }
       ]
@@ -350,7 +387,7 @@
       "tagline": "Make wrong programs fail to compile",
       "goal": "Model your domain in types well enough that whole categories of bug become impossible.",
       "outcome": "You can type an API boundary, narrow a union exhaustively, and write a generic that isn't `any` in disguise.",
-      "hours": 39,
+      "hours": 40.9,
       "modules": [
         {
           "id": "m-ts-why",
@@ -365,7 +402,8 @@
             { "kind": "build", "project": "ts/01-any-epidemic", "title": "The any epidemic", "minutes": 40 },
             { "kind": "build", "project": "ts/02-type-inference", "title": "Let inference do the work", "minutes": 35 },
             { "kind": "build", "project": "ts/39-strictness-flags", "title": "Strictness flags — what each one buys you", "minutes": 35 },
-            { "kind": "drill", "deck": "typescript", "count": 14, "title": "TypeScript basics drill" }
+            { "kind": "drill", "deck": "typescript", "count": 14, "title": "TypeScript basics drill" },
+            { "kind": "guide", "guide": "tsconfig-explained", "title": "tsconfig, setting by setting", "minutes": 14 }
           ]
         },
         {
@@ -384,7 +422,8 @@
             { "kind": "build", "project": "ts/14-satisfies-vs-as", "title": "satisfies vs as", "minutes": 35 },
             { "kind": "build", "project": "ts/07-enums-vs-unions", "title": "Enums vs unions — the question every TS interview asks", "minutes": 35 },
             { "kind": "build", "project": "ts/31-as-const", "title": "as const and widening", "minutes": 30 },
-            { "kind": "drill", "deck": "typescript", "count": 10, "title": "Modelling data drill" }
+            { "kind": "drill", "deck": "typescript", "count": 10, "title": "Modelling data drill" },
+            { "kind": "guide", "guide": "typescript-error-handling", "title": "Throw, Result and typed errors", "minutes": 14 }
           ]
         },
         {
@@ -402,7 +441,9 @@
             { "kind": "build", "project": "ts/12-exhaustive-switch", "title": "Exhaustive switch with never", "minutes": 40 },
             { "kind": "build", "project": "ts/30-impossible-states", "title": "Make impossible states unrepresentable", "minutes": 55 },
             { "kind": "drill", "deck": "typescript", "count": 16, "title": "Unions and narrowing drill" },
-            { "kind": "build", "project": "ts/11-type-guards", "title": "Type guards and `is` predicates", "minutes": 40 }
+            { "kind": "build", "project": "ts/11-type-guards", "title": "Type guards and `is` predicates", "minutes": 40 },
+            { "kind": "guide", "guide": "typescript-narrowing", "title": "Narrowing in depth", "minutes": 14 },
+            { "kind": "guide", "guide": "typescript-discriminated-unions", "title": "Discriminated unions for app state", "minutes": 14 }
           ]
         },
         {
@@ -420,7 +461,8 @@
             { "kind": "build", "project": "ts/18-keyof-lookup", "title": "keyof and lookup types", "minutes": 40 },
             { "kind": "build", "project": "ts/41-generic-lru", "title": "A generic LRU cache", "minutes": 55 },
             { "kind": "build", "project": "ts/24-utility-types", "title": "Utility types — Pick, Omit, Partial, Record", "minutes": 40 },
-            { "kind": "drill", "deck": "typescript-advanced", "count": 10, "title": "Generics drill" }
+            { "kind": "drill", "deck": "typescript-advanced", "count": 10, "title": "Generics drill" },
+            { "kind": "guide", "guide": "typescript-generics", "title": "Generics you would actually write", "minutes": 14 }
           ]
         },
         {
@@ -439,7 +481,8 @@
             { "kind": "build", "project": "ts/36-result-type", "title": "A Result type", "minutes": 45 },
             { "kind": "drill", "deck": "typescript", "count": 14, "title": "Boundary and generics drill" },
             { "kind": "build", "project": "ts/43-schema-infer", "title": "One schema, two worlds — how Zod-style inference works", "minutes": 50 },
-            { "kind": "build", "project": "ts/35-typed-errors", "title": "Typed errors and the unknown catch", "minutes": 40 }
+            { "kind": "build", "project": "ts/35-typed-errors", "title": "Typed errors and the unknown catch", "minutes": 40 },
+            { "kind": "guide", "guide": "typescript-runtime-validation", "title": "Runtime validation and branded types", "minutes": 14 }
           ]
         },
         {
@@ -455,7 +498,10 @@
           "steps": [
             { "kind": "build", "project": "ts/25-mapped-types", "title": "Mapped types — write your own Partial", "minutes": 45 },
             { "kind": "build", "project": "ts/27-conditional-types", "title": "Conditional types and infer", "minutes": 45 },
-            { "kind": "drill", "deck": "typescript-advanced", "count": 12, "title": "Type-level TypeScript drill" }
+            { "kind": "drill", "deck": "typescript-advanced", "count": 12, "title": "Type-level TypeScript drill" },
+            { "kind": "guide", "guide": "typescript-utility-mapped-types", "title": "Utility and mapped types", "minutes": 14 },
+            { "kind": "guide", "guide": "typescript-conditional-types", "title": "Conditional types and infer", "minutes": 15 },
+            { "kind": "guide", "guide": "typescript-declarations-and-migration", "title": "Declaration files and JS migration", "minutes": 13 }
           ]
         }
       ]
@@ -467,7 +513,7 @@
       "tagline": "The frontend half of a CRUD app",
       "goal": "Build the screens a CRUD product needs: lists, forms, detail views, optimistic updates, routing.",
       "outcome": "You can defend every render your component does, and your effects have no races and no leaks.",
-      "hours": 81,
+      "hours": 86.2,
       "modules": [
         {
           "id": "m-react-components",
@@ -485,7 +531,8 @@
             { "kind": "build", "project": "react/05-props-design", "title": "Designing a component's props", "minutes": 45 },
             { "kind": "drill", "deck": "react-core", "count": 15, "title": "React fundamentals drill" },
             { "kind": "build", "project": "react/04-conditional-render", "title": "Conditional rendering — the stray 0", "minutes": 35 },
-            { "kind": "build", "project": "react/14-event-handlers", "title": "Event handlers — onClick={fn()} and friends", "minutes": 30 }
+            { "kind": "build", "project": "react/14-event-handlers", "title": "Event handlers — onClick={fn()} and friends", "minutes": 30 },
+            { "kind": "guide", "guide": "react-rendering-and-reconciliation", "title": "Rendering, reconciliation and keys", "minutes": 12 }
           ]
         },
         {
@@ -505,7 +552,9 @@
             { "kind": "build", "project": "react/13-usereducer-todo", "title": "useReducer for related state", "minutes": 55 },
             { "kind": "drill", "deck": "react-core", "count": 15, "title": "State management drill" },
             { "kind": "build", "project": "react/31-key-reset", "title": "Resetting state with key", "minutes": 40 },
-            { "kind": "build", "project": "react/32-preserve-state", "title": "State lives at a position in the tree", "minutes": 40 }
+            { "kind": "build", "project": "react/32-preserve-state", "title": "State lives at a position in the tree", "minutes": 40 },
+            { "kind": "guide", "guide": "react-state-design", "title": "Designing component state", "minutes": 11 },
+            { "kind": "guide", "guide": "react-usereducer", "title": "useReducer: modelling state as events", "minutes": 11 }
           ]
         },
         {
@@ -525,7 +574,10 @@
             { "kind": "build", "project": "react/20-fetch-status", "title": "Loading, error, empty, loaded", "minutes": 50 },
             { "kind": "build", "project": "react/21-no-effect-needed", "title": "You probably don't need an effect", "minutes": 45 },
             { "kind": "build", "project": "react/11-stale-closures", "title": "Stale closures in hooks", "minutes": 50 },
-            { "kind": "drill", "deck": "react-hooks", "count": 20, "title": "Hooks and effects drill" }
+            { "kind": "drill", "deck": "react-hooks", "count": 20, "title": "Hooks and effects drill" },
+            { "kind": "guide", "guide": "react-effects-as-synchronisation", "title": "useEffect as synchronisation", "minutes": 12 },
+            { "kind": "guide", "guide": "react-effect-dependencies-stale-closures", "title": "Effect dependencies and stale closures", "minutes": 12 },
+            { "kind": "guide", "guide": "react-strict-mode", "title": "StrictMode and double-running effects", "minutes": 10 }
           ]
         },
         {
@@ -543,7 +595,9 @@
             { "kind": "build", "project": "react/24-usedebouncedvalue", "title": "useDebouncedValue", "minutes": 40 },
             { "kind": "build", "project": "react/26-refs-for-values", "title": "Refs for values, not just DOM", "minutes": 40 },
             { "kind": "build", "project": "react/50-build-your-own-hooks", "title": "Build your own hooks", "minutes": 60 },
-            { "kind": "drill", "deck": "react-hooks", "count": 10, "title": "Custom hooks drill" }
+            { "kind": "drill", "deck": "react-hooks", "count": 10, "title": "Custom hooks drill" },
+            { "kind": "guide", "guide": "react-refs-and-imperative-handles", "title": "Refs, ref callbacks and imperative handles", "minutes": 11 },
+            { "kind": "guide", "guide": "react-custom-hook-design", "title": "Designing custom hooks", "minutes": 12 }
           ]
         },
         {
@@ -561,7 +615,10 @@
             { "kind": "build", "project": "react/44-async-submit", "title": "Async submit", "minutes": 50 },
             { "kind": "build", "project": "react/39-optimistic-updates", "title": "Optimistic updates and rollback", "minutes": 60 },
             { "kind": "build", "project": "react/16-wizard-phases", "title": "Multi-step forms as a phase machine", "minutes": 50 },
-            { "kind": "drill", "deck": "react-patterns", "count": 8, "title": "Forms drill" }
+            { "kind": "drill", "deck": "react-patterns", "count": 8, "title": "Forms drill" },
+            { "kind": "guide", "guide": "accessible-forms-and-errors", "title": "Accessible forms and errors", "minutes": 15 },
+            { "kind": "guide", "guide": "react-controlled-vs-uncontrolled", "title": "Controlled and uncontrolled inputs", "minutes": 11 },
+            { "kind": "guide", "guide": "react-forms-at-scale", "title": "Guide — forms at scale", "minutes": 30 }
           ]
         },
         {
@@ -597,7 +654,9 @@
             { "kind": "build", "project": "react/36-controlled-component-api", "title": "A controlled component API", "minutes": 45 },
             { "kind": "build", "project": "react/37-error-boundary", "title": "Error boundaries", "minutes": 40 },
             { "kind": "drill", "deck": "react-patterns", "count": 18, "title": "React patterns drill" },
-            { "kind": "build", "project": "react/38-portal-modal", "title": "Portals — escaping the stacking context", "minutes": 40 }
+            { "kind": "build", "project": "react/38-portal-modal", "title": "Portals — escaping the stacking context", "minutes": 40 },
+            { "kind": "guide", "guide": "react-composition-patterns", "title": "Guide — composition patterns", "minutes": 30 },
+            { "kind": "guide", "guide": "react-context-performance", "title": "Guide — context without the perf trap", "minutes": 30 }
           ]
         },
         {
@@ -615,7 +674,8 @@
             { "kind": "build", "project": "react/29-state-colocation", "title": "Colocation beats memoisation", "minutes": 45 },
             { "kind": "build", "project": "react/54-list-virtualization", "title": "List virtualization", "minutes": 55 },
             { "kind": "build", "project": "react/30-stable-props", "title": "Stable props — why memo silently fails", "minutes": 40 },
-            { "kind": "drill", "deck": "web-performance", "count": 12, "title": "Rendering performance drill" }
+            { "kind": "drill", "deck": "web-performance", "count": 12, "title": "Rendering performance drill" },
+            { "kind": "guide", "guide": "react-performance-profiling", "title": "Guide — profiling React performance", "minutes": 30 }
           ]
         },
         {
@@ -632,7 +692,11 @@
             { "kind": "build", "project": "react/53-keyboard-nav-menu", "title": "Keyboard navigation", "minutes": 50 },
             { "kind": "build", "project": "react/60-testable-components", "title": "Testable components", "minutes": 55 },
             { "kind": "build", "project": "react/49-todo-capstone", "title": "Capstone — the whole thing at once", "minutes": 120 },
-            { "kind": "drill", "deck": "accessibility", "count": 8, "title": "Accessible components drill" }
+            { "kind": "drill", "deck": "accessibility", "count": 8, "title": "Accessible components drill" },
+            { "kind": "guide", "guide": "aria-patterns-safe-use", "title": "ARIA without breaking things", "minutes": 14 },
+            { "kind": "guide", "guide": "keyboard-interaction-patterns", "title": "Keyboard interaction patterns", "minutes": 14 },
+            { "kind": "guide", "guide": "screen-reader-testing", "title": "Testing with a screen reader", "minutes": 14 },
+            { "kind": "guide", "guide": "react-error-boundaries", "title": "Guide — error boundaries and error UX", "minutes": 30 }
           ]
         }
       ]
@@ -644,7 +708,7 @@
       "tagline": "The libraries and habits every React job assumes",
       "goal": "Work productively in a typed React 19 codebase that uses a data-fetching library, a real test suite and modern form handling.",
       "outcome": "You can explain what TanStack Query, React 19 actions and Testing Library each replace, and when you would not reach for them.",
-      "hours": 17,
+      "hours": 20.1,
       "modules": [
         {
           "id": "m-react-ts",
@@ -677,7 +741,8 @@
           "steps": [
             { "kind": "guide", "guide": "modern-react", "title": "Guide — React 19 in practice", "minutes": 45 },
             { "kind": "build", "project": "react/51-use-sync-external-store", "title": "useSyncExternalStore — subscriptions that don't tear", "minutes": 50 },
-            { "kind": "drill", "deck": "react-ecosystem", "count": 12, "title": "Modern React drill" }
+            { "kind": "drill", "deck": "react-ecosystem", "count": 12, "title": "Modern React drill" },
+            { "kind": "guide", "guide": "react-19-hooks-toolkit", "title": "The rest of the hooks toolkit", "minutes": 12 }
           ]
         },
         {
@@ -697,7 +762,10 @@
             { "kind": "build", "project": "react/41-mini-store", "title": "useReducer + Context as a store", "minutes": 50 },
             { "kind": "build", "project": "react/59-offline-first-notes", "title": "Offline-first notes — a sync queue", "minutes": 70 },
             { "kind": "build", "project": "react/56-drag-drop-kanban", "title": "Drag-and-drop kanban — who owns which state", "minutes": 90 },
-            { "kind": "drill", "deck": "react-ecosystem", "count": 12, "title": "State and data-fetching drill" }
+            { "kind": "drill", "deck": "react-ecosystem", "count": 12, "title": "State and data-fetching drill" },
+            { "kind": "guide", "guide": "react-router-v7-concepts", "title": "Guide — React Router v7 concepts", "minutes": 30 },
+            { "kind": "guide", "guide": "tanstack-query-in-depth", "title": "Guide — TanStack Query in depth", "minutes": 35 },
+            { "kind": "guide", "guide": "react-client-state-options", "title": "Guide — client state options compared", "minutes": 30 }
           ]
         },
         {
@@ -712,7 +780,10 @@
           ],
           "steps": [
             { "kind": "guide", "guide": "frontend-testing", "title": "Guide — Testing Library, MSW and Playwright", "minutes": 45 },
-            { "kind": "drill", "deck": "testing-frontend", "count": 12, "title": "Frontend testing drill" }
+            { "kind": "drill", "deck": "testing-frontend", "count": 12, "title": "Frontend testing drill" },
+            { "kind": "guide", "guide": "accessibility-testing-in-ci", "title": "Accessibility testing in CI", "minutes": 12 },
+            { "kind": "guide", "guide": "playwright-e2e", "title": "Guide — Playwright end to end", "minutes": 35 },
+            { "kind": "guide", "guide": "msw-network-mocking", "title": "Guide — network mocking with MSW", "minutes": 30 }
           ]
         }
       ]
@@ -724,7 +795,7 @@
       "tagline": "Everything a backend interview asks that does not depend on the language",
       "goal": "Design a REST API, write the SQL behind it, and secure it — before choosing a stack to build it in.",
       "outcome": "You can defend an endpoint design, write the JOIN it needs, and explain how its login works, in either stack.",
-      "hours": 9,
+      "hours": 13.7,
       "modules": [
         {
           "id": "m-rest-api",
@@ -739,7 +810,11 @@
           "steps": [
             { "kind": "guide", "guide": "rest-api-design", "title": "Guide — REST API design that survives review", "minutes": 45 },
             { "kind": "guide", "guide": "api-pagination-filtering", "title": "Guide — pagination, filtering, sorting", "minutes": 30 },
-            { "kind": "drill", "deck": "http-rest", "count": 18, "title": "REST design drill" }
+            { "kind": "drill", "deck": "http-rest", "count": 18, "title": "REST design drill" },
+            { "kind": "guide", "guide": "api-versioning-strategies", "title": "API versioning strategies", "minutes": 11 },
+            { "kind": "guide", "guide": "api-error-design", "title": "Error design with problem details", "minutes": 12 },
+            { "kind": "guide", "guide": "openapi-contract-first", "title": "OpenAPI and contract-first APIs", "minutes": 12 },
+            { "kind": "guide", "guide": "graphql-for-rest-developers", "title": "GraphQL (and gRPC) for REST developers", "minutes": 13 }
           ]
         },
         {
@@ -758,7 +833,15 @@
             { "kind": "guide", "guide": "relational-data-modeling", "title": "Guide — modelling data, keys and relationships", "minutes": 45 },
             { "kind": "build", "project": "js/86-sqlite-orders", "title": "SQL for real — a tiny orders database (runs on Node, no framework needed)", "minutes": 90 },
             { "kind": "drill", "deck": "sql-data", "count": 22, "title": "SQL and data modelling drill" },
-            { "kind": "drill", "deck": "sql-advanced", "count": 12, "title": "Advanced SQL drill" }
+            { "kind": "drill", "deck": "sql-advanced", "count": 12, "title": "Advanced SQL drill" },
+            { "kind": "guide", "guide": "sql-joins-in-depth", "title": "Joins in depth", "minutes": 14 },
+            { "kind": "guide", "guide": "sql-group-by-patterns", "title": "GROUP BY patterns", "minutes": 12 },
+            { "kind": "guide", "guide": "sql-window-functions-for-reporting", "title": "Window functions for reporting", "minutes": 12 },
+            { "kind": "guide", "guide": "sql-null-three-valued-logic", "title": "NULL and three-valued logic", "minutes": 12 },
+            { "kind": "guide", "guide": "sql-indexes-and-query-plans", "title": "Indexes and query plans", "minutes": 15 },
+            { "kind": "guide", "guide": "sql-isolation-and-locking", "title": "Isolation, locking and deadlocks", "minutes": 15 },
+            { "kind": "guide", "guide": "json-in-relational-databases", "title": "JSON in relational databases", "minutes": 12 },
+            { "kind": "guide", "guide": "full-text-search-in-sql", "title": "Full-text search in SQL", "minutes": 12 }
           ]
         },
         {
@@ -775,7 +858,17 @@
             { "kind": "guide", "guide": "auth-sessions-jwt", "title": "Guide — auth, sessions, tokens and cookies", "minutes": 50 },
             { "kind": "guide", "guide": "web-security-basics", "title": "Guide — the security basics you're expected to know", "minutes": 40 },
             { "kind": "drill", "deck": "auth-security", "count": 20, "title": "Auth and security drill" },
-            { "kind": "drill", "deck": "api-design-security", "count": 10, "title": "API security drill" }
+            { "kind": "drill", "deck": "api-design-security", "count": 10, "title": "API security drill" },
+            { "kind": "guide", "guide": "node-security-hardening", "title": "Hardening a Node service", "minutes": 13 },
+            { "kind": "guide", "guide": "rate-limiting-and-quotas", "title": "Rate limiting and quotas", "minutes": 12 },
+            { "kind": "guide", "guide": "owasp-api-top-10", "title": "The OWASP API Top 10, walked through", "minutes": 15 },
+            { "kind": "guide", "guide": "oauth-oidc-for-app-devs", "title": "OAuth 2.0 and OpenID Connect for app developers", "minutes": 14 },
+            { "kind": "guide", "guide": "password-storage-and-recovery", "title": "Password storage and account recovery", "minutes": 13 },
+            { "kind": "guide", "guide": "mfa-and-passkeys", "title": "MFA and passkeys", "minutes": 13 },
+            { "kind": "guide", "guide": "authorisation-models", "title": "Authorisation models: roles, permissions and ownership", "minutes": 13 },
+            { "kind": "guide", "guide": "xss-in-depth", "title": "XSS in depth: contexts, sinks and CSP", "minutes": 12 },
+            { "kind": "guide", "guide": "csrf-and-samesite", "title": "CSRF and SameSite, properly", "minutes": 12 },
+            { "kind": "guide", "guide": "injection-and-safe-queries", "title": "Injection and safe queries", "minutes": 13 }
           ]
         }
       ]
@@ -787,7 +880,7 @@
       "tagline": "The backend, in Node — skip this stage if you are going .NET-first",
       "goal": "Build a REST API with authentication, a database, validation, and a sane error contract.",
       "outcome": "You can design and defend the API a frontend team would have to consume.",
-      "hours": 25,
+      "hours": 27,
       "modules": [
         {
           "id": "m-node-runtime",
@@ -803,7 +896,11 @@
             { "kind": "read", "doc": "HANDBOOK.md", "anchor": "#11-node-basics", "title": "Handbook §11 — Node basics", "minutes": 20 },
             { "kind": "build", "project": "js/36-log-analyzer", "title": "Log analyzer — files, streams, CLI", "minutes": 55 },
             { "kind": "build", "project": "js/85-streaming-log-parser", "title": "Streaming — process a file bigger than RAM", "minutes": 60 },
-            { "kind": "drill", "deck": "node-express", "count": 15, "title": "Node runtime drill" }
+            { "kind": "drill", "deck": "node-express", "count": 15, "title": "Node runtime drill" },
+            { "kind": "guide", "guide": "typescript-with-node", "title": "TypeScript on Node 24", "minutes": 13 },
+            { "kind": "guide", "guide": "node-streams-and-backpressure", "title": "Streams and backpressure", "minutes": 13 },
+            { "kind": "guide", "guide": "node-workers-and-child-processes", "title": "worker_threads and child processes", "minutes": 13 },
+            { "kind": "guide", "guide": "supply-chain-security", "title": "Supply-chain security for npm and NuGet", "minutes": 13 }
           ]
         },
         {
@@ -824,7 +921,12 @@
             { "kind": "build", "project": "js/35-template-engine", "title": "Template engine — escape by default, XSS by construction", "minutes": 45 },
             { "kind": "guide", "guide": "node-api-frameworks", "title": "Guide — Express, Fastify, NestJS and the data layer", "minutes": 40 },
             { "kind": "guide", "guide": "dependency-injection-explained", "title": "Guide — dependency injection, in both stacks", "minutes": 40 },
-            { "kind": "drill", "deck": "node-advanced", "count": 12, "title": "Node frameworks drill" }
+            { "kind": "drill", "deck": "node-advanced", "count": 12, "title": "Node frameworks drill" },
+            { "kind": "guide", "guide": "express-5-in-depth", "title": "Express 5 in depth", "minutes": 14 },
+            { "kind": "guide", "guide": "node-validation-and-dtos", "title": "Validation and DTOs in a Node API", "minutes": 13 },
+            { "kind": "guide", "guide": "structuring-a-node-api", "title": "Structuring a Node API", "minutes": 13 },
+            { "kind": "guide", "guide": "prisma-and-drizzle", "title": "Data access with Prisma and Drizzle", "minutes": 13 },
+            { "kind": "guide", "guide": "testing-node-apis", "title": "Testing Node APIs", "minutes": 13 }
           ]
         },
         {
@@ -840,7 +942,8 @@
             { "kind": "build", "project": "js/67-websocket-chat", "title": "WebSocket chat", "minutes": 70 },
             { "kind": "build", "project": "js/68-collab-todo", "title": "Collaborative to-do — the fullstack capstone", "minutes": 120 },
             { "kind": "build", "project": "js/83-event-sourcing-bank", "title": "Event sourcing — the audit-log architecture", "minutes": 70 },
-            { "kind": "drill", "deck": "node-advanced", "count": 8, "title": "Realtime drill" }
+            { "kind": "drill", "deck": "node-advanced", "count": 8, "title": "Realtime drill" },
+            { "kind": "guide", "guide": "websockets-and-sse-in-node", "title": "WebSockets and SSE in Node", "minutes": 13 }
           ]
         }
       ]
@@ -852,7 +955,7 @@
       "tagline": "The same backend, in .NET",
       "goal": "Rebuild what you did in Node, in .NET — because half the CRUD jobs on the market are .NET jobs.",
       "outcome": "You can hold a conversation about DI lifetimes, the middleware pipeline, and EF Core without bluffing.",
-      "hours": 76,
+      "hours": 79.8,
       "modules": [
         {
           "id": "m-cs-basics",
@@ -869,7 +972,11 @@
             { "kind": "build", "project": "csharp/03-collections-choice", "title": "Choosing a collection", "minutes": 45 },
             { "kind": "build", "project": "csharp/05-null-safety-csharp", "title": "Null safety in C#", "minutes": 45 },
             { "kind": "drill", "deck": "csharp-lang", "count": 16, "title": "C# language drill" },
-            { "kind": "build", "project": "csharp/06-enums-and-switch", "title": "Enums and switch expressions", "minutes": 40 }
+            { "kind": "build", "project": "csharp/06-enums-and-switch", "title": "Enums and switch expressions", "minutes": 40 },
+            { "kind": "guide", "guide": "csharp-for-js-developers", "title": "C# for JavaScript and TypeScript developers", "minutes": 13 },
+            { "kind": "guide", "guide": "csharp-value-reference-memory", "title": "Value types, reference types and memory", "minutes": 14 },
+            { "kind": "guide", "guide": "csharp-nullable-reference-types", "title": "Nullable reference types in practice", "minutes": 11 },
+            { "kind": "guide", "guide": "csharp-choosing-collections", "title": "Choosing a collection in .NET", "minutes": 12 }
           ]
         },
         {
@@ -888,7 +995,10 @@
             { "kind": "build", "project": "csharp/31-pattern-matching-rules", "title": "Pattern matching", "minutes": 45 },
             { "kind": "build", "project": "csharp/30-iterators-yield", "title": "Iterators and yield", "minutes": 45 },
             { "kind": "build", "project": "csharp/13-extension-linq-utils", "title": "Extension methods and fluent chains", "minutes": 40 },
-            { "kind": "drill", "deck": "csharp-advanced", "count": 10, "title": "LINQ and records, deeper drill" }
+            { "kind": "drill", "deck": "csharp-advanced", "count": 10, "title": "LINQ and records, deeper drill" },
+            { "kind": "guide", "guide": "csharp-linq-in-depth", "title": "LINQ in depth", "minutes": 12 },
+            { "kind": "guide", "guide": "csharp-class-struct-record", "title": "Class, struct or record", "minutes": 12 },
+            { "kind": "guide", "guide": "csharp-pattern-matching", "title": "Pattern matching in modern C#", "minutes": 11 }
           ]
         },
         {
@@ -907,7 +1017,10 @@
             { "kind": "build", "project": "csharp/11-generics-lru", "title": "Generics", "minutes": 50 },
             { "kind": "build", "project": "csharp/08-exceptions-vs-result", "title": "Exceptions vs Result", "minutes": 45 },
             { "kind": "build", "project": "csharp/12-events-delegates", "title": "Delegates, Func/Action and events", "minutes": 45 },
-            { "kind": "drill", "deck": "csharp-lang", "count": 10, "title": "Interfaces, generics and delegates drill" }
+            { "kind": "drill", "deck": "csharp-lang", "count": 10, "title": "Interfaces, generics and delegates drill" },
+            { "kind": "guide", "guide": "csharp-generics-constraints", "title": "Generics and constraints", "minutes": 12 },
+            { "kind": "guide", "guide": "csharp-delegates-events-lambdas", "title": "Delegates, events and lambdas", "minutes": 12 },
+            { "kind": "guide", "guide": "csharp-exceptions-and-disposal", "title": "Exceptions, finally and IDisposable", "minutes": 12 }
           ]
         },
         {
@@ -960,7 +1073,10 @@
             { "kind": "build", "project": "csharp/19-middleware-pipeline", "title": "The middleware pipeline", "minutes": 55 },
             { "kind": "build", "project": "csharp/20-error-handling-problemdetails", "title": "Error handling with ProblemDetails", "minutes": 50 },
             { "kind": "build", "project": "csharp/24-cors-and-static-files", "title": "CORS and static files — the SPA meets the API", "minutes": 45 },
-            { "kind": "drill", "deck": "dotnet-aspnet", "count": 22, "title": "ASP.NET Core drill" }
+            { "kind": "drill", "deck": "dotnet-aspnet", "count": 22, "title": "ASP.NET Core drill" },
+            { "kind": "guide", "guide": "aspnet-middleware-pipeline", "title": "The middleware pipeline in depth", "minutes": 14 },
+            { "kind": "guide", "guide": "minimal-apis-vs-controllers", "title": "Minimal APIs vs controllers", "minutes": 12 },
+            { "kind": "guide", "guide": "aspnet-model-binding-validation", "title": "Model binding and validation", "minutes": 13 }
           ]
         },
         {
@@ -979,7 +1095,10 @@
             { "kind": "build", "project": "csharp/34-pagination-filtering", "title": "Pagination and filtering", "minutes": 50 },
             { "kind": "build", "project": "csharp/33-caching-memory", "title": "Caching", "minutes": 45 },
             { "kind": "drill", "deck": "dotnet-data", "count": 14, "title": "EF Core drill" },
-            { "kind": "drill", "deck": "sql-advanced", "count": 10, "title": "Query performance drill" }
+            { "kind": "drill", "deck": "sql-advanced", "count": 10, "title": "Query performance drill" },
+            { "kind": "guide", "guide": "ef-core-query-performance", "title": "EF Core querying and performance", "minutes": 14 },
+            { "kind": "guide", "guide": "ef-core-migrations-in-teams", "title": "EF Core migrations in teams and deployment", "minutes": 12 },
+            { "kind": "guide", "guide": "ef-core-relationships-loading", "title": "EF Core relationships and loading", "minutes": 13 }
           ]
         },
         {
@@ -995,7 +1114,10 @@
           "steps": [
             { "kind": "build", "project": "csharp/22-config-and-options", "title": "Configuration and options", "minutes": 50 },
             { "kind": "build", "project": "csharp/23-auth-password-hashing", "title": "Auth and password hashing", "minutes": 60 },
-            { "kind": "drill", "deck": "dotnet-aspnet", "count": 10, "title": "Config, auth and hosting drill" }
+            { "kind": "drill", "deck": "dotnet-aspnet", "count": 10, "title": "Config, auth and hosting drill" },
+            { "kind": "guide", "guide": "dotnet-options-pattern", "title": "Configuration and the options pattern", "minutes": 12 },
+            { "kind": "guide", "guide": "aspnet-authn-authz", "title": "Authentication and authorisation in ASP.NET Core", "minutes": 14 },
+            { "kind": "guide", "guide": "dotnet-caching", "title": "Caching in .NET: IMemoryCache, HybridCache, output caching", "minutes": 12 }
           ]
         },
         {
@@ -1052,7 +1174,7 @@
       "tagline": "The features every CRUD product grows, and designing the whole thing",
       "goal": "Handle background work and third-party APIs safely, and walk an interviewer through the design of a small system.",
       "outcome": "You can design a CRUD system end to end on a whiteboard, including what you would deliberately not build yet.",
-      "hours": 5,
+      "hours": 6.6,
       "modules": [
         {
           "id": "m-background-work",
@@ -1067,7 +1189,8 @@
           "steps": [
             { "kind": "guide", "guide": "background-jobs-and-queues", "title": "Guide — background jobs, queues and email", "minutes": 45 },
             { "kind": "build", "project": "csharp/32-background-work-queue", "title": "Background work", "minutes": 50 },
-            { "kind": "drill", "deck": "system-design-lite", "count": 10, "title": "Background work drill" }
+            { "kind": "drill", "deck": "system-design-lite", "count": 10, "title": "Background work drill" },
+            { "kind": "guide", "guide": "event-driven-design", "title": "Queues and event-driven design", "minutes": 13 }
           ]
         },
         {
@@ -1082,7 +1205,9 @@
           ],
           "steps": [
             { "kind": "guide", "guide": "third-party-integrations", "title": "Guide — SDKs, webhooks and payments", "minutes": 40 },
-            { "kind": "drill", "deck": "api-design-security", "count": 8, "title": "Integrations drill" }
+            { "kind": "drill", "deck": "api-design-security", "count": 8, "title": "Integrations drill" },
+            { "kind": "guide", "guide": "idempotency-and-safe-retries", "title": "Idempotency and safe retries", "minutes": 13 },
+            { "kind": "guide", "guide": "file-uploads-object-storage", "title": "File uploads and object storage", "minutes": 12 }
           ]
         },
         {
@@ -1097,7 +1222,8 @@
           ],
           "steps": [
             { "kind": "guide", "guide": "application-architecture", "title": "Guide — layers, slices and Clean Architecture", "minutes": 45 },
-            { "kind": "drill", "deck": "system-design-lite", "count": 10, "title": "Architecture drill" }
+            { "kind": "drill", "deck": "system-design-lite", "count": 10, "title": "Architecture drill" },
+            { "kind": "guide", "guide": "multi-tenant-saas", "title": "Designing a multi-tenant SaaS app", "minutes": 12 }
           ]
         },
         {
@@ -1112,7 +1238,11 @@
           ],
           "steps": [
             { "kind": "guide", "guide": "system-design-for-crud", "title": "Guide — system design, mid-level edition", "minutes": 60 },
-            { "kind": "drill", "deck": "system-design-lite", "count": 15, "title": "System design drill" }
+            { "kind": "drill", "deck": "system-design-lite", "count": 15, "title": "System design drill" },
+            { "kind": "guide", "guide": "choosing-a-database", "title": "Choosing a database", "minutes": 14 },
+            { "kind": "guide", "guide": "design-booking-system", "title": "Designing a booking system end to end", "minutes": 14 },
+            { "kind": "guide", "guide": "scaling-a-monolith", "title": "Scaling a monolith before you split it", "minutes": 13 },
+            { "kind": "guide", "guide": "search-at-small-scale", "title": "Search at small scale", "minutes": 12 }
           ]
         }
       ]
@@ -1124,7 +1254,7 @@
       "tagline": "The half of the job that isn't writing code",
       "goal": "Deploy something, observe it, debug it in production, and talk about all of it convincingly.",
       "outcome": "You are mid-level: you can be handed a broken system you didn't write and make progress.",
-      "hours": 13,
+      "hours": 17.4,
       "modules": [
         {
           "id": "m-git",
@@ -1140,7 +1270,12 @@
           "steps": [
             { "kind": "guide", "guide": "git-workflow", "title": "Guide — Git as it's actually used on a team", "minutes": 45 },
             { "kind": "drill", "deck": "git-tooling-devops", "count": 18, "title": "Git and workflow drill" },
-            { "kind": "drill", "deck": "agile-process", "count": 11, "title": "Working-in-a-team drill" }
+            { "kind": "drill", "deck": "agile-process", "count": 11, "title": "Working-in-a-team drill" },
+            { "kind": "guide", "guide": "git-internals-and-rebasing", "title": "Git internals and rebasing safely", "minutes": 14 },
+            { "kind": "guide", "guide": "branching-and-release-flows", "title": "Branching strategies and release flows", "minutes": 11 },
+            { "kind": "guide", "guide": "code-review-in-practice", "title": "Code review as author and reviewer", "minutes": 12 },
+            { "kind": "guide", "guide": "estimation-and-planning", "title": "Estimation and planning", "minutes": 12 },
+            { "kind": "guide", "guide": "working-in-legacy-code", "title": "Working in a legacy codebase", "minutes": 12 }
           ]
         },
         {
@@ -1155,7 +1290,10 @@
           "steps": [
             { "kind": "guide", "guide": "logging-and-observability", "title": "Guide — logs, metrics, traces", "minutes": 40 },
             { "kind": "guide", "guide": "debugging-playbook", "title": "Guide — a debugging playbook for problems you didn't cause", "minutes": 40 },
-            { "kind": "drill", "deck": "debugging-realworld", "count": 20, "title": "Real-world debugging drill" }
+            { "kind": "drill", "deck": "debugging-realworld", "count": 20, "title": "Real-world debugging drill" },
+            { "kind": "guide", "guide": "logging-with-pino", "title": "Logging with pino", "minutes": 12 },
+            { "kind": "guide", "guide": "dotnet-logging-opentelemetry", "title": "Logging and OpenTelemetry in .NET", "minutes": 13 },
+            { "kind": "guide", "guide": "incident-response", "title": "Incident response and debugging production", "minutes": 13 }
           ]
         },
         {
@@ -1174,7 +1312,12 @@
             { "kind": "build", "project": "js/41-lru-cache", "title": "Build an LRU cache", "minutes": 55 },
             { "kind": "build", "project": "js/27-memoize", "title": "Memoize", "minutes": 40 },
             { "kind": "build", "project": "js/84-worker-pool", "title": "Worker pool — using more than one core", "minutes": 60 },
-            { "kind": "drill", "deck": "web-performance", "count": 10, "title": "Performance and caching drill" }
+            { "kind": "drill", "deck": "web-performance", "count": 10, "title": "Performance and caching drill" },
+            { "kind": "guide", "guide": "web-workers", "title": "Web Workers", "minutes": 14 },
+            { "kind": "guide", "guide": "core-web-vitals-in-depth", "title": "Core Web Vitals in depth", "minutes": 13 },
+            { "kind": "guide", "guide": "image-and-font-performance", "title": "Image and font performance", "minutes": 13 },
+            { "kind": "guide", "guide": "measuring-performance-rum-vs-lab", "title": "Measuring performance: field vs lab", "minutes": 13 },
+            { "kind": "guide", "guide": "memory-leaks-and-performance", "title": "Memory leaks and performance problems", "minutes": 13 }
           ]
         },
         {
@@ -1193,7 +1336,15 @@
             { "kind": "guide", "guide": "ci-cd-pipelines", "title": "Guide — CI/CD pipelines", "minutes": 35 },
             { "kind": "guide", "guide": "deployment-and-hosting", "title": "Guide — getting it onto the internet", "minutes": 35 },
             { "kind": "drill", "deck": "git-tooling-devops", "count": 16, "title": "Deployment drill" },
-            { "kind": "drill", "deck": "cloud-basics", "count": 12, "title": "Cloud basics drill" }
+            { "kind": "drill", "deck": "cloud-basics", "count": 12, "title": "Cloud basics drill" },
+            { "kind": "guide", "guide": "node-graceful-shutdown", "title": "Graceful shutdown in Node", "minutes": 12 },
+            { "kind": "guide", "guide": "zero-downtime-schema-migrations", "title": "Zero-downtime schema migrations", "minutes": 14 },
+            { "kind": "guide", "guide": "github-actions-in-depth", "title": "GitHub Actions in depth", "minutes": 13 },
+            { "kind": "guide", "guide": "docker-beyond-basics", "title": "Docker beyond the basics", "minutes": 13 },
+            { "kind": "guide", "guide": "kubernetes-for-app-devs", "title": "Kubernetes for application developers", "minutes": 12 },
+            { "kind": "guide", "guide": "cloud-building-blocks", "title": "Cloud building blocks for a CRUD app", "minutes": 13 },
+            { "kind": "guide", "guide": "infrastructure-as-code-basics", "title": "Infrastructure as code basics", "minutes": 12 },
+            { "kind": "guide", "guide": "feature-flags", "title": "Feature flags in practice", "minutes": 12 }
           ]
         },
         {
@@ -1208,7 +1359,8 @@
           "steps": [
             { "kind": "guide", "guide": "interview-playbook", "title": "Guide — the mid-level interview playbook", "minutes": 45 },
             { "kind": "drill", "deck": "behavioral", "count": 11, "title": "Behavioural answers drill" },
-            { "kind": "drill", "deck": "mixed", "count": 40, "title": "Full mixed mock — every topic, timed" }
+            { "kind": "drill", "deck": "mixed", "count": 40, "title": "Full mixed mock — every topic, timed" },
+            { "kind": "guide", "guide": "behavioural-interview-star", "title": "The behavioural interview with STAR", "minutes": 13 }
           ]
         }
       ]

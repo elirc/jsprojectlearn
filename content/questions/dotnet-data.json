@@ -436,6 +436,1718 @@
       "tags": ["postgres", "types"],
       "level": 2,
       "asked": "The most common EF-on-Postgres exception after a SQL Server migration; it tests whether you store instants or wall-clock times."
+    },
+    {
+      "id": "dd-028",
+      "q": "With no attributes or Fluent API, which property does EF Core make the primary key of this entity?",
+      "code": "public class Invoice\n{\n    public int InvoiceId { get; set; }\n    public string Number { get; set; } = \"\";\n}",
+      "lang": "cs",
+      "choices": [
+        "None: EF Core requires a `[Key]` attribute on one property",
+        "`Number`, because string keys are preferred when present",
+        "`InvoiceId`, because `<TypeName>Id` is a key by convention",
+        "A hidden shadow `Id` column that EF Core adds to the table"
+      ],
+      "answer": 2,
+      "why": "EF Core treats a property named `Id` or `<type name>Id` as the key, and makes an integer key an identity column. `[Key]` or `HasKey` is needed only when your key breaks that convention. Without any key, EF refuses to map the type unless you mark it keyless.",
+      "tags": ["conventions", "keys"],
+      "level": 1,
+      "asked": "A warm-up that checks you know what EF infers before you start configuring things."
+    },
+    {
+      "id": "dd-029",
+      "q": "Nullable reference types are enabled. How does EF Core map these two properties in a migration?",
+      "code": "public string Name { get; set; } = \"\";\npublic string? Notes { get; set; }",
+      "lang": "cs",
+      "choices": [
+        "Nullable for each, because strings are reference types in the database",
+        "NOT NULL for each, because EF Core ignores the `?` annotation entirely",
+        "`Name` nullable and `Notes` NOT NULL, the reverse of C# semantics",
+        "`Name` NOT NULL and `Notes` nullable, following the annotations"
+      ],
+      "answer": 3,
+      "why": "With NRT enabled, EF Core reads the nullability annotations: a non-nullable `string` becomes a required column and `string?` an optional one. Before NRT, every string column was nullable unless marked `[Required]`, which is why older projects are full of that attribute.",
+      "tags": ["conventions", "modelling"],
+      "level": 1,
+      "asked": "Checks you know how C# nullability flows into the schema, a common source of surprise migrations."
+    },
+    {
+      "id": "dd-030",
+      "q": "On SQL Server, what column type does EF Core create for a `string Title` property with no length configured?",
+      "choices": [
+        "`nvarchar(max)`, unless you set a maximum length",
+        "`nvarchar(255)`, the length most ORMs choose",
+        "`varchar(50)`, to keep row sizes small by default",
+        "`text`, the legacy type used for long strings"
+      ],
+      "answer": 0,
+      "why": "Unbounded strings map to `nvarchar(max)` on SQL Server (and `text` on Postgres, where it costs nothing). `nvarchar(max)` columns cannot be index keys and hide missing validation, so set `HasMaxLength` or `[MaxLength]` for things like names and emails.",
+      "tags": ["conventions", "types"],
+      "level": 1,
+      "asked": "Interviewers want to hear that you set lengths deliberately rather than living with the default."
+    },
+    {
+      "id": "dd-031",
+      "q": "A property has `[MaxLength(100)]`, and `OnModelCreating` calls `HasMaxLength(200)` on it. What length does the column get?",
+      "choices": [
+        "100, because attributes always override code-based configuration",
+        "200, because the Fluent API is applied last and takes precedence",
+        "100, the smaller value, since EF picks the stricter of the two",
+        "Neither: EF throws at start-up because the settings conflict"
+      ],
+      "answer": 1,
+      "why": "EF Core applies conventions, then data annotations, then the Fluent API, so explicit Fluent configuration wins. Many teams keep all mapping in `IEntityTypeConfiguration<T>` classes to avoid splitting it across two places.",
+      "tags": ["modelling"],
+      "level": 1,
+      "asked": "Shows you know where the final model comes from when configuration is spread around."
+    },
+    {
+      "id": "dd-032",
+      "q": "`Order` has an `int CustomerId` property and a `Customer` navigation, and `Customer` has `List<Order> Orders`. What must you configure for the relationship?",
+      "choices": [
+        "Nothing: EF discovers the one-to-many relationship and the foreign key",
+        "`HasOne().WithMany()` in OnModelCreating, as EF never infers relationships",
+        "A `[ForeignKey]` attribute, because EF cannot guess which property is the key",
+        "A join table, because both sides have navigations to each other"
+      ],
+      "answer": 0,
+      "why": "The navigations define a one-to-many relationship, and `CustomerId` matches the `<navigation>Id` naming convention, so it becomes the foreign key. Fluent configuration is only needed for non-standard names, delete behaviour or keys. Join tables are for many-to-many.",
+      "tags": ["relationships", "conventions"],
+      "level": 1,
+      "asked": "Establishes whether you rely on conventions knowingly or configure everything out of habit."
+    },
+    {
+      "id": "dd-033",
+      "q": "In EF Core 5 or later, `Post` has `List<Tag> Tags` and `Tag` has `List<Post> Posts`, with no join class. What does a migration create?",
+      "choices": [
+        "Nothing: EF Core cannot map many-to-many without a join entity",
+        "A `PostId` column on Tags and a `TagId` column on Posts",
+        "A join table with a composite key of the two foreign keys",
+        "A JSON column on Posts listing the Ids of every related tag"
+      ],
+      "answer": 2,
+      "why": "Since EF Core 5, two collection navigations define a many-to-many relationship, and EF creates a join table (named `PostTag` by default) behind the scenes. You only need an explicit join entity when the link carries its own data.",
+      "tags": ["relationships"],
+      "level": 1,
+      "asked": "A baseline relationships question; the follow-up is usually about join tables with extra columns."
+    },
+    {
+      "id": "dd-034",
+      "q": "By default, how does EF Core store a C# enum property such as `OrderStatus Status`?",
+      "choices": [
+        "As a string holding the member name, such as `Shipped`",
+        "As a separate lookup table with a foreign key to it",
+        "As its underlying integer value, such as 2",
+        "As a JSON object holding both the name and the number"
+      ],
+      "answer": 2,
+      "why": "Enums map to their underlying integer type. `HasConversion<string>()` stores the names instead, which reads better in the database and survives reordering the enum, at the cost of wider columns. Renaming a member then becomes a data migration.",
+      "tags": ["types", "modelling"],
+      "level": 1,
+      "asked": "Leads into value converters and the trade-off between readable and compact storage."
+    },
+    {
+      "id": "dd-035",
+      "q": "What does this configuration add to the schema?",
+      "code": "modelBuilder.Entity<User>()\n    .HasIndex(u => u.Email)\n    .IsUnique();",
+      "lang": "cs",
+      "choices": [
+        "A check that runs in C# before SaveChanges, but nothing in the database",
+        "A unique index: the database rejects a second row with that email",
+        "An alternate key that other tables must reference instead of the Id",
+        "A non-unique index, with uniqueness enforced only on the next migration"
+      ],
+      "answer": 1,
+      "why": "`HasIndex(...).IsUnique()` produces a unique index in the migration, so the database enforces the rule even under concurrent requests. EF Core does not check uniqueness in memory; a duplicate surfaces as a `DbUpdateException` from SaveChanges.",
+      "tags": ["modelling", "keys"],
+      "level": 1,
+      "asked": "Uniqueness belongs in the database; interviewers check you don't rely on 'check then insert' alone."
+    },
+    {
+      "id": "dd-036",
+      "q": "What is the point of this line in `OnModelCreating`?",
+      "code": "modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);",
+      "lang": "cs",
+      "choices": [
+        "It scans the assembly for entities and adds a DbSet for each class it finds",
+        "It loads mapping from an XML file embedded as a resource in the assembly",
+        "It applies every migration class in the assembly to the database at start-up",
+        "It applies every `IEntityTypeConfiguration<T>` class found in the assembly"
+      ],
+      "answer": 3,
+      "why": "Each entity's mapping can live in its own `IEntityTypeConfiguration<T>` class, and this call registers them all, keeping `OnModelCreating` short. It does not create DbSets, touch migrations or read XML.",
+      "tags": ["modelling"],
+      "level": 1,
+      "asked": "Shows you have worked on a codebase large enough to organise mapping configuration."
+    },
+    {
+      "id": "dd-037",
+      "q": "EF Core logs a warning that no store type was specified for a `decimal Price` property on SQL Server. What is the risk?",
+      "choices": [
+        "It defaults to `decimal(18,2)`, so extra decimal places are silently lost",
+        "The column is created as `float`, so prices pick up binary rounding errors",
+        "The column is created as `nvarchar`, so prices sort alphabetically",
+        "The warning is cosmetic, because SQL Server stores any decimal exactly"
+      ],
+      "answer": 0,
+      "why": "Without configuration EF uses `decimal(18,2)`, so a value like 1.2345 is rounded on save without an error. Set the precision with `HasPrecision(18, 4)` or `[Precision(18, 4)]` to match the business rule.",
+      "tags": ["types", "conventions"],
+      "level": 1,
+      "asked": "Money handling is a favourite interview topic; silent truncation is the trap to name."
+    },
+    {
+      "id": "dd-038",
+      "q": "`Order` has a required foreign key to `Customer`. With default configuration, what happens when you delete a customer who has orders?",
+      "choices": [
+        "The delete fails, because EF Core never deletes related rows",
+        "The orders are deleted too, since required relationships cascade",
+        "The orders stay, and their `CustomerId` values are set to null",
+        "The orders stay, pointing at a customer that no longer exists"
+      ],
+      "answer": 1,
+      "why": "For required relationships EF Core defaults to `DeleteBehavior.Cascade`, both in the change tracker and in the foreign key it creates. That is often too aggressive for business data, so many teams switch to `Restrict` and delete or archive explicitly.",
+      "tags": ["relationships"],
+      "level": 2,
+      "asked": "Cascade deletes can wipe data unexpectedly; interviewers like candidates who choose them on purpose."
+    },
+    {
+      "id": "dd-039",
+      "q": "`Order.CouponId` is a nullable foreign key. With the default `ClientSetNull` behaviour, what happens when you delete a coupon?",
+      "choices": [
+        "The database sets `CouponId` to null on every order that used the coupon",
+        "Every order that used the coupon is deleted along with it",
+        "EF nulls the FK on tracked orders; the database takes no action",
+        "EF loads every order that used the coupon and nulls each one in turn"
+      ],
+      "answer": 2,
+      "why": "`ClientSetNull`, the default for optional relationships, fixes up only dependents the context is tracking; the database foreign key has no ON DELETE action. If untracked orders still reference the coupon, the delete fails with a constraint error. Use `SetNull` to have the database do it.",
+      "tags": ["relationships"],
+      "level": 2,
+      "asked": "A subtle default that explains 'works in tests, fails in production' delete bugs."
+    },
+    {
+      "id": "dd-040",
+      "q": "On SQL Server, a migration fails with 'may cause cycles or multiple cascade paths'. What is the usual fix?",
+      "choices": [
+        "Set one relationship to `DeleteBehavior.Restrict` or `NoAction`",
+        "Switch the affected tables to a case-sensitive collation",
+        "Split the migration in two so the constraints are added separately",
+        "Remove the navigation properties so EF stops creating foreign keys"
+      ],
+      "answer": 0,
+      "why": "SQL Server refuses a schema where one delete could cascade to a table along more than one path. Turning off cascade on one of the paths resolves it; you then delete those dependents yourself. Splitting the migration does not change the final schema.",
+      "tags": ["relationships", "migrations"],
+      "level": 2,
+      "asked": "A real SQL Server error most EF developers meet; knowing the fix shows experience."
+    },
+    {
+      "id": "dd-041",
+      "q": "Students and courses are many-to-many, and you now need to store the date each student enrolled. How do you model it?",
+      "choices": [
+        "Add an `EnrolledOn` property to Student and set it as each course is added",
+        "Add an `EnrolledOn` shadow property to the skip navigation's join table",
+        "Keep the skip navigations and store the date in a separate audit table",
+        "Add an `Enrollment` entity with both foreign keys and the date"
+      ],
+      "answer": 3,
+      "why": "Once the link has data of its own it deserves an entity: `Enrollment` with `StudentId`, `CourseId` and `EnrolledOn`, mapped as the join entity so skip navigations can still be used. A property on Student can hold only one date for all courses.",
+      "tags": ["relationships", "modelling"],
+      "level": 2,
+      "asked": "Tests whether you can evolve a relationship when requirements add data to it."
+    },
+    {
+      "id": "dd-042",
+      "q": "`Customer` configures `OwnsOne(c => c.ShippingAddress)`, where Address has Street and City. How is it stored by default?",
+      "choices": [
+        "In a separate Addresses table with its own identity key",
+        "In the owner's table, as columns like `ShippingAddress_Street`",
+        "As one JSON column named `ShippingAddress` in the Customers table",
+        "As a single string that joins the street and city with commas"
+      ],
+      "answer": 1,
+      "why": "Owned types are table-split into the owner's table by default, with columns named after the navigation and the property. You can move them to their own table with `ToTable`, or into a JSON column with `ToJson`, but neither is the default.",
+      "tags": ["modelling"],
+      "level": 2,
+      "asked": "Owned types model value objects; interviewers check you know how they land in the schema."
+    },
+    {
+      "id": "dd-043",
+      "q": "EF Core 8 added complex types (`ComplexProperty`). How do they differ from owned types?",
+      "choices": [
+        "Complex types need their own table, while owned types share the owner's",
+        "Complex types can be queried through their own DbSet, owned types cannot",
+        "Complex types have no key and compare by value; owned types have one",
+        "Complex types are always stored as JSON, while owned types use columns"
+      ],
+      "answer": 2,
+      "why": "Owned types are entities with a hidden key, tracked by identity, so one instance cannot be shared between owners. Complex types have no key and are compared by value, which fits value objects such as Money or Address. Both map to the owner's table by default.",
+      "tags": ["modelling"],
+      "level": 2,
+      "asked": "A newer feature; knowing it signals you keep up with EF Core releases and understand value objects."
+    },
+    {
+      "id": "dd-044",
+      "q": "`Order` has no `LastModified` property, but the model configures one. How do you filter on it in a query?",
+      "code": "modelBuilder.Entity<Order>().Property<DateTime>(\"LastModified\");",
+      "lang": "cs",
+      "choices": [
+        "`db.Orders.Where(o => o.LastModified > since)`, since EF adds it to the class",
+        "`db.Orders.Where(o => EF.Property<DateTime>(o, \"LastModified\") > since)`",
+        "It cannot be queried, because shadow properties exist only in the change tracker",
+        "Through raw SQL only, because LINQ cannot reference columns without properties"
+      ],
+      "answer": 1,
+      "why": "A shadow property exists in the model and the table but not on the CLR type. `EF.Property<T>(entity, name)` references it in LINQ, and `Entry(e).Property(name)` reads or sets it on tracked entities. EF does not add members to your class.",
+      "tags": ["modelling", "queries"],
+      "level": 2,
+      "asked": "Shadow properties keep infrastructure columns out of domain classes; this checks you can still use them."
+    },
+    {
+      "id": "dd-045",
+      "q": "How does EF Core populate `Lines` when loading an order with `Include(o => o.Lines)`?",
+      "code": "public class Order\n{\n    private readonly List<OrderLine> _lines = new();\n    public IReadOnlyCollection<OrderLine> Lines => _lines;\n}",
+      "lang": "cs",
+      "choices": [
+        "It fails, because the navigation has no setter for EF to assign",
+        "It creates a new list and ignores `_lines`, so the lines vanish",
+        "It adds lines only when `Lines` is cast back to a `List<OrderLine>`",
+        "It finds the `_lines` backing field by convention and fills it"
+      ],
+      "answer": 3,
+      "why": "EF Core matches backing fields by naming convention (`_lines` for `Lines`) and reads and writes the field directly. That lets a domain class expose a read-only collection while EF still materialises and tracks it.",
+      "tags": ["modelling", "loading"],
+      "level": 2,
+      "asked": "Encapsulated collections are common in DDD-leaning codebases; this checks EF can work with them."
+    },
+    {
+      "id": "dd-046",
+      "q": "In EF Core 7+ on SQL Server, what does this configuration do with an order's list of gift options?",
+      "code": "modelBuilder.Entity<Order>()\n    .OwnsMany(o => o.GiftOptions, b => b.ToJson());",
+      "lang": "cs",
+      "choices": [
+        "Stores the whole list in one JSON column that queries can still reach",
+        "Serialises the list to JSON in memory but never saves it to the database",
+        "Creates a GiftOptions table and returns its rows to clients as JSON",
+        "Stores the list as XML, because SQL Server has no JSON column support"
+      ],
+      "answer": 0,
+      "why": "`ToJson` maps an owned type or collection to a single JSON column, and EF translates LINQ over it into SQL Server's JSON functions. It suits data always read with its owner; relational tables are still better for data you join, index or constrain.",
+      "tags": ["modelling", "types"],
+      "level": 2,
+      "asked": "JSON columns are a modern modelling option; interviewers want to hear when not to use them too."
+    },
+    {
+      "id": "dd-047",
+      "q": "On SQL Server, EF Core creates this unique index for a nullable `Email` column. What does it add to it?",
+      "code": "modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();",
+      "lang": "cs",
+      "choices": [
+        "Nothing: only one row may have a null Email, as SQL Server treats nulls as equal",
+        "A filter `[Email] IS NOT NULL`, so many rows can have no email",
+        "A case-sensitive collation, so emails differing in case stay distinct",
+        "An INCLUDE clause covering every other column of the Users table"
+      ],
+      "answer": 1,
+      "why": "SQL Server's unique indexes allow only one NULL, so EF Core adds an `IS NOT NULL` filter for unique indexes on nullable columns. You can set your own filter with `HasFilter`, for example to ignore soft-deleted rows.",
+      "tags": ["keys", "conventions"],
+      "level": 2,
+      "asked": "Filtered indexes show you know how provider quirks shape the schema EF generates."
+    },
+    {
+      "id": "dd-048",
+      "q": "In EF Core 7+, how do you declare a composite primary key for this join entity?",
+      "code": "public class OrderLine\n{\n    public int OrderId { get; set; }\n    public int ProductId { get; set; }\n}",
+      "lang": "cs",
+      "choices": [
+        "Put `[Key]` on both properties; EF combines them in declaration order",
+        "Name one property `Id`, and EF adds the other to the key automatically",
+        "`HasKey(l => new { l.OrderId, l.ProductId })`, or `[PrimaryKey]`",
+        "Composite keys are unsupported, so add a surrogate `Id` column instead"
+      ],
+      "answer": 2,
+      "why": "`HasKey` with an anonymous type defines a composite key, and EF Core 7 added the class-level `[PrimaryKey(nameof(OrderId), nameof(ProductId))]` attribute. Putting `[Key]` on two properties is an error in EF Core, unlike EF6.",
+      "tags": ["keys", "modelling"],
+      "level": 2,
+      "asked": "Composite keys appear in every join table; this checks you can configure them in modern EF."
+    },
+    {
+      "id": "dd-049",
+      "q": "`Card` and `BankTransfer` inherit from `Payment`, and only `Payment` has a DbSet. With no inheritance configuration, what schema does EF Core create?",
+      "choices": [
+        "One table per class, joined on the key when a payment is loaded",
+        "One table per concrete class, with no table for the base class",
+        "One table, with a `Discriminator` column naming the type",
+        "Only a Payments table, and derived properties are not stored"
+      ],
+      "answer": 2,
+      "why": "Table-per-hierarchy is the default: every type shares one table, subtype columns are nullable, and a `Discriminator` column says which class each row is. TPT and TPC must be opted into with `UseTptMappingStrategy` or `UseTpcMappingStrategy`.",
+      "tags": ["modelling"],
+      "level": 2,
+      "asked": "Inheritance mapping comes up whenever a domain has variants; knowing the default is the start."
+    },
+    {
+      "id": "dd-050",
+      "q": "`IsActive` is configured with `HasDefaultValue(true)`. What does this save, and why does EF Core warn about it?",
+      "code": "db.Users.Add(new User { Name = \"Ann\", IsActive = false });\nawait db.SaveChangesAsync();",
+      "lang": "cs",
+      "choices": [
+        "`IsActive = false`, because an explicit value always overrides a default",
+        "`IsActive = true`: false is the CLR default, so EF leaves it out",
+        "Nothing: SaveChanges throws because the value conflicts with the default",
+        "`IsActive = null`, because the database default replaces the value sent"
+      ],
+      "answer": 1,
+      "why": "EF treats the CLR default (the 'sentinel', `false` for bool) as 'not set' and leaves the column out of the INSERT, so the database default of true wins. Make the property `bool?`, give it a different sentinel with `HasSentinel`, or drop the database default.",
+      "tags": ["modelling", "saving"],
+      "level": 3,
+      "asked": "A classic subtle bug; spotting it shows you understand how EF decides which columns to send."
+    },
+    {
+      "id": "dd-051",
+      "q": "What is the main trade-off between the TPT and TPC inheritance strategies?",
+      "choices": [
+        "TPT joins to load a subtype; TPC avoids that, but base queries use UNION",
+        "TPT stores every subtype in one table; TPC splits them into one table each",
+        "TPT supports identity keys across subtypes; TPC forbids keys on base types",
+        "TPT works only with SQL Server, while TPC works only with PostgreSQL"
+      ],
+      "answer": 0,
+      "why": "TPT puts base columns in one table and subtype columns in others, so loading a subtype joins them. TPC gives each concrete type a full table, which is fast for single types but needs UNION for base-type queries and key generation that is unique across tables, such as a shared sequence.",
+      "tags": ["modelling", "queries"],
+      "level": 3,
+      "asked": "A deeper modelling question; strong answers relate the choice to how the data is queried."
+    },
+    {
+      "id": "dd-052",
+      "q": "On PostgreSQL, why might a team generate Guid keys with `Guid.CreateVersion7()` (.NET 9) rather than `Guid.NewGuid()`?",
+      "choices": [
+        "Version 7 Guids are shorter, so they fit in a 64-bit bigint column",
+        "Version 7 Guids are guaranteed unique across servers, unlike version 4",
+        "PostgreSQL rejects random version 4 values in columns of type `uuid`",
+        "Version 7 values are time-ordered, so inserts append to the index"
+      ],
+      "answer": 3,
+      "why": "Random v4 values scatter inserts across the primary key's B-tree, causing page splits and poor cache use on large tables. UUIDv7 starts with a timestamp, so inserts append like an identity column while keeping client-side key generation. Both are 128-bit and practically unique.",
+      "tags": ["keys", "postgres"],
+      "level": 3,
+      "asked": "Key choice affects write performance at scale; this checks you know why, not just the rule."
+    },
+    {
+      "id": "dd-053",
+      "q": "`Status` is an enum stored as a string with `HasConversion<string>()`. What does `OrderBy(o => o.Status)` sort by?",
+      "choices": [
+        "The enum's numeric values, because EF converts back before sorting",
+        "The declaration order of the enum members, as C# would compare them",
+        "The stored names alphabetically, because SQL sorts the column text",
+        "Nothing: ordering on a converted property throws a translation error"
+      ],
+      "answer": 2,
+      "why": "Queries run in SQL against the stored representation, so a string-converted enum sorts alphabetically (Cancelled, Pending, Shipped) and range comparisons use string order too. Store numbers or add an explicit sort column if order matters.",
+      "tags": ["types", "queries"],
+      "level": 3,
+      "asked": "Value converters have query-time consequences; this checks you think past the mapping line."
+    },
+    {
+      "id": "dd-054",
+      "q": "What does configuring a key with `UseHiLo()` on SQL Server change?",
+      "choices": [
+        "EF reserves blocks of ids from a sequence, saving a round trip per key",
+        "EF switches the key to a Guid so ids can be created without the database",
+        "The database assigns keys in descending order to spread index writes",
+        "EF uses a table lock during inserts so identity values have no gaps"
+      ],
+      "answer": 0,
+      "why": "Hi-Lo fetches a range of values from a database sequence and hands them out in memory, so EF knows keys before INSERT and can batch dependents without reading identities back. The cost is gaps and a sequence to manage.",
+      "tags": ["keys", "performance"],
+      "level": 3,
+      "asked": "A less common but telling option: it shows you know how key generation affects batching."
+    },
+    {
+      "id": "dd-055",
+      "q": "You run `dotnet ef migrations add AddPhone`. Which files does it create or change?",
+      "choices": [
+        "Only a .sql file with the ALTER TABLE statements to run by hand",
+        "A migration with Up and Down, a designer file, and the snapshot",
+        "The database itself, which is altered as soon as the command finishes",
+        "Only the model snapshot, since migrations are computed when applied"
+      ],
+      "answer": 1,
+      "why": "The command compares the current model with the snapshot, writes a migration class with `Up` and `Down`, a `.Designer.cs` with metadata, and updates `<Context>ModelSnapshot.cs`. It does not touch the database; `dotnet ef database update` or a script does that.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "A starter question that shows whether you have used migrations or only read about them."
+    },
+    {
+      "id": "dd-056",
+      "q": "How does `dotnet ef database update` know which migrations a database already has?",
+      "choices": [
+        "It compares the live schema with the model and diffs every table",
+        "It reads a `.migrations` file stored next to the connection string",
+        "It reads the applied ids from the `__EFMigrationsHistory` table",
+        "It asks the developer which migration to start from each time"
+      ],
+      "answer": 2,
+      "why": "Each applied migration inserts its id into `__EFMigrationsHistory`, and EF applies the ones missing from that table in order. It never diffs the live schema, which is why manual schema changes drift silently from the model.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Knowing the history table helps you debug 'migration already applied' and drift problems."
+    },
+    {
+      "id": "dd-057",
+      "q": "You added a migration locally but have not applied it anywhere. How do you undo it cleanly?",
+      "choices": [
+        "Delete the migration's .cs files and leave the snapshot as it is",
+        "Run `dotnet ef database update 0` to wipe the migration from disk",
+        "Add another migration that reverses the changes made by the first",
+        "Run `dotnet ef migrations remove`; it also reverts the snapshot"
+      ],
+      "answer": 3,
+      "why": "`migrations remove` deletes the last migration and restores the snapshot to its previous state. Deleting files by hand leaves the snapshot ahead of the migrations, so the next migration misses changes. Once a migration is applied to shared databases, add a new one instead.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Checks you can iterate on a migration before sharing it without corrupting the snapshot."
+    },
+    {
+      "id": "dd-058",
+      "q": "What is the `Down` method of a migration for?",
+      "choices": [
+        "Undoing the changes when you update to an earlier migration",
+        "Running after `Up` to clean up any temporary tables it created",
+        "Seeding data after the schema changes in `Up` are applied",
+        "Checking the database is reachable before `Up` starts"
+      ],
+      "answer": 0,
+      "why": "`Down` undoes `Up`, and runs when you target an earlier migration, for example `dotnet ef database update AddOrders`. It is generated for you but not always lossless: dropping a column in `Down` loses data added since, which is why production teams usually roll forward.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Leads into the roll-back versus roll-forward conversation."
+    },
+    {
+      "id": "dd-059",
+      "q": "What does `HasData` in `OnModelCreating` do with this lookup data?",
+      "code": "modelBuilder.Entity<Country>().HasData(\n    new Country { Id = 1, Code = \"GB\", Name = \"United Kingdom\" },\n    new Country { Id = 2, Code = \"IE\", Name = \"Ireland\" });",
+      "lang": "cs",
+      "choices": [
+        "Inserts the rows each time the app starts, if they are not there yet",
+        "Uses the rows only in tests, never in a real database",
+        "Puts the rows in migrations, which insert, update or delete them",
+        "Caches the rows in memory so queries skip the database"
+      ],
+      "answer": 2,
+      "why": "`HasData` makes seed rows part of the model, so migrations contain `InsertData`, `UpdateData` or `DeleteData` when they change. It suits static reference data with fixed keys; it does not run at start-up and needs explicit key values.",
+      "tags": ["migrations", "modelling"],
+      "level": 1,
+      "asked": "Distinguishes model seed data from runtime seeding, a common confusion."
+    },
+    {
+      "id": "dd-060",
+      "q": "In Program.cs, where does this connection string come from with the default builder?",
+      "code": "builder.Services.AddDbContext<AppDbContext>(o =>\n    o.UseNpgsql(builder.Configuration.GetConnectionString(\"Default\")));",
+      "lang": "cs",
+      "choices": [
+        "Only from a file named connectionstrings.json in the project root",
+        "The `ConnectionStrings:Default` key from any configuration source",
+        "The `Default` entry of the machine's ODBC data source list",
+        "An environment variable named exactly `Default`, and nowhere else"
+      ],
+      "answer": 1,
+      "why": "`GetConnectionString(name)` is shorthand for `configuration[\"ConnectionStrings:name\"]`, so appsettings, user secrets or an environment variable `ConnectionStrings__Default` can all supply it. Keep real credentials out of committed appsettings files.",
+      "tags": ["configuration"],
+      "level": 1,
+      "asked": "Basic wiring; the follow-up is usually where you keep the production secret."
+    },
+    {
+      "id": "dd-061",
+      "q": "Your local database has migrations up to `AddInvoices`. How do you return it to the state after `AddCustomers`, an earlier migration?",
+      "choices": [
+        "`dotnet ef migrations remove AddCustomers`",
+        "`dotnet ef database update AddCustomers`",
+        "`dotnet ef database drop --to AddCustomers`",
+        "`dotnet ef migrations reset AddCustomers`"
+      ],
+      "answer": 1,
+      "why": "`database update <target>` runs the `Down` methods of every later migration until the database matches the target. `migrations remove` only deletes the newest migration's files; `database drop` deletes the whole database.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Checks you can move a development database between states while working on branches."
+    },
+    {
+      "id": "dd-062",
+      "q": "You add a required `string Sku` property to a table that already has rows. What does the generated migration do?",
+      "choices": [
+        "Adds the column as nullable, ignoring the entity's annotations",
+        "Fails to generate, because a required column needs existing data",
+        "Drops and recreates the table so every row gets a fresh value",
+        "Adds a NOT NULL column with a default such as an empty string"
+      ],
+      "answer": 3,
+      "why": "EF scaffolds `AddColumn` with `nullable: false` and `defaultValue: \"\"`, so existing rows get an empty string. That satisfies the constraint but may not be valid data; edit the migration to backfill real values when it matters.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Tests whether you read generated migrations instead of trusting them blindly."
+    },
+    {
+      "id": "dd-063",
+      "q": "What is the `<Context>ModelSnapshot.cs` file used for?",
+      "choices": [
+        "It records the model at the last migration, to diff the next one",
+        "It stores a copy of the production data for use in local testing",
+        "It caches compiled queries so that the app starts faster in production",
+        "It lists the migrations applied to each environment's database"
+      ],
+      "answer": 0,
+      "why": "When you add a migration, EF compares the current model with the snapshot rather than with a database, then updates the snapshot. The applied-migrations list lives in `__EFMigrationsHistory` in each database, not in source.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Understanding the snapshot is the key to resolving migration merge conflicts."
+    },
+    {
+      "id": "dd-064",
+      "q": "With Npgsql's EF Core provider and default settings, why does raw SQL `SELECT * FROM Orders` fail while EF queries work?",
+      "choices": [
+        "Npgsql blocks raw SQL unless `AllowRawSql` is enabled in options",
+        "PostgreSQL requires a schema prefix, so it must be `public.Orders`",
+        "EF quotes the name `\"Orders\"`; unquoted names fold to lower case",
+        "EF creates the table under a random name and maps it internally"
+      ],
+      "answer": 2,
+      "why": "EF quotes identifiers, so the table is literally `Orders`; PostgreSQL folds unquoted identifiers to lower case and looks for `orders`. Quote names in raw SQL, or use a snake_case naming convention (for example EFCore.NamingConventions) so no quoting is needed.",
+      "tags": ["postgres", "conventions"],
+      "level": 1,
+      "asked": "A classic first day on Postgres with EF; it shows you understand identifier case rules."
+    },
+    {
+      "id": "dd-065",
+      "q": "You rename `Customer.Name` to `FullName` and add a migration. What does EF Core scaffold, and what should you do?",
+      "choices": [
+        "A `RenameColumn`, since EF tracks property renames through the snapshot",
+        "A drop of `Name` and an add of `FullName`; edit it to `RenameColumn`",
+        "Nothing, because column names are fixed once the table is created",
+        "A new `FullName` column, keeping `Name` so no data is ever lost"
+      ],
+      "answer": 1,
+      "why": "The snapshot only sees one property disappear and another appear, so the migration drops `Name` (losing data) and adds `FullName`. Replace the two operations with `migrationBuilder.RenameColumn`. Always review generated migrations for destructive steps.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "A common way to lose production data; interviewers want to hear that you read migrations."
+    },
+    {
+      "id": "dd-066",
+      "q": "Two branches each add a migration. After merging, the model snapshot has a conflict. What is the safest resolution?",
+      "choices": [
+        "Keep either side of the snapshot, as EF regenerates it on the next full build",
+        "Delete the snapshot file; EF rebuilds it from the database on demand",
+        "Resolve the snapshot to hold both changes, then check with a new migration",
+        "Merge the two migrations into one file, then delete both designer files"
+      ],
+      "answer": 2,
+      "why": "The snapshot must reflect the combined model. Take both sides' changes (or remove your migration, merge, and re-add it), then run `migrations add` to confirm it generates nothing unexpected. EF never regenerates the snapshot from a database or build.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "Teams hit this weekly; knowing the process separates solo from team experience."
+    },
+    {
+      "id": "dd-067",
+      "q": "What does the `--idempotent` flag change about this command's output?",
+      "code": "dotnet ef migrations script --idempotent -o migrate.sql",
+      "lang": "sh",
+      "choices": [
+        "Each migration is wrapped in a check against the history table",
+        "The script drops and recreates the database so reruns match",
+        "The script contains only the latest migration, not all of them",
+        "Every statement runs twice to confirm the result is identical"
+      ],
+      "answer": 0,
+      "why": "An idempotent script guards each migration with a check on `__EFMigrationsHistory`, so it can run against a database at any earlier migration and apply only what is missing. That suits pipelines that do not know the target's current state.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "SQL scripts are the reviewable way to deploy migrations; idempotency makes them safe to rerun."
+    },
+    {
+      "id": "dd-068",
+      "q": "What does `dotnet ef migrations bundle` produce?",
+      "choices": [
+        "A NuGet package holding the migrations for other projects to reference",
+        "A zip of the migration .cs files for attaching to a pull request",
+        "A Docker image that runs the database with migrations pre-applied",
+        "An executable that applies migrations without the SDK or source code"
+      ],
+      "answer": 3,
+      "why": "A bundle (`efbundle`) is a self-contained executable that takes a connection string and applies pending migrations, which suits deployment pipelines where the build output, not the repo, reaches the server.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "Shows familiarity with deployment options beyond running `database update` from a laptop."
+    },
+    {
+      "id": "dd-069",
+      "q": "After upgrading to EF Core 9, `db.Database.Migrate()` throws about pending model changes. What does it mean?",
+      "choices": [
+        "The database has migrations that are missing from the assembly",
+        "The model has changed since the last migration; add one",
+        "Another instance holds the migration lock, so this one gave up",
+        "The connection string points at a database EF did not create"
+      ],
+      "answer": 1,
+      "why": "EF Core 9 turns the pending-model-changes warning into an error when migrating, so you cannot ship a model change without its migration. Add the missing migration; in CI, `dotnet ef migrations has-pending-model-changes` catches it earlier.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "A real upgrade surprise; it checks you keep the model and migrations in step."
+    },
+    {
+      "id": "dd-070",
+      "q": "Why is `HasData` a poor fit for seeding a demo admin user with a hashed password generated at runtime?",
+      "choices": [
+        "Seed values live in the model, so runtime values cause churn migrations",
+        "`HasData` cannot seed tables that have a string primary key column",
+        "`HasData` rows are deleted on each start-up, so the admin account would vanish",
+        "`HasData` requires every column to be nullable in the target table"
+      ],
+      "answer": 0,
+      "why": "`HasData` values are compared on every `migrations add`, so a value computed at runtime (a new hash, `DateTime.Now`, a new Guid) produces a new migration every time. Use `UseSeeding`/`UseAsyncSeeding` (EF Core 9) or start-up code for data that is not static.",
+      "tags": ["migrations", "modelling"],
+      "level": 2,
+      "asked": "Tests whether you know the limits of model seeding and the modern alternative."
+    },
+    {
+      "id": "dd-071",
+      "q": "When does a project need an `IDesignTimeDbContextFactory<AppDbContext>`?",
+      "choices": [
+        "Always: EF Core cannot generate migrations without one",
+        "When the app runs in production with pooled DbContexts",
+        "When the tools cannot build the context through the app's host",
+        "When the DbContext has more than one constructor overload"
+      ],
+      "answer": 2,
+      "why": "The tools usually create the context through the application's service provider. If the context lives in a class library, or start-up needs things unavailable at design time, a design-time factory tells the tools how to construct it.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "Comes up whenever data access sits in its own project; it shows you understand how the tools work."
+    },
+    {
+      "id": "dd-072",
+      "q": "A migration adds a `Status` column, and existing rows must get a value computed from other columns. Where does that logic go?",
+      "choices": [
+        "In a SaveChanges override that fixes up each row the next time it is saved",
+        "In `HasDefaultValueSql`, since defaults can read other columns of the row",
+        "In a background job the app starts after every deployment",
+        "In the migration: `migrationBuilder.Sql(\"UPDATE ...\")` after `AddColumn`"
+      ],
+      "answer": 3,
+      "why": "Migrations can carry data changes: add the column, run an `UPDATE` with `migrationBuilder.Sql`, then tighten constraints if needed. The backfill then runs exactly once per database, in order with the schema change. Column defaults cannot reference other columns.",
+      "tags": ["migrations"],
+      "level": 2,
+      "asked": "Real migrations include data; interviewers check you know migrations are not only schema."
+    },
+    {
+      "id": "dd-073",
+      "q": "The same `Where(u => u.Email == email)` query finds `Ann@Example.com` for input `ann@example.com` on SQL Server but not on PostgreSQL. Why?",
+      "choices": [
+        "Npgsql lower-cases parameters, while SQL Server leaves them unchanged",
+        "SQL Server's usual collation ignores case; PostgreSQL's does not",
+        "EF Core evaluates string equality in memory on PostgreSQL only",
+        "PostgreSQL trims and lower-cases text columns when rows are inserted"
+      ],
+      "answer": 1,
+      "why": "The comparison runs in the database, so collation decides. SQL Server's usual default collation ignores case; PostgreSQL's does not. Normalise emails when saving, or use a case-insensitive collation or `citext` column on Postgres.",
+      "tags": ["postgres", "queries"],
+      "level": 2,
+      "asked": "Provider differences like this break apps during migrations between databases."
+    },
+    {
+      "id": "dd-074",
+      "q": "On SQL Server, what does `ToTable(t => t.IsTemporal())` give an entity?",
+      "code": "modelBuilder.Entity<Price>().ToTable(t => t.IsTemporal());",
+      "lang": "cs",
+      "choices": [
+        "A history table the database fills, queryable with `TemporalAsOf`",
+        "A table that SQL Server deletes automatically when the connection closes",
+        "A copy of each row in memory for the lifetime of the DbContext",
+        "Automatic soft delete, with rows flagged instead of removed"
+      ],
+      "answer": 0,
+      "why": "Temporal tables keep every previous version of a row in a history table maintained by the database. EF Core maps them and exposes `TemporalAsOf`, `TemporalAll` and similar operators to query past states, which is handy for audit questions.",
+      "tags": ["modelling", "queries"],
+      "level": 2,
+      "asked": "A useful feature for audit requirements; knowing it exists can save building history by hand."
+    },
+    {
+      "id": "dd-075",
+      "q": "What does `dotnet ef migrations has-pending-model-changes` (EF Core 8+) let a CI pipeline check?",
+      "choices": [
+        "That every migration has already been applied to the production database",
+        "That no migration drops a column or table holding data",
+        "That the model has changes without a migration, failing the build",
+        "That migrations from different branches do not conflict"
+      ],
+      "answer": 2,
+      "why": "The command exits with an error when the model differs from the latest snapshot, so a forgotten migration fails the build rather than production. It does not connect to a database or inspect migrations for destructive steps.",
+      "tags": ["migrations", "ci"],
+      "level": 2,
+      "asked": "Shows you automate the checks that stop broken deployments."
+    },
+    {
+      "id": "dd-076",
+      "q": "Migrations live in a separate `Shop.Migrations` project. What must the context's options say?",
+      "choices": [
+        "`UseMigrationsFolder(\"Shop.Migrations\")` pointing at the folder",
+        "Nothing: EF scans every loaded assembly for migration classes",
+        "`MigrationsAssembly(\"Shop.Migrations\")` in the provider options",
+        "`[assembly: Migrations]` added to the app's Program.cs"
+      ],
+      "answer": 2,
+      "why": "By default EF expects migrations in the assembly containing the DbContext. `o.UseSqlServer(cs, x => x.MigrationsAssembly(\"Shop.Migrations\"))` tells it where to look, which also lets you keep per-provider migration projects.",
+      "tags": ["migrations", "configuration"],
+      "level": 2,
+      "asked": "Relevant for multi-project solutions and apps that support more than one database."
+    },
+    {
+      "id": "dd-077",
+      "q": "Three instances of an API call `Database.Migrate()` at start-up at the same moment. What does EF Core 9 add to help?",
+      "choices": [
+        "Nothing: the instances race, and duplicate migrations can be applied",
+        "It skips migration on every instance except the one with the lowest IP",
+        "It retries each migration until all three instances report success",
+        "A database lock, so one instance migrates while the others wait"
+      ],
+      "answer": 3,
+      "why": "EF Core 9 takes a database-level lock around migration so concurrent `Migrate` calls do not apply the same migration twice. Even so, many teams apply migrations in a pipeline step rather than at start-up, so failures do not crash every instance.",
+      "tags": ["migrations"],
+      "level": 3,
+      "asked": "Tests awareness of multi-instance deployment hazards and recent EF improvements."
+    },
+    {
+      "id": "dd-078",
+      "q": "You must rename a column used by a live API with rolling deployments and no downtime. What is the usual approach?",
+      "choices": [
+        "Expand/contract: add, dual-write, backfill, switch reads, drop later",
+        "A single `RenameColumn` migration deployed together with the new code",
+        "Rename the column in a transaction so old instances wait until it commits",
+        "Stop the old instances first, rename, then start the new ones immediately"
+      ],
+      "answer": 0,
+      "why": "During a rolling deployment old and new code run side by side, so the schema must suit both. Expand (add the new column and write to both), migrate data, switch reads, then contract (drop the old column) in a later release. A plain rename breaks the old instances instantly.",
+      "tags": ["migrations"],
+      "level": 3,
+      "asked": "A senior-leaning question that shows you think about deployments, not just schema."
+    },
+    {
+      "id": "dd-079",
+      "q": "You need a NOT NULL `Region` column on a 200-million-row table. Why not ship one migration that adds it with a computed backfill?",
+      "choices": [
+        "EF Core cannot generate migrations for tables over 100 million rows",
+        "NOT NULL columns can only be added to empty tables in any database",
+        "One huge UPDATE can hold locks and bloat the log; do it in stages",
+        "The backfill would run on every app start-up rather than once"
+      ],
+      "answer": 2,
+      "why": "A single statement touching every row can lock the table, fill the transaction log and time out. Add the column as nullable, backfill in batches outside a long transaction, then add the NOT NULL constraint once every row has a value.",
+      "tags": ["migrations", "performance"],
+      "level": 3,
+      "asked": "Checks you plan migrations around data volume, not just correctness."
+    },
+    {
+      "id": "dd-080",
+      "q": "A project has 300 migrations and new developers wait minutes for their database. What is a reasonable way to squash them?",
+      "choices": [
+        "Replace them with one baseline, marked as applied on existing databases",
+        "Delete `__EFMigrationsHistory` everywhere so EF regenerates it automatically",
+        "Combine every migration's Up body into a new migration and keep the old files",
+        "Switch to `EnsureCreated()` for every environment, including production"
+      ],
+      "answer": 0,
+      "why": "A new baseline migration creates the current schema for fresh databases; existing databases need its id inserted into `__EFMigrationsHistory` so it is not reapplied. Clearing history makes EF try to rerun everything, and `EnsureCreated` cannot evolve a schema.",
+      "tags": ["migrations"],
+      "level": 3,
+      "asked": "Long-lived projects need this; a careful answer shows you understand what the history table does."
+    },
+    {
+      "id": "dd-081",
+      "q": "On PostgreSQL, you want email lookups to ignore case while keeping an index usable. Which approach fits?",
+      "choices": [
+        "Call `ToLower()` on the parameter only, leaving the column as it is",
+        "Use a case-insensitive column type or collation, such as `citext`",
+        "Wrap the query in `AsEnumerable()` and compare with `StringComparison`",
+        "Set `EnableSensitiveDataLogging(false)` so casing is ignored"
+      ],
+      "answer": 1,
+      "why": "A `citext` column (or a nondeterministic collation, or an index on `lower(email)` queried the same way) makes the database compare without case and still use an index. Lowering only the parameter misses mixed-case stored values, and `AsEnumerable` loads the whole table.",
+      "tags": ["postgres", "types"],
+      "level": 3,
+      "asked": "Combines provider knowledge with performance; strong answers mention index usage."
+    },
+    {
+      "id": "dd-082",
+      "q": "What does this code send to the database?",
+      "code": "IEnumerable<Order> orders = db.Orders;\nvar big = orders.Where(o => o.Total > 1000).ToList();",
+      "lang": "cs",
+      "choices": [
+        "A query with `WHERE Total > 1000`, like any LINQ query on a DbSet",
+        "Nothing until `Where` runs, then one query per matching order",
+        "A query for every order; the filter then runs in memory",
+        "An error, because a DbSet cannot be assigned to IEnumerable"
+      ],
+      "answer": 2,
+      "why": "Typing the variable as `IEnumerable<T>` makes `Where` bind to LINQ to Objects, so EF only sees 'give me all orders' and filtering happens in C#. Keep queries as `IQueryable<T>` until they are complete so EF can translate the whole thing.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "The IQueryable/IEnumerable boundary is the root of many slow endpoints."
+    },
+    {
+      "id": "dd-083",
+      "q": "When does this query actually run against the database?",
+      "code": "var q = db.Orders.Where(o => o.Status == Status.Open);\nvar count = 0;\nvar list = await q.ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "On the first line, when `Where` is called on the DbSet",
+        "When `ToListAsync` is awaited, since the query is deferred",
+        "When `count` is declared, as EF runs queries on the next statement",
+        "Twice: once when it is built and once for `ToListAsync`"
+      ],
+      "answer": 1,
+      "why": "LINQ over `IQueryable` builds an expression; nothing runs until something enumerates it, such as `ToListAsync`, `FirstAsync`, `CountAsync` or a `foreach`. That lets you compose filters conditionally before executing once.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "Deferred execution is fundamental; interviewers check you know when the SQL happens."
+    },
+    {
+      "id": "dd-084",
+      "q": "What is different about `db.Products.FindAsync(id)` compared with `FirstOrDefaultAsync(p => p.Id == id)`?",
+      "choices": [
+        "`FindAsync` checks entities the context already tracks before querying",
+        "`FindAsync` bypasses global query filters and returns deleted rows too",
+        "`FindAsync` always queries the database, ignoring anything already tracked",
+        "`FindAsync` loads all navigation properties of the entity automatically"
+      ],
+      "answer": 0,
+      "why": "`Find` looks up the primary key in the change tracker first and only queries when the entity is not there, so repeated lookups in one context are free. It works by key only and does not load navigations. `FirstOrDefault` always runs a query.",
+      "tags": ["queries", "tracking"],
+      "level": 1,
+      "asked": "A small API detail that shows you know the change tracker doubles as an identity map."
+    },
+    {
+      "id": "dd-085",
+      "q": "What happens when `SingleOrDefaultAsync(u => u.Email == email)` finds two matching rows?",
+      "choices": [
+        "It returns the first of the two, in primary key order",
+        "It returns null, as it would for no match at all",
+        "It throws InvalidOperationException",
+        "It returns whichever row the database happens to send back first"
+      ],
+      "answer": 2,
+      "why": "`Single` asks for two rows (`TOP(2)` or `LIMIT 2`) so it can detect duplicates, and throws when it gets more than one. `First` would take one silently. Use `Single` when duplicates mean corrupt data and you want to hear about it.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "Choosing between First and Single signals whether you think about data invariants."
+    },
+    {
+      "id": "dd-086",
+      "q": "Why prefer `await db.Orders.AnyAsync(o => o.CustomerId == id)` over `CountAsync(...) > 0` to check existence?",
+      "choices": [
+        "`AnyAsync` caches the answer for the lifetime of the context",
+        "`CountAsync` loads every matching row into memory before counting",
+        "`AnyAsync` is the only form that works with global query filters",
+        "`AnyAsync` becomes EXISTS, which can stop at the first match"
+      ],
+      "answer": 3,
+      "why": "`Any` translates to `EXISTS (...)`, so the database can stop after one row; `COUNT` must count every match. Both run in SQL; neither loads rows into memory or caches results.",
+      "tags": ["queries", "performance"],
+      "level": 1,
+      "asked": "A simple habit that shows you think about the SQL your LINQ produces."
+    },
+    {
+      "id": "dd-087",
+      "q": "EF Core warns about this paging query. Why?",
+      "code": "var page = await db.Products\n    .Skip(40).Take(20)\n    .ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "Skip and Take must come before Where, or the SQL will not compile",
+        "Without OrderBy, row order is undefined, so pages can overlap",
+        "Take(20) is ignored unless AsNoTracking is added to the query",
+        "Skip is evaluated in memory, so all rows are loaded first"
+      ],
+      "answer": 1,
+      "why": "Databases guarantee no order without `ORDER BY`, so the same page can return different rows between calls. Order by something unique (add the key as a tie-breaker). EF translates Skip and Take to OFFSET/FETCH or LIMIT/OFFSET in SQL.",
+      "tags": ["pagination", "queries"],
+      "level": 1,
+      "asked": "Paging bugs are common in list screens; this is the first thing reviewers check."
+    },
+    {
+      "id": "dd-088",
+      "q": "How does EF Core handle this query when `ids` is a `List<int>` with 50 values?",
+      "code": "var orders = await db.Orders\n    .Where(o => ids.Contains(o.Id))\n    .ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "It loads every order and filters by the list in memory",
+        "It sends 50 queries, one for each id in the list",
+        "It throws, because local lists cannot be used in queries",
+        "It sends one query matching the ids with an IN-style filter"
+      ],
+      "answer": 3,
+      "why": "`Contains` on a local collection translates to SQL, passing the values as parameters (EF Core 8+ may send the list as one JSON or array parameter, depending on provider and version). It is the standard way to fetch a batch of rows by id.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "Fetching by a list of ids is everyday work; knowing it stays in SQL avoids workarounds."
+    },
+    {
+      "id": "dd-089",
+      "q": "In an ASP.NET Core endpoint, why use `await db.Orders.ToListAsync()` rather than `db.Orders.ToList()`?",
+      "choices": [
+        "The async version runs the SQL faster on the database server",
+        "The async version frees the request thread while waiting on I/O",
+        "The sync version is unsupported by EF Core and throws at runtime",
+        "The async version caches results between requests automatically"
+      ],
+      "answer": 1,
+      "why": "While the database works, an async call returns the thread to the pool so it can serve other requests; a blocking call holds it. The query is no faster, but under load the app scales much better. Both are supported.",
+      "tags": ["queries", "performance"],
+      "level": 1,
+      "asked": "Tests whether you know what async buys a web server, not just that it is 'better'."
+    },
+    {
+      "id": "dd-090",
+      "q": "What is the quickest way to see the SQL that EF Core will run for a LINQ query while debugging?",
+      "choices": [
+        "Call `.ToQueryString()` on the IQueryable",
+        "Call `.ToString()` on the result of ToListAsync",
+        "Read `db.Database.LastCommandText` after it runs",
+        "Open the model snapshot to find the generated SQL"
+      ],
+      "answer": 0,
+      "why": "`ToQueryString()` returns the SQL for an `IQueryable` without running it, including parameter declarations. For running queries, configure logging with `LogTo` or the `Microsoft.EntityFrameworkCore.Database.Command` log category.",
+      "tags": ["queries", "performance"],
+      "level": 1,
+      "asked": "Reading generated SQL is the first step in any EF performance investigation."
+    },
+    {
+      "id": "dd-091",
+      "q": "An endpoint returns customer summaries. Why is this better than returning the `Customer` entities?",
+      "code": "db.Customers.Select(c => new CustomerSummary(c.Id, c.Name, c.Orders.Count))",
+      "lang": "cs",
+      "choices": [
+        "Projections are the only queries EF Core can run without tracking",
+        "Entities cannot be serialised to JSON by System.Text.Json at all",
+        "Returning entities makes EF write any changes back on serialisation",
+        "It reads only needed columns and hides internal fields from the API"
+      ],
+      "answer": 3,
+      "why": "A projection selects just the columns the DTO needs (with the count done in SQL), keeps the API contract separate from the table, and avoids leaking fields like password hashes or causing serialisation cycles. Projections are also untracked automatically.",
+      "tags": ["queries", "loading"],
+      "level": 1,
+      "asked": "DTO versus entity is a standard API design question with a performance angle."
+    },
+    {
+      "id": "dd-092",
+      "q": "Why do large product lists often switch from `Skip/Take` to keyset (seek) pagination?",
+      "code": "db.Products.Where(p => p.Id > lastId)\n  .OrderBy(p => p.Id).Take(20)",
+      "lang": "cs",
+      "choices": [
+        "OFFSET is unsupported by PostgreSQL, so Skip fails there",
+        "Keyset paging lets the client jump straight to any page number",
+        "Deep OFFSETs still read skipped rows; a seek starts at the key",
+        "Skip/Take loads each page into memory before trimming it"
+      ],
+      "answer": 2,
+      "why": "`OFFSET 100000` makes the database walk and discard 100,000 rows, getting slower with depth, and inserts shift pages. Seeking on an indexed key reads just the next rows and stays stable. The cost is no random access to page N.",
+      "tags": ["pagination", "performance"],
+      "level": 2,
+      "asked": "Shows you know how paging behaves at scale and the trade-off in UX."
+    },
+    {
+      "id": "dd-093",
+      "q": "What does the `Include` do in this query?",
+      "code": "var rows = await db.Orders\n    .Include(o => o.Lines)\n    .Select(o => new { o.Id, o.Total })\n    .ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "It loads every order's lines too, then discards them after the query",
+        "It adds a JOIN to Lines, so each order appears once per line",
+        "It throws, because Include cannot be combined with a projection",
+        "Nothing: the projection decides what is loaded, so it is ignored"
+      ],
+      "answer": 3,
+      "why": "When a query ends in a projection, EF loads exactly what the projection references; `Include` only affects queries that return entity types. Remove it to avoid confusing readers, or reference the lines in the projection if you need them.",
+      "tags": ["loading", "queries"],
+      "level": 2,
+      "asked": "A common redundant pattern in code reviews; knowing why it is ignored shows understanding."
+    },
+    {
+      "id": "dd-094",
+      "q": "What does this EF Core 5+ query load?",
+      "code": "db.Blogs.Include(b => b.Posts.Where(p => p.IsPublished))",
+      "lang": "cs",
+      "choices": [
+        "Every blog, with only its published posts in the Posts collection",
+        "Only blogs that have at least one published post, with all posts",
+        "Every blog and every post, filtered later when Posts is enumerated",
+        "An error, because Include accepts only a plain navigation property"
+      ],
+      "answer": 0,
+      "why": "Filtered include applies the condition to the related collection only; it does not filter the blogs. Beware: if the context already tracks other posts for those blogs, fix-up can add them to the collection too.",
+      "tags": ["loading"],
+      "level": 2,
+      "asked": "Filtered include is newer and easily confused with filtering the parent rows."
+    },
+    {
+      "id": "dd-095",
+      "q": "How do you load each order's lines and each line's product in one query?",
+      "choices": [
+        "`Include(o => o.Lines.Product)` with a dotted property path",
+        "`Include(o => o.Lines).ThenInclude(l => l.Product)`",
+        "`Include(o => o.Lines).Include(o => o.Product)`",
+        "`Include(\"Product\").Include(\"Lines\")` in either order"
+      ],
+      "answer": 1,
+      "why": "`ThenInclude` continues from the previous navigation, so it can step through a collection to each element's reference. `Lines.Product` does not compile because `Lines` is a collection, and a second `Include` starts again from `Order`.",
+      "tags": ["loading"],
+      "level": 2,
+      "asked": "Everyday syntax for multi-level loading; the follow-up is usually about projecting instead."
+    },
+    {
+      "id": "dd-096",
+      "q": "On SQL Server, why can this search be slow on a large table even with an index on `Name`?",
+      "code": "db.Products.Where(p => p.Name.Contains(term))",
+      "lang": "cs",
+      "choices": [
+        "`Contains` is evaluated in memory after loading every product",
+        "It becomes `LIKE '%term%'`; a leading wildcard rules out a seek",
+        "`Contains` makes SQL Server rebuild the index on every single query",
+        "The term is inlined as a literal, so each search compiles a new plan"
+      ],
+      "answer": 1,
+      "why": "`string.Contains` translates to a LIKE with wildcards on both sides, which cannot seek a B-tree index, so the database scans. `StartsWith` can seek. For real search, use full-text search or a dedicated search index.",
+      "tags": ["queries", "performance"],
+      "level": 2,
+      "asked": "Search boxes are in every CRUD app; interviewers want to hear about scans and alternatives."
+    },
+    {
+      "id": "dd-097",
+      "q": "What SQL shape does EF Core produce for this query?",
+      "code": "db.Orders.GroupBy(o => o.CustomerId)\n  .Select(g => new { g.Key, Total = g.Sum(o => o.Total) })",
+      "lang": "cs",
+      "choices": [
+        "A plain SELECT of every order, grouped afterwards in memory",
+        "One query per customer, each summing that customer's orders",
+        "A `GROUP BY CustomerId` with `SUM(Total)` in a single query",
+        "A window function that returns every order with a running total"
+      ],
+      "answer": 2,
+      "why": "GroupBy followed by aggregates in the projection translates to `GROUP BY` with `SUM`, so only one row per customer comes back. Aggregating in SQL avoids moving every order across the network.",
+      "tags": ["queries"],
+      "level": 2,
+      "asked": "Reporting endpoints depend on aggregates running in the database."
+    },
+    {
+      "id": "dd-098",
+      "q": "What does `EnableSensitiveDataLogging()` add to EF Core's logs, and where should it be used?",
+      "choices": [
+        "Parameter values and data in messages; development only",
+        "Stack traces for every query; production only, for support",
+        "Connection string passwords; staging only, when debugging",
+        "Query timings for each query; everywhere, as it costs nothing"
+      ],
+      "answer": 0,
+      "why": "By default EF logs SQL with parameter values hidden. This option shows values (and entity key values in exceptions), which may include personal data or secrets, so keep it to development. Timings are logged regardless.",
+      "tags": ["queries", "security"],
+      "level": 2,
+      "asked": "Checks you balance debuggability with data protection."
+    },
+    {
+      "id": "dd-099",
+      "q": "How many times does this code query the database?",
+      "code": "var open = db.Orders.Where(o => o.Status == Status.Open);\nvar count = await open.CountAsync();\nvar first = await open.OrderBy(o => o.Id).FirstOrDefaultAsync();\nvar all = await open.ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "Once, because EF caches the result of the first execution",
+        "Three times, once for each operator that executes the query",
+        "Twice, because Count and ToList share one round trip",
+        "Once, when the `open` variable is first assigned"
+      ],
+      "answer": 1,
+      "why": "An `IQueryable` is a query definition, not a result. Each executing call runs its own SQL. Sometimes that is right (a count query is cheaper than loading rows); if you need the rows anyway, materialise once and count in memory.",
+      "tags": ["queries", "performance"],
+      "level": 2,
+      "asked": "Multiple enumeration is a subtle cost; this checks you know when queries run."
+    },
+    {
+      "id": "dd-100",
+      "q": "An export endpoint must process a million rows without loading them all into memory. Which approach fits?",
+      "choices": [
+        "`ToListAsync()`, then loop over the list and release it at the end",
+        "`AsNoTracking().AsAsyncEnumerable()` with `await foreach`",
+        "`Skip/Take` pages of one row each, in a tight loop until empty",
+        "`FindAsync` for each id from 1 to the highest id in the table"
+      ],
+      "answer": 1,
+      "why": "`AsAsyncEnumerable` streams rows from the data reader as you iterate, and no tracking stops the context from holding every entity. `ToListAsync` buffers everything first, and row-at-a-time queries make a million round trips.",
+      "tags": ["queries", "performance"],
+      "level": 2,
+      "asked": "Large exports are a real task; streaming shows you think about memory."
+    },
+    {
+      "id": "dd-101",
+      "q": "Does this query work in EF Core 3+ where `FormatLabel` is a plain C# method?",
+      "code": "db.Orders.Where(o => o.Total > 100)\n  .Select(o => new { o.Id, Label = FormatLabel(o.Number) })\n  .ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "No: any untranslatable method in a query throws an exception",
+        "Yes, but the Where clause is also run in memory as a result",
+        "No, unless FormatLabel is marked with a `[DbFunction]` attribute",
+        "Yes: the filter runs in SQL, and the final projection calls it in C#"
+      ],
+      "answer": 3,
+      "why": "EF Core allows client evaluation only in the top-level projection, after the data is read, so this works and `Where` still runs in SQL. The same method inside `Where` or `OrderBy` would throw, because it would need all rows to evaluate.",
+      "tags": ["queries"],
+      "level": 2,
+      "asked": "Clarifies exactly where client evaluation is allowed, a frequent source of confusion."
+    },
+    {
+      "id": "dd-102",
+      "q": "What does this return when the Orders table is empty?",
+      "code": "var max = await db.Orders.MaxAsync(o => o.Total); // decimal",
+      "lang": "cs",
+      "choices": [
+        "0, the default value for decimal",
+        "null, since there are no rows to compare",
+        "decimal.MinValue, the identity for max",
+        "It throws: the sequence has no elements"
+      ],
+      "answer": 3,
+      "why": "SQL returns NULL for MAX over no rows, which cannot become a non-nullable `decimal`, so EF throws. Cast the selector to `decimal?` to get null, or check `AnyAsync` first. `SumAsync` differs, returning 0 for no rows.",
+      "tags": ["queries"],
+      "level": 2,
+      "asked": "An edge case that crashes dashboards on day one; spotting it shows care."
+    },
+    {
+      "id": "dd-103",
+      "q": "How does EF Core run the `Count()` inside this projection?",
+      "code": "db.Customers.Select(c => new { c.Name, Orders = c.Orders.Count() })",
+      "lang": "cs",
+      "choices": [
+        "As a subquery or join in the same SQL statement",
+        "As one extra query per customer, after the first",
+        "By loading every order into memory and counting",
+        "It throws, because navigation counts need Include"
+      ],
+      "answer": 0,
+      "why": "Navigations used inside a projection are translated into the SQL, so the count is a correlated subquery (or grouped join) in one round trip, without loading orders. No `Include` is needed in projections.",
+      "tags": ["queries", "loading"],
+      "level": 2,
+      "asked": "Shows you can get related aggregates without N+1 or over-fetching."
+    },
+    {
+      "id": "dd-104",
+      "q": "What does `AsNoTrackingWithIdentityResolution()` do that `AsNoTracking()` does not?",
+      "choices": [
+        "It tracks the results, but only until SaveChanges is called",
+        "It returns one instance per key within the query, still untracked",
+        "It resolves foreign keys to their entities with extra queries",
+        "It checks the change tracker first, then queries for anything missing"
+      ],
+      "answer": 1,
+      "why": "Plain no-tracking queries create a new object for every row, so a customer joined to ten orders appears as ten separate instances. Identity resolution de-duplicates by key within that query without the cost of tracking.",
+      "tags": ["tracking", "loading"],
+      "level": 3,
+      "asked": "A deeper tracking detail that matters for memory use and object graphs in read-only queries."
+    },
+    {
+      "id": "dd-105",
+      "q": "When is `EF.CompileAsyncQuery` worth using?",
+      "code": "static readonly Func<AppDbContext, int, Task<Order?>> ById =\n    EF.CompileAsyncQuery((AppDbContext db, int id) =>\n        db.Orders.FirstOrDefault(o => o.Id == id));",
+      "lang": "cs",
+      "choices": [
+        "Always, because EF recompiles every LINQ query from scratch",
+        "Only on PostgreSQL, where the provider lacks a plan cache",
+        "When the query needs to call methods EF cannot translate",
+        "On very hot paths, to skip the per-call query cache lookup"
+      ],
+      "answer": 3,
+      "why": "EF already caches translated queries, but each call still hashes the expression tree to find the cache entry. Compiled queries skip that, which helps only when a query runs thousands of times a second. They do not enable untranslatable code.",
+      "tags": ["performance", "queries"],
+      "level": 3,
+      "asked": "Separates measured optimisation from cargo cult; strong answers mention profiling first."
+    },
+    {
+      "id": "dd-106",
+      "q": "Why does EF Core throw for this query instead of translating it?",
+      "code": "db.Users.Where(u => u.Email.Equals(email,\n    StringComparison.OrdinalIgnoreCase))",
+      "lang": "cs",
+      "choices": [
+        "That `Equals` overload has no general SQL translation",
+        "`Equals` is not allowed in Where; use `==` for every comparison",
+        "Ordinal comparisons are allowed only in the final Select",
+        "The `email` parameter must be lower-cased before being passed"
+      ],
+      "answer": 0,
+      "why": "Case sensitivity in SQL depends on collation, which EF cannot switch per comparison, so the overload is not translated. Use `==` and rely on the column's collation, `EF.Functions.Collate`, or normalised stored values. `Equals` without a comparison type does translate.",
+      "tags": ["queries", "postgres"],
+      "level": 3,
+      "asked": "Connects C# string semantics with database collations, a subtle source of bugs."
+    },
+    {
+      "id": "dd-107",
+      "q": "`middleName` is null. What does EF Core return for this query?",
+      "code": "string? middleName = null;\nvar users = await db.Users\n    .Where(u => u.MiddleName == middleName).ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "No rows, because `= NULL` is never true in SQL",
+        "Every row, because null parameters remove the filter",
+        "Users whose MiddleName is null, matching C# semantics",
+        "It throws, because parameters cannot hold null values"
+      ],
+      "answer": 2,
+      "why": "EF Core emulates C# null semantics: when the parameter is null it generates `IS NULL` (or adds null checks), so users without a middle name match. Hand-written SQL with `= @p` would return nothing, which is the trap the distractor describes.",
+      "tags": ["queries"],
+      "level": 3,
+      "asked": "Shows you know the translation is smarter than naive SQL, and where it differs from raw queries."
+    },
+    {
+      "id": "dd-108",
+      "q": "What consistency risk does `AsSplitQuery()` introduce compared with a single query?",
+      "choices": [
+        "Split queries ignore global query filters on the included collections",
+        "Writes between the split queries can make the results inconsistent",
+        "Split queries always run in parallel on separate connections",
+        "Split queries disable change tracking for the included entities"
+      ],
+      "answer": 1,
+      "why": "Each split query is a separate statement; without a serialisable or snapshot transaction, another write can land between them, giving parents and children from different moments. It also costs extra round trips. Choose it when the cartesian explosion is worse.",
+      "tags": ["loading", "transactions"],
+      "level": 3,
+      "asked": "Knowing the downside of a performance fix is what makes a strong answer."
+    },
+    {
+      "id": "dd-109",
+      "q": "What is the entity's state at each comment?",
+      "code": "var p = new Product { Name = \"Tea\" };\ndb.Products.Add(p);          // (1)\nawait db.SaveChangesAsync(); // (2)",
+      "lang": "cs",
+      "choices": [
+        "(1) Detached, (2) Added",
+        "(1) Modified, (2) Detached",
+        "(1) Added, (2) Unchanged",
+        "(1) Unchanged, (2) Added"
+      ],
+      "answer": 2,
+      "why": "`Add` starts tracking the entity as Added; SaveChanges inserts it, fills in the generated key and marks it Unchanged so a second save does nothing. Detached means the context is not tracking the object at all.",
+      "tags": ["tracking"],
+      "level": 1,
+      "asked": "Entity states are the vocabulary for every EF saving question."
+    },
+    {
+      "id": "dd-110",
+      "q": "What does this code do to the database?",
+      "code": "var order = await db.Orders.FindAsync(id);\ndb.Orders.Remove(order!);\nawait db.SaveChangesAsync();",
+      "lang": "cs",
+      "choices": [
+        "Nothing: Remove only detaches the entity from the context",
+        "Issues a DELETE for that order when SaveChanges runs",
+        "Sets an IsDeleted flag to true, as EF soft-deletes by default",
+        "Issues a DELETE immediately, before SaveChanges is called"
+      ],
+      "answer": 1,
+      "why": "`Remove` marks the tracked entity as Deleted, and SaveChanges sends the DELETE (plus any cascades EF knows about). EF has no built-in soft delete; you implement it with a flag, a query filter and usually an interceptor.",
+      "tags": ["saving"],
+      "level": 1,
+      "asked": "A baseline saving question; the follow-up is usually soft delete."
+    },
+    {
+      "id": "dd-111",
+      "q": "You add 500 products with `AddRange` and call `SaveChangesAsync` once. How does EF Core send the inserts on SQL Server?",
+      "choices": [
+        "One round trip per product, each in its own transaction",
+        "In batches of statements per round trip, in one transaction",
+        "As a BULK INSERT command that skips constraints and triggers",
+        "Nothing is sent until the context is disposed at the end"
+      ],
+      "answer": 1,
+      "why": "EF Core batches commands into a few round trips (the batch size is configurable) and wraps the whole SaveChanges in a transaction. It does not use the bulk copy API; for very large loads, `SqlBulkCopy` or a bulk extension library is faster.",
+      "tags": ["saving", "performance"],
+      "level": 1,
+      "asked": "Checks you know SaveChanges is already batched before reaching for libraries."
+    },
+    {
+      "id": "dd-112",
+      "q": "A request creates an order, adds three lines and updates stock. Where should `SaveChangesAsync` be called?",
+      "choices": [
+        "After each Add, so every row is safely stored as soon as possible",
+        "Never, because the context saves automatically when disposed",
+        "Once at the end, so all the changes commit in one transaction",
+        "Twice: once for the order, then once for all the other changes"
+      ],
+      "answer": 2,
+      "why": "One SaveChanges applies all tracked changes atomically, so the order, lines and stock update succeed or fail together. Saving after each step leaves partial data if a later step fails. Disposing a context discards unsaved changes.",
+      "tags": ["saving", "transactions"],
+      "level": 1,
+      "asked": "Tests whether you treat a request's changes as one unit of work."
+    },
+    {
+      "id": "dd-113",
+      "q": "What does this EF Core 7+ statement do?",
+      "code": "await db.Sessions\n    .Where(s => s.ExpiresAt < now)\n    .ExecuteDeleteAsync();",
+      "lang": "cs",
+      "choices": [
+        "Loads the expired sessions, then deletes them on the next SaveChanges",
+        "Marks the expired sessions as Deleted in the change tracker only",
+        "Deletes them later, when the context is disposed at request end",
+        "Sends one DELETE ... WHERE statement straight to the database"
+      ],
+      "answer": 3,
+      "why": "`ExecuteDeleteAsync` translates the query into a single DELETE and runs it immediately, without loading entities or needing SaveChanges. It returns the number of rows affected. That makes bulk clean-ups cheap.",
+      "tags": ["saving", "performance"],
+      "level": 1,
+      "asked": "A newer API that replaces load-then-delete loops; interviewers like to see it used."
+    },
+    {
+      "id": "dd-114",
+      "q": "How does Dapper map the rows from this query onto `ProductDto`?",
+      "code": "var rows = await conn.QueryAsync<ProductDto>(\n    \"SELECT Id, Name, Price FROM Products WHERE Price > @min\",\n    new { min = 10m });",
+      "lang": "cs",
+      "choices": [
+        "By column position, so the DTO's properties must be declared in order",
+        "By matching column names to property names, ignoring case",
+        "Through an EF Core model that must be registered for ProductDto",
+        "By a mapping file generated when the project first builds"
+      ],
+      "answer": 1,
+      "why": "Dapper matches result columns to properties or constructor parameters by name, case-insensitively. Use SQL aliases (`AS`) when names differ. It needs no model or configuration, which is part of why it is so light.",
+      "tags": ["dapper"],
+      "level": 1,
+      "asked": "Basic Dapper usage; the follow-up is usually about multi-mapping or parameters."
+    },
+    {
+      "id": "dd-115",
+      "q": "What does Dapper's `ExecuteAsync` return for an UPDATE statement?",
+      "code": "var n = await conn.ExecuteAsync(\n    \"UPDATE Products SET Price = @p WHERE Id = @id\", new { p, id });",
+      "lang": "cs",
+      "choices": [
+        "The updated rows, mapped to dynamic objects",
+        "The new value of Price after the update",
+        "True if the statement ran without errors",
+        "The number of rows the statement affected"
+      ],
+      "answer": 3,
+      "why": "`ExecuteAsync` runs a command that returns no rows and gives back the affected-row count. Checking it for 0 is a cheap way to return 404 when the id did not exist. Use `QueryAsync` or an `OUTPUT`/`RETURNING` clause to get rows back.",
+      "tags": ["dapper"],
+      "level": 1,
+      "asked": "Everyday Dapper; strong answers use the count to detect missing rows."
+    },
+    {
+      "id": "dd-116",
+      "q": "What happens to the connection when this `using` block ends?",
+      "code": "await using var conn = new SqlConnection(cs);\nawait conn.OpenAsync();\nvar n = await conn.ExecuteScalarAsync<int>(\"SELECT COUNT(*) FROM Orders\");",
+      "lang": "cs",
+      "choices": [
+        "It returns to the connection pool, ready for the next open",
+        "The TCP connection to SQL Server is always closed for good",
+        "It stays open for the process lifetime, attached to `cs`",
+        "Nothing, unless `Close()` was called before the end"
+      ],
+      "answer": 0,
+      "why": "ADO.NET pools physical connections per connection string, so disposing returns the connection to the pool and the next `Open` reuses it. Open late, dispose early, and do not keep connections in fields; forgetting to dispose is how pools run dry.",
+      "tags": ["lifetime", "dapper"],
+      "level": 1,
+      "asked": "Connection pooling explains why open-per-operation is fine and leaks are dangerous."
+    },
+    {
+      "id": "dd-117",
+      "q": "A DbContext is registered as a singleton 'for speed'. What goes wrong over time?",
+      "choices": [
+        "Queries get faster, but migrations can no longer be applied",
+        "The tracker grows, data goes stale, and requests share it unsafely",
+        "Nothing, because DbContext is designed to be thread-safe and reusable",
+        "Each request silently gets its own copy, so the singleton is ignored"
+      ],
+      "answer": 1,
+      "why": "A context is a short-lived unit of work: it tracks every entity it loads, returns cached instances instead of fresh data, and is not thread-safe. Keep the default scoped lifetime, or use a factory or pooling for performance.",
+      "tags": ["lifetime"],
+      "level": 1,
+      "asked": "A classic mistake; the answer shows you understand what a DbContext really holds."
+    },
+    {
+      "id": "dd-118",
+      "q": "With Dapper, how do you save a change to a product you queried earlier?",
+      "choices": [
+        "Change the object's property; Dapper writes it on dispose",
+        "Call `conn.SaveChangesAsync()` after changing the object",
+        "Write and run an UPDATE yourself with `ExecuteAsync`",
+        "Call `conn.Attach(product)` so Dapper tracks the change"
+      ],
+      "answer": 2,
+      "why": "Dapper is a micro-ORM that maps query results to objects; it has no change tracker or unit of work, so every write is SQL you write. That is the trade-off for its speed and transparency compared with EF Core.",
+      "tags": ["dapper"],
+      "level": 1,
+      "asked": "Clarifies the difference between a micro-ORM and a full ORM."
+    },
+    {
+      "id": "dd-119",
+      "q": "What happens when this runs on a single DbContext?",
+      "code": "var t1 = db.Orders.CountAsync();\nvar t2 = db.Customers.CountAsync();\nawait Task.WhenAll(t1, t2);",
+      "lang": "cs",
+      "choices": [
+        "The two queries run in parallel over the same connection",
+        "EF queues the second query and runs the two in sequence",
+        "An exception: a second operation started on this context",
+        "The second query quietly returns the result of the first"
+      ],
+      "answer": 2,
+      "why": "A DbContext supports one operation at a time and detects overlapping use, throwing `InvalidOperationException`. Await the queries one after another, or create separate contexts (for example with `IDbContextFactory`) if you truly need parallelism.",
+      "tags": ["lifetime", "async"],
+      "level": 2,
+      "asked": "Parallelising queries naively is a common bug; knowing the rule avoids it."
+    },
+    {
+      "id": "dd-120",
+      "q": "In EF Core 8+, how do you run a raw SQL query that returns plain numbers rather than entities?",
+      "code": "var ids = await db.Database\n    .SqlQuery<int>($\"SELECT Id FROM Orders WHERE Total > {min}\")\n    .ToListAsync();",
+      "lang": "cs",
+      "choices": [
+        "It fails: raw SQL can only return entity types that have a DbSet",
+        "It works, and `{min}` is sent as a parameter, not concatenated",
+        "It works, but `{min}` is pasted into the SQL text as a literal",
+        "It works only when the column is aliased as `Value` in the SELECT"
+      ],
+      "answer": 1,
+      "why": "`Database.SqlQuery<T>` (EF 7 for scalars, EF 8 for any unmapped type) maps results to non-entity types, and the interpolated string becomes a parameterised command. Scalars can be composed further when the column is named `Value`, but plain materialisation does not require it.",
+      "tags": ["raw-sql", "security"],
+      "level": 2,
+      "asked": "Shows you know the modern raw SQL API and that it stays injection-safe."
+    },
+    {
+      "id": "dd-121",
+      "q": "A job loops over 100,000 rows in batches with one DbContext, and memory keeps rising. What is a simple fix?",
+      "choices": [
+        "Call `db.ChangeTracker.Clear()` after each batch is saved",
+        "Call `GC.Collect()` after each batch to free the entities",
+        "Switch the context's lifetime to singleton inside the job",
+        "Add `AsSplitQuery()` to the query that reads each batch"
+      ],
+      "answer": 0,
+      "why": "The change tracker holds every entity it has seen until the context is disposed, so a long-lived context grows. Clearing it after each saved batch (or using a new context per batch, or no tracking for reads) keeps memory flat. Forcing GC cannot free objects still referenced.",
+      "tags": ["tracking", "performance"],
+      "level": 2,
+      "asked": "Batch jobs expose tracking costs that request-scoped code never notices."
+    },
+    {
+      "id": "dd-122",
+      "q": "What does this code do, given an order with Id 42 exists and is not tracked?",
+      "code": "db.Orders.Remove(new Order { Id = 42 });\nawait db.SaveChangesAsync();",
+      "lang": "cs",
+      "choices": [
+        "Throws, because only loaded entities can be removed",
+        "Inserts an order 42, then deletes it again in one step",
+        "Deletes order 42 without first loading it from the database",
+        "Deletes every order, because the other properties are empty"
+      ],
+      "answer": 2,
+      "why": "`Remove` on an untracked stub attaches it with only the key and marks it Deleted, so SaveChanges issues `DELETE ... WHERE Id = 42`. If a concurrency token is configured, the stub must carry it. In EF 7+, `ExecuteDeleteAsync` is another way to delete without loading.",
+      "tags": ["saving", "tracking"],
+      "level": 2,
+      "asked": "Avoiding a load before delete is a small, telling optimisation."
+    },
+    {
+      "id": "dd-123",
+      "q": "Which UPDATE does this send for an untracked product?",
+      "code": "var p = new Product { Id = 7 };\ndb.Products.Attach(p);\np.Price = 9.99m;\nawait db.SaveChangesAsync();",
+      "lang": "cs",
+      "choices": [
+        "An UPDATE of every column, with nulls where values were not set",
+        "No UPDATE, since `Attach` marks the product as Added instead",
+        "An UPDATE of Price alone, because only it changed after Attach",
+        "An INSERT, because the entity was created with `new`"
+      ],
+      "answer": 2,
+      "why": "`Attach` tracks the entity as Unchanged, so the later assignment is detected as a change to Price only. `Update` would mark every property Modified and overwrite the other columns with the stub's defaults, which is the classic lost-data bug.",
+      "tags": ["tracking", "saving"],
+      "level": 2,
+      "asked": "Distinguishing Attach from Update is key to partial updates without a read."
+    },
+    {
+      "id": "dd-124",
+      "q": "The context already tracks product 7 with Price 5. What does `product.Price` show after this runs?",
+      "code": "var product = await db.Products.FindAsync(7);\nawait db.Products.Where(p => p.Id == 7)\n    .ExecuteUpdateAsync(s => s.SetProperty(p => p.Price, 9));",
+      "lang": "cs",
+      "choices": [
+        "9, because EF refreshes tracked entities after ExecuteUpdate",
+        "5, because ExecuteUpdate bypasses the change tracker entirely",
+        "9, but only once SaveChangesAsync has been called afterwards",
+        "It throws, because the entity is tracked while being updated"
+      ],
+      "answer": 1,
+      "why": "`ExecuteUpdateAsync` runs SQL directly and does not touch tracked entities, so the in-memory object keeps the old value until you reload it. Mixing bulk updates with tracked entities in one context needs care, or a fresh context.",
+      "tags": ["tracking", "saving"],
+      "level": 2,
+      "asked": "Knowing the side-effects of bulk operations prevents stale-data bugs."
+    },
+    {
+      "id": "dd-125",
+      "q": "Why would a Blazor Server component or a parallel batch job inject `IDbContextFactory<AppDbContext>` instead of `AppDbContext`?",
+      "choices": [
+        "The factory returns one shared context that is safe across threads",
+        "Contexts from a factory skip change tracking, which is faster",
+        "It is required whenever the database is PostgreSQL",
+        "It creates a short-lived context for each unit of work you define"
+      ],
+      "answer": 3,
+      "why": "Where there is no natural request scope, or work runs in parallel, a factory lets you `CreateDbContextAsync()` exactly when needed and dispose it after. Each context is still a normal, non-thread-safe, tracking context.",
+      "tags": ["lifetime"],
+      "level": 2,
+      "asked": "Shows you can manage context lifetimes outside the one-per-request web pattern."
+    },
+    {
+      "id": "dd-126",
+      "q": "How does a `SaveChangesInterceptor` usually set `CreatedAt` and `UpdatedAt` for every entity?",
+      "choices": [
+        "In `SavingChangesAsync`, stamp Added and Modified entries",
+        "In `SavedChangesAsync`, update the rows again once saved",
+        "By adding database triggers to each table at start-up",
+        "By overriding each entity's property setters in the model"
+      ],
+      "answer": 0,
+      "why": "`SavingChangesAsync` runs before the SQL is generated, so it can walk `ChangeTracker.Entries()` and stamp Added and Modified entities, sending the values in the same statements. `SavedChanges` runs afterwards, which would need a second write.",
+      "tags": ["interceptors", "saving"],
+      "level": 2,
+      "asked": "Audit fields are in almost every app; centralising them shows good design."
+    },
+    {
+      "id": "dd-127",
+      "q": "How does Dapper handle this list parameter?",
+      "code": "var rows = await conn.QueryAsync<Order>(\n    \"SELECT * FROM Orders WHERE Id IN @ids\",\n    new { ids = new[] { 3, 7, 9 } });",
+      "lang": "cs",
+      "choices": [
+        "It fails: IN requires parentheses around the parameter name",
+        "It expands `@ids` to `(@ids1, @ids2, @ids3)`, a parameter each",
+        "It joins the values into the SQL text as `(3,7,9)` literals",
+        "It sends the array as one table-valued parameter automatically"
+      ],
+      "answer": 1,
+      "why": "Dapper spots an enumerable parameter used with IN and rewrites the SQL with one parameter per value (without the parentheses in your SQL). Very long lists can hit parameter limits, where a table-valued parameter or a temp table works better.",
+      "tags": ["dapper", "security"],
+      "level": 2,
+      "asked": "A handy Dapper feature that also shows you know the limits of long IN lists."
+    },
+    {
+      "id": "dd-128",
+      "q": "What does Dapper's `QueryMultipleAsync` let you do here?",
+      "code": "using var multi = await conn.QueryMultipleAsync(\n    \"SELECT * FROM Orders WHERE Id = @id; SELECT * FROM Lines WHERE OrderId = @id\",\n    new { id });",
+      "lang": "cs",
+      "choices": [
+        "Run the two statements in parallel on separate connections",
+        "Join both result sets into one flat list of dynamic rows",
+        "Read both result sets from one round trip, in order",
+        "Cache both queries so later calls skip the database"
+      ],
+      "answer": 2,
+      "why": "`QueryMultipleAsync` sends a batch and returns a reader; call `ReadSingleAsync<Order>()` then `ReadAsync<Line>()` in the same order as the statements. It saves a round trip without the row duplication of a join.",
+      "tags": ["dapper", "performance"],
+      "level": 2,
+      "asked": "Shows you can load related data efficiently without an ORM."
+    },
+    {
+      "id": "dd-129",
+      "q": "How do you map a read-only database view `vw_OrderTotals` in EF Core?",
+      "choices": [
+        "Give the entity a fake key so EF will treat the view as a table",
+        "Views are unsupported, so query them with Dapper instead",
+        "Create a migration that copies the view into a real table",
+        "A keyless entity: `HasNoKey().ToView(\"vw_OrderTotals\")`"
+      ],
+      "answer": 3,
+      "why": "Keyless entity types can be queried but are never tracked or saved, which suits views and reporting queries. `ToView` also tells migrations not to create a table. A fake key invites accidental tracking and updates.",
+      "tags": ["raw-sql", "modelling"],
+      "level": 2,
+      "asked": "Reporting views are common; this checks you can use them cleanly from EF."
+    },
+    {
+      "id": "dd-130",
+      "q": "Which of these does `ExecuteUpdateAsync` skip that `SaveChangesAsync` performs?",
+      "choices": [
+        "Parameterisation, so values are inlined into the SQL text",
+        "SaveChanges interceptors and concurrency-token checks",
+        "Global query filters on the entity being updated",
+        "The database transaction around the UPDATE statement"
+      ],
+      "answer": 1,
+      "why": "Bulk operations bypass the change tracker, so SaveChanges interceptors, audit stamping and optimistic concurrency checks do not run; add those conditions yourself. Query filters in the `Where` part still apply, values are still parameters, and the statement is atomic.",
+      "tags": ["saving", "interceptors", "concurrency"],
+      "level": 3,
+      "asked": "Tests whether you know what you give up for bulk speed, which is where bugs hide."
+    },
+    {
+      "id": "dd-131",
+      "q": "With `AddDbContextPool`, why is it a bug to set a `TenantId` field on the context in its constructor from `IHttpContextAccessor`?",
+      "choices": [
+        "Pooled contexts are reused; the constructor runs once per instance",
+        "Pooled contexts cannot have constructors with any parameters at all",
+        "Pooling makes contexts singletons, so every request sees one tenant",
+        "Fields on pooled contexts are reset to null before every query"
+      ],
+      "answer": 0,
+      "why": "Pooling resets the change tracker and returns instances to the pool rather than constructing new ones, so constructor-time state leaks to the next request. Set per-request state after renting (for example in a scoped factory wrapper), or skip pooling.",
+      "tags": ["lifetime", "performance"],
+      "level": 3,
+      "asked": "Pooling is a real optimisation with a real trap; knowing both shows depth."
+    },
+    {
+      "id": "dd-132",
+      "q": "SaveChanges throws `DbUpdateConcurrencyException` in an edit endpoint. Which approach lets you tell the user what changed?",
+      "code": "catch (DbUpdateConcurrencyException ex)\n{\n    var entry = ex.Entries.Single();\n    // ???\n}",
+      "lang": "cs",
+      "choices": [
+        "Call `SaveChangesAsync` again, which retries with fresh values",
+        "Set the entity's state to Added so the row is written again",
+        "Call `GetDatabaseValuesAsync()` and compare with the user's",
+        "Disable the concurrency token for this entity and save again"
+      ],
+      "answer": 2,
+      "why": "`GetDatabaseValuesAsync` fetches the current row (or null if it was deleted), so you can show both versions or merge. To overwrite, set the original values to the database values and save. Blind retries or disabling the token just lose someone's work.",
+      "tags": ["concurrency", "saving"],
+      "level": 3,
+      "asked": "Handling conflicts well is a user-facing feature; this shows you can build it."
+    },
+    {
+      "id": "dd-133",
+      "q": "SQL Server intermittently fails a write with error 1205, 'chosen as the deadlock victim'. What is the usual response in application code?",
+      "choices": [
+        "Treat it as a permanent failure and return 500 to the client",
+        "Raise the command timeout so the deadlock has time to clear",
+        "Switch the whole database to Read Uncommitted isolation",
+        "Retry the transaction, and keep a consistent order of access"
+      ],
+      "answer": 3,
+      "why": "Deadlocks are transient: the database killed one transaction so the other could finish, and a retry usually succeeds (`EnableRetryOnFailure` treats 1205 as transient). Reduce them by touching tables in a consistent order and keeping transactions short. Dirty reads trade correctness for fewer locks.",
+      "tags": ["transactions", "concurrency"],
+      "level": 3,
+      "asked": "Real production error; a strong answer combines retry with root-cause prevention."
+    },
+    {
+      "id": "dd-134",
+      "q": "What does Dapper's `QueryAsync<T>` do with the rows by default, and when does that matter?",
+      "choices": [
+        "Buffers all rows in a list; huge results suit `QueryUnbufferedAsync`",
+        "Streams rows lazily, so the connection stays open while you iterate",
+        "Tracks each row for changes, so memory grows with the result size",
+        "Pages through results 1,000 rows at a time, running extra queries"
+      ],
+      "answer": 0,
+      "why": "Buffered is the default: Dapper reads everything, closes the reader and hands you a list, which is simple and safe for normal sizes. For very large results, the unbuffered API streams rows as an async sequence while the reader stays open. Dapper never tracks changes.",
+      "tags": ["dapper", "performance"],
+      "level": 3,
+      "asked": "Buffering trade-offs matter for exports and reports; this checks you know the knob."
+    },
+    {
+      "id": "dd-135",
+      "q": "A global query filter reads `_tenantId`, a field on the context. How does EF Core treat it when the same query runs for different tenants?",
+      "code": "modelBuilder.Entity<Invoice>()\n    .HasQueryFilter(i => i.TenantId == _tenantId);",
+      "lang": "cs",
+      "choices": [
+        "It bakes the first tenant's value into the cached query forever",
+        "It reads the field as a parameter from the current context instance",
+        "It requires the filter to be rebuilt by calling OnModelCreating again",
+        "It ignores the field and filters on the connection string's user"
+      ],
+      "answer": 1,
+      "why": "The model is built once, but EF recognises context fields in filters and parameterises them, reading the value from whichever context runs the query. Capturing a local variable or a static would instead freeze one value into the cached model.",
+      "tags": ["queries", "security"],
+      "level": 3,
+      "asked": "Multi-tenancy with query filters is common; this checks you know why the field pattern is safe."
     }
   ]
 }

@@ -779,6 +779,3185 @@
       "tags": ["parsing", "numbers"],
       "level": 3,
       "asked": "Invoice totals that are a cent off are a real support ticket; this checks you know why."
+    },
+    {
+      "id": "jsf-058",
+      "q": "A feature flag may or may not be declared by an injected script. What does this log when `betaFlag` was never declared anywhere?",
+      "code": "console.log(typeof betaFlag);",
+      "lang": "js",
+      "choices": ["It throws a ReferenceError", "\"undefined\"", "\"null\"", "\"object\""],
+      "answer": 1,
+      "why": "`typeof` is the one operator that tolerates an undeclared identifier and returns the string \"undefined\" instead of throwing. Reading `betaFlag` any other way would throw a ReferenceError, which is why old feature-detection code used `typeof x !== 'undefined'`.",
+      "tags": ["types", "typeof"],
+      "level": 1,
+      "asked": "It checks whether you know the difference between an undeclared variable and one that holds `undefined`."
+    },
+    {
+      "id": "jsf-059",
+      "q": "A CSV import passes these strings through two parsers. What does this log?",
+      "code": "console.log(Number('1e3'), Number('0x1F'), parseInt('0x1F'), parseInt('1e3'));",
+      "lang": "js",
+      "choices": ["1000 31 31 1", "1000 NaN 0 1", "NaN 31 0 1000", "1000 31 NaN 1000"],
+      "answer": 0,
+      "why": "`Number()` accepts the full numeric-literal grammar, so exponent and hex strings both convert. `parseInt` reads leading digits: it recognises a `0x` prefix (radix 16) but stops at the `e` in '1e3', giving 1. That silent truncation is why '1e3' imported through `parseInt` becomes 1, not 1000.",
+      "tags": ["parsing", "numbers"],
+      "level": 2,
+      "asked": "Interviewers use it to see whether you can explain why two 'string to number' functions disagree, rather than treating them as interchangeable."
+    },
+    {
+      "id": "jsf-060",
+      "q": "What does this log?",
+      "code": "console.log(isNaN('abc'), Number.isNaN('abc'));",
+      "lang": "js",
+      "choices": ["false false", "true true", "true false", "false true"],
+      "answer": 2,
+      "why": "The global `isNaN` coerces its argument to a number first, so 'abc' becomes NaN and it returns true. `Number.isNaN` does no coercion and only returns true for the actual NaN value, so a string gives false.",
+      "tags": ["numbers", "coercion"],
+      "level": 1,
+      "asked": "A quick check that you reach for `Number.isNaN` and know why the global version gives false positives on strings."
+    },
+    {
+      "id": "jsf-061",
+      "q": "What does this log?",
+      "code": "console.log(Number.isInteger(5.0), Number.isSafeInteger(2 ** 53));",
+      "lang": "js",
+      "choices": ["false true", "true false", "true true", "false false"],
+      "answer": 1,
+      "why": "JavaScript has one number type, so 5.0 is the same value as 5 and counts as an integer. 2 ** 53 is an integer but it is one past `Number.MAX_SAFE_INTEGER`, where adjacent integers stop being distinguishable, so it is not 'safe'.",
+      "tags": ["numbers", "big-ids"],
+      "level": 2,
+      "asked": "It leads into the real question: what happens to 64-bit database ids when they pass through a JavaScript number."
+    },
+    {
+      "id": "jsf-062",
+      "q": "Two order ids come back from a Java service as JSON numbers. What does this comparison log?",
+      "code": "const a = JSON.parse('{\"id\": 9007199254740992}').id;\nconst b = JSON.parse('{\"id\": 9007199254740993}').id;\nconsole.log(a === b);",
+      "lang": "js",
+      "choices": ["false", "It throws a RangeError while parsing", "true", "undefined"],
+      "answer": 2,
+      "why": "Both literals round to the same double, 9007199254740992, because integers above 2^53 cannot all be represented. `JSON.parse` does not throw; it silently loses precision, so two different orders compare equal. The fix is to send large ids as strings.",
+      "tags": ["numbers", "json", "big-ids"],
+      "level": 2,
+      "asked": "Teams with Snowflake-style or 64-bit ids hit this for real; a strong answer says 'serialise ids as strings' without being prompted."
+    },
+    {
+      "id": "jsf-063",
+      "q": "You are splitting 7 items across pages of 2. What does this log?",
+      "code": "console.log(7 / 2, Math.floor(7 / 2), 7 % 2);",
+      "lang": "js",
+      "choices": ["3 3 1", "3.5 3 1", "3.5 4 1", "3.5 3 0.5"],
+      "answer": 1,
+      "why": "`/` is always floating-point division in JavaScript, so 7 / 2 is 3.5; there is no integer division operator. `Math.floor` gives the whole pages and `%` the remainder, 1. Page counts need `Math.ceil(7 / 2)`, which is 4.",
+      "tags": ["numbers", "operators"],
+      "level": 1,
+      "asked": "Pagination maths is everywhere in CRUD work, and people coming from C# or Java expect `7 / 2` to be 3."
+    },
+    {
+      "id": "jsf-064",
+      "q": "A charge of 2.5 pence and a refund of -2.5 pence each go through the rounding helper. What does this log?",
+      "code": "console.log(Math.round(2.5), Math.round(-2.5));",
+      "lang": "js",
+      "choices": ["3 -3", "2 -2", "3 -2", "2 -3"],
+      "answer": 2,
+      "why": "`Math.round` rounds halves towards positive infinity, not away from zero, so 2.5 becomes 3 but -2.5 becomes -2. Refunds and negative adjustments therefore round differently from charges unless you round the absolute value and reapply the sign.",
+      "tags": ["numbers", "rounding", "money"],
+      "level": 2,
+      "asked": "It shows up whenever credits or refunds are rounded; knowing the asymmetry is what separates 'I tested positives' from 'I tested the domain'."
+    },
+    {
+      "id": "jsf-065",
+      "q": "A carousel steps backwards with `index = (index - 1) % slides.length`. With `index` 0 and 3 slides, what is the new index?",
+      "choices": [
+        "2, because `%` wraps around",
+        "0, because the result is clamped",
+        "-1, because `%` keeps the sign of the left side",
+        "1, because `%` returns the absolute remainder"
+      ],
+      "answer": 2,
+      "why": "JavaScript's `%` is a remainder, not a mathematical modulo: the result takes the sign of the dividend, so -1 % 3 is -1 and `slides[-1]` is undefined. The wrap-safe form is `((i % n) + n) % n`.",
+      "tags": ["numbers", "operators"],
+      "level": 2,
+      "asked": "Off-by-one wrap bugs in carousels, pagers and circular buffers all trace back to this; interviewers like the `((i % n) + n) % n` fix."
+    },
+    {
+      "id": "jsf-066",
+      "q": "What does this log?",
+      "code": "console.log(1 / 0, -1 / 0, 0 / 0);",
+      "lang": "js",
+      "choices": [
+        "Infinity -Infinity NaN",
+        "It throws a division-by-zero error",
+        "NaN NaN NaN",
+        "Infinity Infinity 0"
+      ],
+      "answer": 0,
+      "why": "Division by zero never throws in JavaScript. A non-zero number divided by zero gives a signed Infinity, and 0 / 0 is NaN. An 'average per order' with zero orders therefore produces NaN on the dashboard rather than an error you would notice.",
+      "tags": ["numbers", "edge-cases"],
+      "level": 1,
+      "asked": "It checks you guard empty denominators yourself, because the language will not stop you."
+    },
+    {
+      "id": "jsf-067",
+      "q": "A basket totals prices such as 19.99 and 0.10. Which representation avoids floating-point drift in the total?",
+      "choices": [
+        "Store each price as a string and add them with `+`",
+        "Store each price as a number rounded with `toFixed(2)`",
+        "Store integer minor units, such as 1999 pence",
+        "Store each price as a float and round only when saving"
+      ],
+      "answer": 2,
+      "why": "Integers up to 2^53 are exact in a double, so adding pence never drifts; you convert to pounds only for display. `toFixed` returns a string and rounds at the wrong moment, and strings with `+` concatenate rather than add.",
+      "tags": ["money", "numbers"],
+      "level": 1,
+      "asked": "Money handling is a standard CRUD interview topic, and 'integer minor units' is the answer they are listening for."
+    },
+    {
+      "id": "jsf-068",
+      "q": "A Vitest assertion `expect(0.1 + 0.2).toBe(0.3)` fails. Which change makes the test correct rather than just green?",
+      "choices": [
+        "Use `toEqual(0.3)`, which compares by value",
+        "Wrap both sides in `Number()` first",
+        "Compare `String(0.1 + 0.2)` with '0.3'",
+        "Use `toBeCloseTo(0.3)` for the float result"
+      ],
+      "answer": 3,
+      "why": "`toBeCloseTo` compares within a tolerance (two decimal places by default), which is the honest assertion for a float result. `toEqual` uses the same equality for numbers as `toBe`, so it still fails, and converting to a string gives '0.30000000000000004'.",
+      "tags": ["numbers", "floats", "testing"],
+      "level": 2,
+      "asked": "It tests whether you understand float error well enough to write assertions about it, not just to recite 0.1 + 0.2."
+    },
+    {
+      "id": "jsf-069",
+      "q": "What does this log?",
+      "code": "const subtotal = (0.1 * 3).toFixed(2);\nconsole.log(subtotal + 1);",
+      "lang": "js",
+      "choices": ["1.3", "\"0.301\"", "\"1.30\"", "1.3000000000000003"],
+      "answer": 1,
+      "why": "`toFixed` returns a string, \"0.30\", so `+ 1` concatenates and gives \"0.301\". Round for display at the very end, and keep the value a number (ideally integer minor units) while you are still calculating.",
+      "tags": ["numbers", "strings", "coercion"],
+      "level": 1,
+      "asked": "It is the most common way a rounded price quietly turns into string concatenation in a basket total."
+    },
+    {
+      "id": "jsf-070",
+      "q": "What does this log?",
+      "code": "const user = { name: 'Ada' };\nconsole.log(`Saved ${user}`);",
+      "lang": "js",
+      "choices": ["Saved { name: 'Ada' }", "Saved Ada", "Saved undefined", "Saved [object Object]"],
+      "answer": 3,
+      "why": "Template literals convert the value with its string conversion, which for a plain object is `Object.prototype.toString`, giving \"[object Object]\". `console.log(user)` prints the structure only because the console inspects objects itself.",
+      "tags": ["strings", "coercion", "objects"],
+      "level": 1,
+      "asked": "It explains the '[object Object]' that appears in toasts and log lines, and the fix is `user.name` or `JSON.stringify(user)`."
+    },
+    {
+      "id": "jsf-071",
+      "q": "What does this log?",
+      "code": "const price = {\n  amount: 5,\n  valueOf() { return this.amount; },\n  toString() { return '£5'; },\n};\nconsole.log(price + 1, `${price}`);",
+      "lang": "js",
+      "choices": ["£51 £5", "6 5", "6 £5", "£51 6"],
+      "answer": 2,
+      "why": "Both use ToPrimitive with a different hint. Binary `+` uses the 'default' hint, which for ordinary objects tries `valueOf` first, so it gets 5 and adds 1. A template literal uses the 'string' hint, which tries `toString` first, giving '£5'.",
+      "tags": ["coercion", "objects"],
+      "level": 3,
+      "asked": "Deep coercion questions separate people who memorised a table from people who know that ToPrimitive has hints; it also explains how `Date` behaves."
+    },
+    {
+      "id": "jsf-072",
+      "q": "Two bookings start on the same day. What does this log?",
+      "code": "const a = new Date('2026-01-01');\nconst b = new Date('2026-01-01');\nconsole.log(a == b, a <= b, a.getTime() === b.getTime());",
+      "lang": "js",
+      "choices": ["false true true", "true true true", "false false true", "true false true"],
+      "answer": 0,
+      "why": "`==` between two objects compares references, and these are two different Date objects, so it is false. Relational operators convert both to numbers via `valueOf`, so `<=` compares timestamps and is true. Compare instants with `getTime()`.",
+      "tags": ["dates", "equality"],
+      "level": 2,
+      "asked": "Date equality bugs are common in booking and scheduling code; the answer shows you know objects compare by reference."
+    },
+    {
+      "id": "jsf-073",
+      "q": "What does this log?",
+      "code": "const d = new Date(2026, 11, 25);\nconsole.log(d.getMonth(), d.getDate(), d.getDay());",
+      "lang": "js",
+      "choices": ["12 25 5", "11 25 25", "11 25 5", "12 25 4"],
+      "answer": 2,
+      "why": "Months are zero-based, so 11 is December and `getMonth` returns 11. `getDate` is the day of the month, while `getDay` is the weekday (0 = Sunday); 25 December 2026 is a Friday, so 5.",
+      "tags": ["dates"],
+      "level": 1,
+      "asked": "Zero-based months and the `getDate`/`getDay` naming trap cause real off-by-one bugs in date pickers."
+    },
+    {
+      "id": "jsf-074",
+      "q": "A subscription renews 'one month after 31 January'. What does this log?",
+      "code": "const d = new Date(2026, 0, 31);\nd.setMonth(d.getMonth() + 1);\nconsole.log(d.getMonth(), d.getDate());",
+      "lang": "js",
+      "choices": ["1 28", "2 3", "1 31", "It throws a RangeError"],
+      "answer": 1,
+      "why": "Date setters do not clamp: 31 February 2026 overflows by three days into 3 March, so month 2, day 3. Billing code has to clamp to the last day of the target month itself (or use a library or Temporal, which clamps by default).",
+      "tags": ["dates", "edge-cases"],
+      "level": 2,
+      "asked": "It is a real billing bug, and a strong answer mentions clamping or Temporal's `add({ months: 1 })`."
+    },
+    {
+      "id": "jsf-075",
+      "q": "A form posts a date typed as '31/12/2026'. What happens here in Node 24?",
+      "code": "const d = new Date('31/12/2026');\nconsole.log(d.getFullYear());\nconsole.log(d.toISOString());",
+      "lang": "js",
+      "choices": [
+        "Logs 2026, then an ISO string for 31 December",
+        "Throws a SyntaxError on the first line",
+        "Logs NaN, then throws a RangeError",
+        "Logs NaN, then logs 'Invalid Date'"
+      ],
+      "answer": 2,
+      "why": "The constructor never throws on unparseable input; it creates an Invalid Date whose getters return NaN. `toISOString` is the method that throws (RangeError: Invalid time value), often far from where the bad input entered. Validate with `Number.isNaN(d.getTime())`.",
+      "tags": ["dates", "parsing", "validation"],
+      "level": 2,
+      "asked": "It checks that you validate dates at the boundary instead of discovering an Invalid Date when serialising the response."
+    },
+    {
+      "id": "jsf-076",
+      "q": "What does this log?",
+      "code": "console.log(null + 1, undefined + 1);",
+      "lang": "js",
+      "choices": ["1 NaN", "NaN NaN", "null1 undefined1", "1 1"],
+      "answer": 0,
+      "why": "Numeric conversion turns null into 0 but undefined into NaN, so the results are 1 and NaN. That asymmetry is why a missing field (undefined) poisons a sum while an explicit null does not.",
+      "tags": ["coercion", "null"],
+      "level": 1,
+      "asked": "A quick probe of whether you know null and undefined convert differently, which matters when summing optional fields."
+    },
+    {
+      "id": "jsf-077",
+      "q": "What does this log?",
+      "code": "console.log(null == 0, null >= 0);",
+      "lang": "js",
+      "choices": ["true true", "false false", "true false", "false true"],
+      "answer": 3,
+      "why": "Loose equality has a special rule: null is only `==` to null and undefined, so `null == 0` is false. Relational operators instead convert to numbers, turning null into 0, so `null >= 0` is true. The two operators do not share an algorithm.",
+      "tags": ["equality", "coercion", "null"],
+      "level": 3,
+      "asked": "It is a favourite 'explain the spec' question; the strong answer names the separate `==` and relational algorithms."
+    },
+    {
+      "id": "jsf-078",
+      "q": "What does this log?",
+      "code": "console.log(true + true, '3' * '4');",
+      "lang": "js",
+      "choices": ["truetrue 12", "2 \"34\"", "2 12", "NaN 12"],
+      "answer": 2,
+      "why": "With no string operand, `+` converts booleans to numbers, so true + true is 2. `*` has no string meaning, so both strings convert to numbers and the result is 12, not concatenation.",
+      "tags": ["coercion", "operators"],
+      "level": 1,
+      "asked": "A warm-up that confirms you know only `+` concatenates and every other arithmetic operator converts to numbers."
+    },
+    {
+      "id": "jsf-079",
+      "q": "A quantity input's `value` is used in a running total. What does this log?",
+      "code": "const qty = '2'; // from input.value\nlet total = 0;\ntotal += qty;\ntotal += 3;\nconsole.log(total);",
+      "lang": "js",
+      "choices": ["5", "\"23\"", "\"023\"", "\"05\""],
+      "answer": 2,
+      "why": "`0 + '2'` concatenates to '02' because one side is a string, and then '02' + 3 concatenates again to '023'. Form values are always strings; convert with `Number()` or read `input.valueAsNumber` before doing arithmetic.",
+      "tags": ["coercion", "parsing", "strings"],
+      "level": 1,
+      "asked": "It is the most common form-handling bug in beginner CRUD code, so interviewers want to hear 'input values are strings'."
+    },
+    {
+      "id": "jsf-080",
+      "q": "Which values make `value == null` true?",
+      "choices": [
+        "null only",
+        "null, undefined and NaN",
+        "null and undefined",
+        "null, undefined, 0 and ''"
+      ],
+      "answer": 2,
+      "why": "The loose-equality algorithm treats null and undefined as equal to each other and to nothing else, with no numeric or string conversion. That makes `x == null` a deliberate, lint-approved shorthand for 'null or undefined', unlike a truthiness check that also rejects 0 and ''.",
+      "tags": ["equality", "null"],
+      "level": 2,
+      "asked": "It is the one place many style guides allow `==`; knowing why shows you understand the algorithm rather than avoiding it by rule."
+    },
+    {
+      "id": "jsf-081",
+      "q": "In a CommonJS script without \"use strict\", what does this log?",
+      "code": "const code = 'GBP';\ncode.label = 'Pound sterling';\nconsole.log(code.label);",
+      "lang": "js",
+      "choices": ["'Pound sterling'", "It throws a TypeError", "undefined", "null"],
+      "answer": 2,
+      "why": "Primitives cannot hold properties. The assignment briefly wraps 'GBP' in a String object, sets the property on that throwaway wrapper, and discards it, so the read finds nothing. In strict mode (and in ES modules) the same assignment throws a TypeError.",
+      "tags": ["types", "strict-mode", "strings"],
+      "level": 3,
+      "asked": "It tests the primitive/wrapper model behind `'abc'.length` working at all, and the strict-mode difference is the bonus point."
+    },
+    {
+      "id": "jsf-082",
+      "q": "What does this log?",
+      "code": "const s = new String('draft');\nconsole.log(typeof s, s === 'draft', s == 'draft');",
+      "lang": "js",
+      "choices": [
+        "string true true",
+        "object false true",
+        "object false false",
+        "string false true"
+      ],
+      "answer": 1,
+      "why": "`new String` creates a wrapper object, so `typeof` is 'object' and strict equality with a primitive is false. Loose equality unwraps it via ToPrimitive and compares 'draft' with 'draft'. Calling `String(x)` without `new` returns a primitive, which is what you almost always want.",
+      "tags": ["types", "equality"],
+      "level": 2,
+      "asked": "It checks you know why `new String`, `new Number` and `new Boolean` are lint errors."
+    },
+    {
+      "id": "jsf-083",
+      "q": "Ids arrive as strings and someone converts them in one line. What does this log?",
+      "code": "console.log(['10', '10', '10'].map(parseInt));",
+      "lang": "js",
+      "choices": ["[10, 10, 10]", "[10, NaN, 2]", "[10, NaN, NaN]", "[NaN, NaN, NaN]"],
+      "answer": 1,
+      "why": "`map` passes (value, index, array), so the calls are parseInt('10', 0), parseInt('10', 1) and parseInt('10', 2). Radix 0 means 'default' (10), radix 1 is invalid (NaN), and '10' in binary is 2. Use `.map(Number)` or an explicit arrow.",
+      "tags": ["parsing", "arrays", "functions"],
+      "level": 2,
+      "asked": "Beyond the trivia, it tests that you know callbacks receive more arguments than you might think."
+    },
+    {
+      "id": "jsf-084",
+      "q": "A dashboard shows the highest order value. With no orders yet, what does this log?",
+      "code": "const totals = [];\nconsole.log(Math.max(...totals));",
+      "lang": "js",
+      "choices": ["0", "-Infinity", "undefined", "It throws a TypeError"],
+      "answer": 1,
+      "why": "`Math.max()` with no arguments returns -Infinity, the identity value for 'maximum', so spreading an empty array does not throw or give 0. Guard the empty case explicitly before rendering.",
+      "tags": ["numbers", "arrays", "edge-cases"],
+      "level": 2,
+      "asked": "Empty-collection handling is a mid-level habit; the answer shows you think about 'no data yet' states."
+    },
+    {
+      "id": "jsf-085",
+      "q": "The URL has no `size` parameter. What does this log?",
+      "code": "const params = new URLSearchParams('?page=1');\nconst size = Number(params.get('size')) ?? 20;\nconsole.log(size);",
+      "lang": "js",
+      "choices": ["20", "NaN", "null", "0"],
+      "answer": 3,
+      "why": "`get` returns null for a missing key and `Number(null)` is 0, a real number, so `??` never falls back. Apply the default before converting (`Number(params.get('size') ?? 20)`) or validate the parsed value.",
+      "tags": ["parsing", "defaults", "null"],
+      "level": 2,
+      "asked": "Defaulting query parameters is daily API work, and the order of 'default then convert' is exactly what reviewers catch."
+    },
+    {
+      "id": "jsf-086",
+      "q": "Two reports sum the same line items in a different order. What does this log?",
+      "code": "console.log(0.1 + 0.2 + 0.3 === 0.3 + 0.2 + 0.1);",
+      "lang": "js",
+      "choices": ["false", "true", "It depends on the CPU", "It depends on the V8 version"],
+      "answer": 0,
+      "why": "Floating-point addition is not associative: each step rounds, so 0.1 + 0.2 + 0.3 is 0.6000000000000001 while 0.3 + 0.2 + 0.1 is 0.6. IEEE 754 makes this deterministic across machines; it is not hardware noise. Summing integer minor units removes the problem.",
+      "tags": ["numbers", "floats", "money"],
+      "level": 3,
+      "asked": "It explains why two reports can disagree by a penny, and the answer 'rounding happens at every step' shows real understanding."
+    },
+    {
+      "id": "jsf-087",
+      "q": "What does this log for a guest (`isMember` is false)?",
+      "code": "const isMember = false;\nconst label = 'Price: ' + isMember ? 'member' : 'standard';\nconsole.log(label);",
+      "lang": "js",
+      "choices": ["'Price: standard'", "'Price: member'", "'standard'", "'member'"],
+      "answer": 3,
+      "why": "`+` binds tighter than `?:`, so the condition is the whole string 'Price: false', which is non-empty and truthy. The expression therefore always yields 'member', without the prefix. Parenthesise the ternary or use a template literal.",
+      "tags": ["operators", "truthiness"],
+      "level": 2,
+      "asked": "Operator-precedence bugs like this survive code review because they read naturally; spotting it quickly is the point."
+    },
+    {
+      "id": "jsf-088",
+      "q": "In a sloppy-mode script, what does this log?",
+      "code": "let status = 'draft';\nstatus[0] = 'X';\nconsole.log(status);",
+      "lang": "js",
+      "choices": ["'Xraft'", "'draft'", "'Xdraft'", "It throws a TypeError"],
+      "answer": 1,
+      "why": "Strings are immutable primitives, so assigning to an index is silently ignored in sloppy mode (and throws in strict mode). String methods always return a new string: capitalise with `status[0].toUpperCase() + status.slice(1)`.",
+      "tags": ["strings", "immutability"],
+      "level": 1,
+      "asked": "It checks you know strings are immutable, which is why every string method returns a new value you must keep."
+    },
+    {
+      "id": "jsf-089",
+      "q": "What does this log?",
+      "code": "const file = 'report.csv';\nconsole.log(file.slice(-3), file.substring(-3));",
+      "lang": "js",
+      "choices": ["'csv' 'csv'", "'csv' 'report.csv'", "'report.csv' 'csv'", "'csv' 'report'"],
+      "answer": 1,
+      "why": "`slice` treats a negative index as counting from the end, so -3 gives 'csv'. `substring` clamps negative arguments to 0, so `substring(-3)` returns the whole string. Prefer `slice` whenever you need from-the-end offsets.",
+      "tags": ["strings"],
+      "level": 2,
+      "asked": "It shows whether you know the two look-alike methods differ in exactly the case you need for file extensions."
+    },
+    {
+      "id": "jsf-090",
+      "q": "Invoice numbers must be three digits wide. What does this log?",
+      "code": "console.log(String(7).padStart(3, '0'));",
+      "lang": "js",
+      "choices": ["'700'", "'0007'", "'007'", "'7'"],
+      "answer": 2,
+      "why": "`padStart(targetLength, padString)` adds padding at the start until the string reaches the target length, so '7' becomes '007'. If the string is already long enough, it is returned unchanged, not truncated.",
+      "tags": ["strings", "formatting"],
+      "level": 1,
+      "asked": "A practical formatting question for ids, times and receipts; mentioning that it never truncates is a nice extra."
+    },
+    {
+      "id": "jsf-091",
+      "q": "What happens when this runs?",
+      "code": "const date = '2026-01-05';\nconsole.log(date.replaceAll(/-/, '/'));",
+      "lang": "js",
+      "choices": [
+        "It logs '2026/01-05'",
+        "It logs '2026/01/05'",
+        "It throws a TypeError",
+        "It logs '2026-01-05'"
+      ],
+      "answer": 2,
+      "why": "`replaceAll` requires a regex argument to carry the `g` flag and throws a TypeError otherwise, precisely so a non-global regex cannot look like it replaced everything. Use `/-/g` or pass the string '-'.",
+      "tags": ["strings", "regex"],
+      "level": 2,
+      "asked": "It checks that you know `replace` with a string only changes the first match and how `replaceAll` guards the regex case."
+    },
+    {
+      "id": "jsf-092",
+      "q": "A table filter must match 'Admin' when the user types 'admin'. Which check is correct?",
+      "choices": [
+        "`role.includes(query) || query.includes(role)`",
+        "`role.toLowerCase().includes(query.toLowerCase())`",
+        "`role.search(query) !== -1`",
+        "`role.localeCompare(query, 'en') === 0`"
+      ],
+      "answer": 1,
+      "why": "`includes` and `search` are case-sensitive, so both sides must be normalised to the same case first. `localeCompare` returning 0 checks whole-string equality in sort order, not a substring match, and is case-sensitive by default too.",
+      "tags": ["strings", "search"],
+      "level": 1,
+      "asked": "Client-side search boxes are a staple take-home task; case-insensitive matching is the first thing a reviewer tries."
+    },
+    {
+      "id": "jsf-093",
+      "q": "A cookie-style string is parsed into a key and value. What does this log?",
+      "code": "const [key, value] = 'token=abc123=='.split('=');\nconsole.log(value);",
+      "lang": "js",
+      "choices": ["'abc123'", "'abc123=='", "'=abc123=='", "undefined"],
+      "answer": 0,
+      "why": "`split('=')` splits on every '=', producing ['token', 'abc123', '', ''], so the base64 padding is lost. Split once instead: find the first index with `indexOf('=')` and `slice` either side, or use `URLSearchParams` for query-style data.",
+      "tags": ["strings", "parsing"],
+      "level": 2,
+      "asked": "Base64 values and tokens routinely contain '=', so this is a real parsing bug interviewers like to see spotted."
+    },
+    {
+      "id": "jsf-094",
+      "q": "Why can a SQL library safely support `` sql`SELECT * FROM users WHERE id = ${id}` `` as a tagged template?",
+      "choices": [
+        "The engine escapes quotes inside every template literal automatically",
+        "The tag function gets the literal parts and `id` separately, so it can send `id` as a bound parameter",
+        "Tagged templates are evaluated lazily, after the query plan is compiled",
+        "The `${}` value is converted with `JSON.stringify` before insertion"
+      ],
+      "answer": 1,
+      "why": "A tag function receives an array of the fixed string parts plus the interpolated values as separate arguments, so the library builds `... WHERE id = $1` and sends the value out-of-band. A plain template literal with no tag just concatenates, which is exactly SQL injection.",
+      "tags": ["strings", "templates", "security"],
+      "level": 2,
+      "asked": "It connects a language feature to security; strong candidates explain that the danger is concatenation, not the backticks."
+    },
+    {
+      "id": "jsf-095",
+      "q": "A list of product names is sorted with the default comparison. What does this log?",
+      "code": "console.log('apple' < 'Banana', 'Zebra' < 'apple');",
+      "lang": "js",
+      "choices": ["true true", "false true", "true false", "false false"],
+      "answer": 1,
+      "why": "String comparison uses UTF-16 code unit values, and every uppercase ASCII letter (65–90) sorts before every lowercase one (97–122). So 'Banana' comes before 'apple' and 'Zebra' does too. Use `localeCompare` or `Intl.Collator` for human ordering.",
+      "tags": ["strings", "sort"],
+      "level": 2,
+      "asked": "It explains why a sorted list shows all capitalised names first, which users report as a bug."
+    },
+    {
+      "id": "jsf-096",
+      "q": "A user registered as 'café' on a Mac and logs in typing 'café' on another device. What does this log?",
+      "code": "const stored = 'caf\\u00e9';\nconst typed = 'cafe\\u0301';\nconsole.log(stored === typed, stored.normalize() === typed.normalize());",
+      "lang": "js",
+      "choices": ["true true", "false false", "false true", "true false"],
+      "answer": 2,
+      "why": "'é' can be one precomposed code point (U+00E9) or 'e' plus a combining acute accent (U+0301); they render the same but are different strings. `normalize()` converts both to the NFC form, after which they compare equal. Normalise usernames and search keys on the way in.",
+      "tags": ["strings", "unicode", "equality"],
+      "level": 3,
+      "asked": "Unicode normalisation bites login, search and de-duplication; mentioning NFC at the input boundary is the strong answer."
+    },
+    {
+      "id": "jsf-097",
+      "q": "A character counter must show 1 for the family emoji '👨‍👩‍👧', which has `.length` 8. Which expression gives 1?",
+      "choices": [
+        "`[...s.normalize('NFC')].length`",
+        "`Array.from(s, (c) => c).length`",
+        "`new TextEncoder().encode(s).length`",
+        "`[...new Intl.Segmenter().segment(s)].length`"
+      ],
+      "answer": 3,
+      "why": "The emoji is five code points (three people joined by two zero-width joiners), so spreading gives 5 even after normalisation, and `TextEncoder` counts UTF-8 bytes (18). `Intl.Segmenter` splits text into grapheme clusters, the user-perceived characters, giving 1.",
+      "tags": ["strings", "unicode"],
+      "level": 3,
+      "asked": "Counters and truncation in chat or bio fields hit this; knowing code units, code points and graphemes are three different things is the point."
+    },
+    {
+      "id": "jsf-098",
+      "q": "A preview truncates messages to four characters. What does this log?",
+      "code": "const msg = 'Hi 👋 there';\nconsole.log(JSON.stringify(msg.slice(0, 4)));",
+      "lang": "js",
+      "choices": ["\"Hi 👋\"", "\"Hi \"", "\"Hi \ud83d\"", "\"Hi 👋 t\""],
+      "answer": 2,
+      "why": "`slice` counts UTF-16 code units and the emoji takes two, so cutting at 4 keeps only its first half, a lone surrogate that renders as a broken glyph. Truncate by graphemes with `Intl.Segmenter` (or at least by code points with `[...msg]`).",
+      "tags": ["strings", "unicode"],
+      "level": 3,
+      "asked": "Broken emoji in notification previews is a real bug report; this checks you can explain it in terms of UTF-16."
+    },
+    {
+      "id": "jsf-099",
+      "q": "A role check reuses one regex. What does this log?",
+      "code": "const isAdmin = /admin/g;\nconsole.log(isAdmin.test('admin'), isAdmin.test('admin'));",
+      "lang": "js",
+      "choices": ["true true", "true false", "false true", "false false"],
+      "answer": 1,
+      "why": "With the `g` (or `y`) flag, `test` is stateful: it starts at `lastIndex` and advances it after a match. The second call starts at index 5, past the end, fails, and resets `lastIndex` to 0. Drop `g` for yes/no checks.",
+      "tags": ["regex", "state"],
+      "level": 2,
+      "asked": "Intermittent validation failures from a shared global regex are a classic 'works every other time' bug."
+    },
+    {
+      "id": "jsf-100",
+      "q": "Why does this US ZIP code check accept 'abc123456'?",
+      "code": "const isZip = (s) => /\\d{5}/.test(s);\nconsole.log(isZip('abc123456'));",
+      "lang": "js",
+      "choices": [
+        "`\\d` also matches letters when the `u` flag is missing",
+        "`test` coerces the string to a number first",
+        "`{5}` means 'at least five', not 'exactly five'",
+        "The pattern has no `^` and `$`, so any five digits inside match"
+      ],
+      "answer": 3,
+      "why": "Without anchors a regex matches anywhere in the string, so '12345' inside the input is enough. Validation patterns need `^\\d{5}$` to say 'the whole string is exactly five digits'. `{5}` does mean exactly five repetitions, but only of that part of the pattern.",
+      "tags": ["regex", "validation"],
+      "level": 1,
+      "asked": "Unanchored validators are one of the most common regex bugs in form and API validation."
+    },
+    {
+      "id": "jsf-101",
+      "q": "What does this log?",
+      "code": "const m = '2026-09-24'.match(/(?<y>\\d{4})-(?<m>\\d{2})-(?<d>\\d{2})/);\nconsole.log(m.groups.m);",
+      "lang": "js",
+      "choices": ["9", "'2026-09-24'", "undefined", "'09'"],
+      "answer": 3,
+      "why": "Named capture groups `(?<name>...)` appear on `match.groups`, and captures are always strings, so the month is '09' rather than the number 9. Named groups keep parsing code readable compared with `m[2]`.",
+      "tags": ["regex", "parsing"],
+      "level": 1,
+      "asked": "It checks you know named groups exist and that every capture is a string you still have to convert."
+    },
+    {
+      "id": "jsf-102",
+      "q": "You need every `#tag` in a post along with its capture group for the tag name. Which call gives you both for all matches?",
+      "choices": [
+        "`[...text.matchAll(/#(w+)/g)]`",
+        "`text.match(/#(w+)/g)`",
+        "`text.split(/#(w+)/)`",
+        "`/#(w+)/g.exec(text)` called once"
+      ],
+      "answer": 0,
+      "why": "With the `g` flag, `match` returns only the full match strings and drops capture groups. `matchAll` returns an iterator of full match objects, groups and index included. A single `exec` returns only the first match.",
+      "tags": ["regex", "strings"],
+      "level": 2,
+      "asked": "Extracting mentions, tags or tokens is common, and knowing why `match` with `g` loses groups saves a lot of confusion."
+    },
+    {
+      "id": "jsf-103",
+      "q": "What does this log?",
+      "code": "const line = 'price: 10, tax: 2';\nconsole.log(line.replace(/\\d+/g, (n) => n * 2));",
+      "lang": "js",
+      "choices": [
+        "'price: 1010, tax: 22'",
+        "'price: 20, tax: 2'",
+        "'price: 20, tax: 4'",
+        "'price: NaN, tax: NaN'"
+      ],
+      "answer": 2,
+      "why": "When the replacement is a function it is called once per match (the `g` flag makes it all matches) with the matched text, and its return value is converted to a string. '10' * 2 converts to a number, so the result is 20, and likewise 4.",
+      "tags": ["regex", "strings"],
+      "level": 1,
+      "asked": "Replacer functions come up in template engines and data masking; it checks you know they exist."
+    },
+    {
+      "id": "jsf-104",
+      "q": "A greeting template does `template.replace('{name}', user.name)`. A user named `$&Co` sees 'Hello {name}Co'. Why, and what is the fix?",
+      "choices": [
+        "`$&` is a replacement pattern for the matched text; pass `() => user.name` instead",
+        "`replace` treats its first argument as a regex; escape the braces with `RegExp.escape`",
+        "`$` starts a template literal inside strings; wrap the name in backticks",
+        "`replace` HTML-decodes the input; encode the name with `encodeURIComponent`"
+      ],
+      "answer": 0,
+      "why": "Replacement strings interpret `$&`, `$1`, `$<name>`, `` $` `` and `$'` even when the search is a plain string. A replacer function's return value is inserted literally, so it is the safe way to insert user-controlled text.",
+      "tags": ["regex", "strings", "security"],
+      "level": 3,
+      "asked": "It is a subtle data-corruption bug in hand-rolled templating, and a strong answer knows replacement patterns apply to string searches too."
+    },
+    {
+      "id": "jsf-105",
+      "q": "A search box builds `new RegExp(query, 'i')`. What happens when a user searches for 'c++' in Node 24, and what is the fix?",
+      "choices": [
+        "It matches 'c' followed by any characters; wrap the query in quotes",
+        "It matches literally because `RegExp` escapes strings; nothing to fix",
+        "It returns no matches; add the `u` flag",
+        "It throws a SyntaxError; build it with `RegExp.escape(query)`"
+      ],
+      "answer": 3,
+      "why": "User input becomes regex syntax, and '++' is an invalid quantifier ('Nothing to repeat'), so the constructor throws. `RegExp.escape` (Node 24, recent browsers) escapes every metacharacter; for a plain substring search, `includes` avoids regex entirely.",
+      "tags": ["regex", "security", "search"],
+      "level": 2,
+      "asked": "Unescaped user input in a regex is both a crash and a ReDoS vector; knowing `RegExp.escape` now exists is current knowledge."
+    },
+    {
+      "id": "jsf-106",
+      "q": "What does the `(?=.*\\d)` part of `/^(?=.*\\d).{8,}$/` do in a password rule?",
+      "choices": [
+        "It requires at least one digit without consuming any characters",
+        "It requires the password to start with a digit",
+        "It forbids digits anywhere after the eighth character",
+        "It captures the first digit into group 1"
+      ],
+      "answer": 0,
+      "why": "`(?=...)` is a lookahead: it asserts that `.*\\d` could match from this position, then rewinds, so `.{8,}` still sees the whole string. Lookaheads let you stack independent rules in one pattern; they do not capture.",
+      "tags": ["regex", "validation"],
+      "level": 2,
+      "asked": "Password-policy regexes are a common interview artefact; explaining 'asserts without consuming' shows you actually read them."
+    },
+    {
+      "id": "jsf-107",
+      "q": "Which validation pattern can hang a Node server on a crafted 40-character input?",
+      "choices": [
+        "`/^[a-z0-9_]{3,20}$/`",
+        "`/^\\d{4}-\\d{2}-\\d{2}$/`",
+        "`/^(\\w+\\s?)+$/`",
+        "`/^[^@\\s]+@[^@\\s]+$/`"
+      ],
+      "answer": 2,
+      "why": "Nested quantifiers such as `(\\w+\\s?)+` can split the same text in exponentially many ways, so a near-match that fails at the end makes the backtracking engine explore all of them (ReDoS). Because the event loop is single-threaded, one request blocks everyone.",
+      "tags": ["regex", "security", "performance"],
+      "level": 3,
+      "asked": "ReDoS is a real Node CVE class; interviewers want 'nested quantifiers plus single-threaded event loop' in the answer."
+    },
+    {
+      "id": "jsf-108",
+      "q": "Why does a name field validated with `/^[a-z]+$/i` reject 'Zoë', and what fixes it?",
+      "choices": [
+        "The `i` flag ignores accents; remove it",
+        "`ë` is outside a–z; use `/^\\p{L}+$/u`",
+        "`+` stops at non-ASCII input; use `*`",
+        "`$` needs the `m` flag to see the end"
+      ],
+      "answer": 1,
+      "why": "`[a-z]` is a code-point range covering ASCII letters only, and case-insensitivity does not add accented letters to it. Unicode property escapes such as `\\p{L}` (any letter) require the `u` or `v` flag.",
+      "tags": ["regex", "unicode", "validation"],
+      "level": 2,
+      "asked": "Rejecting real names is an accessibility and inclusivity bug; knowing `\\p{L}` is the modern fix."
+    },
+    {
+      "id": "jsf-109",
+      "q": "A log parser looks for a block that spans lines. What does this log?",
+      "code": "const log = 'BEGIN\\nstep 1\\nEND';\nconsole.log(/BEGIN.*END/.test(log), /BEGIN.*END/s.test(log));",
+      "lang": "js",
+      "choices": ["true true", "false true", "false false", "true false"],
+      "answer": 1,
+      "why": "By default `.` matches any character except line terminators, so the pattern cannot cross the newlines. The `s` (dotAll) flag makes `.` match newlines too. The `m` flag is different: it changes what `^` and `$` anchor to.",
+      "tags": ["regex"],
+      "level": 2,
+      "asked": "It checks you can tell the `s` and `m` flags apart, which people routinely mix up."
+    },
+    {
+      "id": "jsf-110",
+      "q": "A settings field lists tags separated by commas and inconsistent spaces. What does this log?",
+      "code": "console.log('red, green,blue ,  pink'.split(/\\s*,\\s*/));",
+      "lang": "js",
+      "choices": [
+        "['red', ' green', 'blue ', '  pink']",
+        "['red, green,blue ,  pink']",
+        "['red', 'green', 'blue', 'pink']",
+        "['red', '', 'green', 'blue', 'pink']"
+      ],
+      "answer": 2,
+      "why": "`split` accepts a regex, and `\\s*,\\s*` consumes the comma along with any whitespace around it, so each piece comes out trimmed. Splitting on ',' alone would leave the spaces attached.",
+      "tags": ["regex", "strings", "parsing"],
+      "level": 1,
+      "asked": "Parsing loosely formatted user input is everyday work; a regex separator is the tidy answer."
+    },
+    {
+      "id": "jsf-111",
+      "q": "An API handler serialises a partially filled record. What does this log?",
+      "code": "console.log(JSON.stringify({ name: 'Ada', phone: undefined, fax: null }));",
+      "lang": "js",
+      "choices": [
+        "{\"name\":\"Ada\",\"phone\":undefined,\"fax\":null}",
+        "{\"name\":\"Ada\",\"phone\":null,\"fax\":null}",
+        "{\"name\":\"Ada\",\"fax\":null}",
+        "{\"name\":\"Ada\"}"
+      ],
+      "answer": 2,
+      "why": "JSON has no undefined, so object properties whose value is undefined are omitted entirely, while null is a real JSON value and is kept. A PATCH body built this way cannot distinguish 'leave phone alone' from 'clear phone' unless you send null.",
+      "tags": ["json", "null"],
+      "level": 1,
+      "asked": "It matters for PATCH semantics, where omitted and null mean different things."
+    },
+    {
+      "id": "jsf-112",
+      "q": "What does this log?",
+      "code": "console.log(JSON.stringify([undefined, () => 1, NaN, Infinity]));",
+      "lang": "js",
+      "choices": [
+        "[]",
+        "[null,null,null,null]",
+        "[null,null,NaN,Infinity]",
+        "It throws a TypeError"
+      ],
+      "answer": 1,
+      "why": "Inside arrays, values JSON cannot represent become null so that indexes are preserved; in objects, undefined and functions are dropped instead. NaN and Infinity have no JSON literal and are always written as null, so a failed calculation silently becomes null in the response.",
+      "tags": ["json", "arrays", "numbers"],
+      "level": 2,
+      "asked": "It explains mysterious nulls in API responses, which usually come from NaN in a calculation."
+    },
+    {
+      "id": "jsf-113",
+      "q": "What does this log?",
+      "code": "const order = { placedAt: new Date('2026-01-01T00:00:00Z') };\nconst copy = JSON.parse(JSON.stringify(order));\nconsole.log(typeof copy.placedAt);",
+      "lang": "js",
+      "choices": ["'object'", "'number'", "'undefined'", "'string'"],
+      "answer": 3,
+      "why": "`Date` has a `toJSON` method that returns an ISO string, but `JSON.parse` has no idea the string was a date, so it stays a string. Every date in an API response is a string until you convert it (or use a reviver).",
+      "tags": ["json", "dates"],
+      "level": 1,
+      "asked": "It checks you know dates never survive JSON as dates, which is why client code calls `new Date(...)` on API fields."
+    },
+    {
+      "id": "jsf-114",
+      "q": "A row from a Postgres driver has a `bigint` id returned as a BigInt. What happens when the handler runs `res.json(row)`?",
+      "code": "const row = { id: 42n, name: 'Ada' };\nconsole.log(JSON.stringify(row));",
+      "lang": "js",
+      "choices": [
+        "It logs {\"id\":42,\"name\":\"Ada\"}",
+        "It logs {\"id\":\"42\",\"name\":\"Ada\"}",
+        "It throws a TypeError about BigInt",
+        "It logs {\"name\":\"Ada\"}"
+      ],
+      "answer": 2,
+      "why": "`JSON.stringify` throws 'Do not know how to serialize a BigInt' rather than guessing, because converting to a number could silently lose precision. Convert explicitly, usually to a string, or configure the driver to return strings.",
+      "tags": ["json", "big-ids"],
+      "level": 2,
+      "asked": "Anyone who has returned Postgres `bigint` columns from Node has hit this; the fix discussion is what interviewers want."
+    },
+    {
+      "id": "jsf-115",
+      "q": "What does this log?",
+      "code": "class Money {\n  constructor(pence) { this.pence = pence; }\n  toJSON() { return (this.pence / 100).toFixed(2); }\n}\nconsole.log(JSON.stringify({ total: new Money(1999) }));",
+      "lang": "js",
+      "choices": [
+        "{\"total\":{\"pence\":1999}}",
+        "{\"total\":\"19.99\"}",
+        "{\"total\":19.99}",
+        "{\"total\":{}}"
+      ],
+      "answer": 1,
+      "why": "If a value has a `toJSON` method, `JSON.stringify` serialises whatever it returns instead of the object. Here that is the string '19.99', so it is quoted. This is the same hook `Date` uses to become an ISO string.",
+      "tags": ["json", "classes", "money"],
+      "level": 2,
+      "asked": "It checks you know how to control a value object's wire format without mapping every response by hand."
+    },
+    {
+      "id": "jsf-116",
+      "q": "What does this log?",
+      "code": "const user = { id: 1, name: 'Ada', passwordHash: 'x9f...' };\nconsole.log(JSON.stringify(user, ['id', 'name']));",
+      "lang": "js",
+      "choices": [
+        "{\"id\":1,\"name\":\"Ada\",\"passwordHash\":\"x9f...\"}",
+        "[\"id\",\"name\"]",
+        "{\"id\":1,\"name\":\"Ada\"}",
+        "It throws, because the replacer must be a function"
+      ],
+      "answer": 2,
+      "why": "When the second argument is an array, it is an allow-list of property names to include (applied at every nesting level). It works, but an explicit response DTO is safer than remembering to pass the list every time.",
+      "tags": ["json", "security"],
+      "level": 2,
+      "asked": "Leaking fields like password hashes is a real incident; interviewers like hearing about allow-lists and DTOs."
+    },
+    {
+      "id": "jsf-117",
+      "q": "A misbehaving client sends a body with a repeated key. What does this log?",
+      "code": "const body = JSON.parse('{\"role\":\"user\",\"role\":\"admin\"}');\nconsole.log(body.role);",
+      "lang": "js",
+      "choices": ["'user'", "['user', 'admin']", "'admin'", "It throws a SyntaxError"],
+      "answer": 2,
+      "why": "`JSON.parse` accepts duplicate keys and the last one wins. Other parsers may keep the first or reject the document, so a proxy and your API can disagree about the same payload; validate with a schema and never trust a role from the body.",
+      "tags": ["json", "parsing", "security"],
+      "level": 2,
+      "asked": "Parser differentials are a real security topic, and the question checks you know JSON.parse's rule."
+    },
+    {
+      "id": "jsf-118",
+      "q": "Which call turns the ISO `createdAt` strings in a parsed API response back into `Date` objects?",
+      "choices": [
+        "`JSON.parse(text, (k, v) => k === 'createdAt' ? new Date(v) : v)`",
+        "`JSON.parse(text, ['createdAt'])`, an allow-list of date keys",
+        "`JSON.parse(text, { reviveDates: true, keys: ['createdAt'] })`",
+        "`structuredClone(JSON.parse(text))`, which restores Date types"
+      ],
+      "answer": 0,
+      "why": "The second argument to `JSON.parse` is a reviver called for every key and value, bottom-up, and whatever it returns replaces the value. An array allow-list is a `stringify` feature, there is no options object, and `structuredClone` copies the strings as strings.",
+      "tags": ["json", "dates", "parsing"],
+      "level": 2,
+      "asked": "It checks you know the reviver hook exists; strong candidates add that schema libraries such as Zod usually own this conversion."
+    },
+    {
+      "id": "jsf-119",
+      "q": "A settings endpoint merges the request body into defaults. What does this log?",
+      "code": "const body = JSON.parse('{\"__proto__\": {\"isAdmin\": true}}');\nconst settings = Object.assign({}, body);\nconsole.log(body.isAdmin, settings.isAdmin);",
+      "lang": "js",
+      "choices": ["true true", "undefined undefined", "true undefined", "undefined true"],
+      "answer": 3,
+      "why": "`JSON.parse` creates an ordinary own property named '__proto__', so `body.isAdmin` is undefined. `Object.assign` copies with assignment, which triggers the `__proto__` setter on the target and makes the attacker's object its prototype, so `settings.isAdmin` is inherited as true.",
+      "tags": ["json", "prototypes", "security"],
+      "level": 3,
+      "asked": "Prototype pollution through merge helpers is a recurring Node CVE; explaining why parse is safe but assign is not is the deep answer."
+    },
+    {
+      "id": "jsf-120",
+      "q": "What happens when this runs?",
+      "code": "const node = { name: 'root' };\nnode.parent = node;\nconsole.log(JSON.stringify(node));",
+      "lang": "js",
+      "choices": [
+        "It logs {\"name\":\"root\",\"parent\":null}",
+        "It logs {\"name\":\"root\"}",
+        "It loops until the stack overflows",
+        "It throws a TypeError about a circular structure"
+      ],
+      "answer": 3,
+      "why": "`JSON.stringify` tracks the objects it is visiting and throws 'Converting circular structure to JSON' when it meets one again. JSON is a tree format, so graphs such as ORM entities with back-references need a DTO or a replacer.",
+      "tags": ["json", "objects"],
+      "level": 1,
+      "asked": "It usually comes up when an ORM entity with a back-reference is returned straight from an endpoint."
+    },
+    {
+      "id": "jsf-121",
+      "q": "A hand-edited config file ends with `{\"port\": 3000,}`. What does `JSON.parse` do with it?",
+      "choices": [
+        "Returns { port: 3000 }",
+        "Returns { port: 3000, '': undefined }",
+        "Returns { port: '3000' }",
+        "Throws a SyntaxError"
+      ],
+      "answer": 3,
+      "why": "JSON does not allow trailing commas (or comments, or single quotes), even though JavaScript object literals do. Formats such as JSONC or JSON5 relax this, which is why `tsconfig.json` can have comments but your API payloads cannot.",
+      "tags": ["json", "parsing"],
+      "level": 1,
+      "asked": "It checks you know JSON is stricter than JavaScript literal syntax."
+    },
+    {
+      "id": "jsf-122",
+      "q": "What does this log?",
+      "code": "console.log(typeof JSON.stringify(undefined), typeof JSON.stringify(null));",
+      "lang": "js",
+      "choices": [
+        "'string' 'string'",
+        "'undefined' 'string'",
+        "'undefined' 'object'",
+        "'string' 'object'"
+      ],
+      "answer": 1,
+      "why": "`JSON.stringify(undefined)` returns undefined itself, not a string, because undefined is not representable; `null` serialises to the string 'null'. Code that writes the result to a file or response then writes nothing or the text 'undefined'.",
+      "tags": ["json", "null"],
+      "level": 2,
+      "asked": "It explains empty or 'undefined' response bodies from handlers that stringify a missing value."
+    },
+    {
+      "id": "jsf-123",
+      "q": "What does the third argument in `JSON.stringify(config, null, 2)` do?",
+      "choices": [
+        "Limits nesting to two levels",
+        "Keeps only the first two properties",
+        "Indents the output with two spaces per level",
+        "Rounds numbers to two decimal places"
+      ],
+      "answer": 2,
+      "why": "The third argument is `space`: a number of spaces (up to 10) or a string used to indent each nesting level, for human-readable output. The second argument, the replacer, is null here meaning 'no filtering'.",
+      "tags": ["json", "formatting"],
+      "level": 1,
+      "asked": "A basic check that you can produce readable JSON for logs, fixtures and config files."
+    },
+    {
+      "id": "jsf-124",
+      "q": "In Node 24, how can code recover the exact digits of a 20-digit number while parsing JSON, before it is rounded to a double?",
+      "choices": [
+        "Pass `{ bigint: true }` as the second argument to `JSON.parse`",
+        "Call `BigInt()` on the parsed number afterwards",
+        "Read `context.source`, the third argument passed to a reviver",
+        "Use `Number.parseFloat` on the parsed value"
+      ],
+      "answer": 2,
+      "why": "Node 24 supports the JSON.parse source text access proposal: a reviver receives a third `context` argument whose `source` is the raw text of primitive values, so you can build a BigInt or keep a string. After parsing, the digits are already lost, so `BigInt(value)` just converts the rounded double.",
+      "tags": ["json", "big-ids", "numbers"],
+      "level": 3,
+      "asked": "It is current platform knowledge; the strong answer still says 'better to send big ids as strings' in the first place."
+    },
+    {
+      "id": "jsf-125",
+      "q": "What does this log?",
+      "code": "const cfg = { retries: 3 };\ncfg.retries = 5;\nconsole.log(cfg.retries);",
+      "lang": "js",
+      "choices": ["3", "It throws a TypeError", "undefined", "5"],
+      "answer": 3,
+      "why": "`const` makes the binding permanent: `cfg` must always point at the same object. It says nothing about that object's contents, which stay mutable. Use `Object.freeze` (shallowly) or readonly types if the contents must not change.",
+      "tags": ["const", "references"],
+      "level": 1,
+      "asked": "It checks you can separate 'the variable cannot be reassigned' from 'the value is immutable'."
+    },
+    {
+      "id": "jsf-126",
+      "q": "What happens when this runs?",
+      "code": "const port = 3000;\nport = 4000;\nconsole.log(port);",
+      "lang": "js",
+      "choices": [
+        "It logs 4000",
+        "It logs 3000, and the assignment is ignored",
+        "It throws a TypeError at the assignment",
+        "It throws a SyntaxError before running"
+      ],
+      "answer": 2,
+      "why": "Assigning to a `const` binding throws 'TypeError: Assignment to constant variable' at runtime, when the line executes; it is not a parse-time error and is not silently ignored, even in sloppy mode.",
+      "tags": ["const", "variables"],
+      "level": 1,
+      "asked": "A warm-up on `const` semantics; mentioning that it is a runtime TypeError is the precise answer."
+    },
+    {
+      "id": "jsf-127",
+      "q": "What does this log?",
+      "code": "if (true) {\n  let draft = 1;\n  var saved = 2;\n}\nconsole.log(typeof draft, typeof saved);",
+      "lang": "js",
+      "choices": [
+        "'number' 'number'",
+        "'undefined' 'number'",
+        "'undefined' 'undefined'",
+        "It throws a ReferenceError"
+      ],
+      "answer": 1,
+      "why": "`let` and `const` are block-scoped, so `draft` does not exist outside the braces, and `typeof` on an undeclared name gives 'undefined'. `var` is function-scoped and ignores the block, so `saved` is visible.",
+      "tags": ["scope", "var"],
+      "level": 1,
+      "asked": "It confirms you know why `var` leaks out of blocks and why modern code avoids it."
+    },
+    {
+      "id": "jsf-128",
+      "q": "What happens when this file runs?",
+      "code": "console.log('start');\nlet total = 1;\nlet total = 2;",
+      "lang": "js",
+      "choices": [
+        "Logs 'start', then throws a SyntaxError",
+        "Throws a SyntaxError and logs nothing",
+        "Logs 'start'; the second `let` wins",
+        "Logs 'start', then throws a TypeError"
+      ],
+      "answer": 1,
+      "why": "Redeclaring a `let` in the same scope is an early error, detected when the file is parsed, so no line runs at all. `var` allows redeclaration, which is one of the reasons it hid bugs.",
+      "tags": ["variables", "hoisting"],
+      "level": 2,
+      "asked": "It distinguishes parse-time (early) errors from runtime errors, a distinction that matters when reading stack traces."
+    },
+    {
+      "id": "jsf-129",
+      "q": "In a CommonJS file without \"use strict\", what does this log?",
+      "code": "function applyDiscount() {\n  total = 90;\n}\napplyDiscount();\nconsole.log(globalThis.total);",
+      "lang": "js",
+      "choices": ["90", "undefined", "It throws a ReferenceError", "null"],
+      "answer": 0,
+      "why": "In sloppy mode, assigning to an undeclared identifier creates a property on the global object, so a typo or missing `let` leaks state across the whole process. Strict mode (and every ES module) throws a ReferenceError instead.",
+      "tags": ["scope", "strict-mode", "variables"],
+      "level": 2,
+      "asked": "Accidental globals leaking between requests on a Node server is a real bug; strict mode is the fix they want to hear."
+    },
+    {
+      "id": "jsf-130",
+      "q": "What happens when `render({})` runs?",
+      "code": "const status = 'active';\nfunction render(user) {\n  const status = user.status ?? status;\n  return status;\n}",
+      "lang": "js",
+      "choices": [
+        "It returns 'active'",
+        "It returns undefined",
+        "It throws a ReferenceError",
+        "It throws a SyntaxError on declaration"
+      ],
+      "answer": 2,
+      "why": "The inner `const status` shadows the outer one for the whole function body, including its own initialiser. Reading it there is a read inside the temporal dead zone, so it throws 'Cannot access status before initialization'. Rename one of the variables.",
+      "tags": ["scope", "tdz", "hoisting"],
+      "level": 3,
+      "asked": "It tests that you know scope is decided at parse time for the whole block, not line by line."
+    },
+    {
+      "id": "jsf-131",
+      "q": "What does this log?",
+      "code": "console.log(typeof save, typeof load);\nfunction save() {}\nvar load = function () {};",
+      "lang": "js",
+      "choices": [
+        "'undefined' 'undefined'",
+        "'function' 'function'",
+        "'function' 'undefined'",
+        "It throws a ReferenceError"
+      ],
+      "answer": 2,
+      "why": "Function declarations are hoisted along with their body, so `save` is callable from the top of the scope. With a function expression only the `var` declaration is hoisted, initialised to undefined, and the function is assigned when that line runs.",
+      "tags": ["hoisting", "functions"],
+      "level": 2,
+      "asked": "It checks you can predict hoisting for both forms rather than recite 'declarations are hoisted'."
+    },
+    {
+      "id": "jsf-132",
+      "q": "What happens when this runs?",
+      "code": "const admin = new User('Ada');\nclass User {\n  constructor(name) { this.name = name; }\n}",
+      "lang": "js",
+      "choices": [
+        "It creates the user, because classes are hoisted like functions",
+        "It throws a ReferenceError, because the class is in its TDZ",
+        "It throws a TypeError: User is not a constructor",
+        "It creates an object without the `name` property"
+      ],
+      "answer": 1,
+      "why": "Class declarations are hoisted like `let`: the name is reserved for the whole scope but not initialised until the declaration runs. Using it earlier throws a ReferenceError, unlike a function declaration.",
+      "tags": ["classes", "hoisting", "tdz"],
+      "level": 2,
+      "asked": "A good follow-up to function hoisting; it catches people who assume classes are sugar for function declarations in every respect."
+    },
+    {
+      "id": "jsf-133",
+      "q": "What happens when this runs?",
+      "code": "console.log(typeof token);\nlet token = 'abc';",
+      "lang": "js",
+      "choices": [
+        "It logs 'undefined', like any undeclared name",
+        "It logs 'string', because `let` is hoisted",
+        "It throws a ReferenceError",
+        "It logs 'object', because the value is null"
+      ],
+      "answer": 2,
+      "why": "`typeof` only tolerates names that are not declared at all. `token` is declared by `let` in this scope, so the read happens in its temporal dead zone and throws, even inside `typeof`.",
+      "tags": ["tdz", "typeof", "hoisting"],
+      "level": 3,
+      "asked": "It is the sharpest TDZ question: the candidate has to reconcile it with `typeof` on an undeclared variable returning 'undefined'."
+    },
+    {
+      "id": "jsf-134",
+      "q": "Why does this reducer fail to load at all?",
+      "code": "switch (action.type) {\n  case 'add': let msg = 'Added'; break;\n  case 'remove': let msg = 'Removed'; break;\n}",
+      "lang": "js",
+      "choices": [
+        "`let` is not allowed inside `case` clauses",
+        "`break` cannot follow a declaration on the same line",
+        "The whole `switch` body is one block, so `msg` is declared twice",
+        "`switch` compares with `==`, so the cases overlap"
+      ],
+      "answer": 2,
+      "why": "All cases share the single block of the `switch`, so two `let msg` declarations collide and cause a SyntaxError. Wrap each case body in its own braces: `case 'add': { let msg = ...; break; }`.",
+      "tags": ["scope", "control-flow"],
+      "level": 2,
+      "asked": "Reducers and command handlers use `switch` constantly; the braces-per-case habit is what interviewers look for."
+    },
+    {
+      "id": "jsf-135",
+      "q": "Loaded as an ES module in Node 24, what does this log?",
+      "code": "var appName = 'shop';\nfunction helper() {}\nconsole.log(globalThis.appName, typeof globalThis.helper);",
+      "lang": "js",
+      "choices": [
+        "'shop' 'function'",
+        "undefined 'undefined'",
+        "'shop' 'undefined'",
+        "undefined 'function'"
+      ],
+      "answer": 1,
+      "why": "Each ES module has its own top-level scope, so even `var` and function declarations stay local to the module. In a classic (non-module) browser script, the same code would create `window.appName` and `window.helper`.",
+      "tags": ["scope", "modules", "var"],
+      "level": 3,
+      "asked": "It shows you understand module scope as the thing that ended accidental globals, not just an import syntax."
+    },
+    {
+      "id": "jsf-136",
+      "q": "How many times does 'init' log?",
+      "code": "function once(fn) {\n  let done = false;\n  return () => { if (!done) { done = true; fn(); } };\n}\nconst init = once(() => console.log('init'));\ninit(); init(); init();",
+      "lang": "js",
+      "choices": ["Three times", "Once", "Never", "Twice"],
+      "answer": 1,
+      "why": "The returned arrow closes over `done`, a variable that lives as long as the closure does. The first call flips it to true, so later calls skip `fn`. Each call to `once` creates a separate `done`.",
+      "tags": ["closures"],
+      "level": 1,
+      "asked": "Writing `once` is a standard closure exercise, and explaining where `done` lives is the real answer."
+    },
+    {
+      "id": "jsf-137",
+      "q": "What does this log?",
+      "code": "let discount = 0.1;\nconst applyDiscount = (price) => price * (1 - discount);\ndiscount = 0.5;\nconsole.log(applyDiscount(100));",
+      "lang": "js",
+      "choices": ["90", "50", "NaN", "100"],
+      "answer": 1,
+      "why": "Closures capture variables, not snapshots of their values. When `applyDiscount` runs it reads the current value of `discount`, which is 0.5 by then.",
+      "tags": ["closures", "scope"],
+      "level": 1,
+      "asked": "The 'variables, not values' distinction is the core of every closure bug, so interviewers test it directly."
+    },
+    {
+      "id": "jsf-138",
+      "q": "A long-running Node API wraps `getUserById` in a naive `memoize` that stores every result in a `Map` forever. What is the main risk?",
+      "choices": [
+        "Memoised functions cannot be awaited",
+        "The Map will be garbage-collected between requests",
+        "Unbounded memory growth, and stale users after updates",
+        "Every call will hit the database twice"
+      ],
+      "answer": 2,
+      "why": "The closure keeps the Map alive for the life of the process, so every distinct id adds an entry that is never evicted, and cached users never see later edits. Production caches need a size limit (LRU), a TTL, or invalidation on write.",
+      "tags": ["closures", "memory", "caching"],
+      "level": 2,
+      "asked": "It checks you see memoisation as a cache with the usual size and invalidation problems, not a free speed-up."
+    },
+    {
+      "id": "jsf-139",
+      "q": "Does the returned closure keep `bigRows` in memory for as long as `handler` is registered?",
+      "code": "function track(rows) {\n  const count = rows.length;\n  return () => console.log(count);\n}\nconst handler = track(bigRows);",
+      "lang": "js",
+      "choices": [
+        "Yes; closures copy every variable in their scope",
+        "No; only `count` is referenced, so V8 retains just that",
+        "Yes, until the page reloads, even if `handler` is removed",
+        "Yes; arrow functions retain their caller's arguments object"
+      ],
+      "answer": 1,
+      "why": "V8 keeps only the variables a closure actually references in its context, so `rows` can be collected once `track` returns. The retention problem appears when some closure created in the same scope does reference `rows`: sibling closures share one context, so it lives as long as any of them.",
+      "tags": ["closures", "memory"],
+      "level": 3,
+      "asked": "It separates a myth ('closures capture everything') from the real mechanism, shared context objects, which is what causes actual leaks."
+    },
+    {
+      "id": "jsf-140",
+      "q": "What does this log?",
+      "code": "let count = 0;\nfunction makeLogger() {\n  const snapshot = count;\n  return () => console.log(snapshot, count);\n}\nconst log = makeLogger();\ncount = 5;\nlog();",
+      "lang": "js",
+      "choices": ["0 5", "5 5", "0 0", "5 0"],
+      "answer": 0,
+      "why": "`snapshot` is a local copied from `count` when `makeLogger` ran, so it stays 0. `count` itself is read live when `log` runs, so it is 5. This is exactly the 'stale closure' shape behind stale state in React handlers and timers.",
+      "tags": ["closures", "scope"],
+      "level": 2,
+      "asked": "Stale closures are the root of many React bugs; this checks you can reason about which value a closure will see."
+    },
+    {
+      "id": "jsf-141",
+      "q": "`createAccount()` declares `let balance = 0` and returns `{ deposit, getBalance }`. Can calling code set `balance` directly?",
+      "choices": [
+        "Yes, through `account.balance = 100`",
+        "Yes, through `account.getBalance.balance`",
+        "No; `balance` is only reachable through the returned closures",
+        "No, but only because the returned object is frozen"
+      ],
+      "answer": 2,
+      "why": "`balance` is a local variable of `createAccount`, not a property of the returned object, so assigning `account.balance` just creates an unrelated property. Only the functions created inside the factory can read or change it: closure-based privacy.",
+      "tags": ["closures", "encapsulation"],
+      "level": 1,
+      "asked": "It checks you know closures were JavaScript's privacy mechanism long before `#private` fields."
+    },
+    {
+      "id": "jsf-142",
+      "q": "What does this log?",
+      "code": "const fns = [];\nlet i = 0;\nwhile (i < 3) {\n  fns.push(() => i);\n  i++;\n}\nconsole.log(fns.map((f) => f()));",
+      "lang": "js",
+      "choices": ["[0, 1, 2]", "[3, 3, 3]", "[1, 2, 3]", "[undefined, undefined, undefined]"],
+      "answer": 1,
+      "why": "Only a `for (let ...)` header creates a fresh binding per iteration. Here `i` is declared once outside the loop, so every closure shares the same variable, which is 3 by the time they run.",
+      "tags": ["closures", "loops"],
+      "level": 2,
+      "asked": "It checks you know why `let` fixes the classic loop bug, rather than believing `let` is magic everywhere."
+    },
+    {
+      "id": "jsf-143",
+      "q": "What does this log?",
+      "code": "const counter = (() => {\n  let n = 0;\n  return { inc: () => ++n, get: () => n };\n})();\ncounter.inc();\ncounter.inc();\nconst { get } = counter;\nconsole.log(get());",
+      "lang": "js",
+      "choices": ["2", "0", "undefined", "It throws a TypeError"],
+      "answer": 0,
+      "why": "The methods reach `n` through their closure, not through `this`, so pulling `get` off the object does not break it. That is a practical advantage of closure-based modules over methods that depend on `this`.",
+      "tags": ["closures", "this"],
+      "level": 2,
+      "asked": "It contrasts closure-based state with `this`-based state, which matters when functions are passed around as callbacks."
+    },
+    {
+      "id": "jsf-144",
+      "q": "What does this log?",
+      "code": "const withTax = (rate) => (price) => price * (1 + rate);\nconst ukVat = withTax(0.2);\nconsole.log(ukVat(100), withTax(0.05)(100));",
+      "lang": "js",
+      "choices": ["20 5", "120 105", "0.2 0.05", "120 120"],
+      "answer": 1,
+      "why": "`withTax(0.2)` returns a new function that remembers `rate` in its closure. Calling it with 100 gives 120, and a separate call creates a separate closure with rate 0.05. This is partial application, a common way to configure functions once.",
+      "tags": ["closures", "functions"],
+      "level": 1,
+      "asked": "It checks you can read a function that returns a function, which appears in middleware, validators and selectors."
+    },
+    {
+      "id": "jsf-145",
+      "q": "In a hand-written `debounce(fn, ms)`, why is `let timer` declared in `debounce` rather than inside the returned function?",
+      "choices": [
+        "So it is shared across calls and each call can cancel the previous timeout",
+        "So it is garbage-collected after every call",
+        "Because timers cannot be created inside arrow functions",
+        "So each call gets a fresh timer that never clears the others"
+      ],
+      "answer": 0,
+      "why": "Debounce works by clearing the previous pending timeout and starting a new one. That needs one `timer` variable that outlives each call, which is exactly what the closure over `debounce`'s scope provides; a local inside the returned function would be new every time.",
+      "tags": ["closures", "timers"],
+      "level": 2,
+      "asked": "Writing debounce is an interview staple; explaining where the timer lives shows you understand why it works."
+    },
+    {
+      "id": "jsf-146",
+      "q": "What does this log?",
+      "code": "function addItem(item, list = []) {\n  list.push(item);\n  return list;\n}\nconsole.log(addItem('a'), addItem('b'));",
+      "lang": "js",
+      "choices": [
+        "['a'] ['a', 'b']",
+        "['a', 'b'] ['a', 'b']",
+        "['a'] ['b']",
+        "It throws a TypeError"
+      ],
+      "answer": 2,
+      "why": "JavaScript evaluates default parameter expressions on every call where the argument is undefined, so each call gets a new array. Python evaluates defaults once, which is where the shared-list expectation comes from.",
+      "tags": ["functions", "defaults"],
+      "level": 2,
+      "asked": "Developers coming from Python often expect the shared-default bug; knowing JavaScript differs shows precise knowledge."
+    },
+    {
+      "id": "jsf-147",
+      "q": "What does this log?",
+      "code": "let region = 'eu';\nfunction pick(r = region) {\n  let region = 'us';\n  return r;\n}\nconsole.log(pick());",
+      "lang": "js",
+      "choices": ["'us'", "undefined", "'eu'", "It throws a ReferenceError"],
+      "answer": 2,
+      "why": "Parameters and their defaults are evaluated in their own scope, created before the function body runs, so `region` in the default refers to the outer 'eu'. The body's `let region` is a separate binding that the default cannot see.",
+      "tags": ["functions", "scope", "defaults"],
+      "level": 3,
+      "asked": "It is a deep scope question; the strong answer mentions that parameter lists get their own scope."
+    },
+    {
+      "id": "jsf-148",
+      "q": "A logging helper must accept any number of arguments as a real array. Which signature does that in modern code?",
+      "choices": [
+        "`function log(...parts) {}`",
+        "`function log(parts[]) {}`",
+        "`const log = () => arguments;`",
+        "`function log(parts = []) {}`"
+      ],
+      "answer": 0,
+      "why": "Rest parameters collect the remaining arguments into a genuine array with `map`, `filter` and friends. The old `arguments` object is array-like rather than an array, and arrow functions do not have their own `arguments` at all.",
+      "tags": ["functions", "parameters"],
+      "level": 1,
+      "asked": "It checks you know rest parameters replaced `arguments`, and why arrows cannot use the old approach."
+    },
+    {
+      "id": "jsf-149",
+      "q": "What does this log?",
+      "code": "const toRow = (id) => { id: id };\nconsole.log(toRow(7));",
+      "lang": "js",
+      "choices": ["{ id: 7 }", "7", "It throws a SyntaxError", "undefined"],
+      "answer": 3,
+      "why": "After `=>`, a `{` starts a function body, so `id:` is parsed as a statement label and `id` as an expression statement; nothing is returned. To return an object literal from a concise arrow, wrap it in parentheses: `(id) => ({ id })`.",
+      "tags": ["functions", "arrow-functions"],
+      "level": 2,
+      "asked": "Mapping rows into objects with arrows is everyday code, and this parse surprise produces arrays of undefined."
+    },
+    {
+      "id": "jsf-150",
+      "q": "Which of these functions is pure?",
+      "choices": [
+        "`const total = (items) => items.reduce((s, i) => s + i.price, 0);`",
+        "`const stamp = (order) => { order.at = Date.now(); return order; };`",
+        "`const next = () => ++counter;`",
+        "`const load = (id) => db.users.find(id);`"
+      ],
+      "answer": 0,
+      "why": "A pure function's result depends only on its arguments and it changes nothing outside itself. `stamp` mutates its input and reads the clock, `next` changes outer state, and `load` depends on a database; only `total` is pure.",
+      "tags": ["functions", "purity"],
+      "level": 1,
+      "asked": "Pure functions are easy to test and cache; interviewers want you to name both parts of the definition."
+    },
+    {
+      "id": "jsf-151",
+      "q": "A file has no semicolons. What happens when it runs?",
+      "code": "const total = 10\n(function () {\n  console.log('init')\n})()",
+      "lang": "js",
+      "choices": [
+        "Logs 'init'",
+        "Throws a SyntaxError at parse time",
+        "Logs nothing; the function is never called",
+        "Throws a TypeError: 10 is not a function"
+      ],
+      "answer": 3,
+      "why": "Automatic semicolon insertion only adds a semicolon when the next line cannot continue the statement. A line starting with `(` can continue it, so the code parses as `10(function...)` and throws when calling the number. Leading-parenthesis lines need a semicolon in no-semicolon styles.",
+      "tags": ["asi", "functions"],
+      "level": 3,
+      "asked": "Teams using no-semicolon styles hit this; knowing the rule, not just 'always use semicolons', is the stronger answer."
+    },
+    {
+      "id": "jsf-152",
+      "q": "What does this log?",
+      "code": "function getConfig() {\n  return\n  { debug: true };\n}\nconsole.log(getConfig());",
+      "lang": "js",
+      "choices": ["{ debug: true }", "undefined", "It throws a SyntaxError", "true"],
+      "answer": 1,
+      "why": "`return` is a restricted production: a line break straight after it inserts a semicolon, so the function returns undefined and the object literal below is unreachable code (parsed as a block with a label). Keep the returned expression on the same line as `return`.",
+      "tags": ["asi", "functions"],
+      "level": 2,
+      "asked": "It is the classic ASI trap, and explains why formatters put the opening brace on the `return` line."
+    },
+    {
+      "id": "jsf-153",
+      "q": "A recursive `flattenComments` works in tests but crashes in production on a thread nested 50,000 levels deep. What is the error, and the usual fix?",
+      "choices": [
+        "A heap out-of-memory crash; raise --max-old-space-size",
+        "RangeError: Maximum call stack size exceeded; rewrite it with an explicit stack",
+        "A TypeError on the deepest comment; add optional chaining",
+        "An infinite loop; track visited comments in a Set"
+      ],
+      "answer": 1,
+      "why": "Each recursive call uses a stack frame, and V8's stack holds on the order of ten thousand frames, so very deep input overflows it. Converting to a loop with your own array as a stack moves the depth onto the heap. JavaScript engines do not perform tail-call optimisation in practice.",
+      "tags": ["functions", "recursion"],
+      "level": 2,
+      "asked": "Tree-shaped data (comments, categories, org charts) is common in CRUD apps; this checks you know recursion has a real limit."
+    },
+    {
+      "id": "jsf-154",
+      "q": "What does the first line of output look like?",
+      "code": "[10, 20].forEach(console.log);",
+      "lang": "js",
+      "choices": ["10 undefined undefined", "10 0 [ 10, 20 ]", "10 0", "0 10 [ 10, 20 ]"],
+      "answer": 1,
+      "why": "`forEach` calls its callback with (element, index, array), and `console.log` prints every argument it receives. Passing a function reference hands it all three arguments, which is harmless here but breaks functions with optional parameters such as `parseInt`.",
+      "tags": ["functions", "arrays"],
+      "level": 2,
+      "asked": "It checks you know array callbacks receive three arguments, the root of several 'point-free' bugs."
+    },
+    {
+      "id": "jsf-155",
+      "q": "In Node 24 (CommonJS), what does this log?",
+      "code": "const timer = {\n  seconds: 0,\n  start() {\n    setTimeout(function () { console.log(++this.seconds); }, 0);\n  },\n};\ntimer.start();",
+      "lang": "js",
+      "choices": ["It logs NaN", "It logs 1", "It logs 0", "It throws a TypeError"],
+      "answer": 0,
+      "why": "The callback is a regular function called by the timer machinery, not by `timer`, so its `this` is not `timer` (in Node it is the Timeout object; in browsers it is `window`). `++undefined` is NaN. An arrow function would inherit `this` from `start` and log 1.",
+      "tags": ["this", "callbacks"],
+      "level": 2,
+      "asked": "Lost `this` in callbacks is the most common `this` bug; the arrow-function fix is what interviewers expect."
+    },
+    {
+      "id": "jsf-156",
+      "q": "What is the difference between `fn.call(ctx, a, b)` and `fn.apply(ctx, [a, b])`?",
+      "choices": [
+        "`call` runs now; `apply` returns a bound function",
+        "Only the argument format: a list versus an array",
+        "`apply` ignores `ctx` inside arrow functions; `call` does not",
+        "`call` copies the arguments; `apply` passes them by reference"
+      ],
+      "answer": 1,
+      "why": "Both invoke the function immediately with `this` set to `ctx`; `call` takes the arguments individually and `apply` takes them as one array. `bind` is the one that returns a new function. For arrow functions, neither can change `this`.",
+      "tags": ["this", "functions"],
+      "level": 1,
+      "asked": "A standard warm-up; a good answer also places `bind` alongside and mentions spread made `apply` less necessary."
+    },
+    {
+      "id": "jsf-157",
+      "q": "What does this log?",
+      "code": "function who() { return this.name; }\nconst bound = who.bind({ name: 'A' }).bind({ name: 'B' });\nconsole.log(bound());",
+      "lang": "js",
+      "choices": ["'A'", "'B'", "undefined", "It throws a TypeError"],
+      "answer": 0,
+      "why": "A bound function's `this` is fixed permanently. Binding it again creates a wrapper whose `this` is 'B', but that wrapper calls the first bound function, which ignores the `this` it receives and uses 'A'.",
+      "tags": ["this", "binding"],
+      "level": 3,
+      "asked": "It tests whether you understand bound functions as wrappers, which also explains why `new` is the only thing that overrides `bind`."
+    },
+    {
+      "id": "jsf-158",
+      "q": "In an ES module, what happens here?",
+      "code": "const cart = {\n  items: 2,\n  count: () => this.items,\n};\nconsole.log(cart.count());",
+      "lang": "js",
+      "choices": ["It logs 2", "It logs undefined", "It throws a TypeError", "It logs NaN instead"],
+      "answer": 2,
+      "why": "Arrow functions take `this` from the surrounding scope, and an object literal does not create one, so `this` is the module's top-level `this`, which is undefined in ES modules; reading `.items` throws. Use method shorthand, `count() { return this.items; }`.",
+      "tags": ["this", "arrow-functions"],
+      "level": 2,
+      "asked": "It checks you know arrows are the wrong tool for object methods, the mirror image of the callback bug."
+    },
+    {
+      "id": "jsf-159",
+      "q": "An Express route is registered as `router.get('/users', controller.list)`. What happens on the first request?",
+      "code": "class UserController {\n  constructor(service) { this.service = service; }\n  list(req, res) { res.json(this.service.all()); }\n}",
+      "lang": "js",
+      "choices": [
+        "It works, because class methods are auto-bound",
+        "It returns an empty JSON array",
+        "Express binds `this` to the router, so `this.service` is undefined",
+        "It throws a TypeError, because `this` is undefined inside `list`"
+      ],
+      "answer": 3,
+      "why": "Passing `controller.list` passes a bare function, so Express calls it without a receiver. Class bodies are strict mode, so `this` is undefined and reading `.service` throws. Register `controller.list.bind(controller)`, an arrow wrapper, or define `list` as an arrow class field.",
+      "tags": ["this", "classes", "callbacks"],
+      "level": 2,
+      "asked": "This is the backend version of the lost-`this` bug, and it shows up in real controller code."
+    },
+    {
+      "id": "jsf-160",
+      "q": "In a sloppy-mode CommonJS script, someone forgets `new`. What does this log?",
+      "code": "function User(name) { this.name = name; }\nconst u = User('Ada');\nconsole.log(u, globalThis.name);",
+      "lang": "js",
+      "choices": [
+        "User { name: 'Ada' } undefined",
+        "undefined 'Ada'",
+        "undefined undefined",
+        "It throws a TypeError"
+      ],
+      "answer": 1,
+      "why": "Called without `new`, a sloppy-mode function gets the global object as `this`, so it writes a global `name` and returns undefined. In strict mode `this` is undefined and the assignment throws, and class constructors refuse to run without `new` at all.",
+      "tags": ["this", "strict-mode"],
+      "level": 3,
+      "asked": "It explains why classes and strict mode exist: they turn a silent global write into an error."
+    },
+    {
+      "id": "jsf-161",
+      "q": "In a sloppy-mode CommonJS script, what does this log?",
+      "code": "const report = {\n  title: 'Q1',\n  rows: [1, 2],\n  print() {\n    return this.rows.map(function (r) { return `${this.title}:${r}`; });\n  },\n};\nconsole.log(report.print());",
+      "lang": "js",
+      "choices": [
+        "['Q1:1', 'Q1:2']",
+        "It throws a TypeError",
+        "['undefined:1', 'undefined:2']",
+        "['[object Object]:1', ...]"
+      ],
+      "answer": 2,
+      "why": "`print` is called as a method, so its own `this` is `report`, but the inner regular function gets a fresh `this` from how `map` calls it: undefined, which sloppy mode turns into the global object, which has no `title`. An arrow callback would inherit `print`'s `this`.",
+      "tags": ["this", "callbacks"],
+      "level": 2,
+      "asked": "It checks you know every regular function has its own `this`, even when nested inside a method."
+    },
+    {
+      "id": "jsf-162",
+      "q": "Which name refers to the global object in browsers, Web Workers and Node alike?",
+      "choices": ["`window`", "`self`", "`global`", "`globalThis`"],
+      "answer": 3,
+      "why": "`globalThis` was standardised (ES2020) precisely because each environment had its own name: `window` in pages, `self` in workers and `global` in Node. Code shared between server and client should use `globalThis`.",
+      "tags": ["this", "runtime"],
+      "level": 1,
+      "asked": "Useful for isomorphic code and tests; it is a quick check of how current your knowledge is."
+    },
+    {
+      "id": "jsf-163",
+      "q": "What does `Math.max.apply(null, [3, 7, 2])` return?",
+      "choices": ["7", "[7]", "NaN", "3"],
+      "answer": 0,
+      "why": "`apply` spreads the array into individual arguments, so this is `Math.max(3, 7, 2)`. `Math.max` does not use `this`, so passing null is fine. Today `Math.max(...values)` says the same thing more clearly.",
+      "tags": ["functions", "this"],
+      "level": 1,
+      "asked": "You will see `apply` in older code; the question checks you can read it and know the spread equivalent."
+    },
+    {
+      "id": "jsf-164",
+      "q": "What does this log?",
+      "code": "const log = console.log.bind(console, '[api]');\nlog('ready');",
+      "lang": "js",
+      "choices": ["ready [api]", "[api]", "[api] ready", "undefined ready"],
+      "answer": 2,
+      "why": "`bind` fixes `this` and also pre-fills leading arguments (partial application), so every call to `log` passes '[api]' first. That makes it a quick way to build a prefixed logger.",
+      "tags": ["functions", "binding"],
+      "level": 1,
+      "asked": "It checks you know `bind` does partial application, not only `this` fixing."
+    },
+    {
+      "id": "jsf-165",
+      "q": "What does this log?",
+      "code": "const base = { greet() { return 'hi ' + this.name; } };\nconst user = Object.create(base);\nuser.name = 'Ada';\nconsole.log(user.greet(), Object.keys(user));",
+      "lang": "js",
+      "choices": [
+        "'hi Ada' ['name']",
+        "'hi undefined' ['name']",
+        "'hi Ada' ['greet', 'name']",
+        "It throws a TypeError"
+      ],
+      "answer": 0,
+      "why": "`Object.create(base)` makes `base` the prototype, so `greet` is found by walking up the chain, and `this` is still `user` because of how it was called. `Object.keys` lists only own enumerable properties, so the inherited method is not included.",
+      "tags": ["prototypes", "this"],
+      "level": 1,
+      "asked": "The basic prototype-chain lookup question; a good answer separates 'where the method lives' from 'what `this` is'."
+    },
+    {
+      "id": "jsf-166",
+      "q": "What does this log?",
+      "code": "const defaults = { theme: 'light' };\nconst prefs = Object.create(defaults);\nprefs.theme = 'dark';\nconsole.log(defaults.theme, prefs.theme);",
+      "lang": "js",
+      "choices": ["'dark' 'dark'", "'light' 'light'", "'dark' 'light'", "'light' 'dark'"],
+      "answer": 3,
+      "why": "Reading walks up the prototype chain, but assigning creates or updates an own property on the object itself. `prefs.theme = 'dark'` shadows the inherited value and leaves `defaults` untouched.",
+      "tags": ["prototypes", "objects"],
+      "level": 2,
+      "asked": "It checks you know reads and writes treat the prototype chain differently."
+    },
+    {
+      "id": "jsf-167",
+      "q": "What does this log?",
+      "code": "function Cart() {}\nCart.prototype.items = [];\nconst a = new Cart();\nconst b = new Cart();\na.items.push('apple');\nconsole.log(b.items);",
+      "lang": "js",
+      "choices": ["[]", "undefined", "['apple']", "It throws a TypeError"],
+      "answer": 2,
+      "why": "`a.items.push` reads `items` (found on the prototype) and mutates that single shared array; it never assigns to `a.items`. Every instance sees the change. Per-instance state belongs in the constructor or class fields, not on the prototype.",
+      "tags": ["prototypes", "references"],
+      "level": 2,
+      "asked": "Shared mutable state on a prototype is a real bug in older codebases; it tests reads-vs-writes on the chain."
+    },
+    {
+      "id": "jsf-168",
+      "q": "What does this log?",
+      "code": "const base = { role: 'user' };\nconst u = Object.create(base);\nu.name = 'Ada';\nconst keys = [];\nfor (const k in u) keys.push(k);\nconsole.log(keys, Object.keys(u));",
+      "lang": "js",
+      "choices": [
+        "['name'] ['name']",
+        "['name', 'role'] ['name', 'role']",
+        "['name', 'role'] ['name']",
+        "['role', 'name'] ['name']"
+      ],
+      "answer": 2,
+      "why": "`for...in` walks enumerable properties up the prototype chain (own first), while `Object.keys` returns only own enumerable keys. That difference is why `for...in` loops over objects built with `Object.create` or polluted prototypes pick up unexpected keys.",
+      "tags": ["prototypes", "loops", "objects"],
+      "level": 2,
+      "asked": "It checks you know why linters push `Object.keys`/`Object.entries` over `for...in`."
+    },
+    {
+      "id": "jsf-169",
+      "q": "A lookup table of user-supplied words is created with `Object.create(null)`. What does this log?",
+      "code": "const dict = Object.create(null);\nconsole.log('toString' in dict, typeof dict.hasOwnProperty);",
+      "lang": "js",
+      "choices": ["false 'undefined'", "true 'function'", "false 'function'", "true 'undefined'"],
+      "answer": 0,
+      "why": "An object with a null prototype inherits nothing, so keys such as 'toString', 'constructor' or '__proto__' behave like ordinary data. The trade-off is that methods like `hasOwnProperty` are missing, so use `Object.hasOwn(dict, key)`.",
+      "tags": ["prototypes", "objects", "security"],
+      "level": 2,
+      "asked": "Null-prototype dictionaries are a standard defence when keys come from users, and interviewers like the `Object.hasOwn` follow-up."
+    },
+    {
+      "id": "jsf-170",
+      "q": "What does this log?",
+      "code": "class Row {\n  select() {}\n  onClick = () => {};\n}\nconst x = new Row();\nconst y = new Row();\nconsole.log(x.select === y.select, x.onClick === y.onClick);",
+      "lang": "js",
+      "choices": ["true true", "false false", "false true", "true false"],
+      "answer": 3,
+      "why": "Methods are defined once on `Row.prototype` and shared, whereas a class field is evaluated per instance, so every row gets its own arrow function. That is the trade-off: arrow fields keep `this` bound but cost one function per instance.",
+      "tags": ["classes", "prototypes"],
+      "level": 3,
+      "asked": "It checks you know where class members actually live, which matters for memory and for `bind`-free handlers."
+    },
+    {
+      "id": "jsf-171",
+      "q": "What happens when this runs?",
+      "code": "class User {}\nconst u = User();",
+      "lang": "js",
+      "choices": [
+        "`u` is undefined",
+        "`u` is a new User",
+        "It throws a ReferenceError",
+        "It throws a TypeError"
+      ],
+      "answer": 3,
+      "why": "Class constructors cannot be called without `new`; doing so throws 'Class constructor User cannot be invoked without new'. That check is one of the real differences between `class` and an old constructor function, which would silently run with the wrong `this`.",
+      "tags": ["classes"],
+      "level": 1,
+      "asked": "It checks that you know classes are more than syntax sugar in a few safety-relevant ways."
+    },
+    {
+      "id": "jsf-172",
+      "q": "A subclass constructor assigns a field before calling `super`. What does `new Admin('Ada')` do?",
+      "code": "class User { constructor(name) { this.name = name; } }\nclass Admin extends User {\n  constructor(name) {\n    this.role = 'admin';\n    super(name);\n  }\n}",
+      "lang": "js",
+      "choices": [
+        "It creates an Admin with both properties",
+        "It throws a ReferenceError before `this.role` is set",
+        "It creates an Admin without `role`",
+        "It throws a SyntaxError when the class is defined"
+      ],
+      "answer": 1,
+      "why": "In a derived class, `this` does not exist until `super()` has run, because the parent constructor creates the object. Touching `this` first throws 'Must call super constructor in derived class before accessing this'. It is a runtime error, not a parse error.",
+      "tags": ["classes", "inheritance"],
+      "level": 2,
+      "asked": "It checks you understand who allocates the object in a class hierarchy."
+    },
+    {
+      "id": "jsf-173",
+      "q": "What does `new Child().describe()` return?",
+      "code": "class Base { describe() { return 'base'; } }\nclass Child extends Base {\n  describe() { return super.describe() + '+child'; }\n}",
+      "lang": "js",
+      "choices": ["'base+child'", "'+child'", "'base'", "It recurses until the stack overflows"],
+      "answer": 0,
+      "why": "`super.describe()` calls the parent class's version of the method with the same `this`, so the override can extend the behaviour rather than replace it.",
+      "tags": ["classes", "inheritance"],
+      "level": 1,
+      "asked": "A basic check that you can extend a method instead of copy-pasting it."
+    },
+    {
+      "id": "jsf-174",
+      "q": "What does this log?",
+      "code": "class Order {\n  static count = 0;\n  constructor() { Order.count++; }\n}\nconst o = new Order();\nconsole.log(Order.count, o.count);",
+      "lang": "js",
+      "choices": ["1 1", "1 undefined", "0 undefined", "undefined 1"],
+      "answer": 1,
+      "why": "Static members live on the class (the constructor function) itself, not on instances or the prototype, so `o.count` is undefined. Instances reach statics through `Order.count` or `this.constructor.count`.",
+      "tags": ["classes", "static"],
+      "level": 1,
+      "asked": "It checks you know where static members live, which matters when reading factory and registry code."
+    },
+    {
+      "id": "jsf-175",
+      "q": "What does this log?",
+      "code": "class Token {\n  #value;\n  static isToken(x) { return #value in x; }\n}\nconsole.log(Token.isToken(new Token()), Token.isToken({ value: 1 }));",
+      "lang": "js",
+      "choices": ["true false", "true true", "false false", "It throws a SyntaxError"],
+      "answer": 0,
+      "why": "`#value in x` is an ergonomic brand check (ES2022): it is true only for objects that were constructed by this class and therefore carry the private slot. A public `value` property does not count, and unlike `instanceof` it cannot be fooled by prototype tricks.",
+      "tags": ["classes", "encapsulation"],
+      "level": 3,
+      "asked": "It is recent syntax; knowing it shows you understand private fields as per-object slots rather than hidden properties."
+    },
+    {
+      "id": "jsf-176",
+      "q": "What happens when the last line runs?",
+      "code": "class Money {\n  #pence;\n  constructor(p) { this.#pence = p; }\n  equals(other) { return this.#pence === other.#pence; }\n}\nconsole.log(new Money(5).equals({ pence: 5 }));",
+      "lang": "js",
+      "choices": [
+        "It logs true, since both hold 5",
+        "It logs false",
+        "It throws a TypeError",
+        "It logs undefined"
+      ],
+      "answer": 2,
+      "why": "Private fields are class-scoped, so `equals` may read `#pence` on any Money, but reading a private field from an object that does not have that slot throws a TypeError rather than returning undefined. Guard with `#pence in other` first.",
+      "tags": ["classes", "encapsulation"],
+      "level": 3,
+      "asked": "It checks you know private fields throw on foreign objects, which matters for equality and comparison methods."
+    },
+    {
+      "id": "jsf-177",
+      "q": "What does this log?",
+      "code": "class Temp {\n  #c = 0;\n  get f() { return this.#c * 9 / 5 + 32; }\n  set f(v) { this.#c = (v - 32) * 5 / 9; }\n}\nconst t = new Temp();\nt.f = 212;\nconsole.log(t.f, Object.keys(t));",
+      "lang": "js",
+      "choices": ["212 ['f']", "212 []", "32 []", "212 ['#c', 'f']"],
+      "answer": 1,
+      "why": "Assigning to `t.f` calls the setter, which stores 100 in the private field, and reading `t.f` calls the getter, giving 212. Accessors live on the prototype and private fields are not properties, so the instance has no own enumerable keys.",
+      "tags": ["classes", "getters"],
+      "level": 2,
+      "asked": "It checks you know accessors are prototype members, which is also why they vanish from `Object.keys` and spread."
+    },
+    {
+      "id": "jsf-178",
+      "q": "What does this log?",
+      "code": "function save() {\n  try { console.log('try'); return 'saved'; }\n  finally { console.log('finally'); }\n}\nconsole.log(save());",
+      "lang": "js",
+      "choices": [
+        "try, saved, finally",
+        "try, saved",
+        "try, finally, saved",
+        "finally, try, saved"
+      ],
+      "answer": 2,
+      "why": "`finally` runs after the `return` expression is evaluated but before the function actually hands the value back, so the caller logs `saved` last. It is not skipped by `return`, which is why it is the right place to release a connection or lock.",
+      "tags": ["errors", "control-flow"],
+      "level": 1,
+      "asked": "Interviewers use it to check you trust `finally` for cleanup such as closing a DB connection even on early return."
+    },
+    {
+      "id": "jsf-179",
+      "q": "What does this log?",
+      "code": "function status() {\n  try { throw new Error('db down'); }\n  catch { return 'failed'; }\n  finally { return 'ok'; }\n}\nconsole.log(status());",
+      "lang": "js",
+      "choices": ["failed", "ok", "undefined", "It throws Error: db down"],
+      "answer": 1,
+      "why": "A `return` inside `finally` replaces whatever the `try` or `catch` was about to return (or throw). The `failed` value is discarded, which is why linters flag `no-unsafe-finally`: it can silently hide failures.",
+      "tags": ["errors", "control-flow"],
+      "level": 2,
+      "asked": "A strong answer names the lint rule and explains that a return in `finally` can swallow a thrown error entirely."
+    },
+    {
+      "id": "jsf-180",
+      "q": "Why do code reviewers ask for `throw new Error('Invalid email')` instead of `throw 'Invalid email'`?",
+      "choices": [
+        "A thrown string is a SyntaxError in strict mode and ES modules",
+        "Strings are wrapped in an Error automatically, losing the text",
+        "A `catch` block only receives values that inherit from Error",
+        "An Error carries a stack trace, a name and a message for logs"
+      ],
+      "answer": 3,
+      "why": "Any value can be thrown and caught, but only Error objects capture a `stack` and have a predictable `name`/`message`, so loggers and `instanceof` checks work. Throwing a string is legal everywhere; you just lose where it came from.",
+      "tags": ["errors"],
+      "level": 1,
+      "asked": "It checks whether you have debugged a production log that said only \"Invalid email\" with no idea which line threw it."
+    },
+    {
+      "id": "jsf-181",
+      "q": "What does this log?",
+      "code": "class NotFoundError extends Error {}\nconst e = new NotFoundError('User 7 not found');\nconsole.log(e.name, e instanceof Error);",
+      "lang": "js",
+      "choices": ["Error true", "NotFoundError false", "Error false", "NotFoundError true"],
+      "answer": 0,
+      "why": "`name` is inherited from `Error.prototype`, where it is the string `Error`; subclassing does not change it. The instance still inherits from Error, so `instanceof Error` is true. Set `this.name` in the constructor (or as a class field) to get `NotFoundError` in logs.",
+      "tags": ["errors", "classes", "inheritance"],
+      "level": 2,
+      "asked": "Interviewers want to hear that custom errors need an explicit `name`, or every log line and error tracker groups them as plain `Error`."
+    },
+    {
+      "id": "jsf-182",
+      "q": "A `ValidationError extends Error` class should report its own type in logs and keep a field list. Which constructor is correct?",
+      "choices": [
+        "`constructor(msg, fields) { this.fields = fields; super(msg); }`",
+        "`constructor(msg, fields) { super(msg); this.name = 'ValidationError'; this.fields = fields; }`",
+        "`constructor(msg, fields) { super('ValidationError', msg); this.fields = fields; }`",
+        "`constructor(msg, fields) { Error.call(this, msg); this.fields = fields; }`"
+      ],
+      "answer": 1,
+      "why": "A derived constructor must call `super` before touching `this`, and `Error` takes the message (plus an options bag) as its arguments, not a name. `Error.call(this)` does nothing useful for a class instance and never initialises it.",
+      "tags": ["errors", "classes"],
+      "level": 2,
+      "asked": "A strong answer also mentions passing `{ cause }` through `super(msg, { cause })` so the original error is kept."
+    },
+    {
+      "id": "jsf-183",
+      "q": "What does this log?",
+      "code": "try {\n  const user = null;\n  user.email;\n} catch (err) {\n  console.log(err instanceof TypeError, err.constructor.name);\n}",
+      "lang": "js",
+      "choices": ["true TypeError", "false ReferenceError", "true ReferenceError", "false Error"],
+      "answer": 0,
+      "why": "Reading a property of `null` or `undefined` throws a TypeError; the variable exists, its value just has no properties. ReferenceError is for names that are not declared at all.",
+      "tags": ["errors", "null"],
+      "level": 1,
+      "asked": "This is the most common production crash in JavaScript, and naming the error type correctly shows you have read real stack traces."
+    },
+    {
+      "id": "jsf-184",
+      "q": "A typo sneaks into a function. What does this log?",
+      "code": "let total = 0;\ntry { totl += 1; } catch (e) { console.log(e.name); }",
+      "lang": "js",
+      "choices": ["TypeError", "RangeError", "SyntaxError", "ReferenceError"],
+      "answer": 3,
+      "why": "`totl` is not declared anywhere, so reading it for `+=` throws a ReferenceError at runtime. It is not a SyntaxError because the code parses fine, and not a TypeError because there is no value to misuse.",
+      "tags": ["errors", "scope"],
+      "level": 1,
+      "asked": "Interviewers use it to see whether you can tell the error classes apart when triaging an alert."
+    },
+    {
+      "id": "jsf-185",
+      "q": "An Express handler wraps its body in `try { ... } catch (e) { console.log(e); res.json({ ok: true }); }`. What is the real problem?",
+      "choices": [
+        "`console.log` cannot print Error objects, so the log line is empty",
+        "Express catches the error first, so the `catch` block never runs",
+        "The failure is swallowed: the client sees success and nothing alerts",
+        "The response is sent twice, so Express throws ERR_HTTP_HEADERS_SENT"
+      ],
+      "answer": 2,
+      "why": "Catching an error and replying as if it succeeded hides the failure from the caller and from monitoring. Either handle it meaningfully (e.g. a 4xx/5xx problem response) or rethrow/`next(err)`. `console.log` prints errors fine, and only one response is sent here.",
+      "tags": ["errors", "validation"],
+      "level": 2,
+      "asked": "A strong answer describes an error strategy: expected errors map to 4xx, unexpected ones propagate to a central handler that logs and returns 500."
+    },
+    {
+      "id": "jsf-186",
+      "q": "What does this log?",
+      "code": "try {\n  try { throw new Error('upload rejected'); }\n  finally { throw new Error('temp file missing'); }\n} catch (e) {\n  console.log(e.message);\n}",
+      "lang": "js",
+      "choices": [
+        "upload rejected",
+        "temp file missing",
+        "upload rejected, temp file missing",
+        "AggregateError: 2 errors"
+      ],
+      "answer": 1,
+      "why": "An exception thrown in `finally` replaces the one that was propagating, so the original `upload rejected` is lost. JavaScript never merges them into an AggregateError; if both matter, catch the cleanup error and attach the original as `cause`.",
+      "tags": ["errors", "control-flow"],
+      "level": 3,
+      "asked": "It separates people who have lost the real root cause to a failing cleanup step from those who have only read about `finally`."
+    },
+    {
+      "id": "jsf-187",
+      "q": "A payment SDK throws plain objects. What does this log?",
+      "code": "try { throw { code: 'E_LIMIT' }; }\ncatch (e) { console.log(e.message, e.code); }",
+      "lang": "js",
+      "choices": [
+        "undefined E_LIMIT",
+        "E_LIMIT E_LIMIT",
+        "[object Object] E_LIMIT",
+        "It throws a TypeError"
+      ],
+      "answer": 0,
+      "why": "Anything can be thrown, and `catch` receives it unchanged. A plain object has no `message` property, so it logs `undefined`. That is why a global handler should not assume `err.message` or `err.stack` exist.",
+      "tags": ["errors", "objects"],
+      "level": 1,
+      "asked": "A strong answer mentions normalising unknown thrown values (`err instanceof Error ? err : new Error(String(err))`) at boundaries."
+    },
+    {
+      "id": "jsf-188",
+      "q": "What does this log?",
+      "code": "const e = new AggregateError(\n  [new Error('email required'), new Error('age must be positive')],\n  'Validation failed',\n);\nconsole.log(e.errors.length, e.message);",
+      "lang": "js",
+      "choices": [
+        "1 email required",
+        "0 Validation failed",
+        "2 email required, age must be positive",
+        "2 Validation failed"
+      ],
+      "answer": 3,
+      "why": "`AggregateError` takes an iterable of errors and a message; the errors are exposed on `.errors` and the message is exactly the second argument. It does not concatenate the child messages.",
+      "tags": ["errors", "validation"],
+      "level": 2,
+      "asked": "Interviewers use it to see if you know a standard way to report several validation failures at once."
+    },
+    {
+      "id": "jsf-189",
+      "q": "What does this log?",
+      "code": "const user = {};\nObject.defineProperty(user, 'id', { value: 7 });\nconsole.log(Object.keys(user), JSON.stringify(user));",
+      "lang": "js",
+      "choices": ["[ 'id' ] {\"id\":7}", "[ 'id' ] {}", "[] {}", "[] {\"id\":7}"],
+      "answer": 2,
+      "why": "`defineProperty` defaults `enumerable`, `writable` and `configurable` to false, so `id` exists (`user.id` is 7) but `Object.keys` and `JSON.stringify` skip non-enumerable properties. Plain assignment would set all three flags to true.",
+      "tags": ["objects", "json"],
+      "level": 2,
+      "asked": "It checks you know descriptor defaults, which explains \"why is this field missing from my API response?\" bugs."
+    },
+    {
+      "id": "jsf-190",
+      "q": "What does this log?",
+      "code": "const cart = {\n  items: [{ price: 5 }, { price: 7 }],\n  get total() { return this.items.reduce((s, i) => s + i.price, 0); },\n};\ncart.items.push({ price: 3 });\nconsole.log(cart.total);",
+      "lang": "js",
+      "choices": ["12", "15", "undefined", "[Function: total]"],
+      "answer": 1,
+      "why": "A getter runs every time the property is read, so it sees the pushed item and returns 15. It is not a cached value computed when the object was created, and reading it does not return the function.",
+      "tags": ["getters", "objects"],
+      "level": 1,
+      "asked": "Interviewers like a candidate who can say when a derived value belongs in a getter rather than stored state that can go stale."
+    },
+    {
+      "id": "jsf-191",
+      "q": "In an ES module, what happens on the second line?",
+      "code": "const order = { get status() { return 'paid'; } };\norder.status = 'refunded';\nconsole.log(order.status);",
+      "lang": "js",
+      "choices": [
+        "It logs 'refunded'",
+        "It logs 'paid'",
+        "It throws a TypeError",
+        "It logs undefined"
+      ],
+      "answer": 2,
+      "why": "Assigning to an accessor property that has no setter fails; ES modules are always strict, so the failure throws a TypeError instead of being silently ignored. In a sloppy script it would log `paid`.",
+      "tags": ["getters", "strict-mode"],
+      "level": 2,
+      "asked": "A strong answer contrasts the silent failure in sloppy mode with the loud one in modules and classes."
+    },
+    {
+      "id": "jsf-192",
+      "q": "Which call lets you still change existing property values, but stops properties being added or deleted?",
+      "choices": [
+        "`Object.freeze(settings)`",
+        "`Object.defineProperties(settings, {})`",
+        "`Object.preventExtensions(settings)`",
+        "`Object.seal(settings)`"
+      ],
+      "answer": 3,
+      "why": "`seal` blocks adding and deleting but leaves values writable. `freeze` also makes every value read-only, and `preventExtensions` only blocks adding, so deletion is still allowed.",
+      "tags": ["objects", "immutability"],
+      "level": 2,
+      "asked": "Interviewers ask it to see whether you know the three levels rather than treating \"freeze\" as the only option."
+    },
+    {
+      "id": "jsf-193",
+      "q": "What does this log?",
+      "code": "let reads = 0;\nconst src = { get n() { return ++reads; } };\nconst copy = { ...src };\nconsole.log(copy.n, copy.n, reads);",
+      "lang": "js",
+      "choices": ["1 1 1", "2 3 3", "1 2 2", "undefined undefined 0"],
+      "answer": 0,
+      "why": "Spread reads each own enumerable property once and copies the resulting value, so the getter runs once and `copy.n` is a plain data property holding 1. The getter itself is not copied, so later reads do not increment `reads`.",
+      "tags": ["getters", "copying"],
+      "level": 3,
+      "asked": "It exposes whether you know spread copies values, not property definitions, which matters when copying class instances or models with accessors."
+    },
+    {
+      "id": "jsf-194",
+      "q": "What does this log?",
+      "code": "const o = { a: 1 };\nObject.defineProperty(o, 'b', { value: 2 });\nconst d = Object.getOwnPropertyDescriptor;\nconsole.log(d(o, 'a').writable, d(o, 'b').writable);",
+      "lang": "js",
+      "choices": ["true true", "false true", "false false", "true false"],
+      "answer": 3,
+      "why": "Properties created by assignment or a literal get `writable`, `enumerable` and `configurable` all true. `defineProperty` defaults every flag you omit to false, so `b` is read-only.",
+      "tags": ["objects"],
+      "level": 2,
+      "asked": "Interviewers use it to check you understand that the two ways of creating a property are not equivalent."
+    },
+    {
+      "id": "jsf-195",
+      "q": "What does this log?",
+      "code": "console.log(\n  Symbol('id') === Symbol('id'),\n  Symbol.for('id') === Symbol.for('id'),\n);",
+      "lang": "js",
+      "choices": ["true true", "false true", "false false", "true false"],
+      "answer": 1,
+      "why": "Every `Symbol()` call creates a new unique value; the description is only a label. `Symbol.for` looks the key up in a global registry and returns the same symbol each time.",
+      "tags": ["types", "equality"],
+      "level": 1,
+      "asked": "A strong answer says when you would want a registered symbol (sharing across modules or realms) versus a private unique one."
+    },
+    {
+      "id": "jsf-196",
+      "q": "What does this log?",
+      "code": "const META = Symbol('meta');\nconst user = { name: 'Ada', [META]: { cached: true } };\nconsole.log(Object.keys(user).length, JSON.stringify(user));",
+      "lang": "js",
+      "choices": [
+        "2 {\"name\":\"Ada\",\"meta\":{\"cached\":true}}",
+        "2 {\"name\":\"Ada\"}",
+        "1 {\"name\":\"Ada\"}",
+        "1 {\"name\":\"Ada\",\"Symbol(meta)\":{}}"
+      ],
+      "answer": 2,
+      "why": "Symbol-keyed properties are skipped by `Object.keys`, `for...in` and `JSON.stringify`, so they are handy for attaching metadata that must not leak into API responses. `Object.getOwnPropertySymbols` or `Reflect.ownKeys` still see them, so they are hidden, not private.",
+      "tags": ["types", "json", "objects"],
+      "level": 2,
+      "asked": "Interviewers like the nuance that symbols hide keys from serialisation but are not a security boundary."
+    },
+    {
+      "id": "jsf-197",
+      "q": "What does this log?",
+      "code": "const price = {\n  pence: 250,\n  [Symbol.toPrimitive](hint) {\n    return hint === 'number' ? this.pence : '£' + this.pence / 100;\n  },\n};\nconsole.log(+price, `${price}`, price + '');",
+      "lang": "js",
+      "choices": ["250 £2.5 £2.5", "250 £2.5 250", "NaN £2.5 £2.5", "250 [object Object] £2.5"],
+      "answer": 0,
+      "why": "Unary `+` passes the hint `number`, a template literal passes `string`, and binary `+` passes `default`. The method returns the pound string for anything other than `number`, so both string forms print `£2.5`. `toPrimitive` takes priority over `valueOf`/`toString`.",
+      "tags": ["coercion", "objects"],
+      "level": 3,
+      "asked": "A strong answer knows binary `+` uses the `default` hint, which is why `Date` objects concatenate as strings."
+    },
+    {
+      "id": "jsf-198",
+      "q": "What does this do?",
+      "code": "const tag = Symbol('draft');\nconsole.log(String(tag));\nconsole.log('tag: ' + tag);",
+      "lang": "js",
+      "choices": [
+        "Logs 'draft', then 'tag: draft'",
+        "Logs Symbol(draft), then a TypeError",
+        "A TypeError on the first line",
+        "Logs Symbol(draft) on both lines"
+      ],
+      "answer": 1,
+      "why": "`String(symbol)` is an explicit conversion and returns `Symbol(draft)`, but implicit conversion via `+` or a template literal throws `TypeError: Cannot convert a Symbol value to a string`. That asymmetry is deliberate, to stop symbols leaking into strings by accident.",
+      "tags": ["types", "coercion", "strings"],
+      "level": 3,
+      "asked": "Interviewers use it to test whether you know explicit and implicit coercion can behave differently for the same value."
+    },
+    {
+      "id": "jsf-199",
+      "q": "What does this log?",
+      "code": "function* steps() {\n  yield 'validate';\n  yield 'save';\n  return 'done';\n}\nconsole.log([...steps()]);",
+      "lang": "js",
+      "choices": [
+        "[ 'validate', 'save', 'done' ]",
+        "[ 'done' ]",
+        "[ 'validate', 'save' ]",
+        "[ 'validate', 'save', undefined ]"
+      ],
+      "answer": 2,
+      "why": "Spread and `for...of` stop when the iterator reports `done: true`, and the value that comes with it (the `return` value) is discarded. Only `yield`ed values are collected.",
+      "tags": ["generators", "iterators"],
+      "level": 2,
+      "asked": "A strong answer knows the return value is only visible when you call `next()` yourself."
+    },
+    {
+      "id": "jsf-200",
+      "q": "An error is logged by a JSON logger. What does this log?",
+      "code": "const err = new RangeError('page must be at least 1');\nconsole.log(String(err));\nconsole.log(JSON.stringify(err));",
+      "lang": "js",
+      "choices": [
+        "RangeError: page must be at least 1, then {}",
+        "page must be at least 1, then {\"message\":\"page must be at least 1\"}",
+        "[object Error], then {}",
+        "RangeError: page must be at least 1, then {\"name\":\"RangeError\"}"
+      ],
+      "answer": 0,
+      "why": "`Error.prototype.toString` gives `name: message`, but `message` and `stack` are own non-enumerable properties and `name` lives on the prototype, so `JSON.stringify` finds nothing to serialise and prints `{}`. Structured loggers therefore copy `name`, `message`, `stack` and `cause` explicitly.",
+      "tags": ["errors", "json"],
+      "level": 3,
+      "asked": "It explains the classic empty `\"error\": {}` in log aggregators and shows you know how errors are serialised."
+    },
+    {
+      "id": "jsf-201",
+      "q": "A helper returns a generator of unpaid order ids. What does this log?",
+      "code": "function* unpaid(orders) {\n  for (const o of orders) if (!o.paid) yield o.id;\n}\nconst ids = unpaid([{ id: 1 }, { id: 2, paid: true }, { id: 3 }]);\nconsole.log(ids.next().value, [...ids]);",
+      "lang": "js",
+      "choices": ["1 [ 1, 3 ]", "undefined [ 1, 3 ]", "1 [ 2, 3 ]", "1 [ 3 ]"],
+      "answer": 3,
+      "why": "A generator object is a one-shot iterator: `next()` consumes the first id and spread only collects what is left. Arrays differ because every `for...of` asks them for a fresh iterator, so return an array if callers need to iterate twice.",
+      "tags": ["generators", "iterators"],
+      "level": 2,
+      "asked": "It catches the bug where a helper returns an iterator and the caller consumes part of it before looping."
+    },
+    {
+      "id": "jsf-202",
+      "q": "A booking API computes nights stayed. What does this log?",
+      "code": "const checkIn = new Date('2026-03-01T00:00:00Z');\nconst checkOut = new Date('2026-03-08T00:00:00Z');\nconsole.log((checkOut - checkIn) / 86_400_000);",
+      "lang": "js",
+      "choices": ["NaN", "7", "8", "It throws a TypeError"],
+      "answer": 1,
+      "why": "Subtracting Dates coerces both to their millisecond timestamps, so the difference is 604,800,000 ms, which is 7 days. Using UTC instants avoids the DST hour that can make local-time day maths come out as 6.958.",
+      "tags": ["dates", "coercion"],
+      "level": 1,
+      "asked": "Interviewers want to hear that date arithmetic is millisecond arithmetic and that UTC keeps it honest."
+    },
+    {
+      "id": "jsf-203",
+      "q": "A client sends `dueDate: \"soon\"`. What does this log?",
+      "code": "const d = new Date('soon');\nconsole.log(isNaN(d), String(d));\ntry { d.toISOString(); } catch (e) { console.log(e.name); }",
+      "lang": "js",
+      "choices": [
+        "false Invalid Date, then TypeError",
+        "true Invalid Date, then nothing",
+        "true null, then TypeError",
+        "true Invalid Date, then RangeError"
+      ],
+      "answer": 3,
+      "why": "An unparseable string gives a Date whose time value is NaN; it prints as `Invalid Date`, and `toISOString` throws a RangeError. The constructor itself never throws, so you must validate with `Number.isNaN(d.getTime())`.",
+      "tags": ["dates", "validation", "errors"],
+      "level": 2,
+      "asked": "A strong answer validates dates at the API boundary rather than discovering the RangeError during serialisation."
+    },
+    {
+      "id": "jsf-204",
+      "q": "What is the safest way to send a date-time from a Node API to a browser in JSON?",
+      "choices": [
+        "`date.toString()`, which includes the server time zone name",
+        "`date.toLocaleString()`, so the text matches the user's locale",
+        "An ISO 8601 UTC string, as produced by `date.toISOString()`",
+        "The Date object itself, which JSON keeps as a Date type"
+      ],
+      "answer": 2,
+      "why": "ISO 8601 in UTC (`2026-09-24T10:00:00.000Z`) is unambiguous and round-trips with `new Date(str)` everywhere. JSON has no Date type, locale strings are for display only, and `toString()` output is not reliably parseable.",
+      "tags": ["dates", "json"],
+      "level": 1,
+      "asked": "Interviewers expect \"store and transmit UTC, format for the user at the edge\"."
+    },
+    {
+      "id": "jsf-205",
+      "q": "What does this log?",
+      "code": "const due = [new Date('2026-05-01'), new Date('2026-01-15')];\ndue.sort((a, b) => a - b);\nconsole.log(due[0].toISOString().slice(0, 10));",
+      "lang": "js",
+      "choices": ["2026-01-15", "2026-05-01", "Invalid Date", "It throws a TypeError"],
+      "answer": 0,
+      "why": "The comparator subtracts Dates, which coerces them to timestamps, giving a numeric ascending sort. Without a comparator, `sort` would compare their long string forms instead.",
+      "tags": ["dates", "sort"],
+      "level": 1,
+      "asked": "It is a quick check that you know the idiomatic way to sort by date."
+    },
+    {
+      "id": "jsf-206",
+      "q": "What does this log?",
+      "code": "const d = new Date(Date.UTC(2026, 0, 30));\nd.setUTCDate(d.getUTCDate() + 5);\nconsole.log(d.toISOString().slice(0, 10));",
+      "lang": "js",
+      "choices": ["2026-02-04", "2026-01-35", "2026-02-05", "Invalid Date"],
+      "answer": 0,
+      "why": "Date setters normalise overflowing fields, so day 35 of January rolls over to 4 February. Remember the month argument to `Date.UTC` is zero-based, so `0` is January.",
+      "tags": ["dates", "edge-cases"],
+      "level": 2,
+      "asked": "Interviewers like it because \"add N days\" is a real feature and the overflow behaviour is both useful and surprising."
+    },
+    {
+      "id": "jsf-207",
+      "q": "A reminder for \"same time tomorrow\" is computed as `new Date(t + 24 * 60 * 60 * 1000)` on a server running in Europe/London. What happens on the night the clocks go forward?",
+      "choices": [
+        "It fires an hour early, because that day has 25 hours",
+        "It throws a RangeError for the skipped hour",
+        "Nothing, since Date adjusts millisecond maths for DST",
+        "It fires an hour late on the wall clock, as the day has 23 hours"
+      ],
+      "answer": 3,
+      "why": "Adding 86,400,000 ms is exactly 24 real hours, but the spring-forward day is only 23 wall-clock hours long, so 10:00 becomes 11:00. For calendar maths use `setDate(getDate() + 1)` in the user's zone (or Temporal where available).",
+      "tags": ["dates", "edge-cases"],
+      "level": 3,
+      "asked": "A strong answer distinguishes elapsed-time arithmetic from calendar arithmetic and names the time zone the calculation should happen in."
+    },
+    {
+      "id": "jsf-208",
+      "q": "A component accepts an optional `onSave` callback. What does this log?",
+      "code": "const hooks = { onSave: undefined };\nconst result = hooks.onSave?.('draft');\nconsole.log(result);",
+      "lang": "js",
+      "choices": ["undefined", "TypeError: hooks.onSave is not a function", "null", "'draft'"],
+      "answer": 0,
+      "why": "`?.()` checks the function reference itself: if it is `null` or `undefined` the call is skipped and the expression evaluates to `undefined`. It would still throw if `onSave` were a non-function value such as a string.",
+      "tags": ["operators", "functions", "null"],
+      "level": 1,
+      "asked": "Interviewers use it to check you know optional chaining works on calls, which replaces `if (onSave) onSave()` noise."
+    },
+    {
+      "id": "jsf-209",
+      "q": "An API returned `{ data: null }`. What does this log?",
+      "code": "const res = { data: null };\nconsole.log(res.data?.user.name, res.body?.items[0]);",
+      "lang": "js",
+      "choices": [
+        "A TypeError reading 'name'",
+        "null undefined",
+        "undefined undefined",
+        "undefined, then a TypeError"
+      ],
+      "answer": 2,
+      "why": "Optional chaining short-circuits the rest of the chain: once `res.data` is nullish, `.user.name` is never evaluated, so you only need `?.` at the point that can be missing. `?.` always yields `undefined`, never `null`.",
+      "tags": ["operators", "null"],
+      "level": 2,
+      "asked": "A strong answer explains short-circuiting and warns against sprinkling `?.` on every segment, which hides real bugs."
+    },
+    {
+      "id": "jsf-210",
+      "q": "What does this log?",
+      "code": "function outer() {\n  const inner = () => arguments.length;\n  return inner(1, 2, 3);\n}\nconsole.log(outer('a'));",
+      "lang": "js",
+      "choices": ["3", "0", "It throws a ReferenceError", "1"],
+      "answer": 3,
+      "why": "Arrow functions have no `arguments` object of their own; the name resolves lexically to `outer`'s `arguments`, which holds one value. Use rest parameters (`...args`) when you need an arrow's own arguments.",
+      "tags": ["functions", "arrow-functions", "scope"],
+      "level": 3,
+      "asked": "It checks that you know arrows borrow `this`, `arguments` and `new.target` from the enclosing function, not just `this`."
+    },
+    {
+      "id": "jsf-211",
+      "q": "What does this log?",
+      "code": "function createUser(name, role = 'user', ...tags) {}\nconsole.log(createUser.length);",
+      "lang": "js",
+      "choices": ["3", "1", "2", "0"],
+      "answer": 1,
+      "why": "`length` counts parameters before the first one with a default value, and never counts a rest parameter. Libraries such as Express read `fn.length` (four arguments means an error handler), so a default can change behaviour.",
+      "tags": ["functions", "parameters", "defaults"],
+      "level": 2,
+      "asked": "A strong answer connects `fn.length` to real framework behaviour rather than treating it as trivia."
+    },
+    {
+      "id": "jsf-212",
+      "q": "What does this log?",
+      "code": "const factorial = function fact(n) {\n  return n <= 1 ? 1 : n * fact(n - 1);\n};\nconsole.log(factorial(4), typeof fact);",
+      "lang": "js",
+      "choices": ["24 function", "24 undefined", "It throws a ReferenceError", "NaN undefined"],
+      "answer": 1,
+      "why": "The name of a named function expression is bound only inside the function body, so recursion works but `fact` is not visible outside. It also gives stack traces a useful name.",
+      "tags": ["functions", "scope", "recursion"],
+      "level": 2,
+      "asked": "Interviewers ask it to check you understand that expression names are scoped to the function, unlike declarations."
+    },
+    {
+      "id": "jsf-213",
+      "q": "What does this log?",
+      "code": "let calls = 0;\nconst nextId = () => ++calls;\nfunction log(msg, id = nextId()) { return `${id}:${msg}`; }\nconsole.log(log('a'), log('b', 9), log('c'));",
+      "lang": "js",
+      "choices": ["1:a 9:b 2:c", "1:a 9:b 3:c", "1:a 2:b 3:c", "1:a 9:b 1:c"],
+      "answer": 0,
+      "why": "Default expressions are evaluated at call time, and only when the argument is `undefined`. The second call passes 9, so `nextId` is not called and the counter is still 1 before the third call.",
+      "tags": ["functions", "defaults"],
+      "level": 2,
+      "asked": "It shows whether you know defaults are lazy and per call, unlike Python's once-at-definition defaults."
+    },
+    {
+      "id": "jsf-214",
+      "q": "A memoised price lookup takes an options object. What does this log?",
+      "code": "const cache = {};\nfunction price(opts) {\n  const key = String(opts);\n  return (cache[key] ??= opts.base * 2);\n}\nconsole.log(price({ base: 5 }), price({ base: 50 }));",
+      "lang": "js",
+      "choices": ["10 100", "10 undefined", "NaN NaN", "10 10"],
+      "answer": 3,
+      "why": "`String({ base: 5 })` is `[object Object]` for every object, so both calls share one cache key and the second returns the first result. Build keys from the relevant fields (or `JSON.stringify` with stable ordering), or use a `Map`/`WeakMap` keyed by identity.",
+      "tags": ["caching", "coercion", "functions"],
+      "level": 3,
+      "asked": "A strong answer names cache-key design as the hard part of memoisation and suggests a deliberate key function."
+    },
+    {
+      "id": "jsf-215",
+      "q": "A developer writes `const penalty = -rate ** 2;`. What happens?",
+      "choices": [
+        "It parses as `(-rate) ** 2`, always non-negative",
+        "It parses as `-(rate ** 2)`, always non-positive",
+        "It is a SyntaxError until you add parentheses",
+        "It is a TypeError at runtime for negative rates"
+      ],
+      "answer": 2,
+      "why": "The language forbids a unary operator directly before the base of `**` because maths and other languages disagree on the meaning. You must write `(-rate) ** 2` or `-(rate ** 2)`, and the file fails to parse otherwise.",
+      "tags": ["operators", "numbers"],
+      "level": 2,
+      "asked": "Interviewers like it because the answer (\"it will not even parse\") shows you know the grammar, not just the runtime."
+    },
+    {
+      "id": "jsf-216",
+      "q": "What does this log?",
+      "code": "let stock = 5;\nconst shown = stock--;\nconsole.log(shown, stock);",
+      "lang": "js",
+      "choices": ["4 4", "5 5", "4 5", "5 4"],
+      "answer": 3,
+      "why": "Postfix `--` returns the old value and then decrements, so `shown` gets 5 and `stock` becomes 4. Prefix `--stock` would decrement first and return 4.",
+      "tags": ["operators"],
+      "level": 1,
+      "asked": "It is a quick check that you can read increment operators correctly in reviews."
+    },
+    {
+      "id": "jsf-217",
+      "q": "A status arrives from a query string. What does this log?",
+      "code": "const status = '1';\nswitch (status) {\n  case 1: console.log('active'); break;\n  default: console.log('unknown');\n}",
+      "lang": "js",
+      "choices": ["active", "unknown", "active, then unknown", "Nothing is logged"],
+      "answer": 1,
+      "why": "`switch` compares with strict equality (`===`), so the string `'1'` never matches the number `1` and control falls to `default`. Convert the input with `Number(status)` first, or use string cases.",
+      "tags": ["control-flow", "equality", "parsing"],
+      "level": 1,
+      "asked": "It catches the common bug where query-string values are compared to numeric constants."
+    },
+    {
+      "id": "jsf-218",
+      "q": "What does `perms('editor')` return?",
+      "code": "const perms = (role, p = []) => {\n  switch (role) {\n    case 'admin': p.push('delete');\n    case 'editor': p.push('edit');\n    case 'viewer': p.push('read');\n  }\n  return p;\n};",
+      "lang": "js",
+      "choices": [
+        "[ 'edit' ]",
+        "[ 'delete', 'edit', 'read' ]",
+        "[ 'edit', 'read' ]",
+        "[ 'read', 'edit' ]"
+      ],
+      "answer": 2,
+      "why": "Without `break`, execution falls through from the matching case into every case below it, so an editor gets `edit` and `read`. Intentional fall-through like this should carry a comment, because linters flag it as a likely bug.",
+      "tags": ["control-flow"],
+      "level": 2,
+      "asked": "A strong answer knows fall-through is occasionally deliberate and mentions the `no-fallthrough` lint rule."
+    },
+    {
+      "id": "jsf-219",
+      "q": "A nested search should stop at the first stock level above 5. What does this log?",
+      "code": "const grid = [[4, 1], [9, 7], [8, 6]];\nlet found = null;\nsearch: for (const row of grid) {\n  for (const n of row) if (n > 5) { found = n; break search; }\n}\nconsole.log(found);",
+      "lang": "js",
+      "choices": ["9", "8", "7", "null"],
+      "answer": 0,
+      "why": "`break search` exits the labelled outer loop, so the first value above 5 wins. A plain `break` would only leave the inner loop, and the next row would overwrite `found` with 8.",
+      "tags": ["control-flow", "loops"],
+      "level": 2,
+      "asked": "Interviewers use it to see if you know labels exist, and whether you would rather extract a function and `return`."
+    },
+    {
+      "id": "jsf-220",
+      "q": "What does this log?",
+      "code": "const user = { name: '' };\nconsole.log(JSON.stringify([\n  user && user.name, user.name || 'Anonymous', null && user.x,\n]));",
+      "lang": "js",
+      "choices": [
+        "[true,\"Anonymous\",false]",
+        "[\"\",\"Anonymous\",false]",
+        "[false,\"Anonymous\",null]",
+        "[\"\",\"Anonymous\",null]"
+      ],
+      "answer": 3,
+      "why": "`&&` and `||` return one of their operands, not a boolean: `&&` returns the first falsy operand or the last one, `||` the first truthy one or the last. So you get the empty name, the fallback, and `null`.",
+      "tags": ["operators", "truthiness"],
+      "level": 1,
+      "asked": "It checks you know these operators return values, which is why they work for defaults and guarded access."
+    },
+    {
+      "id": "jsf-221",
+      "q": "What does this log?",
+      "code": "const form = { email: '  ADA@EXAMPLE.COM ', phone: '' };\nform.email &&= form.email.trim().toLowerCase();\nform.phone &&= form.phone.trim();\nconsole.log(JSON.stringify(form));",
+      "lang": "js",
+      "choices": [
+        "{\"email\":\"ada@example.com\",\"phone\":\"\"}",
+        "{\"email\":\"ada@example.com\",\"phone\":false}",
+        "{\"email\":\"ada@example.com\"}",
+        "{\"email\":true,\"phone\":\"\"}"
+      ],
+      "answer": 0,
+      "why": "`a &&= b` assigns only when `a` is truthy, so the email is normalised and the empty phone is left untouched (not replaced by `false`). The property stays present, so it still appears in the JSON.",
+      "tags": ["operators", "strings"],
+      "level": 2,
+      "asked": "Interviewers like candidates who can pick between `&&=`, `||=` and `??=` for a given clean-up rule."
+    },
+    {
+      "id": "jsf-222",
+      "q": "What does this log?",
+      "code": "let audits = 0;\nconst audit = () => (audits++, true);\nconst isAdmin = false;\nif (isAdmin && audit()) {}\nif (isAdmin || audit()) {}\nconsole.log(audits);",
+      "lang": "js",
+      "choices": ["0", "2", "1", "NaN"],
+      "answer": 2,
+      "why": "`&&` stops at the falsy `isAdmin` and never calls `audit`, while `||` must evaluate its right side because the left is falsy. The comma operator in `audit` evaluates `audits++` and then returns `true`.",
+      "tags": ["operators", "functions"],
+      "level": 2,
+      "asked": "It exposes whether you would notice a side effect hidden inside a condition that sometimes does not run."
+    },
+    {
+      "id": "jsf-223",
+      "q": "Why might a CommonJS migration script be wrapped in `(async () => { ... })();`?",
+      "choices": [
+        "It makes the whole file run in strict mode automatically",
+        "Top-level `await` is only available in ES modules, not CommonJS",
+        "Node refuses to run scripts that use `await` outside a class",
+        "It stops variables leaking into other modules' scopes"
+      ],
+      "answer": 1,
+      "why": "CommonJS files are wrapped in a normal function, so `await` at top level is a SyntaxError; an async IIFE gives you an async context. In an `.mjs` file or `\"type\": \"module\"` package you can just use top-level `await`. CommonJS scope is already per file.",
+      "tags": ["functions", "modules"],
+      "level": 2,
+      "asked": "A strong answer also adds a `.catch` so a failure sets a non-zero exit code instead of an unhandled rejection."
+    },
+    {
+      "id": "jsf-224",
+      "q": "What does this log?",
+      "code": "function tagUser(id, ...roles) { return [id, roles]; }\nconsole.log(tagUser(7), tagUser(7, 'admin', 'editor'));",
+      "lang": "js",
+      "choices": [
+        "[ 7, undefined ] [ 7, [ 'admin', 'editor' ] ]",
+        "[ 7, [] ] [ 7, [ 'admin', 'editor' ] ]",
+        "[ 7 ] [ 7, 'admin', 'editor' ]",
+        "[ 7, [] ] [ 7, 'admin' ]"
+      ],
+      "answer": 1,
+      "why": "A rest parameter always receives a real array, which is empty when no extra arguments are passed; it is never `undefined`. It collects every remaining argument, not just the next one.",
+      "tags": ["functions", "parameters"],
+      "level": 1,
+      "asked": "It checks the basics of rest parameters, which replaced the old `arguments` object in modern code."
+    },
+    {
+      "id": "jsf-225",
+      "q": "What does this log?",
+      "code": "const files = ['invoice-10.pdf', 'invoice-2.pdf', 'invoice-1.pdf'];\nfiles.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));\nconsole.log(files);",
+      "lang": "js",
+      "choices": [
+        "[ 'invoice-1.pdf', 'invoice-10.pdf', 'invoice-2.pdf' ]",
+        "[ 'invoice-10.pdf', 'invoice-2.pdf', 'invoice-1.pdf' ]",
+        "[ 'invoice-1.pdf', 'invoice-2.pdf', 'invoice-10.pdf' ]",
+        "[ 'invoice-2.pdf', 'invoice-1.pdf', 'invoice-10.pdf' ]"
+      ],
+      "answer": 2,
+      "why": "The `numeric: true` collation option compares digit runs by value, giving the natural order users expect. A plain `localeCompare` or default sort would put `invoice-10` before `invoice-2`.",
+      "tags": ["strings", "sort"],
+      "level": 2,
+      "asked": "Interviewers like it because \"sort file names like a human would\" is a real ticket with a one-option answer."
+    },
+    {
+      "id": "jsf-226",
+      "q": "An `Authorization` header is parsed. What does this log?",
+      "code": "console.log(\n  'Bearer abc.def.ghi'.split(' ', 1),\n  'a,b,c'.split(',', 2),\n);",
+      "lang": "js",
+      "choices": [
+        "[ 'Bearer' ] [ 'a', 'b,c' ]",
+        "[ 'Bearer abc.def.ghi' ] [ 'a,b' ]",
+        "[ 'Bearer', 'abc.def.ghi' ] [ 'a', 'b' ]",
+        "[ 'Bearer' ] [ 'a', 'b' ]"
+      ],
+      "answer": 3,
+      "why": "The second argument to `split` caps how many pieces are returned; the rest of the string is discarded, not glued onto the last piece. If you need \"split once\", take `indexOf` and slice, or destructure the first two parts and rejoin.",
+      "tags": ["strings", "parsing"],
+      "level": 1,
+      "asked": "It catches the assumption, common among Python developers, that the limit keeps the remainder in the last item."
+    },
+    {
+      "id": "jsf-227",
+      "q": "What does this log?",
+      "code": "const sku = 'TSHIRT-RED-XL';\nconsole.log(sku.at(-1), sku.split('-').at(-1), sku[-1]);",
+      "lang": "js",
+      "choices": ["L XL undefined", "L XL L", "undefined XL undefined", "XL XL undefined"],
+      "answer": 0,
+      "why": "`at` accepts negative indexes counting from the end, on strings and arrays alike. Bracket access treats `-1` as a property name, which does not exist, so it gives `undefined`.",
+      "tags": ["strings", "arrays"],
+      "level": 1,
+      "asked": "It is a quick check you know the modern way to read the last element without `length - 1`."
+    },
+    {
+      "id": "jsf-228",
+      "q": "A Windows path is built with a template literal. What does this log?",
+      "code": "console.log(String.raw`C:\\new\\table`.length, `C:\\new\\table`.length);",
+      "lang": "js",
+      "choices": ["12 12", "10 10", "12 10", "10 12"],
+      "answer": 2,
+      "why": "In a normal template literal `\\n` and `\\t` are escape sequences for newline and tab, so the string is 10 characters. `String.raw` keeps the backslashes literally, giving 12. Better still, use forward slashes or `path.join` for paths.",
+      "tags": ["strings", "templates"],
+      "level": 2,
+      "asked": "Interviewers use it to check you know escape processing and the tool that turns it off."
+    },
+    {
+      "id": "jsf-229",
+      "q": "What does this log?",
+      "code": "const tag = (strings, ...values) => [strings.length, values.length];\nconsole.log(tag`Order ${7} shipped to ${'Leeds'}`);",
+      "lang": "js",
+      "choices": ["[ 2, 2 ]", "[ 3, 3 ]", "[ 1, 2 ]", "[ 3, 2 ]"],
+      "answer": 3,
+      "why": "A tag function gets the literal pieces around each placeholder (`\"Order \"`, `\" shipped to \"` and a trailing `\"\"`) plus the interpolated values separately, so there is always one more string than value. That separation is what lets SQL and HTML tags escape values safely.",
+      "tags": ["strings", "templates", "security"],
+      "level": 3,
+      "asked": "A strong answer explains why getting values separately makes injection-safe query builders possible."
+    },
+    {
+      "id": "jsf-230",
+      "q": "A date is reformatted for a UK invoice. What does this log?",
+      "code": "const iso = '2026-09-24';\nconsole.log(iso.replace(/(?<y>\\d+)-(?<m>\\d+)-(?<d>\\d+)/, '$<d>/$<m>/$<y>'));",
+      "lang": "js",
+      "choices": ["24/09/2026", "$<d>/$<m>/$<y>", "2026/09/24", "d/m/y"],
+      "answer": 0,
+      "why": "In a replacement string, `$<name>` inserts a named capture group (and `$1` a numbered one). Named groups make the reordering readable and survive someone adding another group to the pattern.",
+      "tags": ["regex", "strings", "dates"],
+      "level": 2,
+      "asked": "It checks you can use replacement patterns instead of reaching for split-and-join."
+    },
+    {
+      "id": "jsf-231",
+      "q": "What does this log?",
+      "code": "const html = '<b>Save</b> or <b>Cancel</b>';\nconsole.log(html.match(/<b>(.*)<\\/b>/)[1]);\nconsole.log(html.match(/<b>(.*?)<\\/b>/)[1]);",
+      "lang": "js",
+      "choices": [
+        "Save, then Save</b> or <b>Cancel",
+        "Save</b> or <b>Cancel, then Save",
+        "Cancel, then Save</b> or <b>Cancel",
+        "Save</b> or <b>Cancel, then Cancel"
+      ],
+      "answer": 1,
+      "why": "`.*` is greedy and grabs as much as possible, backtracking only to the last `</b>`. Adding `?` makes it lazy, so it stops at the first `</b>`. For real HTML use a parser, not a regex.",
+      "tags": ["regex"],
+      "level": 2,
+      "asked": "Interviewers ask it to check you can explain greedy versus lazy quantifiers with a concrete example."
+    },
+    {
+      "id": "jsf-232",
+      "q": "What does this log?",
+      "code": "const s = 'SKU-12, SKU-7';\nconsole.log(s.match(/SKU-(\\d+)/)[1], s.match(/SKU-(\\d+)/g));",
+      "lang": "js",
+      "choices": [
+        "12 [ '12', '7' ]",
+        "12 [ 'SKU-12', 'SKU-7' ]",
+        "SKU-12 [ 'SKU-12', 'SKU-7' ]",
+        "12 [ 'SKU-12' ]"
+      ],
+      "answer": 1,
+      "why": "Without `g`, `match` returns the first match with its capture groups. With `g` it returns every full match but drops the groups, which is why `matchAll` exists when you need both.",
+      "tags": ["regex", "strings"],
+      "level": 1,
+      "asked": "It checks you know why `match` with `g` \"loses\" the capture groups."
+    },
+    {
+      "id": "jsf-233",
+      "q": "A search box must match the literal text a user typed, such as `price (USD)`, case-insensitively. Which is correct in Node 24?",
+      "choices": [
+        "`new RegExp(term, 'i')`",
+        "`new RegExp(JSON.stringify(term), 'i')`",
+        "`new RegExp(encodeURIComponent(term), 'i')`",
+        "`new RegExp(RegExp.escape(term), 'i')`"
+      ],
+      "answer": 3,
+      "why": "`RegExp.escape` (ES2025, available in Node 24) escapes every character that has meaning in a pattern, so parentheses match literally. Passing the raw term treats `(USD)` as a group, and URI or JSON encoding produce text that no longer matches the input.",
+      "tags": ["regex", "security", "search"],
+      "level": 2,
+      "asked": "A strong answer mentions that unescaped input is also a ReDoS risk, not just a matching bug."
+    },
+    {
+      "id": "jsf-234",
+      "q": "What does this log?",
+      "code": "console.log(/^.$/.test('👍'), /^.$/u.test('👍'));",
+      "lang": "js",
+      "choices": ["true true", "false false", "false true", "true false"],
+      "answer": 2,
+      "why": "Without `u`, a regex works on UTF-16 code units, and the emoji is two of them, so `.` cannot match it alone. The `u` (or newer `v`) flag makes the pattern work on code points.",
+      "tags": ["regex", "unicode"],
+      "level": 3,
+      "asked": "Interviewers use it to see if you know to add `u` whenever user-entered text can contain emoji or non-Latin scripts."
+    },
+    {
+      "id": "jsf-235",
+      "q": "A formula string is tokenised. What does this log?",
+      "code": "console.log('a1b2c'.split(/\\d/), 'a1b2c'.split(/(\\d)/));",
+      "lang": "js",
+      "choices": [
+        "[ 'a', 'b', 'c' ] [ 'a', '1', 'b', '2', 'c' ]",
+        "[ 'a', 'b', 'c' ] [ 'a', 'b', 'c' ]",
+        "[ 'a1', 'b2', 'c' ] [ 'a', '1', 'b', '2', 'c' ]",
+        "[ 'a', 'b', 'c' ] [ '1', '2' ]"
+      ],
+      "answer": 0,
+      "why": "When the separator pattern contains a capture group, `split` includes the captured text in the output between the pieces. That is a cheap way to keep delimiters when tokenising.",
+      "tags": ["regex", "strings", "parsing"],
+      "level": 3,
+      "asked": "It separates people who know `split` well from those who reach for a hand-written loop."
+    },
+    {
+      "id": "jsf-236",
+      "q": "What is the pragmatic way to validate an email address on a sign-up form?",
+      "choices": [
+        "A full RFC 5322 regex, so every legal address is accepted",
+        "A simple shape check, then a confirmation email to prove it",
+        "A DNS MX lookup on every keystroke to prove the domain",
+        "Checking only for `@`, since the server never needs to"
+      ],
+      "answer": 1,
+      "why": "Real deliverability can only be proven by sending a message; a loose `something@something.tld` check catches typos without rejecting valid addresses. Giant RFC regexes are unreadable and still accept undeliverable addresses, and client checks never replace server validation.",
+      "tags": ["regex", "validation"],
+      "level": 1,
+      "asked": "Interviewers want to hear that validation is layered: cheap shape check, server check, then confirmation."
+    },
+    {
+      "id": "jsf-237",
+      "q": "What does this log?",
+      "code": "const csv = 'id,name\\n1,Ada\\n2,Grace';\nconsole.log(csv.match(/^\\d+/g), csv.match(/^\\d+/gm));",
+      "lang": "js",
+      "choices": [
+        "null [ '1', '2' ]",
+        "[ '1', '2' ] [ '1', '2' ]",
+        "null null",
+        "[ '1' ] [ '1', '2' ]"
+      ],
+      "answer": 0,
+      "why": "Without `m`, `^` only matches at the very start of the string, which is `i`, so there is no match and `match` returns `null`. With `m`, `^` and `$` also match at every line break.",
+      "tags": ["regex", "parsing"],
+      "level": 2,
+      "asked": "It checks you know the difference between the `m` and `s` flags, which are often confused."
+    },
+    {
+      "id": "jsf-238",
+      "q": "Invoice totals are held as BigInt pence. What does this log?",
+      "code": "console.log(7n / 2n, 10n === 10, 10n == 10);",
+      "lang": "js",
+      "choices": ["3.5n false true", "3n false true", "3n true true", "4n false false"],
+      "answer": 1,
+      "why": "BigInt division truncates towards zero, so `7n / 2n` is `3n`, never a fraction. BigInt and Number are different types, so `===` is false, while loose `==` compares their mathematical values and is true.",
+      "tags": ["numbers", "big-ids", "equality"],
+      "level": 2,
+      "asked": "A strong answer mentions that BigInt suits exact integer counters and ids, but splitting amounts still needs explicit rounding rules."
+    },
+    {
+      "id": "jsf-239",
+      "q": "A dashboard formats a revenue figure. What does this log?",
+      "code": "console.log((1234567.891).toLocaleString('en-GB', { maximumFractionDigits: 1 }));",
+      "lang": "js",
+      "choices": ["1234567.9", "1,234,567.891", "1.234.567,9", "1,234,567.9"],
+      "answer": 3,
+      "why": "`toLocaleString` delegates to `Intl.NumberFormat`: British English groups thousands with commas and uses a dot for decimals, and the option rounds to one fraction digit. The dot-grouped form is what a `de-DE` locale would print.",
+      "tags": ["numbers", "formatting"],
+      "level": 1,
+      "asked": "Interviewers want to hear that you format numbers with Intl at the edge instead of hand-rolling regexes."
+    },
+    {
+      "id": "jsf-240",
+      "q": "What does this log?",
+      "code": "const pr = new Intl.PluralRules('en-GB');\nconst label = (n) => `${n} item${pr.select(n) === 'one' ? '' : 's'}`;\nconsole.log(label(0), label(1), label(1.5));",
+      "lang": "js",
+      "choices": [
+        "0 items 1 item 1.5 items",
+        "0 item 1 item 1.5 item",
+        "0 items 1 item 1.5 item",
+        "0 item 1 item 1.5 items"
+      ],
+      "answer": 0,
+      "why": "`Intl.PluralRules` returns the plural category for a locale; in English only exactly 1 is `one`, so zero and fractions are `other`. Other languages have more categories (`few`, `many`), which is why a hard-coded `n === 1` check does not scale to translation.",
+      "tags": ["strings", "formatting"],
+      "level": 2,
+      "asked": "It shows whether you know Intl has pluralisation built in, which matters the moment an app is localised."
+    },
+    {
+      "id": "jsf-241",
+      "q": "What does this log?",
+      "code": "const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });\nconsole.log(rtf.format(-1, 'day'), '|', rtf.format(3, 'hour'));",
+      "lang": "js",
+      "choices": [
+        "1 day ago | 3 hours from now",
+        "-1 day | 3 hours",
+        "yesterday | in 3 hours",
+        "yesterday | 3 hours later"
+      ],
+      "answer": 2,
+      "why": "With `numeric: 'auto'`, the formatter uses words such as \"yesterday\" and \"tomorrow\" where the locale has them; otherwise it prints \"1 day ago\". Future values read \"in 3 hours\" in English.",
+      "tags": ["dates", "formatting"],
+      "level": 1,
+      "asked": "Interviewers like candidates who know \"posted 3 hours ago\" needs no library in modern runtimes."
+    },
+    {
+      "id": "jsf-242",
+      "q": "What does this log?",
+      "code": "const list = new Intl.ListFormat('en-GB', { type: 'conjunction' });\nconsole.log(list.format(['Ada', 'Grace', 'Linus']));",
+      "lang": "js",
+      "choices": [
+        "Ada, Grace, and Linus",
+        "Ada, Grace, Linus",
+        "Ada, Grace and Linus",
+        "Ada and Grace and Linus"
+      ],
+      "answer": 2,
+      "why": "`Intl.ListFormat` joins items with the locale's conjunction rules. British English omits the serial (Oxford) comma, while `en-US` would print \"Ada, Grace, and Linus\".",
+      "tags": ["strings", "formatting"],
+      "level": 1,
+      "asked": "It checks that you reach for the platform rather than writing `join` plus special cases for the last item."
+    },
+    {
+      "id": "jsf-243",
+      "q": "Which line is a SyntaxError in strict mode (and ES modules) but allowed in a sloppy script?",
+      "choices": [
+        "`function merge(a, a) {}`",
+        "`const o = { a: 1, a: 2 };`",
+        "`delete Object.prototype;`",
+        "`var undefinedValue = void 0;`"
+      ],
+      "answer": 0,
+      "why": "Duplicate parameter names are rejected at parse time in strict code. Duplicate object keys have been legal in both modes since ES2015, and deleting `Object.prototype` fails at runtime (a TypeError in strict mode, `false` in sloppy mode), not at parse time.",
+      "tags": ["strict-mode", "functions"],
+      "level": 3,
+      "asked": "A strong answer distinguishes parse-time strict errors from runtime ones such as writing to read-only properties."
+    },
+    {
+      "id": "jsf-244",
+      "q": "What does this log?",
+      "code": "class Slug {\n  static clean(s) { return s.trim().toLowerCase(); }\n  static make(s) { return this.clean(s).replaceAll(' ', '-'); }\n}\nconst { make } = Slug;\ntry { console.log(make(' Hello World ')); } catch (e) { console.log(e.name); }",
+      "lang": "js",
+      "choices": ["hello-world", "-hello-world-", "ReferenceError", "TypeError"],
+      "answer": 3,
+      "why": "Inside a static method `this` is the class only when called as `Slug.make(...)`. Destructuring detaches the method, and class bodies are strict, so `this` is `undefined` and `this.clean` throws a TypeError. Referring to `Slug.clean` directly avoids the problem.",
+      "tags": ["this", "classes", "static"],
+      "level": 3,
+      "asked": "It checks you know static methods follow the same `this` rules as instance methods."
+    },
+    {
+      "id": "jsf-245",
+      "q": "What does this log?",
+      "code": "class Product {\n  #price = 0;\n  get price() { return this.#price; }\n  set price(v) { if (v < 0) throw new RangeError('negative'); this.#price = v; }\n}\nconst p = new Product();\np.price = 12;\nconsole.log(p.price, Object.keys(p));",
+      "lang": "js",
+      "choices": ["12 [ 'price' ]", "12 []", "0 [ '#price' ]", "12 [ '#price', 'price' ]"],
+      "answer": 1,
+      "why": "The assignment goes through the setter, which stores 12 in the private field. Accessors live on `Product.prototype` and private fields are not properties at all, so the instance has no own enumerable keys.",
+      "tags": ["classes", "getters", "encapsulation"],
+      "level": 2,
+      "asked": "Interviewers use it to check you know why such an object serialises to `{}` and needs a `toJSON`."
+    },
+    {
+      "id": "jsf-246",
+      "q": "What does this log?",
+      "code": "class User {\n  constructor() { this.name = 'Ada'; }\n  greet() { return 'hi'; }\n}\nconst u = new User();\nfor (const k in u) console.log(k);\nconsole.log(JSON.stringify(u));",
+      "lang": "js",
+      "choices": [
+        "name, then {\"name\":\"Ada\"}",
+        "name, greet, then {\"name\":\"Ada\"}",
+        "name, greet, then {\"name\":\"Ada\",\"greet\":{}}",
+        "Nothing, then {}"
+      ],
+      "answer": 0,
+      "why": "Class methods are defined on the prototype as non-enumerable, so `for...in` (which does walk the prototype chain) skips them, and `JSON.stringify` only sees own enumerable data. Methods added with `X.prototype.greet = ...` would be enumerable and would show up in `for...in`.",
+      "tags": ["classes", "prototypes", "loops"],
+      "level": 2,
+      "asked": "A strong answer contrasts class syntax with the old prototype-assignment style, where methods leak into `for...in`."
+    },
+    {
+      "id": "jsf-247",
+      "q": "What does this log?",
+      "code": "class Base {\n  constructor() { console.log(this.type); }\n}\nclass Order extends Base {\n  type = 'order';\n}\nnew Order();",
+      "lang": "js",
+      "choices": ["'order'", "undefined", "It throws a ReferenceError", "'Base'"],
+      "answer": 1,
+      "why": "Class fields of a subclass are initialised right after `super()` returns, so while the base constructor runs the field does not exist yet. Pass the value to `super` or read it lazily if the base class needs it.",
+      "tags": ["classes", "inheritance"],
+      "level": 3,
+      "asked": "It separates people who know the construction order of fields from those who treat fields as prototype properties."
+    },
+    {
+      "id": "jsf-248",
+      "q": "What does this log?",
+      "code": "class Cart {\n  #items = [];\n  add(item) { this.#items.push(item); return this; }\n  get size() { return this.#items.length; }\n}\nconsole.log(new Cart().add('pen').add('ink').size);",
+      "lang": "js",
+      "choices": ["1", "It throws a TypeError", "undefined", "2"],
+      "answer": 3,
+      "why": "Returning `this` from `add` makes it chainable, and both calls push onto the same private array, so the getter reports 2. Each `new Cart()` gets its own `#items`, because field initialisers run per instance.",
+      "tags": ["classes", "encapsulation"],
+      "level": 1,
+      "asked": "Interviewers like it as a quick check of fluent APIs and per-instance field initialisation."
+    },
+    {
+      "id": "jsf-249",
+      "q": "What does this log?",
+      "code": "class Animal {}\nclass Dog extends Animal {}\nconsole.log(\n  Object.getPrototypeOf(Dog) === Animal,\n  Object.getPrototypeOf(Dog.prototype) === Animal.prototype,\n);",
+      "lang": "js",
+      "choices": ["false true", "true false", "true true", "false false"],
+      "answer": 2,
+      "why": "`extends` sets up two chains: instances inherit through `Dog.prototype` → `Animal.prototype`, and the constructor itself inherits from `Animal`, which is how static methods are inherited.",
+      "tags": ["classes", "prototypes", "inheritance"],
+      "level": 3,
+      "asked": "A strong answer explains that the second chain is why `Dog.create()` works when only `Animal` defines `static create()`."
+    },
+    {
+      "id": "jsf-250",
+      "q": "What does this log?",
+      "code": "class User { get label() { return `#${this.id}`; } }\nconst u = JSON.parse('{\"id\": 7}');\nconsole.log(u instanceof User, u.label);",
+      "lang": "js",
+      "choices": ["true #7", "false #undefined", "false undefined", "true undefined"],
+      "answer": 2,
+      "why": "`JSON.parse` only ever produces plain objects and arrays; nothing links the result to your class. To get methods back you must construct it, e.g. `Object.assign(new User(), data)` or a static `fromJSON`.",
+      "tags": ["classes", "json"],
+      "level": 2,
+      "asked": "It catches the misconception that typing a response as `User` in TypeScript makes it a `User` instance at runtime."
+    },
+    {
+      "id": "jsf-251",
+      "q": "A `Person → User → AdminUser → SuperAdminUser` hierarchy keeps gaining flags. What is the usual mid-level recommendation?",
+      "choices": [
+        "Add an abstract base class above Person to hold the shared flags",
+        "Prefer composition: pass small role or permission objects in",
+        "Replace the classes with prototype chains built by Object.create",
+        "Merge every class into one with a `type` switch in each method"
+      ],
+      "answer": 1,
+      "why": "Deep inheritance couples every level to its parents' internals; composing behaviour from small objects or functions (e.g. a permissions policy injected into a user service) keeps each piece testable. Using `Object.create` just rewrites the same hierarchy.",
+      "tags": ["classes", "inheritance"],
+      "level": 2,
+      "asked": "Interviewers want a concrete example of when inheritance is still fine (framework base classes, error types) alongside the composition argument."
+    },
+    {
+      "id": "jsf-252",
+      "q": "What does this log?",
+      "code": "function Account(owner) { this.owner = owner; }\nAccount.prototype.describe = function () { return 'Account of ' + this.owner; };\nconst a = new Account('Ada'), b = new Account('Grace');\nconsole.log(a.describe === b.describe, a.describe());",
+      "lang": "js",
+      "choices": [
+        "false Account of Ada",
+        "true Account of undefined",
+        "false Account of Grace",
+        "true Account of Ada"
+      ],
+      "answer": 3,
+      "why": "Methods on the prototype are stored once and shared by every instance, and `this` is set per call to the object before the dot. Defining the function inside the constructor would give each instance its own copy.",
+      "tags": ["prototypes", "this"],
+      "level": 1,
+      "asked": "It checks you understand what `class` desugars to and why shared methods save memory."
+    },
+    {
+      "id": "jsf-253",
+      "q": "What does this log?",
+      "code": "const defaults = { currency: 'GBP' };\nconst order = Object.create(defaults);\norder.currency = 'EUR';\ndelete order.currency;\nconsole.log(order.currency);",
+      "lang": "js",
+      "choices": ["GBP", "EUR", "undefined", "It throws a TypeError"],
+      "answer": 0,
+      "why": "Assigning creates an own property that shadows the inherited one; `delete` removes only the own property, so lookup falls back to the prototype again. `delete` never walks up the chain.",
+      "tags": ["prototypes", "objects"],
+      "level": 2,
+      "asked": "Interviewers use it to test property lookup and shadowing, the core of the prototype model."
+    },
+    {
+      "id": "jsf-254",
+      "q": "What does this log?",
+      "code": "function createIdGenerator(prefix) {\n  let n = 0;\n  return () => `${prefix}-${++n}`;\n}\nconst orderId = createIdGenerator('ORD'), userId = createIdGenerator('USR');\nconsole.log(orderId(), orderId(), userId());",
+      "lang": "js",
+      "choices": [
+        "ORD-1 ORD-2 USR-3",
+        "ORD-1 ORD-1 USR-1",
+        "ORD-1 ORD-2 USR-1",
+        "ORD-0 ORD-1 USR-0"
+      ],
+      "answer": 2,
+      "why": "Each call to `createIdGenerator` creates a fresh `n` and `prefix`, and the returned closure keeps its own copy alive. The two generators therefore count independently.",
+      "tags": ["closures"],
+      "level": 1,
+      "asked": "A strong answer names the pattern (factory plus closure) and when a class would be clearer."
+    },
+    {
+      "id": "jsf-255",
+      "q": "What does this log?",
+      "code": "console.log(typeof render);\nvar render = 'text';\nfunction render() {}\nconsole.log(typeof render);",
+      "lang": "js",
+      "choices": ["function string", "undefined string", "string string", "function function"],
+      "answer": 0,
+      "why": "Function declarations are hoisted with their value, and a `var` of the same name does not reset it, so the first line sees a function. The assignment on line 2 then runs and overwrites it with a string.",
+      "tags": ["hoisting", "var", "functions"],
+      "level": 3,
+      "asked": "It checks you can reason about hoisting precisely, and why `let`/`const` make such name clashes an early error."
+    },
+    {
+      "id": "jsf-256",
+      "q": "Which check reliably detects an array, including one created in an iframe or a Node `vm` context?",
+      "choices": [
+        "`value instanceof Array`",
+        "`typeof value === 'array'`",
+        "`value.constructor === Array`",
+        "`Array.isArray(value)`"
+      ],
+      "answer": 3,
+      "why": "Each realm has its own `Array` constructor, so `instanceof` and `constructor` checks fail for arrays from another realm; `typeof` is `object` for all arrays. `Array.isArray` checks the internal array type and works everywhere.",
+      "tags": ["types", "arrays", "typeof"],
+      "level": 2,
+      "asked": "Interviewers ask it to see whether you know why `instanceof` is unreliable across realms."
+    },
+    {
+      "id": "jsf-257",
+      "q": "A quantity arrives as the string `'0'`. What does this log?",
+      "code": "const qty = '0';\nif (qty) console.log('has quantity');\nif (qty == false) console.log('zero');",
+      "lang": "js",
+      "choices": ["zero only", "has quantity, then zero", "has quantity only", "Nothing is logged"],
+      "answer": 1,
+      "why": "Every non-empty string is truthy, so the first check passes. Loose equality converts both sides to numbers, and `0 == 0`, so the second passes too. Convert once with `Number(qty)` and compare numbers.",
+      "tags": ["coercion", "truthiness", "equality"],
+      "level": 1,
+      "asked": "It is a compact demonstration of why truthiness and `==` disagree, and why you parse inputs at the boundary."
+    },
+    {
+      "id": "jsf-258",
+      "q": "What does this log?",
+      "code": "const start = new Date('2026-01-01T00:00:00Z');\nconsole.log(typeof (start + 1), typeof (start - 1));",
+      "lang": "js",
+      "choices": ["number number", "string string", "string number", "number string"],
+      "answer": 2,
+      "why": "Binary `+` converts a Date with the `default` hint, which Dates treat as `string`, so it concatenates. `-` only works on numbers, so the Date becomes its timestamp. Use `start.getTime() + ms` to be explicit.",
+      "tags": ["dates", "coercion"],
+      "level": 2,
+      "asked": "A strong answer explains the `default` hint rather than just memorising the result."
+    },
+    {
+      "id": "jsf-259",
+      "q": "Empty form fields are converted with `Number`. What does this log?",
+      "code": "console.log(Number(null), Number(undefined), Number([]), Number(['7']));",
+      "lang": "js",
+      "choices": ["NaN NaN NaN NaN", "0 NaN 0 7", "0 0 0 7", "null undefined 0 NaN"],
+      "answer": 1,
+      "why": "`null` converts to 0 and `undefined` to NaN. Arrays convert via their string form: `[]` becomes `''` (0) and `['7']` becomes `'7'` (7). So a missing value can silently become a real zero.",
+      "tags": ["coercion", "numbers", "null"],
+      "level": 2,
+      "asked": "Interviewers use it to show why \"missing\" must be checked before numeric conversion in validators."
+    },
+    {
+      "id": "jsf-260",
+      "q": "A helper rounds to two decimal places. What does this log?",
+      "code": "console.log(Math.round(1.005 * 100) / 100, Math.round(1.015 * 100) / 100);",
+      "lang": "js",
+      "choices": ["1.01 1.02", "1 1.02", "1.01 1.01", "1 1.01"],
+      "answer": 3,
+      "why": "`1.005` is stored as slightly less than 1.005, so `1.005 * 100` is `100.49999999999999` and rounds down; `1.015 * 100` is likewise just under 101.5. The fix for money is to hold integer minor units, or round with a decimal library.",
+      "tags": ["numbers", "floats", "rounding"],
+      "level": 3,
+      "asked": "A strong answer knows multiply-round-divide is not a fix, only a smaller version of the same float problem."
+    },
+    {
+      "id": "jsf-261",
+      "q": "A £100.00 bill (10,000 pence) is split three ways. What does this log?",
+      "code": "const split = (pence, n) => Array.from({ length: n }, (_, i) =>\n  Math.floor(pence / n) + (i < pence % n ? 1 : 0));\nconsole.log(split(10000, 3));",
+      "lang": "js",
+      "choices": [
+        "[ 3334, 3333, 3333 ]",
+        "[ 3333.33, 3333.33, 3333.33 ]",
+        "[ 3334, 3334, 3333 ]",
+        "[ 3333, 3333, 3333 ]"
+      ],
+      "answer": 0,
+      "why": "Each share gets the floored amount and the leftover pence (`10000 % 3 = 1`) are handed out one each to the first shares, so the parts always sum back to the total. Rounding each share independently would lose or invent a penny.",
+      "tags": ["money", "numbers"],
+      "level": 2,
+      "asked": "Interviewers ask about \"splitting a bill\" to see if you think about the pennies that do not divide evenly."
+    },
+    {
+      "id": "jsf-262",
+      "q": "A pasted price reads `1,299.00`. What does this log?",
+      "code": "const raw = '1,299.00';\nconsole.log(parseInt(raw), Number(raw), Number(raw.replaceAll(',', '')));",
+      "lang": "js",
+      "choices": ["1299 1299 1299", "1 NaN 1299", "NaN NaN 1299", "1 1299 1299"],
+      "answer": 1,
+      "why": "`parseInt` stops at the first invalid character, so it returns 1; `Number` rejects the whole string and returns NaN. Stripping the grouping separator (for the expected locale) first gives 1299.",
+      "tags": ["parsing", "numbers"],
+      "level": 1,
+      "asked": "It shows whether you would notice a user's thousands separator turning £1,299 into £1."
+    },
+    {
+      "id": "jsf-263",
+      "q": "A refund leaves a tiny negative balance. What does this log?",
+      "code": "const balance = -0.004;\nconsole.log(balance.toFixed(2), Math.round(balance * 100) / 100);",
+      "lang": "js",
+      "choices": ["0.00 0", "-0.00 0", "0.00 -0", "-0.00 -0"],
+      "answer": 3,
+      "why": "Rounding a small negative number keeps its sign: `toFixed` prints `-0.00` and `Math.round(-0.4)` is `-0`, which `console.log` shows as `-0`. Users then see \"-£0.00\"; normalise with `x || 0` or `x + 0` before display.",
+      "tags": ["numbers", "money", "formatting"],
+      "level": 3,
+      "asked": "A strong answer knows negative zero exists and where it leaks into UI and CSV exports."
+    },
+    {
+      "id": "jsf-264",
+      "q": "A CLI prints a price list. What is the first line?",
+      "code": "const rows = [['Tea', 2.5], ['Coffee', 3]];\nfor (const [name, p] of rows) {\n  console.log(name.padEnd(8, '.') + p.toFixed(2).padStart(6));\n}",
+      "lang": "js",
+      "choices": ["'Tea.....  2.50'", "'.....Tea2.50  '", "'Tea.....2.50'", "'Tea  2.50.....'"],
+      "answer": 0,
+      "why": "`padEnd(8, '.')` fills to 8 characters on the right, giving `Tea.....`; `padStart(6)` left-pads `2.50` with spaces to 6 characters. Neither method ever truncates a longer string.",
+      "tags": ["strings", "formatting"],
+      "level": 2,
+      "asked": "It checks you can build aligned text output without a library."
+    },
+    {
+      "id": "jsf-265",
+      "q": "What does this log?",
+      "code": "console.log('2026-01-15' < '2026-02-01', '15/01/2026' < '01/02/2026');",
+      "lang": "js",
+      "choices": ["true true", "false false", "true false", "false true"],
+      "answer": 2,
+      "why": "Strings compare character by character. ISO `YYYY-MM-DD` puts the most significant part first, so text order matches date order; `DD/MM/YYYY` compares the day first, so `15/01` sorts after `01/02`. Store and compare ISO dates.",
+      "tags": ["strings", "dates", "sort"],
+      "level": 1,
+      "asked": "A strong answer mentions that this is why ISO dates in file names and database columns sort correctly."
+    },
+    {
+      "id": "jsf-266",
+      "q": "A search should treat accents and case as equal. What does this log?",
+      "code": "const same = (a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }) === 0;\nconsole.log(same('Resume', 'résumé'), same('Resume', 'Resumes'));",
+      "lang": "js",
+      "choices": ["false false", "true false", "true true", "false true"],
+      "answer": 1,
+      "why": "`sensitivity: 'base'` makes the comparison ignore case and accents, so the first pair is equal. The extra `s` is a real difference at every sensitivity. `toLowerCase()` alone would still treat é and e as different.",
+      "tags": ["strings", "unicode", "search"],
+      "level": 3,
+      "asked": "Interviewers like it because accent-insensitive search is a real requirement with a one-line platform answer."
+    },
+    {
+      "id": "jsf-267",
+      "q": "What does `throw new Error('Order save failed', { cause: err })` give you over `throw new Error('Order save failed: ' + err.message)`?",
+      "choices": [
+        "The original error object, with its own stack and type, stays attached",
+        "The new error inherits the class of `err`, so `instanceof` still matches",
+        "Node prints only the cause, hiding the less useful wrapper message",
+        "The wrapper reuses the stack of `err`, so the trace starts at the root"
+      ],
+      "answer": 0,
+      "why": "`cause` keeps a reference to the original error, so loggers and `util.inspect` can print both stacks and code can still inspect `err.code`. Concatenating the message throws that away. The wrapper remains a plain Error with its own stack.",
+      "tags": ["errors"],
+      "level": 2,
+      "asked": "A strong answer explains wrapping at layer boundaries (repository → service) without losing the root cause."
+    },
+    {
+      "id": "jsf-268",
+      "q": "What does this log?",
+      "code": "console.log(Math.floor(-4.5), Math.trunc(-4.5), Math.ceil(-4.5));",
+      "lang": "js",
+      "choices": ["-4 -4 -5", "-5 -5 -4", "-5 -4 -4", "-4 -5 -4"],
+      "answer": 2,
+      "why": "`floor` rounds towards minus infinity (-5), `trunc` just drops the fraction (-4), and `ceil` rounds towards plus infinity (-4). For positive numbers `floor` and `trunc` agree, which hides the difference until refunds or offsets go negative.",
+      "tags": ["numbers", "rounding"],
+      "level": 1,
+      "asked": "It checks you pick the right function when values can be negative, such as balance adjustments."
+    },
+    {
+      "id": "jsf-269",
+      "q": "A search term is put into a URL. What does this log?",
+      "code": "const q = 'fish & chips/2';\nconsole.log(encodeURI(q));\nconsole.log(encodeURIComponent(q));",
+      "lang": "js",
+      "choices": [
+        "fish%20&%20chips/2, then fish%20%26%20chips%2F2",
+        "fish%20%26%20chips%2F2, then fish%20&%20chips/2",
+        "fish+&+chips/2, then fish+%26+chips%2F2",
+        "fish%20&%20chips/2, then fish%20&%20chips%2F2"
+      ],
+      "answer": 0,
+      "why": "`encodeURI` is for whole URLs, so it leaves reserved characters such as `&` and `/` alone; `encodeURIComponent` escapes them, which is what a single query value needs. Neither uses `+` for spaces; that is form encoding, as produced by `URLSearchParams`.",
+      "tags": ["strings", "parsing", "security"],
+      "level": 2,
+      "asked": "A strong answer adds that `URLSearchParams` or `new URL()` avoid hand-encoding altogether."
+    },
+    {
+      "id": "jsf-270",
+      "q": "What does this log?",
+      "code": "function Money(p) {\n  if (!new.target) return new Money(p);\n  this.pence = p;\n}\nconsole.log(Money(5).pence, new Money(7).pence);",
+      "lang": "js",
+      "choices": ["undefined 7", "5 7", "It throws a TypeError", "5 undefined"],
+      "answer": 1,
+      "why": "`new.target` is `undefined` for a plain call and the constructor for a `new` call, so the guard re-invokes itself with `new`. Classes use the same mechanism to throw \"cannot be invoked without 'new'\".",
+      "tags": ["functions", "classes"],
+      "level": 3,
+      "asked": "It checks whether you know how old-style constructor functions protected themselves from missing `new`."
+    },
+    {
+      "id": "jsf-271",
+      "q": "What does this log in Node 24?",
+      "code": "const { EventEmitter } = require('node:events');\nconst bus = new EventEmitter();\nbus.name = 'orders';\nbus.on('placed', function () { console.log(this.name); });\nbus.emit('placed');",
+      "lang": "js",
+      "choices": ["undefined", "placed", "It throws a TypeError", "orders"],
+      "answer": 3,
+      "why": "Node calls regular-function listeners with `this` set to the emitter, so `this.name` is `orders`. An arrow listener would ignore that and use the surrounding `this` instead.",
+      "tags": ["this", "callbacks"],
+      "level": 2,
+      "asked": "Interviewers use it to check you know the caller decides `this`, and that libraries document what they pass."
+    },
+    {
+      "id": "jsf-272",
+      "q": "What does this log?",
+      "code": "const page = {\n  items: ['a', 'b', 'c'],\n  *[Symbol.iterator]() { yield* this.items.map((x) => x.toUpperCase()); },\n};\nconsole.log([...page], Array.from(page).length);",
+      "lang": "js",
+      "choices": [
+        "[ 'A', 'B', 'C' ] 1",
+        "[ 'A', 'B', 'C' ] 3",
+        "[ [ 'A', 'B', 'C' ] ] 1",
+        "[ 'A', 'B', 'C' ] 0"
+      ],
+      "answer": 1,
+      "why": "A generator method under `Symbol.iterator` makes the object iterable, and `yield*` delegates to another iterable, yielding each element in turn. Spread and `Array.from` both use the protocol, and each call gets a fresh iterator.",
+      "tags": ["iterators", "generators", "objects"],
+      "level": 2,
+      "asked": "A strong answer mentions this is how you expose a paginated result object that works with `for...of`."
+    },
+    {
+      "id": "jsf-273",
+      "q": "A value is pasted from a web page with non-breaking spaces. What does this log?",
+      "code": "const pasted = '\\u00a0 42 \\u00a0';\nconsole.log(pasted.trim().length, Number(pasted));",
+      "lang": "js",
+      "choices": ["2 NaN", "6 NaN", "2 42", "6 42"],
+      "answer": 2,
+      "why": "`trim` removes all Unicode whitespace, including U+00A0, and `Number` applies the same whitespace rule before parsing, so both handle it. Hand-written `replace(/ /g, '')` would not, because it only matches the ordinary space.",
+      "tags": ["strings", "parsing", "unicode"],
+      "level": 3,
+      "asked": "It separates people who have debugged pasted spreadsheet data from those who assume a space is a space."
+    },
+    {
+      "id": "jsf-274",
+      "q": "What does this log?",
+      "code": "const code = 'GB-LDN-001';\nconsole.log(JSON.stringify([code.substring(6, 3), code.slice(6, 3)]));",
+      "lang": "js",
+      "choices": ["[\"LDN\",\"LDN\"]", "[\"\",\"LDN\"]", "[\"-00\",\"\"]", "[\"LDN\",\"\"]"],
+      "answer": 3,
+      "why": "`substring` swaps its arguments when the start is greater than the end, while `slice` returns an empty string. `slice` also accepts negative indexes, which is why it is the one to prefer.",
+      "tags": ["strings"],
+      "level": 2,
+      "asked": "Interviewers ask it to see whether you know the quirks that make `slice` the safer default."
+    },
+    {
+      "id": "jsf-275",
+      "q": "A user has no middle name. What does this log?",
+      "code": "const middle = null;\nconsole.log(`Ada ${middle} Lovelace`);\nconsole.log(['Ada', middle, 'Lovelace'].join(' '));",
+      "lang": "js",
+      "choices": [
+        "Ada null Lovelace, then Ada  Lovelace",
+        "Ada null Lovelace, then Ada null Lovelace",
+        "Ada  Lovelace, then Ada null Lovelace",
+        "Ada  Lovelace, then Ada  Lovelace"
+      ],
+      "answer": 0,
+      "why": "Template literals convert `null` with `String()`, printing \"null\", whereas `join` turns `null` and `undefined` elements into empty strings (leaving a double space). The clean version is `[first, middle, last].filter(Boolean).join(' ')`.",
+      "tags": ["strings", "null", "templates"],
+      "level": 1,
+      "asked": "It catches the \"Hello null\" bug that ships in emails and shows you know a tidy fix."
+    },
+    {
+      "id": "jsf-276",
+      "q": "What does this log?",
+      "code": "const text = 'Paid £25 and $30, owed £7';\nconsole.log(text.match(/(?<=£)\\d+/g));",
+      "lang": "js",
+      "choices": ["[ '£25', '£7' ]", "[ '25', '30', '7' ]", "[ '25', '7' ]", "[ '£25' ]"],
+      "answer": 2,
+      "why": "`(?<=£)` is a lookbehind: it requires a pound sign before the digits without including it in the match. The dollar amount fails the condition, and `g` returns every match.",
+      "tags": ["regex", "money"],
+      "level": 2,
+      "asked": "A strong answer contrasts lookbehind with capturing the symbol and discarding it afterwards."
+    },
+    {
+      "id": "jsf-277",
+      "q": "A phone number is normalised. What does this log?",
+      "code": "console.log('0123-456 789'.replace(/[^\\d]/g, ''));",
+      "lang": "js",
+      "choices": ["0123456789", "0123456 789", "0123-456 789", "0123-456789"],
+      "answer": 0,
+      "why": "`[^\\d]` is a negated class matching any non-digit, and `g` replaces every occurrence with nothing, leaving only the digits. Without `g` only the first hyphen would be removed.",
+      "tags": ["regex", "strings", "validation"],
+      "level": 1,
+      "asked": "It is a quick check that you can read character classes and negation."
+    },
+    {
+      "id": "jsf-278",
+      "q": "A validator is called with missing values. What does this log?",
+      "code": "const isSlug = (s) => /^[a-z-]+$/.test(s);\nconsole.log(isSlug('summer-sale'), isSlug(null), isSlug(undefined));",
+      "lang": "js",
+      "choices": ["true false false", "true true true", "true false true", "It throws a TypeError"],
+      "answer": 1,
+      "why": "`RegExp.prototype.test` converts its argument to a string, so `null` becomes \"null\" and `undefined` becomes \"undefined\", and both are lowercase letters. Check the type (`typeof s === 'string'`) before testing.",
+      "tags": ["regex", "validation", "coercion"],
+      "level": 3,
+      "asked": "Interviewers like it because it is a real validation hole that lets a missing field pass as a valid slug."
+    },
+    {
+      "id": "jsf-279",
+      "q": "A repository function looks up a user who may legitimately not exist. Which design is usually clearest for callers?",
+      "choices": [
+        "Throw a NotFoundError for missing users and for database failures alike",
+        "Return an empty object `{}` so callers can read fields without checks",
+        "Return `false` for any failure so callers never need a `try` block",
+        "Return `null` when not found; throw only for failures like a lost connection"
+      ],
+      "answer": 3,
+      "why": "\"Not found\" is an expected outcome, so returning `null` (or a result object) keeps it in normal control flow, while exceptions are reserved for things the caller cannot plan for. Returning `false` or `{}` hides real failures and invites `undefined` bugs further on.",
+      "tags": ["errors", "null"],
+      "level": 2,
+      "asked": "A strong answer describes where the HTTP layer turns `null` into a 404 and exceptions into a 500."
+    },
+    {
+      "id": "jsf-280",
+      "q": "In Node 24, what does this log?",
+      "code": "const fake = { name: 'Error', message: 'x', stack: '' };\nconsole.log(\n  fake instanceof Error, Error.isError(fake), Error.isError(new TypeError('t')),\n);",
+      "lang": "js",
+      "choices": ["false true true", "false false true", "true false true", "false false false"],
+      "answer": 1,
+      "why": "`Error.isError` checks for a genuine Error object (by its internal slot), so a look-alike object fails even though it has the right fields, and a TypeError passes. Unlike `instanceof` it also works for errors created in another realm.",
+      "tags": ["errors", "types"],
+      "level": 3,
+      "asked": "It checks whether you know duck-typing an error by `name`/`message` is unreliable, and what the newer built-in offers."
+    },
+    {
+      "id": "jsf-281",
+      "q": "What does this log?",
+      "code": "function safeParse(text, fallback = null) {\n  try { return JSON.parse(text); } catch { return fallback; }\n}\nconsole.log(safeParse('{\"a\":1}').a, safeParse('{a:1}'), safeParse('', {}));",
+      "lang": "js",
+      "choices": ["1 {} {}", "It throws a SyntaxError", "1 null null", "1 null {}"],
+      "answer": 3,
+      "why": "The valid JSON parses normally; the unquoted key and the empty string both make `JSON.parse` throw, and the parameterless `catch` returns the fallback. Optional catch binding is fine when you genuinely do not need the error.",
+      "tags": ["json", "errors", "parsing"],
+      "level": 1,
+      "asked": "A strong answer adds that you should still log unexpected parse failures rather than hiding them everywhere."
+    },
+    {
+      "id": "jsf-282",
+      "q": "What does this log?",
+      "code": "const config = {\n  get parsed() {\n    const value = { port: 3000 };\n    Object.defineProperty(this, 'parsed', { value });\n    return value;\n  },\n};\nconsole.log(config.parsed === config.parsed);",
+      "lang": "js",
+      "choices": ["false", "It throws a TypeError", "true", "undefined"],
+      "answer": 2,
+      "why": "The first read runs the getter, which replaces itself with a plain data property holding the same object; the second read returns that stored object. This is a lazy, self-memoising getter.",
+      "tags": ["getters", "objects", "caching"],
+      "level": 3,
+      "asked": "Interviewers like it as a compact example of lazy initialisation without an extra cache variable."
+    },
+    {
+      "id": "jsf-283",
+      "q": "What does this log before it stops?",
+      "code": "for (const id of [1, 2]) console.log(id);\nfor (const i = 0; i < 2; i++) console.log(i);",
+      "lang": "js",
+      "choices": [
+        "1, 2, 0, then a TypeError",
+        "1, 2, then a TypeError",
+        "1, 2, 0, 1",
+        "A SyntaxError before anything runs"
+      ],
+      "answer": 0,
+      "why": "`for...of` creates a fresh `const` binding per iteration, so it is fine. A classic `for` loop must update its variable with `i++`, which is an assignment to a constant: the body runs once with 0, then the update throws a TypeError.",
+      "tags": ["const", "loops"],
+      "level": 2,
+      "asked": "It checks you understand why `const` works in `for...of` but not in a counting loop."
+    },
+    {
+      "id": "jsf-284",
+      "q": "What does this log?",
+      "code": "const errors = [];\nconst filters = {};\nconsole.log(errors ? 'has errors' : 'ok', Object.keys(filters).length ? 'filtered' : 'all');",
+      "lang": "js",
+      "choices": ["ok all", "has errors filtered", "ok filtered", "has errors all"],
+      "answer": 3,
+      "why": "Every object, including an empty array or empty object, is truthy, so the first check is a bug; test `errors.length` instead. `Object.keys(filters).length` is 0, which is falsy.",
+      "tags": ["truthiness", "arrays", "objects"],
+      "level": 1,
+      "asked": "It catches a frequent bug in validation code where an empty error list is treated as a failure."
+    },
+    {
+      "id": "jsf-285",
+      "q": "In a CommonJS script without \"use strict\", what does this log?",
+      "code": "class Money {\n  constructor(pence) { this.pence = pence; Object.freeze(this); }\n}\nconst m = new Money(100);\nm.pence = 1;\nconsole.log(m.pence);",
+      "lang": "js",
+      "choices": ["1", "100", "It throws a TypeError", "undefined"],
+      "answer": 1,
+      "why": "The instance is frozen, and the assignment happens outside the class body in sloppy code, so it fails silently and the value stays 100. The same line in an ES module or inside a class method would throw a TypeError.",
+      "tags": ["immutability", "classes", "strict-mode"],
+      "level": 2,
+      "asked": "A strong answer mentions value objects and why silent failure makes strict mode (or modules) the safer default."
     }
   ]
 }

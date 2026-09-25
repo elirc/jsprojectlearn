@@ -654,6 +654,2600 @@
       ],
       "level": 2,
       "asked": "It checks that 'what changed in React 18' means something concrete to you rather than a release note."
+    },
+    {
+      "id": "rc-036",
+      "q": "What text does this `div` render in React 19?",
+      "code": "<div>{true}{false}{null}{undefined}{0}{''}{NaN}</div>",
+      "lang": "jsx",
+      "choices": [
+        "Nothing: every value in it is falsy",
+        "`truefalse0NaN`",
+        "`0NaN`",
+        "`0`"
+      ],
+      "answer": 2,
+      "why": "React skips booleans, `null`, `undefined` and empty strings, but renders numbers, and `NaN` is a number. That is why `count && <X />` leaks a `0`, and a failed `Number()` parse leaks `NaN`.",
+      "tags": [
+        "rendering",
+        "conditional"
+      ],
+      "level": 2,
+      "asked": "It checks you know React's exact rules for falsy children rather than JavaScript's idea of falsy."
+    },
+    {
+      "id": "rc-037",
+      "q": "What happens when this renders?",
+      "code": "<div style=\"color: red\">Warning</div>",
+      "lang": "jsx",
+      "choices": [
+        "React throws: `style` must be an object, not a string",
+        "The text turns red, exactly as it would in plain HTML",
+        "React ignores the prop silently and renders unstyled text",
+        "React parses the string into `{ color: 'red' }` for you"
+      ],
+      "answer": 0,
+      "why": "In JSX `style` takes an object with camelCased keys, as in `style={{ color: 'red' }}`. React 19 throws on a string rather than guessing, so a pasted HTML snippet fails loudly instead of rendering unstyled.",
+      "tags": [
+        "jsx",
+        "styling"
+      ],
+      "level": 1,
+      "asked": "A common slip when pasting HTML into a component; it checks you know JSX is not HTML."
+    },
+    {
+      "id": "rc-038",
+      "q": "`user` is `{ name: 'Ada' }`. What happens when this renders?",
+      "code": "return <p>Hello {user}</p>;",
+      "lang": "jsx",
+      "choices": [
+        "It renders `Hello [object Object]`",
+        "It renders `Hello Ada` by reading `name`",
+        "It renders `Hello` and logs a warning in development",
+        "It throws: objects are not valid as a React child"
+      ],
+      "answer": 3,
+      "why": "React can render strings, numbers, elements and arrays of those, but not plain objects, so it throws 'Objects are not valid as a React child'. Render a field such as `{user.name}` instead. It does not call `toString` for you.",
+      "tags": [
+        "jsx",
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "The error message is one every junior meets; interviewers want to hear you would render a field."
+    },
+    {
+      "id": "rc-039",
+      "q": "In React 19, what does `<Badge />` render?",
+      "code": "function Badge({ size }) {\n  return <b>{String(size)}</b>;\n}\nBadge.defaultProps = { size: 'md' };",
+      "lang": "jsx",
+      "choices": [
+        "`md`, because `defaultProps` fills in missing props",
+        "`undefined`, because 19 ignores it on function components",
+        "Nothing: React 19 throws when it sees `defaultProps`",
+        "`md` in development, and `undefined` in production"
+      ],
+      "answer": 1,
+      "why": "React 19 removed `defaultProps` for function components (classes still support it). Use a default parameter, `function Badge({ size = 'md' })`, which is plain JavaScript and works with TypeScript's inference.",
+      "tags": [
+        "props",
+        "react19"
+      ],
+      "level": 2,
+      "asked": "Upgrades to 19 break older component libraries on exactly this, so it tests current knowledge."
+    },
+    {
+      "id": "rc-040",
+      "q": "`props` is `{ type: 'email', name: 'e' }`. What `type` does the input get?",
+      "code": "<input {...props} type=\"text\" />",
+      "lang": "jsx",
+      "choices": [
+        "`text`, because the later attribute wins",
+        "`email`, because spread props always win",
+        "Both: React merges them into one attribute",
+        "Neither: React throws on duplicate props"
+      ],
+      "answer": 0,
+      "why": "JSX props are assigned left to right, like object spread, so a prop written after the spread overrides it. Put the spread last if callers should be able to override your defaults, first if your value must win.",
+      "tags": [
+        "props",
+        "jsx"
+      ],
+      "level": 1,
+      "asked": "Wrapper components live on this rule; it decides whether callers can override your defaults."
+    },
+    {
+      "id": "rc-041",
+      "q": "`count` is already `0`. The user clicks this button three times. How many more times does `Counter` render?",
+      "code": "const [count, setCount] = useState(0);\nreturn <button onClick={() => setCount(0)}>{count}</button>;",
+      "lang": "jsx",
+      "choices": [
+        "Three: every `setState` call schedules a render",
+        "One, for the first click only",
+        "Zero: React bails out when the value is unchanged",
+        "Six: each click renders once and then commits once"
+      ],
+      "answer": 2,
+      "why": "React compares the new state with the old using `Object.is`; when they are equal it skips the render. It may occasionally render the component once more before bailing out, but it never re-renders children or runs effects for an identical value.",
+      "tags": [
+        "state",
+        "rendering"
+      ],
+      "level": 2,
+      "asked": "It checks you understand the bail-out, which is also why mutating state and setting it fails."
+    },
+    {
+      "id": "rc-042",
+      "q": "Why does this link still navigate to `#top` when clicked?",
+      "code": "<a href=\"#top\" onClick={() => { track(); return false; }}>Top</a>",
+      "lang": "jsx",
+      "choices": [
+        "`track()` throws, so React never reaches the `return false`",
+        "React ignores the return value; call `e.preventDefault()`",
+        "`return false` only works when it is in an `onSubmit` handler",
+        "Anchors cannot be prevented; you must render a `<button>` instead"
+      ],
+      "answer": 1,
+      "why": "Returning `false` from an inline HTML handler cancels the default, but React discards handler return values. Accept the event and call `e.preventDefault()` explicitly.",
+      "tags": [
+        "events"
+      ],
+      "level": 1,
+      "asked": "People coming from jQuery or inline HTML handlers carry this habit into React."
+    },
+    {
+      "id": "rc-043",
+      "q": "What does `e.persist()` do in a React 19 event handler?",
+      "choices": [
+        "It keeps the event alive after the handler, as pooling requires",
+        "It stops the event from bubbling to the parent's handlers",
+        "It copies the native event, so `e.target` stays valid later",
+        "Nothing: React 17 removed event pooling, so it is a no-op"
+      ],
+      "answer": 3,
+      "why": "Before React 17, synthetic events were pooled and their fields were nulled after the handler, so async code needed `persist()`. Pooling is gone; you can read `e.type` or `e.target` in a `setTimeout` without it, and the method only remains for compatibility.",
+      "tags": [
+        "events"
+      ],
+      "level": 2,
+      "asked": "Old tutorials still show it; knowing why it existed shows you understand synthetic events."
+    },
+    {
+      "id": "rc-044",
+      "q": "While React renders this tree for the first time, which component function is called first?",
+      "code": "function Header() { return <h1>Hi</h1>; }\nfunction Page() {\n  const title = 'Home';\n  return <main><Header /></main>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`Header`, because it is the innermost",
+        "Neither: React calls them in parallel",
+        "`Page`, which returns the `<Header />` element",
+        "Whichever was declared first in the file"
+      ],
+      "answer": 2,
+      "why": "Rendering is top-down: React calls `Page`, receives an element tree that mentions `Header`, and only then calls `Header`. Effects run in the opposite order, innermost first, which is the pairing people mix up.",
+      "tags": [
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "It sets up the follow-up about effect order, which runs the other way."
+    },
+    {
+      "id": "rc-045",
+      "q": "Which attribute appears in the DOM?",
+      "code": "<div aria-hidden={false} />\n<button disabled={false} />",
+      "lang": "jsx",
+      "choices": [
+        "Only `aria-hidden`, set to `\"false\"`",
+        "Both, each with the value `\"false\"`",
+        "Only `disabled`, set to `\"false\"`",
+        "Neither: `false` removes both attributes"
+      ],
+      "answer": 0,
+      "why": "`disabled` is a boolean attribute, so React omits it for `false`. `aria-*` and `data-*` attributes are strings, so `false` is written as `\"false\"`, which for `aria-hidden` is still a valid value. That asymmetry matters for accessibility testing.",
+      "tags": [
+        "jsx",
+        "accessibility"
+      ],
+      "level": 3,
+      "asked": "It shows you know how JSX maps to real DOM attributes, which matters when debugging a11y."
+    },
+    {
+      "id": "rc-046",
+      "q": "What does React do with this input?",
+      "code": "const [email, setEmail] = useState(null);\nreturn <input value={email} onChange={e => setEmail(e.target.value)} />;",
+      "lang": "jsx",
+      "choices": [
+        "Renders it empty and fully controlled from the first render",
+        "Renders the text `null` in the field until the user types",
+        "Throws, because `value` must never be anything but a string",
+        "Treats it as uncontrolled at first and warns about `null`"
+      ],
+      "answer": 3,
+      "why": "`value={null}` (or `undefined`) means 'uncontrolled', so React warns and then warns again when typing switches it to controlled. Initialise with `''` and keep it a string.",
+      "tags": [
+        "forms",
+        "controlled"
+      ],
+      "level": 2,
+      "asked": "Data loaded from an API with null fields causes exactly this warning on edit forms."
+    },
+    {
+      "id": "rc-047",
+      "q": "What does `Item` render?",
+      "code": "function Item(props) {\n  return <li>{props.key}</li>;\n}\n// <Item key=\"a1\" />",
+      "lang": "jsx",
+      "choices": [
+        "`a1`, read from the key",
+        "`undefined`, plus a dev warning",
+        "Nothing: React throws on `key`",
+        "`[object Object]` as text"
+      ],
+      "answer": 1,
+      "why": "`key` is consumed by React for reconciliation and never passed to the component; reading it gives `undefined` and a warning. Pass the id twice if the child needs it: `<Item key={id} id={id} />`.",
+      "tags": [
+        "keys",
+        "props"
+      ],
+      "level": 2,
+      "asked": "It checks you know keys belong to React, not to your component."
+    },
+    {
+      "id": "rc-048",
+      "q": "In a form, what does this button do when clicked?",
+      "code": "<form onSubmit={save}>\n  <input name=\"title\" />\n  <button onClick={clear}>Clear</button>\n</form>",
+      "lang": "jsx",
+      "choices": [
+        "Runs `clear`, then submits the form and calls `save`",
+        "Only runs `clear`, since it has an `onClick`",
+        "Runs `save` only, because submit takes priority",
+        "Nothing until you add `type=\"button\"` to it"
+      ],
+      "answer": 0,
+      "why": "A `<button>` inside a form defaults to `type=\"submit\"`, so it runs its click handler and then submits. Give non-submit buttons `type=\"button\"`. React does not change this HTML rule.",
+      "tags": [
+        "forms",
+        "events"
+      ],
+      "level": 1,
+      "asked": "The 'why does my Cancel button save the form' bug; the answer is HTML, not React."
+    },
+    {
+      "id": "rc-049",
+      "q": "`<Greeting name=\"Ada\" />` appears in a component's JSX. When does `Greeting`'s function body run?",
+      "choices": [
+        "Immediately, when the JSX expression is evaluated",
+        "Only after the parent's effects have finished running",
+        "When React renders that element, if it is committed to the tree",
+        "Once per module import, and the result is then cached"
+      ],
+      "answer": 2,
+      "why": "JSX creates a plain object, `{ type: Greeting, props: { name: 'Ada' } }`, without calling `Greeting`. React calls it later while rendering, which is why a created-but-unused element costs almost nothing.",
+      "tags": [
+        "jsx",
+        "rendering"
+      ],
+      "level": 3,
+      "asked": "It separates people who know elements are descriptions from people who think JSX calls functions."
+    },
+    {
+      "id": "rc-050",
+      "q": "What goes wrong with `{Header()}` instead of `<Header />`, when `Header` uses hooks?",
+      "choices": [
+        "Nothing: both forms compile to exactly the same element tree",
+        "Its hooks become the caller's hooks, so rendering it conditionally breaks",
+        "It throws at once, because components cannot be called directly",
+        "It renders twice, once as a function and once as an element"
+      ],
+      "answer": 1,
+      "why": "Calling it as a function runs its hooks inside the parent's render, so React sees them as the parent's hooks and there is no `Header` component in the tree. Rendering it conditionally then changes the parent's hook order, and it gets no identity or state of its own.",
+      "tags": [
+        "hooks",
+        "rendering"
+      ],
+      "level": 3,
+      "asked": "It tests whether you know what React means by 'a component', beyond 'a function that returns JSX'."
+    },
+    {
+      "id": "rc-051",
+      "q": "`onChange` on a React text input fires when?",
+      "choices": [
+        "Only once the value is valid for the `type` attribute",
+        "Only when the input loses focus, like the DOM `change` event",
+        "Only when the user presses Enter inside the field",
+        "On every keystroke or edit, like the DOM `input` event"
+      ],
+      "answer": 3,
+      "why": "React's `onChange` for text fields is wired to the native `input` event, so it fires per edit. That is what makes controlled inputs possible. For blur-time work, use `onBlur`.",
+      "tags": [
+        "forms",
+        "events"
+      ],
+      "level": 1,
+      "asked": "It trips people who know DOM events; the React name means something different."
+    },
+    {
+      "id": "rc-052",
+      "q": "Why does this total show `\"5\"` + `\"3\"` = `53`?",
+      "code": "const [qty, setQty] = useState(0);\n<input type=\"number\" value={qty}\n  onChange={e => setQty(e.target.value)} />\n// total: qty + 3",
+      "lang": "jsx",
+      "choices": [
+        "`type=\"number\"` inputs round-trip through `parseFloat` badly",
+        "React converts state to a string when it is rendered",
+        "`e.target.value` is always a string, even for number inputs",
+        "`useState(0)` fixes the state's type to string after an edit"
+      ],
+      "answer": 2,
+      "why": "DOM input values are strings regardless of `type`. Convert with `e.target.valueAsNumber` or `Number(...)`, and decide what an empty field means, since `Number('')` is `0`.",
+      "tags": [
+        "forms",
+        "state"
+      ],
+      "level": 1,
+      "asked": "A real bug in every quantity field; it checks you think about the DOM's types."
+    },
+    {
+      "id": "rc-053",
+      "q": "Your list keys are `key={Math.random()}`. What is the effect?",
+      "choices": [
+        "Every row remounts on every render, losing state and focus",
+        "Nothing visible; random keys just skip the key warning",
+        "Rows keep state but React logs a duplicate-key warning",
+        "React caches the random key the first time it sees it"
+      ],
+      "answer": 0,
+      "why": "A new key means a new identity, so React unmounts the old row and mounts a fresh one each render: inputs lose their text and focus, and it is slow. Keys must be stable across renders, not merely unique.",
+      "tags": [
+        "keys",
+        "lists"
+      ],
+      "level": 1,
+      "asked": "It is the fix people reach for to silence the warning, so interviewers check you know its cost."
+    },
+    {
+      "id": "rc-054",
+      "q": "Two rows in a list accidentally share `key=\"42\"`. What can happen?",
+      "choices": [
+        "React throws and the whole list fails to render",
+        "The second row silently replaces the first one on screen",
+        "Nothing: React falls back to the array index for both",
+        "React logs a warning, and rows may be duplicated or dropped"
+      ],
+      "answer": 3,
+      "why": "React warns in development, but behaviour is undefined: updates can duplicate or omit rows, and state can attach to the wrong one. Duplicate keys usually mean the data has duplicate ids or two sources were merged.",
+      "tags": [
+        "keys",
+        "lists"
+      ],
+      "level": 2,
+      "asked": "It usually appears as a production bug; a strong answer traces it back to the data."
+    },
+    {
+      "id": "rc-055",
+      "q": "Two different lists on the same page both use keys `1`, `2`, `3`. Is that a problem?",
+      "choices": [
+        "Yes: keys must be unique across the whole app",
+        "No: keys only need to be unique among siblings",
+        "Yes, but only when both lists share one parent component",
+        "No, as long as both lists use keys of the same type"
+      ],
+      "answer": 1,
+      "why": "React compares keys only within one parent's children, so separate lists can reuse ids. Siblings in the same array must be unique, so merging two id spaces into one list needs a prefix like `user-1` and `team-1`.",
+      "tags": [
+        "keys",
+        "lists"
+      ],
+      "level": 1,
+      "asked": "A quick check that you know how far a key's scope reaches."
+    },
+    {
+      "id": "rc-056",
+      "q": "You need a key on each group of `<dt>`/`<dd>` pairs in `items.map`. What do you write?",
+      "choices": [
+        "`<Fragment key={item.id}>` around the pair",
+        "`<> key={item.id}` around the pair",
+        "`key={item.id}` on the `<dt>` only",
+        "A `<div key={item.id}>` around the pair"
+      ],
+      "answer": 0,
+      "why": "The `<>` shorthand cannot take props, so import `Fragment` and write `<Fragment key={item.id}>`. A wrapping `<div>` would break the `<dl>` markup, and a key on the `<dt>` alone leaves the array's items unkeyed.",
+      "tags": [
+        "keys",
+        "jsx"
+      ],
+      "level": 2,
+      "asked": "It checks both keys and valid HTML, since a stray `div` inside a `dl` is invalid."
+    },
+    {
+      "id": "rc-057",
+      "q": "What is wrong with this component?",
+      "code": "function TopScores({ scores }) {\n  const top = scores.sort((a, b) => b - a).slice(0, 3);\n  return <ol>{top.map(s => <li key={s}>{s}</li>)}</ol>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`slice` after `sort` returns the lowest three scores",
+        "`key={s}` is invalid because keys must be strings",
+        "`sort` mutates the parent's array during render",
+        "Sorting in render is too slow and belongs in an effect"
+      ],
+      "answer": 2,
+      "why": "`Array.prototype.sort` sorts in place, so rendering mutates a prop the parent owns, and breaks purity. Use `scores.toSorted(...)` or `[...scores].sort(...)`. Deriving it during render is right; mutating is not. Duplicate scores would also collide as keys.",
+      "tags": [
+        "purity",
+        "immutability"
+      ],
+      "level": 2,
+      "asked": "It checks you spot in-place array methods, which are the commonest purity violation."
+    },
+    {
+      "id": "rc-058",
+      "q": "Which update changes only the user's city without mutating state?",
+      "code": "const [user, setUser] = useState({\n  name: 'Ada', address: { city: 'Leeds', zip: 'LS1' },\n});",
+      "lang": "jsx",
+      "choices": [
+        "`setUser({ ...user, city: 'York' })`",
+        "`setUser({ ...user, address: { ...user.address, city: 'York' } })`",
+        "`setUser({ ...user, address: { city: 'York' } })`",
+        "`user.address.city = 'York'; setUser({ ...user })`"
+      ],
+      "answer": 1,
+      "why": "Spread is shallow, so each nested level you change needs its own copy. Replacing `address` with `{ city }` drops `zip`, and assigning to `user.address.city` mutates the old `address`, which earlier renders and memoised children still share.",
+      "tags": [
+        "state",
+        "immutability"
+      ],
+      "level": 1,
+      "asked": "Nested updates are where immutability is really tested, which is why reducers and Immer exist."
+    },
+    {
+      "id": "rc-059",
+      "q": "Where does React 17+ attach its event listeners?",
+      "choices": [
+        "On each element that has a handler, like `addEventListener`",
+        "On `document`, the same as React 16 and every earlier version",
+        "On `window`, so events from portals are included too",
+        "On the root container you passed to `createRoot`"
+      ],
+      "answer": 3,
+      "why": "React delegates: one listener per event type on the root container, then it walks the fibre tree to call your handlers. Since 17 that is the root, not `document`, so two React apps on one page, or a React app inside a legacy page, no longer interfere.",
+      "tags": [
+        "events"
+      ],
+      "level": 3,
+      "asked": "It explains odd bugs when mixing React with native listeners, and why 17 changed it."
+    },
+    {
+      "id": "rc-060",
+      "q": "In React 19, a native `document.addEventListener('click', close)` closes a menu. A React `onClick` inside the menu calls `e.stopPropagation()`. What happens when the user clicks in the menu?",
+      "choices": [
+        "`close` still runs, because React listens at `document` itself",
+        "`close` runs first, because native listeners always beat React's",
+        "`close` does not run: the native event is stopped at the root",
+        "`close` runs only in production, where React skips delegation"
+      ],
+      "answer": 2,
+      "why": "Since React 17, React listens on the root container, so `e.stopPropagation()` stops the native event there, before it bubbles to `document`. Listening at `document` was React 16 behaviour, which is why old click-outside code broke. A capture-phase listener on `document` still fires, because capture runs first.",
+      "tags": [
+        "events"
+      ],
+      "level": 3,
+      "asked": "Click-outside handling is a common exercise, and this is the change that fixed its classic trap."
+    },
+    {
+      "id": "rc-061",
+      "q": "What does `onClickCapture` do differently from `onClick`?",
+      "choices": [
+        "It fires on the way down, before children's `onClick` handlers",
+        "It fires only when the click lands exactly on that element",
+        "It captures the pointer so drags keep reporting to the element",
+        "It fires once per click, even if the element re-renders during it"
+      ],
+      "answer": 0,
+      "why": "React supports both phases: `onXCapture` runs during the capture phase, from the root down, so a parent sees the event before any child's bubbling handler. It is useful for logging or blocking clicks inside a region.",
+      "tags": [
+        "events"
+      ],
+      "level": 2,
+      "asked": "It checks that you know the DOM event model applies in React too."
+    },
+    {
+      "id": "rc-062",
+      "q": "Why does this JSX not compile?",
+      "code": "return (\n  <div>\n    {if (loading) { <Spinner /> }}\n  </div>\n);",
+      "lang": "jsx",
+      "choices": [
+        "`<Spinner />` needs a `return` in front of it",
+        "`loading` must be a boolean to use `if` in JSX",
+        "Conditionals must live in a separate component",
+        "Braces take expressions; `if` is a statement"
+      ],
+      "answer": 3,
+      "why": "JSX braces hold a JavaScript expression, because JSX compiles to function arguments. Use `loading && <Spinner />`, a ternary, or an `if` before the `return` that assigns to a variable.",
+      "tags": [
+        "jsx",
+        "conditional"
+      ],
+      "level": 1,
+      "asked": "A syntax question that shows whether you understand what JSX compiles to."
+    },
+    {
+      "id": "rc-063",
+      "q": "Why must a component's JSX have a single root, as in `return <><h1 /><p /></>`?",
+      "choices": [
+        "The DOM refuses to insert two sibling nodes at once",
+        "A component returns one value, and JSX is a function call",
+        "React can only diff trees that have exactly one root node",
+        "Keys cannot be assigned to more than one returned element"
+      ],
+      "answer": 1,
+      "why": "`<h1 /><p />` would be two expressions side by side, like `return f() g()`. Wrapping them in a fragment makes one value without adding a DOM node. Returning an array also works but needs keys.",
+      "tags": [
+        "jsx"
+      ],
+      "level": 1,
+      "asked": "An opener that shows whether you know JSX is JavaScript, not markup."
+    },
+    {
+      "id": "rc-064",
+      "q": "Which is the idiomatic way to render nothing when `items` is empty and a list otherwise?",
+      "choices": [
+        "`{items.length > 0 && <List items={items} />}`",
+        "`{items.length && <List items={items} />}`",
+        "`{!!items && <List items={items} />}`",
+        "`{items ?? <List items={items} />}`"
+      ],
+      "answer": 0,
+      "why": "An explicit boolean keeps `0` off the page. `!!items` is always true for an array, empty or not, and `??` only checks for `null` or `undefined`, so it returns the array itself.",
+      "tags": [
+        "conditional",
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "A quick check that you would not ship the stray-zero bug."
+    },
+    {
+      "id": "rc-065",
+      "q": "A child component edits its `items` prop with `props.items.push(newItem)`. What goes wrong?",
+      "choices": [
+        "It throws, because props objects are frozen in production",
+        "Nothing, as long as the parent re-renders at some point later",
+        "It mutates the parent's state, and React will not re-render for it",
+        "React copies props per child, so only the child's copy changes"
+      ],
+      "answer": 2,
+      "why": "Props are references to the parent's data; pushing mutates the parent's state array in place, with no render and a later surprise. Props are read-only: ask the parent to change the data through a callback such as `onAdd(item)`.",
+      "tags": [
+        "props",
+        "immutability"
+      ],
+      "level": 1,
+      "asked": "It is 'props are read-only' made concrete, which is a stronger answer than reciting the rule."
+    },
+    {
+      "id": "rc-066",
+      "q": "In development, `props` objects are frozen in React 19. What does that change for a child that does `props.title = 'x'`?",
+      "choices": [
+        "It succeeds, and the parent sees the new title",
+        "It throws a TypeError in strict-mode JavaScript",
+        "React silently rolls the change back after render",
+        "It succeeds in development but fails in production"
+      ],
+      "answer": 1,
+      "why": "React freezes the props object in development, and ES modules run in strict mode, so assigning to a frozen property throws. That catches the mistake early. Nested objects inside props are not frozen, so `props.user.name = 'x'` still mutates silently.",
+      "tags": [
+        "props",
+        "immutability"
+      ],
+      "level": 3,
+      "asked": "A detail that shows you have met the error, and know the nested case still slips through."
+    },
+    {
+      "id": "rc-067",
+      "q": "What does `setCount` return?",
+      "choices": [
+        "The new state value",
+        "The previous state value",
+        "A promise for the render",
+        "`undefined`"
+      ],
+      "answer": 3,
+      "why": "Setters return nothing; the new value appears on the next render. If you need the new value now, compute it into a variable, then both use it and pass it to the setter.",
+      "tags": [
+        "state"
+      ],
+      "level": 1,
+      "asked": "Short, and it leads into the 'state is a snapshot' follow-up."
+    },
+    {
+      "id": "rc-068",
+      "q": "Why does a click handler that reads `count` right after `setCount(count + 1)` see the old value?",
+      "choices": [
+        "The setter is asynchronous and returns a promise you forgot to await",
+        "React batches the call, and it lands after the event loop finishes",
+        "`count` is a constant for that render; the new value is the next render's",
+        "`setCount` only writes to the DOM; state catches up in an effect"
+      ],
+      "answer": 2,
+      "why": "Each render gets its own `count`, a plain `const` captured by the handler. Calling the setter schedules a new render with a new `count`; it cannot change the variable you already hold. 'Async' is the wrong mental model, since awaiting would not help.",
+      "tags": [
+        "state",
+        "closures"
+      ],
+      "level": 2,
+      "asked": "The strong answer is 'snapshot', not 'async'; interviewers listen for that word."
+    },
+    {
+      "id": "rc-069",
+      "q": "When is it fine to read `window.innerWidth` directly during render?",
+      "choices": [
+        "In a client-only app, if you do not need updates on resize",
+        "Always, because render runs in the browser",
+        "Never: reading any global breaks the rules of React",
+        "Only inside `useMemo`, so it is cached"
+      ],
+      "answer": 0,
+      "why": "Reading it gives the value at render time but will not re-render on resize, and it fails during server rendering where `window` is undefined. To track it, subscribe with `useSyncExternalStore` or an effect.",
+      "tags": [
+        "rendering",
+        "purity"
+      ],
+      "level": 2,
+      "asked": "It checks whether you know what makes a value reactive in React."
+    },
+    {
+      "id": "rc-070",
+      "q": "Which is a valid React component name?",
+      "choices": [
+        "`profileCard`",
+        "`user-card`",
+        "`user_card`",
+        "`UserCard`"
+      ],
+      "answer": 3,
+      "why": "JSX treats a capitalised tag as a variable reference and lowercase as an HTML tag, and hyphens are not valid in identifiers. `<userCard />` would create an unknown `usercard` element.",
+      "tags": [
+        "jsx",
+        "components"
+      ],
+      "level": 1,
+      "asked": "Warm-up level; it leads into what JSX compiles to."
+    },
+    {
+      "id": "rc-071",
+      "q": "`Counter` shows 2. Then `fancy` becomes true. What does it show?",
+      "code": "return fancy\n  ? <section><Counter /></section>\n  : <div><Counter /></div>;",
+      "lang": "jsx",
+      "choices": [
+        "2, because `Counter` is the same component",
+        "0, because its parent's element type changed",
+        "2, but only if `Counter` is wrapped in `memo`",
+        "0, because every conditional remounts its branch"
+      ],
+      "answer": 1,
+      "why": "React matches by type at each position. When `div` becomes `section`, React tears down that whole subtree, including `Counter`'s state. Swapping only `className` on the same `div` would keep it.",
+      "tags": [
+        "reconciliation",
+        "state"
+      ],
+      "level": 2,
+      "asked": "It checks you know state belongs to a position in the tree, not to a component name."
+    },
+    {
+      "id": "rc-072",
+      "q": "`Counter` shows 1. Then `fancy` becomes true. What does it show?",
+      "code": "return fancy\n  ? <div className=\"fancy\"><Counter /></div>\n  : <div><Counter /></div>;",
+      "lang": "jsx",
+      "choices": [
+        "1: the same types sit at the same positions",
+        "0: the two JSX branches are separate elements",
+        "0, because a changed `className` remounts the div",
+        "1, but only because both branches are on one line"
+      ],
+      "answer": 0,
+      "why": "Both branches describe a `div` containing a `Counter` at the same position, so React updates the `className` and keeps the `Counter`. The two branches being different JSX expressions does not matter; only the resulting tree does.",
+      "tags": [
+        "reconciliation",
+        "state"
+      ],
+      "level": 2,
+      "asked": "Paired with the type-change case, it shows you reason from the tree rather than from the code."
+    },
+    {
+      "id": "rc-073",
+      "q": "Rows use `key={index}` and each holds an uncontrolled `<input>`. The user types into row `a`, then `z` is added at the start. Where does the typed text appear?",
+      "code": "const [items, setItems] = useState(['a', 'b']);\n// later: setItems(['z', ...items])\nitems.map((it, i) => <li key={i}>{it}<input /></li>)",
+      "lang": "jsx",
+      "choices": [
+        "In the row labelled `a`, which moved down",
+        "Nowhere: every row remounts and is cleared",
+        "In the row labelled `z`, now in first position",
+        "In both the `z` and `a` rows, duplicated"
+      ],
+      "answer": 2,
+      "why": "Key `0` used to be `a` and is now `z`, so React keeps the first `<li>` and its input and just changes the label. The typed text stays at position 0, next to the wrong item. A stable `key={it.id}` moves the input with its row.",
+      "tags": [
+        "keys",
+        "lists"
+      ],
+      "level": 2,
+      "asked": "This is the demonstration interviewers want when you say 'index keys are bad'."
+    },
+    {
+      "id": "rc-074",
+      "q": "`name` changes from 'Ada' to 'Bob' after mount. What does the input show?",
+      "code": "<input defaultValue={name} />",
+      "lang": "jsx",
+      "choices": [
+        "'Bob', because the prop changed",
+        "'Ada', because `defaultValue` is read only once, on mount",
+        "An empty field, because React clears it on the change",
+        "'AdaBob', because React appends the new default value"
+      ],
+      "answer": 1,
+      "why": "`defaultValue` sets the initial value of an uncontrolled input; after mount the DOM owns it. To load a new record into an uncontrolled form, remount it with `key={record.id}`, or make the field controlled.",
+      "tags": [
+        "forms",
+        "uncontrolled"
+      ],
+      "level": 2,
+      "asked": "Edit forms that load late hit this; the fix tells the interviewer whether you know about keys."
+    },
+    {
+      "id": "rc-075",
+      "q": "What does `items` contain after one call to `add`?",
+      "code": "const [items, setItems] = useState([]);\nfunction add() {\n  setItems([...items, 'a']);\n  setItems([...items, 'b']);\n}",
+      "lang": "jsx",
+      "choices": [
+        "`['a', 'b']`",
+        "`['b', 'a']`",
+        "`['a']`",
+        "`['b']`"
+      ],
+      "answer": 3,
+      "why": "Both calls build from the same snapshot, the empty `items`, and the second replaces the first. Use `setItems(prev => [...prev, x])` whenever an update builds on the previous array.",
+      "tags": [
+        "state",
+        "closures"
+      ],
+      "level": 2,
+      "asked": "The array version of the double-increment question; it shows whether the idea transfers."
+    },
+    {
+      "id": "rc-076",
+      "q": "A button rendered through `createPortal` into `document.body` is clicked. Does the `onClick` on the `div` that renders the portal fire?",
+      "code": "<div onClick={() => log('parent')}>\n  {createPortal(<button>OK</button>, document.body)}\n</div>",
+      "lang": "jsx",
+      "choices": [
+        "No: the button is not inside the `div` in the DOM",
+        "Only if the portal target is inside the `div`",
+        "Yes: React events bubble through the React tree",
+        "Only for events that do not bubble natively"
+      ],
+      "answer": 2,
+      "why": "Synthetic events follow the component tree, not the DOM tree, so a click in a portal reaches React ancestors. That is convenient for modals, and surprising when a parent's `onClick` closes something.",
+      "tags": [
+        "events",
+        "portals"
+      ],
+      "level": 3,
+      "asked": "Modal bugs come from this, and it shows you know the React tree and DOM tree can differ."
+    },
+    {
+      "id": "rc-077",
+      "q": "React throws 'Element type is invalid: expected a string ... but got: undefined'. What is the usual cause?",
+      "choices": [
+        "An import is wrong, e.g. named versus default export",
+        "A component returned `undefined` instead of `null`",
+        "A list item is missing its `key` prop entirely",
+        "A hook was called conditionally inside a component"
+      ],
+      "answer": 0,
+      "why": "The component you rendered is `undefined`, which almost always means `import Widget from` a file that only has `export function Widget`, or the reverse, or a typo in the name. Returning `undefined` from a component is allowed in React 18 and later.",
+      "tags": [
+        "components",
+        "debugging"
+      ],
+      "level": 1,
+      "asked": "A debugging question: can you map a cryptic error to its everyday cause?"
+    },
+    {
+      "id": "rc-078",
+      "q": "`Show` reads `useContext(Theme)`, where `Theme = createContext('light')`, but no provider is above it. What does it get?",
+      "choices": [
+        "`undefined`",
+        "`null`",
+        "An error: missing provider",
+        "`'light'`"
+      ],
+      "answer": 3,
+      "why": "The argument to `createContext` is the value used when no provider is found. Many teams pass `null` and throw in a custom `useTheme()` hook, so a missing provider fails loudly instead of silently using a default.",
+      "tags": [
+        "context"
+      ],
+      "level": 1,
+      "asked": "Short, and it leads into why custom context hooks often throw on a missing provider."
+    },
+    {
+      "id": "rc-079",
+      "q": "What does `Show` render?",
+      "code": "<Theme value=\"dark\">\n  <Theme value=\"blue\">\n    <Show />\n  </Theme>\n</Theme>",
+      "lang": "jsx",
+      "choices": [
+        "`dark`, the outermost provider's value",
+        "`blue`, the nearest provider's value",
+        "`dark blue`, both values joined",
+        "The context's default value"
+      ],
+      "answer": 1,
+      "why": "`useContext` reads the closest provider above the component, so inner providers override outer ones. That is how you theme one section of a page differently. React 19 lets you render `<Theme>` directly as the provider.",
+      "tags": [
+        "context"
+      ],
+      "level": 1,
+      "asked": "It checks the lookup rule that makes nested providers useful."
+    },
+    {
+      "id": "rc-080",
+      "q": "What CSS does React write for `style={{ width: 100, lineHeight: 2 }}`?",
+      "choices": [
+        "`width: 100px; line-height: 2`",
+        "`width: 100px; line-height: 2px`",
+        "`width: 100; line-height: 2`",
+        "It throws: numbers need units"
+      ],
+      "answer": 0,
+      "why": "React appends `px` to numbers except for unitless properties such as `lineHeight`, `zIndex`, `opacity` and `flex`. For other units, pass a string like `'1rem'`.",
+      "tags": [
+        "styling",
+        "jsx"
+      ],
+      "level": 2,
+      "asked": "A detail you only know if you have written inline styles in React."
+    },
+    {
+      "id": "rc-081",
+      "q": "What text does this paragraph produce?",
+      "code": "<p>\n  Hello\n  <b>world</b>\n</p>",
+      "lang": "jsx",
+      "choices": [
+        "`Hello world`, with a space",
+        "`\\n Hello \\n world`",
+        "`Helloworld`, with no space",
+        "`Hello  world`, with two spaces"
+      ],
+      "answer": 2,
+      "why": "JSX trims text at line breaks and drops lines that are only whitespace, unlike HTML, which collapses the newline to a space. Add `{' '}` where you want a space between the text and the element.",
+      "tags": [
+        "jsx"
+      ],
+      "level": 2,
+      "asked": "A small bug that ships to production, and it shows you know JSX whitespace rules differ from HTML."
+    },
+    {
+      "id": "rc-082",
+      "q": "How do you make a `<select>` controlled in React?",
+      "choices": [
+        "Put `selected` on the chosen `<option>`",
+        "Pass `value` and `onChange` to the `<select>`",
+        "Pass `defaultValue` to the chosen `<option>`",
+        "Call `select.value = x` in an effect"
+      ],
+      "answer": 1,
+      "why": "React moves the selected value to the `<select>` itself, like a text input. Setting `selected` on options triggers a warning. For `multiple`, `value` is an array.",
+      "tags": [
+        "forms",
+        "controlled"
+      ],
+      "level": 1,
+      "asked": "It checks you know React normalises the form elements."
+    },
+    {
+      "id": "rc-083",
+      "q": "How do you set a controlled `<textarea>`'s text in React?",
+      "choices": [
+        "Put the text between the tags, as in HTML",
+        "Use `defaultValue` together with `onChange`",
+        "Use `innerText` in a ref after the mount",
+        "Use `value` and `onChange`, like an input"
+      ],
+      "answer": 3,
+      "why": "React treats `<textarea>` like `<input>`: `value` for controlled, `defaultValue` for uncontrolled. Children are not supported. `defaultValue` with `onChange` is still uncontrolled.",
+      "tags": [
+        "forms",
+        "controlled"
+      ],
+      "level": 1,
+      "asked": "Warm-up that confirms you know the form-element rules."
+    },
+    {
+      "id": "rc-084",
+      "q": "Which renders a controlled radio group for `size`?",
+      "choices": [
+        "`<input type=\"radio\" value={size} onChange={...} />` on each",
+        "`<input type=\"radio\" selected={size === 'm'} />` per option",
+        "`<input type=\"radio\" checked={size === 'm'} onChange={...} />` per option",
+        "`<input type=\"radio\" defaultChecked={size} />` on the first one"
+      ],
+      "answer": 2,
+      "why": "Radios and checkboxes are controlled through `checked`, not `value`. Each radio's `value` names the option, and `onChange` sets `size` from `e.target.value`.",
+      "tags": [
+        "forms",
+        "controlled"
+      ],
+      "level": 1,
+      "asked": "Everyone does text inputs; radios show whether you know the rule generalises through `checked`."
+    },
+    {
+      "id": "rc-085",
+      "q": "After an upload finishes, the user picks the very same file again and the input's `onChange` never fires. Why, and what is the usual fix?",
+      "code": "<input type=\"file\" onChange={(e) => upload(e.target.files[0])} />",
+      "lang": "jsx",
+      "choices": [
+        "The value is unchanged, so no change event fires; clear it with `e.target.value = ''`",
+        "React dedupes identical `File` objects; wrap `upload` in `useCallback` to reset it",
+        "The browser caches the file handle; set `e.target.files = null` inside the handler",
+        "`onChange` fires only once per mount; give the input `key={Date.now()}` on each render"
+      ],
+      "answer": 0,
+      "why": "The browser fires `change` only when the selection differs, and picking the same file leaves it identical. Setting `value` to an empty string is the one write scripts may make to a file input, so clear it after reading `files` (or remount the input with a new `key` once, after the upload). A key that changes on every render would remount it constantly.",
+      "tags": [
+        "forms",
+        "uncontrolled"
+      ],
+      "level": 2,
+      "asked": "Shows you have actually shipped an upload form and know the browser rule behind the bug."
+    },
+    {
+      "id": "rc-086",
+      "q": "In an `onSubmit` handler, why use `new FormData(e.currentTarget)` rather than `e.target`?",
+      "choices": [
+        "`e.target` is `null` for submit events in React",
+        "`currentTarget` includes disabled fields; `target` does not",
+        "`FormData` refuses to accept `e.target` in React 19",
+        "`currentTarget` is always the form the handler is on"
+      ],
+      "answer": 3,
+      "why": "`currentTarget` is the element the handler is attached to; `target` is where the event came from. For submit they are usually the same, but in TypeScript `currentTarget` is typed as `HTMLFormElement` and it is the right habit for bubbling events.",
+      "tags": [
+        "forms",
+        "events"
+      ],
+      "level": 2,
+      "asked": "It checks event basics and hints at TypeScript experience with form handlers."
+    },
+    {
+      "id": "rc-087",
+      "q": "Why store `selectedId` in state instead of a copy of the selected item object?",
+      "code": "const [items, setItems] = useState(initial);\nconst [selected, setSelected] = useState(null); // an item",
+      "lang": "jsx",
+      "choices": [
+        "Objects cannot be stored in React state reliably",
+        "An edit to `items` leaves the stored copy stale",
+        "Ids render faster than objects in JSX",
+        "`useState` compares objects by value, not by reference"
+      ],
+      "answer": 1,
+      "why": "Two copies of the same item drift apart: rename it in `items` and `selected` still shows the old name. Keep the id and derive `items.find(i => i.id === selectedId)` during render; there is one source of truth.",
+      "tags": [
+        "state-design"
+      ],
+      "level": 2,
+      "asked": "It is the 'avoid duplicated state' principle applied to a case everyone has built."
+    },
+    {
+      "id": "rc-088",
+      "q": "A fetch screen keeps `isLoading`, `isError` and `data` in three `useState` calls. What is the design problem?",
+      "choices": [
+        "It allows impossible combinations, e.g. loading and error",
+        "Three setters cause three separate renders each time",
+        "Booleans cannot be used as state in React components",
+        "`data` must be fetched inside the `isLoading` setter"
+      ],
+      "answer": 0,
+      "why": "Nothing stops `isLoading && isError` both being true after a missed reset. A single `status: 'idle' | 'loading' | 'error' | 'success'` makes invalid states unrepresentable, which TypeScript can then enforce.",
+      "tags": [
+        "state-design"
+      ],
+      "level": 2,
+      "asked": "Interviewers use this to see if you design state or just add booleans until it works."
+    },
+    {
+      "id": "rc-089",
+      "q": "Where should `fullName` come from?",
+      "code": "const [first, setFirst] = useState('');\nconst [last, setLast] = useState('');",
+      "lang": "jsx",
+      "choices": [
+        "A third state, updated in both `onChange` handlers",
+        "An effect that sets it whenever `first` or `last` change",
+        "A `const` computed during render: `${first} ${last}`",
+        "A ref, so updating it never causes an extra render"
+      ],
+      "answer": 2,
+      "why": "Anything you can compute from existing state or props should be computed during render. A third state can drift, and an effect adds a render with the stale value first.",
+      "tags": [
+        "state-design",
+        "derived-state"
+      ],
+      "level": 1,
+      "asked": "The simplest form of 'don't store what you can derive'."
+    },
+    {
+      "id": "rc-090",
+      "q": "Two sibling `Panel`s should never be open at the same time. What is the idiomatic structure?",
+      "choices": [
+        "Each `Panel` keeps `isOpen` and closes the other through a ref",
+        "The parent holds `openId`; each `Panel` gets `isOpen` and `onOpen`",
+        "A module-level variable tracks which of the panels is open",
+        "Each `Panel` reads the other one's state via context"
+      ],
+      "answer": 1,
+      "why": "The rule involves both panels, so the state lives in their common parent. Panels become controlled: they show `isOpen` and ask to change it through `onOpen`. Refs and globals bypass React's rendering, so the screen can go out of sync.",
+      "tags": [
+        "state-design",
+        "lifting-state"
+      ],
+      "level": 1,
+      "asked": "An accordion is the textbook lifting-state exercise, and interviewers like it as a live task."
+    },
+    {
+      "id": "rc-091",
+      "q": "`show` goes from true to false and back to true. What is `Counter`'s count?",
+      "code": "{show && <Counter />}",
+      "lang": "jsx",
+      "choices": [
+        "What it was before, as React caches it",
+        "Undefined until `Counter` sets it again",
+        "Whatever the last render of the parent had",
+        "Its initial value, since it unmounted"
+      ],
+      "answer": 3,
+      "why": "Rendering `false` removes `Counter` from the tree, and React discards its state. When it comes back it is a new instance. To keep state while hidden, keep it mounted and hide it with CSS, use `<Activity>` in 19.2, or lift the state up.",
+      "tags": [
+        "state",
+        "reconciliation"
+      ],
+      "level": 1,
+      "asked": "It checks the basic mount/unmount lifecycle of state before the harder identity questions."
+    },
+    {
+      "id": "rc-092",
+      "q": "A tab panel must keep its form input when the user switches tabs and back. Which approach does NOT keep it?",
+      "choices": [
+        "Keep every panel mounted and hide the inactive ones with CSS",
+        "Wrap each panel in React 19.2's `<Activity mode=\"hidden\">`",
+        "Render only the active panel with `{active === 'a' && <A />}`",
+        "Lift the form's values up into the parent that owns the tabs"
+      ],
+      "answer": 2,
+      "why": "Conditional rendering unmounts the inactive panel and loses its state. Hiding keeps it mounted, `<Activity>` keeps state while hidden (and pauses its effects), and lifting keeps the values outside the panel.",
+      "tags": [
+        "state",
+        "reconciliation"
+      ],
+      "level": 2,
+      "asked": "It turns 'unmounting loses state' into a design choice with trade-offs."
+    },
+    {
+      "id": "rc-093",
+      "q": "`Counter` appears twice on the page. The user clicks the first one. What happens to the second?",
+      "code": "<>\n  <Counter />\n  <Counter />\n</>",
+      "lang": "jsx",
+      "choices": [
+        "Nothing: each instance has its own state",
+        "It increments too; they share one state",
+        "It resets to zero after the click",
+        "It increments only if the two are siblings"
+      ],
+      "answer": 0,
+      "why": "State belongs to a position in the tree, so each rendered instance gets its own. Sharing needs the state lifted to their common parent and passed down.",
+      "tags": [
+        "state",
+        "components"
+      ],
+      "level": 1,
+      "asked": "A warm-up that confirms you know state is per instance."
+    },
+    {
+      "id": "rc-094",
+      "q": "Which lists more state than this search screen needs?",
+      "code": "const [query, setQuery] = useState('');\nconst [results, setResults] = useState(allUsers);\nconst [count, setCount] = useState(allUsers.length);",
+      "lang": "jsx",
+      "choices": [
+        "Only `query`, since `allUsers` itself should be in state",
+        "Only `count`, since `results` is needed for the filter",
+        "None: each value appears on screen, so each needs state",
+        "Only `query`, since `results` and `count` can be derived from it"
+      ],
+      "answer": 3,
+      "why": "With `allUsers` already available, `results` is a filter of it by `query`, and `count` is `results.length`. Storing them means every `setQuery` must remember to update both, and one day it will not.",
+      "tags": [
+        "state-design",
+        "derived-state"
+      ],
+      "level": 1,
+      "asked": "Minimal state is the core idea of 'Thinking in React', and this is how it is examined."
+    },
+    {
+      "id": "rc-095",
+      "q": "When is copying a prop into state, as in `useState(props.initialColor)`, the right design?",
+      "choices": [
+        "Never: every prop copied into state is a bug",
+        "When the prop is only an initial value and later changes should be ignored",
+        "When the prop is an object, so React can compare it by value",
+        "Whenever the child needs to read the prop inside an effect"
+      ],
+      "answer": 1,
+      "why": "Seeding state from a prop is fine when that is the intent, and the `initial` or `default` name says so. It is a bug when the child is meant to follow the prop, because later changes are ignored.",
+      "tags": [
+        "state-design",
+        "props"
+      ],
+      "level": 2,
+      "asked": "A nuanced version of 'don't mirror props', and nuance is what mid-level interviews reward."
+    },
+    {
+      "id": "rc-096",
+      "q": "What is the difference between a controlled and an uncontrolled component, in one sentence?",
+      "choices": [
+        "Controlled gets its value from props or state; uncontrolled keeps it internally",
+        "Controlled uses hooks; uncontrolled uses classes",
+        "Controlled validates input; uncontrolled accepts anything the user types",
+        "Controlled renders on the server; uncontrolled only renders in the browser"
+      ],
+      "answer": 0,
+      "why": "The distinction is who owns the value. A controlled component gets `value` and reports changes; an uncontrolled one, like a plain `<input defaultValue>`, keeps its own and you read it when needed. The idea applies to your components too, not just inputs.",
+      "tags": [
+        "controlled",
+        "uncontrolled"
+      ],
+      "level": 1,
+      "asked": "It is asked verbatim; the strong answer generalises beyond `<input>`."
+    },
+    {
+      "id": "rc-097",
+      "q": "A large settings form only needs its values on submit. What does an uncontrolled form with `FormData` save you?",
+      "choices": [
+        "All validation, which the browser then handles alone",
+        "The need for a `name` attribute on each form field",
+        "A state variable and re-render per field on every keystroke",
+        "Server-side validation, which is no longer required"
+      ],
+      "answer": 2,
+      "why": "Uncontrolled fields keep their values in the DOM, so typing does not re-render the form, and `new FormData(form)` reads them all on submit. You lose instant derived UI, such as live previews; that is when controlled fields earn their cost.",
+      "tags": [
+        "forms",
+        "uncontrolled"
+      ],
+      "level": 2,
+      "asked": "It checks you choose between controlled and uncontrolled on purpose, not by habit."
+    },
+    {
+      "id": "rc-098",
+      "q": "In `<ul>{users.map(u => <UserRow user={u} />)}</ul>`, what happens without a `key`?",
+      "choices": [
+        "It fails to compile until you add one",
+        "It renders, warns, and matches rows by position",
+        "It renders with each user's `id` used automatically",
+        "It renders, but React re-mounts every row each time"
+      ],
+      "answer": 1,
+      "why": "Without keys React warns and falls back to the index, with all its reordering bugs. It does not look for an `id` field or remount everything.",
+      "tags": [
+        "keys",
+        "lists"
+      ],
+      "level": 1,
+      "asked": "The follow-up to 'what is key for', to check you know what happens without one."
+    },
+    {
+      "id": "rc-099",
+      "q": "`users` has already been fetched. Which way of showing active users follows React's model?",
+      "choices": [
+        "Keep `active` in a ref and refill it in each click handler",
+        "`useEffect(() => setActive(users.filter(...)), [users])`",
+        "Filter them in the fetch callback and store both arrays",
+        "`const active = users.filter(u => u.active)` in the body"
+      ],
+      "answer": 3,
+      "why": "A filtered list is derived data, so compute it during render; if it is genuinely expensive, wrap it in `useMemo`. The effect version renders once with stale data, and two stored arrays can disagree.",
+      "tags": [
+        "derived-state",
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "It is the 'you might not need an effect' idea in its most common form."
+    },
+    {
+      "id": "rc-100",
+      "q": "What is a 'pure' component in React's sense?",
+      "choices": [
+        "One that renders HTML elements only, never other components",
+        "One wrapped in `React.memo`, so that it never re-renders",
+        "Same props, state and context in, same JSX out, with no side effects",
+        "One with no state of its own, only props from its parent"
+      ],
+      "answer": 2,
+      "why": "Rendering must be a calculation: no mutation of existing values, no requests, no timers. Side effects belong in event handlers or effects. Purity is what lets React render twice, pause or discard a render safely.",
+      "tags": [
+        "purity",
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "Purity underpins StrictMode, concurrency and the Compiler, so interviewers check you can define it."
+    },
+    {
+      "id": "rc-101",
+      "q": "Which line breaks render purity?",
+      "code": "function Order({ order }) {\n  const total = order.lines.reduce((s, l) => s + l.price, 0); // A\n  const label = `#${order.id}`;                              // B\n  order.viewedAt = Date.now();                               // C\n  return <h2>{label}: {total}</h2>;                          // D\n}",
+      "lang": "jsx",
+      "choices": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "answer": 2,
+      "why": "Line C mutates a prop during render, a side effect on data the parent owns. Reading and computing, as in A and B, is fine; record views in an effect or event handler instead.",
+      "tags": [
+        "purity"
+      ],
+      "level": 1,
+      "asked": "Spotting side effects in render is a core code-review skill."
+    },
+    {
+      "id": "rc-102",
+      "q": "How is the virtual DOM diff kept fast enough, given that a general tree diff is O(n³)?",
+      "choices": [
+        "Heuristics: other types replace a subtree, and keys match siblings",
+        "React diffs only the parts of the tree that are visible on screen",
+        "Web workers compute the diff off the main thread in the background",
+        "The browser does the diffing natively via `document.diff()`"
+      ],
+      "answer": 0,
+      "why": "React assumes elements of different types produce different trees, so it replaces rather than compares them, and it matches siblings by key instead of trying every pairing. That makes reconciliation roughly linear.",
+      "tags": [
+        "reconciliation"
+      ],
+      "level": 3,
+      "asked": "It separates people who can explain reconciliation from people who say 'the virtual DOM is fast'."
+    },
+    {
+      "id": "rc-103",
+      "q": "React splits an update into render and commit phases. What happens in the commit phase?",
+      "choices": [
+        "Your components are called to produce new JSX",
+        "React compares the old and new state values",
+        "React fetches any data that the components need",
+        "React applies the DOM changes, then runs effects"
+      ],
+      "answer": 3,
+      "why": "Render calls components and works out what changed; it has no visible effect and can be paused or thrown away. Commit applies the changes to the DOM in one go, attaches refs, then runs layout effects and later passive effects.",
+      "tags": [
+        "rendering",
+        "reconciliation"
+      ],
+      "level": 2,
+      "asked": "It checks that 'render' means calling your component, not updating the screen."
+    },
+    {
+      "id": "rc-104",
+      "q": "A parent re-renders, and `Child`'s props are identical. Does `Child` re-render by default?",
+      "choices": [
+        "No: React skips children with unchanged props",
+        "Yes: children re-render unless memoised",
+        "Only when `Child` has state of its own",
+        "Only when the props are objects"
+      ],
+      "answer": 1,
+      "why": "By default a render cascades to every child. React only skips when the child is wrapped in `memo` and its props are shallow-equal, or when the element object itself is the same, as with `children`. Re-rendering is usually cheap; the DOM only changes if the output differs.",
+      "tags": [
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "The most common misconception about rendering; it sets up the memo discussion."
+    },
+    {
+      "id": "rc-105",
+      "q": "What does `flushSync(() => setOpen(true))` from `react-dom` do?",
+      "choices": [
+        "Applies the update and commits the DOM before it returns",
+        "Batches the update with any others pending in this tick",
+        "Sends the update to the server in a synchronous request",
+        "Delays the update until the browser is next idle"
+      ],
+      "answer": 0,
+      "why": "It forces React to render and commit synchronously, so the next line can measure or focus the new DOM. It is an escape hatch; overusing it defeats batching and hurts performance.",
+      "tags": [
+        "rendering",
+        "batching"
+      ],
+      "level": 3,
+      "asked": "A rare but real tool; knowing it exists, and why it is rare, signals depth."
+    },
+    {
+      "id": "rc-106",
+      "q": "What does this list render when `items` is `[\"a\", \"b\"]`?",
+      "code": "function List({ items }) {\n  return <ul>{items.map((i) => { <li>{i}</li> })}</ul>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Two `<li>` elements, because `map` returns each JSX value",
+        "An empty `<ul>`: the arrow body has braces but no `return`",
+        "A compile error, because JSX cannot sit inside a block body",
+        "A key warning and two `<li>` elements rendered by position"
+      ],
+      "answer": 1,
+      "why": "With braces the arrow is a block body, so each callback returns `undefined` and React renders nothing for those holes. Drop the braces or write `return <li ...>`. The JSX inside is a legal expression statement, so it compiles fine.",
+      "tags": [
+        "lists",
+        "jsx"
+      ],
+      "level": 1,
+      "asked": "A classic \"why is my list empty\" bug; strong candidates spot it from the braces alone."
+    },
+    {
+      "id": "rc-107",
+      "q": "What does `Stars` render for `<Stars count=\"3\" />`?",
+      "code": "function Stars({ count }) {\n  return <b>{count + 1}</b>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`4`, because JSX converts numeric-looking strings",
+        "`31`, because a quoted prop is always a string",
+        "`NaN`, because a string prop cannot be added to",
+        "A type error thrown during render in development"
+      ],
+      "answer": 1,
+      "why": "Quoted attribute values are string literals, so `\"3\" + 1` concatenates to `\"31\"`. Pass numbers, booleans and objects in braces: `count={3}`. React never coerces prop types for you.",
+      "tags": [
+        "props",
+        "jsx"
+      ],
+      "level": 1,
+      "asked": "Checks you know the difference between a string attribute and a JavaScript expression in JSX."
+    },
+    {
+      "id": "rc-108",
+      "q": "What does `Modal` receive as `open` in `<Modal open />`?",
+      "choices": [
+        "The string `\"open\"`, as in HTML",
+        "`undefined`, because no value was given",
+        "`true`, as a boolean shorthand",
+        "An empty string, like an HTML attribute"
+      ],
+      "answer": 2,
+      "why": "A JSX attribute with no value is shorthand for `={true}`. HTML treats a bare attribute as present with an empty string value, which is the misconception the other choices lean on.",
+      "tags": [
+        "props",
+        "jsx"
+      ],
+      "level": 1,
+      "asked": "Quick warm-up; the follow-up is usually how you pass `false` (`open={false}` or omit it)."
+    },
+    {
+      "id": "rc-109",
+      "q": "`bio` comes from the API as `\"<b>Hi</b> there\"`. What does `<p>{bio}</p>` show?",
+      "choices": [
+        "\"Hi\" in bold, followed by \" there\"",
+        "Nothing at all, because React strips unknown markup",
+        "An error that strings cannot contain markup",
+        "The literal text `<b>Hi</b> there`, tags and all"
+      ],
+      "answer": 3,
+      "why": "React escapes strings rendered as children, so markup appears as text and cannot inject script. Rendering HTML needs `dangerouslySetInnerHTML` plus sanitising. Nothing is stripped or rejected.",
+      "tags": [
+        "jsx",
+        "security"
+      ],
+      "level": 1,
+      "asked": "Links JSX to XSS: the strong answer says escaping is the default and HTML injection is opt-in."
+    },
+    {
+      "id": "rc-110",
+      "q": "`remove(id)` deletes a row. What does it receive when the button is clicked?",
+      "code": "<button onClick={remove}>Delete</button>",
+      "lang": "jsx",
+      "choices": [
+        "The row id, taken from the closest `key` prop",
+        "`undefined`, as React calls handlers with no arguments",
+        "The button's DOM node, bound as the first argument",
+        "The click event object, not an id"
+      ],
+      "answer": 3,
+      "why": "React calls the handler with the synthetic event, so `remove` gets an event where it expected an id. Wrap it: `onClick={() => remove(row.id)}`. Keys are never passed to handlers or components.",
+      "tags": [
+        "events"
+      ],
+      "level": 1,
+      "asked": "Very common junior bug; the follow-up is why `onClick={remove(row.id)}` is wrong too."
+    },
+    {
+      "id": "rc-111",
+      "q": "Clicking a row opens its detail page. Clicking the row's Delete button deletes it but also opens the detail page. What is the usual fix?",
+      "code": "<tr onClick={() => open(row.id)}>\n  <td><button onClick={() => del(row.id)}>Delete</button></td>\n</tr>",
+      "lang": "jsx",
+      "choices": [
+        "Call `e.stopPropagation()` in the Delete handler",
+        "Call `e.preventDefault()` in the Delete button handler",
+        "Move the row handler to `onClickCapture`",
+        "Return `false` from the Delete handler"
+      ],
+      "answer": 0,
+      "why": "React events bubble through the component tree, so the row's `onClick` runs after the button's. `stopPropagation` stops that. `preventDefault` only cancels default browser actions, capture would run the row handler first, and returning `false` does nothing in React.",
+      "tags": [
+        "events"
+      ],
+      "level": 1,
+      "asked": "Tests bubbling versus default actions, which candidates often mix up."
+    },
+    {
+      "id": "rc-112",
+      "q": "What happens when `<Greeting name=\"Ada\" />` renders?",
+      "code": "function Greeting(name) {\n  return <p>Hi {name}</p>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "It renders \"Hi Ada\", since the only prop is passed",
+        "It renders \"Hi \" because `name` is `undefined` there",
+        "It throws: `name` is the props object, not a string",
+        "It renders \"Hi [object Object]\" as plain text"
+      ],
+      "answer": 2,
+      "why": "A component receives one argument, the props object, so `name` is `{ name: \"Ada\" }`. Rendering a plain object as a child throws \"Objects are not valid as a React child\". Destructure: `function Greeting({ name })`.",
+      "tags": [
+        "props",
+        "components"
+      ],
+      "level": 1,
+      "asked": "Checks you know components take a single props object; destructuring is the idiom."
+    },
+    {
+      "id": "rc-113",
+      "q": "Why does React ask for keys in `items.map(...)` but not for `<ul><li>A</li><li>B</li></ul>`?",
+      "choices": [
+        "Static siblings get their keys added by the JSX compiler",
+        "Static children have fixed positions, so position is identity",
+        "Keys matter only when a list has more than a few items",
+        "Literal `<li>` elements are skipped by reconciliation"
+      ],
+      "answer": 1,
+      "why": "Hand-written siblings can never be reordered or removed between renders, so their position is a stable identity. An array can change shape, so React needs keys to match items. The compiler adds no keys, and length has nothing to do with it.",
+      "tags": [
+        "keys",
+        "lists"
+      ],
+      "level": 1,
+      "asked": "Shows you understand what keys are for rather than reciting \"lists need keys\"."
+    },
+    {
+      "id": "rc-114",
+      "q": "State is `{ name: \"Ada\", email: \"\" }`. What is the state after this call?",
+      "code": "setForm({ email: \"ada@x.io\" });",
+      "lang": "jsx",
+      "choices": [
+        "`{ name: \"Ada\", email: \"ada@x.io\" }`, merged",
+        "`{ email: \"ada@x.io\" }`, with `name` gone",
+        "`{ name: \"Ada\", email: \"\" }`, unchanged",
+        "An error, as the shape must match the initial state"
+      ],
+      "answer": 1,
+      "why": "A `useState` setter replaces the value; it never merges. Spread the old state: `setForm({ ...form, email })`. Class components' `this.setState` did merge shallowly, which is where the belief comes from.",
+      "tags": [
+        "state",
+        "immutability"
+      ],
+      "level": 1,
+      "asked": "A frequent source of \"my other field vanished\" bugs when moving from classes to hooks."
+    },
+    {
+      "id": "rc-115",
+      "q": "An old tutorial mounts the app with `ReactDOM.render(<App />, el)`. What happens in React 19?",
+      "choices": [
+        "It works but logs a deprecation warning",
+        "It renders in legacy, non-concurrent mode",
+        "It is quietly redirected to `hydrateRoot`",
+        "It fails: the API was removed in React 19"
+      ],
+      "answer": 3,
+      "why": "`ReactDOM.render` and `hydrate` were deprecated in 18 and removed in 19; use `createRoot(el).render(<App />)`. React 18 still ran it in legacy mode with a warning, which is the behaviour the distractors describe.",
+      "tags": [
+        "react-19",
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "Shows you are current with React 19 and can migrate old entry points."
+    },
+    {
+      "id": "rc-116",
+      "q": "Why do some older files start with `import React from \"react\"` even though they never mention `React`?",
+      "choices": [
+        "JSX used to compile to `React.createElement`",
+        "Hooks fail without the default import in scope",
+        "Bundlers tree-shake React unless it is imported",
+        "The import registers the file as a component"
+      ],
+      "answer": 0,
+      "why": "The classic JSX transform turned `<div />` into `React.createElement(...)`, so `React` had to be in scope. The automatic runtime (React 17+) imports `jsx` from `react/jsx-runtime` itself, so the import is unnecessary now.",
+      "tags": [
+        "jsx",
+        "tooling"
+      ],
+      "level": 1,
+      "asked": "Tests whether you know JSX is compiled, and by what."
+    },
+    {
+      "id": "rc-117",
+      "q": "A form has ten text inputs in one `form` state object. What is the idiomatic single change handler?",
+      "choices": [
+        "Read `e.target.id` and look the field up in a large `switch`",
+        "Give each input a `ref` and read them all on every change",
+        "Use `name` and `setForm({ ...form, [e.target.name]: e.target.value })`",
+        "Call `new FormData(e.target)` and replace the whole state object"
+      ],
+      "answer": 2,
+      "why": "Each input's `name` matches a key, and a computed property updates just that key while the spread keeps the rest. A `switch` repeats ten cases, and `FormData` on an input element is not how it works (it takes a form).",
+      "tags": [
+        "forms",
+        "state"
+      ],
+      "level": 1,
+      "asked": "Everyday CRUD form code; interviewers like the computed-key answer."
+    },
+    {
+      "id": "rc-118",
+      "q": "In React 19, what does `<div class=\"card\" />` do?",
+      "choices": [
+        "It throws, because `class` is a reserved word",
+        "It renders with no class attribute at all",
+        "It sets `class=\"card\"` and logs a dev warning",
+        "It compiles to `className` silently, no warning"
+      ],
+      "answer": 2,
+      "why": "React passes it through, so the DOM gets `class=\"card\"`, but warns \"Invalid DOM property `class`. Did you mean `className`?\". JSX is JavaScript, so `className` (and `htmlFor`) is the correct prop name; `class` as an attribute name is legal syntax.",
+      "tags": [
+        "jsx",
+        "dom"
+      ],
+      "level": 2,
+      "asked": "Everyone knows \"use className\"; the strong answer explains why and what really happens."
+    },
+    {
+      "id": "rc-119",
+      "q": "A `Heading` takes `level` from 1 to 6. Which renders the right tag?",
+      "choices": [
+        "`const Tag = \"h\" + level; return <Tag>{children}</Tag>;`",
+        "`return <h{level}>{children}</h{level}>;` as a JSX template",
+        "`return <heading level={level}>{children}</heading>;`",
+        "`const el = \"h\" + level; return <el>{children}</el>;`"
+      ],
+      "answer": 0,
+      "why": "JSX treats a capitalised name as a variable, and a string variable renders that DOM tag. A lower-case `tag` is read as the literal element `<tag>`, and `<h{level}>` is not valid syntax.",
+      "tags": [
+        "jsx",
+        "components"
+      ],
+      "level": 2,
+      "asked": "Dynamic tags come up in design-system work; tests the capitalisation rule."
+    },
+    {
+      "id": "rc-120",
+      "q": "`icons` maps names to components. Why does `<icons[kind] />` fail to compile?",
+      "choices": [
+        "Components cannot be stored in plain objects and looked up",
+        "`kind` must be declared with `const` to be used",
+        "Object keys must be capitalised to be used as tags",
+        "JSX tag names cannot be computed member expressions"
+      ],
+      "answer": 3,
+      "why": "JSX allows dotted names like `<icons.Check />` but not bracket access. Assign first: `const Icon = icons[kind]; return <Icon />;`. Storing components in objects is fine.",
+      "tags": [
+        "jsx",
+        "components"
+      ],
+      "level": 2,
+      "asked": "Comes up when mapping a status to an icon; the fix is a capitalised local variable."
+    },
+    {
+      "id": "rc-121",
+      "q": "A `Button` accepts an `icon` prop. The caller writes `icon={StarIcon}`. How must `Button` render it?",
+      "choices": [
+        "`{icon}`, since a component renders when used as a child",
+        "`{icon()}`, calling it like a helper",
+        "`const Icon = icon; <Icon />` before rendering",
+        "`{React.cloneElement(icon)}` to create a copy"
+      ],
+      "answer": 2,
+      "why": "A component function passed as a value must be rendered as an element; assign it to a capitalised name first. `{icon}` renders nothing useful (functions are not valid children), calling it bypasses hooks rules, and `cloneElement` needs an element such as `icon={<StarIcon />}`.",
+      "tags": [
+        "props",
+        "components"
+      ],
+      "level": 2,
+      "asked": "Tests the element-versus-component distinction, which matters in every design-system API."
+    },
+    {
+      "id": "rc-122",
+      "q": "A button contains an `<svg>` icon. The user clicks the icon. Which is the button inside the button's `onClick`?",
+      "choices": [
+        "`e.target`, always the element that owns the handler",
+        "`e.currentTarget`, the element the handler is on",
+        "`e.relatedTarget`, set for clicks that hit children",
+        "`e.nativeEvent.target`, React's own button reference"
+      ],
+      "answer": 1,
+      "why": "`e.target` is where the click happened, here the `svg` or its `path`; `e.currentTarget` is the element whose handler is running. Reading `e.target.dataset` in such a handler is a classic intermittent bug.",
+      "tags": [
+        "events",
+        "dom"
+      ],
+      "level": 2,
+      "asked": "The icon-in-button bug is common; the strong answer names both properties."
+    },
+    {
+      "id": "rc-123",
+      "q": "What does `<Size size={null} />` render?",
+      "code": "function Size({ size = \"md\" }) {\n  return <b>{String(size)}</b>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`md`, because the default covers any empty value",
+        "`null`, because defaults apply only to `undefined`",
+        "Nothing, because a `null` prop removes the element",
+        "`undefined`, because `null` props are dropped"
+      ],
+      "answer": 1,
+      "why": "Destructuring defaults fire only when the value is `undefined`. `null` is a real value, so it passes through. Callers who mean \"use the default\" should omit the prop, or the component should use `size ?? \"md\"`.",
+      "tags": [
+        "props"
+      ],
+      "level": 2,
+      "asked": "Default props now live in destructuring; this checks the `null` edge case."
+    },
+    {
+      "id": "rc-124",
+      "q": "What does React do with `className={isActive && \"active\"}` when `isActive` is `false`?",
+      "choices": [
+        "Sets `class=\"false\"` on the element",
+        "Sets an empty `class=\"\"` attribute",
+        "Omits the attribute and logs a dev warning",
+        "Throws because `className` must be a string"
+      ],
+      "answer": 2,
+      "why": "React drops `false` for a non-boolean attribute and warns \"Received `false` for a non-boolean attribute\". Write `className={isActive ? \"active\" : undefined}` or use a class-joining helper. It does not stringify to \"false\".",
+      "tags": [
+        "jsx",
+        "styling"
+      ],
+      "level": 2,
+      "asked": "Shows attention to warnings; many codebases have this exact pattern."
+    },
+    {
+      "id": "rc-125",
+      "q": "How do you set a CSS custom property from props?",
+      "choices": [
+        "`style={{ accent: color }}`, and React adds the `--` prefix",
+        "`style={{ \"--accent\": color }}`, used with `var(--accent)` in CSS",
+        "`style=\"--accent: red\"` as a plain CSS string",
+        "`data-accent={color}` read by CSS `attr(data-accent)`"
+      ],
+      "answer": 1,
+      "why": "React passes keys that start with `--` to `style.setProperty`, so custom properties work in the style object. A string `style` throws, React never adds prefixes, and `attr()` for non-content properties is not usable across browsers yet.",
+      "tags": [
+        "styling",
+        "jsx"
+      ],
+      "level": 2,
+      "asked": "Theming components with CSS variables is common; this checks the exact syntax."
+    },
+    {
+      "id": "rc-126",
+      "q": "Which inserts `item` at index `i` of `items` state without mutating it?",
+      "choices": [
+        "`setItems(items.splice(i, 0, item))`",
+        "`items.splice(i, 0, item); setItems([...items])`",
+        "`setItems(items.toSpliced(i, 0, item))`",
+        "`setItems([items.slice(0, i), item])`"
+      ],
+      "answer": 2,
+      "why": "`toSpliced` (ES2023) returns a new array and leaves the old one alone. `splice` mutates and returns the removed elements, copying afterwards still mutated state first, and the last choice nests an array instead of spreading it.",
+      "tags": [
+        "state",
+        "immutability"
+      ],
+      "level": 2,
+      "asked": "Checks you know the non-mutating array methods, not only `map` and `filter`."
+    },
+    {
+      "id": "rc-127",
+      "q": "What is wrong with this toggle?",
+      "code": "const next = [...todos];\nnext[0].done = !next[0].done;\nsetTodos(next);",
+      "lang": "jsx",
+      "choices": [
+        "Nothing: the spread made the change completely safe",
+        "It mutates the todo object shared with the old array",
+        "`setTodos` ignores arrays that keep the same length",
+        "The spread breaks the keys of every row in the list"
+      ],
+      "answer": 1,
+      "why": "Spreading copies the array, not the objects in it, so `next[0]` is the same object the previous state holds. Memoised rows and anything comparing old and new items then see no change. Replace the item: `todos.map(t => t.id === id ? { ...t, done: !t.done } : t)`.",
+      "tags": [
+        "immutability",
+        "state"
+      ],
+      "level": 2,
+      "asked": "The shallow-copy trap; strong candidates explain which references changed and which did not."
+    },
+    {
+      "id": "rc-128",
+      "q": "You want to keep a callback in state. What does this click store?",
+      "code": "const [onDone, setOnDone] = useState(null);\n// click:\nsetOnDone(() => console.log(\"done\"));",
+      "lang": "jsx",
+      "choices": [
+        "The arrow function itself, ready to be called later on",
+        "`undefined`: React calls it as an updater and stores the result",
+        "`null`, because `useState` rejects functions as values",
+        "A bound copy of the function, re-created on every render"
+      ],
+      "answer": 1,
+      "why": "A function passed to a setter is treated as an updater `prev => next`, so React calls it (logging \"done\" immediately) and stores its return value, `undefined`. Wrap it: `setOnDone(() => () => console.log(\"done\"))`, or keep callbacks in a ref.",
+      "tags": [
+        "state",
+        "use-state"
+      ],
+      "level": 3,
+      "asked": "Deep check on the updater overload; it bites people building modal and toast APIs."
+    },
+    {
+      "id": "rc-129",
+      "q": "During its render, `Child` calls a setter it received from `Parent`. What happens?",
+      "code": "function Child({ setTotal }) {\n  setTotal(42);\n  return <p>child</p>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "React throws an error and unmounts both of the components",
+        "The update is silently ignored until the next user event",
+        "React warns about updating another component mid-render",
+        "It works and is the idiomatic way to report values up"
+      ],
+      "answer": 2,
+      "why": "Rendering must be pure, so updating another component mid-render is flagged; React still applies it and re-renders `Parent`, which can loop. Compute the value in `Parent`, or report it from an event handler. Setting your own state during render is the only allowed form, for adjusting state to props.",
+      "tags": [
+        "rendering",
+        "purity"
+      ],
+      "level": 3,
+      "asked": "Checks you know the render phase must not cause side effects on other components."
+    },
+    {
+      "id": "rc-130",
+      "q": "Why does this form still reload the page on submit?",
+      "code": "async function onSubmit(e) {\n  const ok = await validate();\n  if (!ok) return;\n  e.preventDefault();\n  save();\n}",
+      "lang": "jsx",
+      "choices": [
+        "`preventDefault` runs after an `await`, once the default action has happened",
+        "React ignores `preventDefault` when it is called inside an async function handler",
+        "`onSubmit` needs `e.stopPropagation()` as well to cancel the reload",
+        "Forms reload unless their submit button has `type=\"button\"` on it"
+      ],
+      "answer": 0,
+      "why": "The browser decides on the default action as soon as the handler returns synchronously, and an async function returns at its first `await`. Call `e.preventDefault()` first, then await. `stopPropagation` affects bubbling, not the default action, and a `type=\"button\"` button would not submit at all.",
+      "tags": [
+        "forms",
+        "events"
+      ],
+      "level": 2,
+      "asked": "Async submit handlers are everywhere; this ordering bug is easy to write and hard to spot."
+    },
+    {
+      "id": "rc-131",
+      "q": "A \"Clear\" button calls `formRef.current.reset()` on a form of controlled inputs. What happens?",
+      "choices": [
+        "The inputs clear, and React updates state to match",
+        "React throws, because `reset` is blocked on controlled forms",
+        "The inputs clear in the DOM, while state keeps the old values out of sync with them",
+        "The inputs stay as they are, since state still holds the values"
+      ],
+      "answer": 3,
+      "why": "`reset()` restores default values in the DOM, but React re-applies each controlled `value` from state, so nothing visible changes. Reset the state instead (`setForm(initial)`). With uncontrolled inputs, `reset()` does work.",
+      "tags": [
+        "forms",
+        "controlled"
+      ],
+      "level": 2,
+      "asked": "Tests that you know who owns the value in a controlled input."
+    },
+    {
+      "id": "rc-132",
+      "q": "A text input has the `required` attribute and the user submits it empty. What happens to the form's React `onSubmit`?",
+      "choices": [
+        "It runs, and `e.target.validity.valid` is `false` inside it",
+        "It runs only when `noValidate` is also set on the input",
+        "It does not run: the browser blocks submission and shows a message",
+        "It runs twice: once to validate the fields and once for the actual submit"
+      ],
+      "answer": 2,
+      "why": "Native constraint validation happens before the `submit` event fires, so an invalid form never reaches `onSubmit`. Add `noValidate` on the form if you want to run your own validation UI instead. The server must still validate.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 2,
+      "asked": "Checks you can use the platform's validation instead of reinventing it."
+    },
+    {
+      "id": "rc-133",
+      "q": "How do you read the chosen values from a `<select multiple>` in `onChange`?",
+      "choices": [
+        "`e.target.value`, which is an array when `multiple` is set",
+        "`e.target.values`, a React-only property for multi-selects",
+        "`Array.from(e.target.selectedOptions, (o) => o.value)`",
+        "`e.target.value.split(\",\")`, since values are comma-joined"
+      ],
+      "answer": 2,
+      "why": "A multi-select's `value` is still just the first selected option; `selectedOptions` lists them all. In React you control it with an array: `<select multiple value={tags}>`. There is no `values` property and no comma joining.",
+      "tags": [
+        "forms",
+        "controlled"
+      ],
+      "level": 2,
+      "asked": "A less common control that shows whether you know the DOM API underneath React."
+    },
+    {
+      "id": "rc-134",
+      "q": "The input shows \"12\". The user types \"a\". What does the input show afterwards?",
+      "code": "const [v, setV] = useState(\"12\");\n<input value={v} onChange={(e) => {\n  if (/^\\d*$/.test(e.target.value)) setV(e.target.value);\n}} />",
+      "lang": "jsx",
+      "choices": [
+        "\"12a\", until the next render corrects it",
+        "An empty string, because the test failed",
+        "\"a\", because the newest keystroke replaces the value",
+        "\"12\", because React restores the controlled value"
+      ],
+      "answer": 3,
+      "why": "After the event, React sets the DOM value back to state, and state is still \"12\", so the keystroke is rejected. This is how a controlled input filters input. Note that `type=\"text\"` with `inputMode=\"numeric\"` is usually better than this for numbers on phones.",
+      "tags": [
+        "forms",
+        "controlled"
+      ],
+      "level": 2,
+      "asked": "Shows you understand that state is the source of truth for a controlled input."
+    },
+    {
+      "id": "rc-135",
+      "q": "A form's `onSubmit` calls `save(data)` but never calls `e.preventDefault()`. What does the user see?",
+      "choices": [
+        "The save runs, and the page stays as it is",
+        "The browser navigates, reloading the page",
+        "React prevents the default for you in forms",
+        "A console warning, then the save as normal"
+      ],
+      "answer": 1,
+      "why": "Without `preventDefault`, the browser performs a normal form submission to the `action` URL (the current page by default), so the page reloads and in-flight requests may be cancelled. React 19 prevents the default only when you pass a function to the `action` prop.",
+      "tags": [
+        "forms",
+        "events"
+      ],
+      "level": 1,
+      "asked": "The most common first-form bug; mentioning the React 19 `action` exception adds depth."
+    },
+    {
+      "id": "rc-136",
+      "q": "A popover should close when focus leaves it. Why does the container's React `onBlur` fire when the user tabs between two buttons inside it?",
+      "choices": [
+        "React `onBlur` bubbles like `focusout`; check `e.currentTarget.contains(e.relatedTarget)`",
+        "The inner buttons steal the event, so attach `onBlur` to each inner button instead of the container",
+        "It is a React bug; use a native `blur` listener, which bubbles correctly",
+        "Focus moves through `body` between elements, so the popover truly loses it"
+      ],
+      "answer": 0,
+      "why": "React's `onFocus`/`onBlur` are built on `focusin`/`focusout`, which bubble, so the container hears every child blur. `relatedTarget` is the element receiving focus: if the container contains it, focus stayed inside. Native `blur` does not bubble at all.",
+      "tags": [
+        "events",
+        "dom"
+      ],
+      "level": 3,
+      "asked": "Real bug in menus and comboboxes; the relatedTarget check is the strong answer."
+    },
+    {
+      "id": "rc-137",
+      "q": "In React 17 and later, a parent has `onScroll` and a child list scrolls. Does the parent's handler run?",
+      "choices": [
+        "Yes, all React events bubble through the tree",
+        "Only if the child also has an `onScroll` prop",
+        "No, React stopped bubbling `onScroll` in 17",
+        "Only in `onScrollCapture`, never in `onScroll`"
+      ],
+      "answer": 2,
+      "why": "Native scroll events do not bubble, and React 17 changed `onScroll` to match, so a parent only hears its own element scrolling. Attach the handler to the scrolling element. Most other React events, including focus events, still bubble.",
+      "tags": [
+        "events"
+      ],
+      "level": 3,
+      "asked": "Deep event-system detail; comes up when building infinite scroll or sticky headers."
+    },
+    {
+      "id": "rc-138",
+      "q": "What does this log when the user types into the input?",
+      "code": "<form onChange={(e) => console.log(e.target.name)}>\n  <input name=\"email\" />\n</form>",
+      "lang": "jsx",
+      "choices": [
+        "Nothing: forms have no change event in React",
+        "`undefined`, because the target is the form",
+        "`email`, since React `onChange` bubbles up",
+        "Nothing until the input loses focus, then `email`"
+      ],
+      "answer": 2,
+      "why": "React `onChange` on inputs fires per keystroke and bubbles, so a form-level handler sees every field's change with `e.target` being the input. Some form libraries rely on this. The \"only on blur\" behaviour is the native `change` event, which React does not use for text inputs.",
+      "tags": [
+        "events",
+        "forms"
+      ],
+      "level": 3,
+      "asked": "Checks you understand React's `onChange` is not the DOM `change` event."
+    },
+    {
+      "id": "rc-139",
+      "q": "How should a search input run `search()` when the user presses Enter?",
+      "choices": [
+        "`onKeyPress` checking `e.charCode === 13` on the input",
+        "`onKeyDown` checking `e.key === \"Enter\"`, or wrap it in a form",
+        "`onChange` checking whether the value ends in a newline",
+        "`onKeyUp` checking `e.keyCode === 13`, which also covers older browsers"
+      ],
+      "answer": 1,
+      "why": "`keypress`, `charCode` and `keyCode` are deprecated; `e.key` is the modern API. Better still, put the input in a `<form>` and handle `onSubmit`, which gives you Enter for free. Text inputs never contain newlines.",
+      "tags": [
+        "events",
+        "forms"
+      ],
+      "level": 1,
+      "asked": "Checks for current event APIs and the \"use a form\" instinct."
+    },
+    {
+      "id": "rc-140",
+      "q": "Users add todos by typing text; the todos have no id. Where should each row's `key` come from?",
+      "choices": [
+        "Generate `crypto.randomUUID()` in the `map` callback",
+        "Use the array index, since new todos go at the end",
+        "Assign an id with `crypto.randomUUID()` when the todo is created",
+        "Use `todo.text` as the key, since users rarely type the same todo twice"
+      ],
+      "answer": 2,
+      "why": "The id must be stable across renders, so create it once, when the item is created, and store it with the item. Generating it in `map` gives a new key every render and remounts every row. Text can repeat and indexes break on delete or reorder.",
+      "tags": [
+        "keys",
+        "lists"
+      ],
+      "level": 2,
+      "asked": "The strong answer is about when the id is created, not which function makes it."
+    },
+    {
+      "id": "rc-141",
+      "q": "Rows are keyed by `id` and each has an uncontrolled `<input>`. The user types into row B, then the list is re-sorted so B moves to the top. Where is the typed text?",
+      "choices": [
+        "In the new top row, which is B",
+        "In the second row, where B used to be",
+        "Gone, because sorting remounts every row",
+        "In both rows, until the next render"
+      ],
+      "answer": 0,
+      "why": "With stable keys React moves the existing DOM node and its state with the item. This is exactly what index keys break: with `key={i}` the text would stay at position two and appear to jump rows.",
+      "tags": [
+        "keys",
+        "reconciliation"
+      ],
+      "level": 2,
+      "asked": "Pairs with the index-key bug; being able to predict both outcomes is the point."
+    },
+    {
+      "id": "rc-142",
+      "q": "An app calls `root.render(<App theme=\"dark\" />)` again on the root it already rendered `<App theme=\"light\" />` into. What happens?",
+      "choices": [
+        "The old tree is unmounted, and `App` mounts fresh with the new prop",
+        "It throws, because a root can only render once",
+        "Two copies of `App` render inside the container",
+        "React reconciles and updates `App`, keeping its state"
+      ],
+      "answer": 3,
+      "why": "A second `render` on the same root is just another update: same component type at the same position, so state is preserved and only the prop changes. Use `root.unmount()` to tear down. This is how non-React pages sometimes drive an embedded React widget.",
+      "tags": [
+        "rendering",
+        "reconciliation"
+      ],
+      "level": 2,
+      "asked": "Shows you understand roots and reconciliation beyond the default one-line entry point."
+    },
+    {
+      "id": "rc-143",
+      "q": "In React 19, a page component renders `<title>Orders</title>` inside its `<main>`. Where does the title element end up?",
+      "choices": [
+        "In `document.head`, setting the tab title",
+        "Inside `<main>`, where it has no effect",
+        "Nowhere, React strips unsupported tags",
+        "In `<head>`, but only with a helmet library"
+      ],
+      "answer": 0,
+      "why": "React 19 hoists `<title>`, `<meta>` and `<link>` rendered anywhere in the tree into `document.head`, so components can own their metadata. Before 19 you needed a library such as react-helmet or had to set `document.title` in an effect.",
+      "tags": [
+        "react-19",
+        "dom"
+      ],
+      "level": 2,
+      "asked": "A visible React 19 change; interviewers use it to check how current you are."
+    },
+    {
+      "id": "rc-144",
+      "q": "In React 19, what happens to `items={[1, 2]}` on a defined custom element `<my-list>`?",
+      "choices": [
+        "It becomes the attribute `items=\"1,2\"`, as React always did",
+        "React assigns it to the element's `items` property",
+        "It is dropped, because custom elements accept only strings",
+        "React throws because arrays are not valid attribute values"
+      ],
+      "answer": 1,
+      "why": "React 19 fully supports custom elements: when the element defines a property of that name, React sets the property, so objects and arrays arrive intact. React 18 stringified everything into attributes, which is why web components felt awkward in React.",
+      "tags": [
+        "react-19",
+        "dom"
+      ],
+      "level": 3,
+      "asked": "Relevant when integrating design systems built as web components."
+    },
+    {
+      "id": "rc-145",
+      "q": "A function component still declares `Card.propTypes = { title: PropTypes.string }`. What does React 19 do with it?",
+      "choices": [
+        "Checks props in development, as before",
+        "Ignores it: propTypes checks were removed",
+        "Throws at startup until it is deleted",
+        "Checks it in production builds only, for speed"
+      ],
+      "answer": 1,
+      "why": "React 19 removed propTypes checking (and `defaultProps` for function components); the property is simply ignored. Type props with TypeScript, and validate external data at runtime with a schema library.",
+      "tags": [
+        "react-19",
+        "props"
+      ],
+      "level": 2,
+      "asked": "Common in migrations; the good answer names TypeScript as the replacement."
+    },
+    {
+      "id": "rc-146",
+      "q": "In React 19, `profile.website` is the string `\"javascript:alert(1)\"`. What does `<a href={profile.website}>` produce?",
+      "choices": [
+        "A working `javascript:` link, since React trusts attribute values",
+        "A link whose `href` React replaced with one that throws when used",
+        "No `href` at all, with a warning about invalid URLs in development",
+        "An escaped `href` that the browser treats as a relative path"
+      ],
+      "answer": 1,
+      "why": "React 19 blocks `javascript:` URLs by swapping in a URL that throws \"React has blocked a javascript: URL as a security precaution\". Still validate user URLs on the server and allow only `http(s):`. React 16.9–18 only warned.",
+      "tags": [
+        "react-19",
+        "security"
+      ],
+      "level": 3,
+      "asked": "User-supplied links are a real XSS vector; knowing React's guard and its limits is strong."
+    },
+    {
+      "id": "rc-147",
+      "q": "In a client-side React 19 app, what is wrong with `async function Profile() { const u = await getUser(); return <h1>{u.name}</h1>; }`?",
+      "choices": [
+        "Nothing: React 19 awaits async components on the client",
+        "Async components are for Server Components only; React warns on the client",
+        "It needs a surrounding `<Suspense>` boundary; with one, it works in every environment",
+        "`await` is fine, but the component must then return a Promise of null"
+      ],
+      "answer": 1,
+      "why": "Only Server Components may be async functions. On the client React warns that async/await is not supported in Client Components, and the component can re-suspend forever because each render makes a new promise. Fetch in an effect, a query library, or pass a cached promise to `use()`.",
+      "tags": [
+        "react-19",
+        "components"
+      ],
+      "level": 2,
+      "asked": "Checks that you do not blur Server and Client Components together."
+    },
+    {
+      "id": "rc-148",
+      "q": "`Tooltip` renders its content through `createPortal` into `document.body`. Does that content see the `ThemeContext` provider wrapping `Tooltip`?",
+      "choices": [
+        "No, context follows the DOM tree",
+        "Only if the provider wraps `body` too",
+        "Only with a second provider in the portal",
+        "Yes, context follows the React tree"
+      ],
+      "answer": 3,
+      "why": "A portal changes where the DOM nodes go, not where the component sits in the React tree, so context (and event bubbling) works as if it rendered in place. That is what makes portals practical for modals and tooltips.",
+      "tags": [
+        "portals",
+        "context"
+      ],
+      "level": 2,
+      "asked": "Checks the React-tree versus DOM-tree distinction."
+    },
+    {
+      "id": "rc-149",
+      "q": "Tabs are hidden with `style={{ display: active ? \"block\" : \"none\" }}` instead of `{active && <Tab />}`. What changes?",
+      "choices": [
+        "Hidden tabs stay mounted and keep their state",
+        "Nothing, both unmount the hidden tab",
+        "Hidden tabs keep DOM nodes but lose their state",
+        "Hidden tabs re-mount each time they are shown"
+      ],
+      "answer": 0,
+      "why": "CSS hiding keeps the component mounted, so input text and scroll position survive, at the cost of rendering all tabs and running their effects. Conditional rendering unmounts and resets. React 19.2's `<Activity mode=\"hidden\">` gives a middle ground.",
+      "tags": [
+        "state",
+        "rendering"
+      ],
+      "level": 2,
+      "asked": "A design trade-off question: keep state versus render cost."
+    },
+    {
+      "id": "rc-150",
+      "q": "A handler calls `setItems([...items])` with no other change. Does the component re-render?",
+      "choices": [
+        "No, React compares the array contents first",
+        "Yes, because it is a new array reference",
+        "No, because the length did not change",
+        "Only if an item object itself was replaced"
+      ],
+      "answer": 1,
+      "why": "React compares state with `Object.is`, which checks references. A fresh array is a different reference even with identical contents, so React re-renders. The reverse bug, mutating and passing the same array, skips the render.",
+      "tags": [
+        "state",
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "The reference-equality rule underlies every \"why did/didn't it update\" question."
+    },
+    {
+      "id": "rc-151",
+      "q": "A list keeps `selection` in state and must clear it whenever the `items` prop changes. Which approach does the React docs recommend over an effect?",
+      "code": "const [prevItems, setPrevItems] = useState(items);\nif (items !== prevItems) {\n  setPrevItems(items);\n  setSelection(null);\n}",
+      "lang": "jsx",
+      "choices": [
+        "This one: adjust state during render when a prop changes",
+        "A `useEffect` on `[items]` that calls `setSelection(null)`",
+        "A `useMemo` on `[items]` that returns a fresh selection",
+        "A `ref` that stores `items` and clears on each render"
+      ],
+      "answer": 0,
+      "why": "Setting your own state during render makes React discard the JSX and re-render immediately, before the screen or children see stale selection. An effect paints once with the stale value first. Often better still is a `key` on the list, or storing only a selected id and deriving the rest.",
+      "tags": [
+        "state",
+        "derived-state"
+      ],
+      "level": 3,
+      "asked": "An advanced alternative to effects; knowing when to prefer a key shows judgement."
+    },
+    {
+      "id": "rc-152",
+      "q": "A React component shows a status by running `document.getElementById(\"status\").textContent = \"Saved\"` in a click handler. What is the problem?",
+      "choices": [
+        "Nothing, as long as the element has a unique id on the page",
+        "React owns that DOM; the next render can overwrite the text",
+        "The call throws because React hides the real DOM from you",
+        "It is only a problem on the server, where `document` is missing"
+      ],
+      "answer": 1,
+      "why": "React renders DOM from state; a manual edit is invisible to it, so the next render of that node puts React's version back, or React may even crash when the DOM no longer matches. Keep \"Saved\" in state and render it. Direct DOM access is legal, just not for content React manages.",
+      "tags": [
+        "state",
+        "dom"
+      ],
+      "level": 1,
+      "asked": "The declarative-versus-imperative question in its simplest form."
+    },
+    {
+      "id": "rc-153",
+      "q": "Which JSX sets these HTML attributes correctly?",
+      "choices": [
+        "`<label for=\"e\" dataTestid=\"lbl\" tabindex={0}>`, as in HTML",
+        "`<label htmlFor=\"e\" dataTestId=\"lbl\" tabIndex={0}>`",
+        "`<label for=\"e\" data-testid=\"lbl\" tab-index={0}>`",
+        "`<label htmlFor=\"e\" data-testid=\"lbl\" tabIndex={0}>`"
+      ],
+      "answer": 3,
+      "why": "Reserved words and most attributes use their DOM property names (`htmlFor`, `tabIndex`), but `data-*` and `aria-*` stay hyphenated exactly as in HTML. camelCasing a data attribute renders an unknown attribute instead.",
+      "tags": [
+        "jsx",
+        "dom"
+      ],
+      "level": 1,
+      "asked": "A quick syntax check; the `data-`/`aria-` exception is what separates answers."
+    },
+    {
+      "id": "rc-154",
+      "q": "How do you write a comment inside JSX children?",
+      "choices": [
+        "`<!-- note -->`, as in HTML",
+        "`// note` on its own line",
+        "`{/* note */}`",
+        "`# note` after the tag"
+      ],
+      "answer": 2,
+      "why": "Children are text or `{expressions}`, so a comment must live inside braces as a block comment. An HTML comment renders as literal text or fails to parse, and `//` inside children is just text.",
+      "tags": [
+        "jsx"
+      ],
+      "level": 1,
+      "asked": "Warm-up syntax; also checks you know JSX is not HTML."
+    },
+    {
+      "id": "rc-155",
+      "q": "`<Button onClick={save} />` renders a custom `Button`. Why does clicking it do nothing?",
+      "code": "function Button({ label }) {\n  return <button className=\"btn\">{label}</button>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`onClick` is just a prop; `Button` never passes it on",
+        "Custom components need `onPress`, not `onClick`",
+        "Events on custom components need `useCallback`",
+        "React binds `onClick` only on native tags, and only at first mount"
+      ],
+      "answer": 0,
+      "why": "On a component, `onClick` is an ordinary prop with no built-in meaning. `Button` must forward it: `<button onClick={onClick}>`, or spread the rest of its props onto the element. Only DOM elements attach event listeners.",
+      "tags": [
+        "props",
+        "events"
+      ],
+      "level": 1,
+      "asked": "Checks the difference between DOM elements and components."
+    },
+    {
+      "id": "rc-156",
+      "q": "A form uses a fixed list of 200 countries that never changes. Where should that list live?",
+      "choices": [
+        "In `useState`, so the dropdown can re-render with it",
+        "In a module-level constant outside the component",
+        "In a `useEffect` that fills a state variable on mount",
+        "In a ref, so it is not re-created on every render"
+      ],
+      "answer": 1,
+      "why": "Data that never changes and does not depend on props or state is not state at all. A module constant is created once and shared. State or an effect adds renders for nothing; a ref works but only hides the same constant behind indirection.",
+      "tags": [
+        "state"
+      ],
+      "level": 1,
+      "asked": "Tests the \"what is actually state\" instinct."
+    },
+    {
+      "id": "rc-157",
+      "q": "Why does the counter stay at 0 on screen?",
+      "code": "function Counter() {\n  let count = 0;\n  return <button onClick={() => count++}>{count}</button>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`count` should be `var`, so its value survives renders",
+        "The arrow function captured a copy of `count`, so the variable itself never changes",
+        "Numbers in JSX must be wrapped in `String()` to update",
+        "A local variable changes but does not trigger a render, and resets each call"
+      ],
+      "answer": 3,
+      "why": "Changing a local variable does not tell React to re-render, and each render calls `Counter` again, which re-declares `count = 0`. State is what persists between renders and schedules one. The closure does see the variable; it just does not matter.",
+      "tags": [
+        "state",
+        "rendering"
+      ],
+      "level": 1,
+      "asked": "The first \"why do we need state\" question in many screens."
+    },
+    {
+      "id": "rc-158",
+      "q": "While `user` is still `undefined` (loading), what does `<p>{user.name}</p>` do?",
+      "choices": [
+        "It renders an empty paragraph until the data arrives, then fills it in",
+        "Throws a TypeError, crashing the tree up to an error boundary",
+        "Renders the text \"undefined\" in the paragraph",
+        "Skips this render and waits for the next one"
+      ],
+      "answer": 1,
+      "why": "Reading a property of `undefined` throws during render; without an error boundary the whole root unmounts. Guard it: `user?.name`, an early `if (!user) return <Spinner />`, or model a loading status explicitly.",
+      "tags": [
+        "rendering",
+        "errors"
+      ],
+      "level": 1,
+      "asked": "Loading states are where most blank-page crashes come from."
+    },
+    {
+      "id": "rc-159",
+      "q": "A component re-renders after a state change. What happens to its DOM?",
+      "choices": [
+        "React rebuilds that component's entire DOM subtree from scratch",
+        "The whole page's DOM is diffed against a saved HTML copy",
+        "React compares the new output and patches only what changed",
+        "Nothing, until the browser's next repaint requests a copy"
+      ],
+      "answer": 2,
+      "why": "Rendering produces new elements, which React reconciles against the previous ones, then commits only the needed DOM changes. That is why input focus and scroll survive re-renders. A render is not a DOM rebuild.",
+      "tags": [
+        "rendering",
+        "reconciliation"
+      ],
+      "level": 1,
+      "asked": "Checks that \"re-render\" is understood as \"call the function again\", not \"redraw everything\"."
+    },
+    {
+      "id": "rc-160",
+      "q": "How do you give an uncontrolled checkbox an initial ticked state?",
+      "choices": [
+        "`checked={true}` with no `onChange`",
+        "`defaultChecked={true}`",
+        "`value=\"on\"` on the input",
+        "`defaultValue={true}`"
+      ],
+      "answer": 1,
+      "why": "`defaultChecked` sets the starting state and leaves the DOM in charge afterwards. `checked` without `onChange` makes a read-only controlled box (with a warning), and `defaultValue`/`value` set the submitted value, not the ticked state.",
+      "tags": [
+        "forms",
+        "uncontrolled"
+      ],
+      "level": 1,
+      "asked": "Checks the default-versus-controlled prop pairs for checkboxes."
+    },
+    {
+      "id": "rc-161",
+      "q": "A reviewer says `onClick={() => select(id)}` \"creates a new function on every render, so it is slow\". What is the accurate reply?",
+      "choices": [
+        "Creating a small function is cheap; it matters only for memoised children",
+        "True; always wrap handlers in `useCallback` to avoid it",
+        "True; move the handler outside the component to fix it",
+        "False; React caches inline arrow functions between renders automatically"
+      ],
+      "answer": 0,
+      "why": "Allocating a closure costs next to nothing. A new function identity only matters when it is passed to a `memo` child or used as an effect dependency, and then `useCallback` (or the React Compiler) helps. React does not cache inline functions itself.",
+      "tags": [
+        "events",
+        "performance"
+      ],
+      "level": 1,
+      "asked": "Tests for cargo-cult optimisation versus an understanding of when identity matters."
+    },
+    {
+      "id": "rc-162",
+      "q": "In a class component, state is `{ name: \"Ada\", age: 36 }`. What is it after `this.setState({ age: 37 })`?",
+      "choices": [
+        "`{ age: 37 }`, like a `useState` setter would store",
+        "`{ name: \"Ada\", age: 37 }`, merged shallowly",
+        "`{ name: \"Ada\", age: 36 }` until `forceUpdate()` runs",
+        "An error: class state must be replaced as a whole"
+      ],
+      "answer": 1,
+      "why": "Class `setState` shallow-merges the object into the existing state; the `useState` setter replaces it. Only the top level merges, so nested objects still need spreading. Legacy code relies on this difference.",
+      "tags": [
+        "class-components",
+        "state"
+      ],
+      "level": 2,
+      "asked": "Legacy class code is still common; this checks you can switch mental models."
+    },
+    {
+      "id": "rc-163",
+      "q": "In a class component, `onClick={this.handleClick}` throws \"Cannot read properties of undefined (reading 'setState')\". Why?",
+      "choices": [
+        "Class methods cannot call `setState` from event handlers",
+        "`handleClick` must be declared `static` to be used in JSX",
+        "React calls event handlers with `this` set to the clicked DOM element",
+        "The method is passed unbound, so `this` is `undefined` when called"
+      ],
+      "answer": 3,
+      "why": "Passing `this.handleClick` detaches the method, and class bodies are strict mode, so `this` is `undefined` when React calls it. Bind in the constructor or declare it as an arrow class field: `handleClick = () => {...}`. React does not set `this` to the element.",
+      "tags": [
+        "class-components",
+        "events"
+      ],
+      "level": 2,
+      "asked": "A classic `this` question dressed as React; legacy codebases still have it."
+    },
+    {
+      "id": "rc-164",
+      "q": "A `Card` spreads all props onto its `<div>`: `<div {...props}>`. A caller passes `isActive`. What happens?",
+      "choices": [
+        "The div gets a lower-cased `isactive` attribute, and nothing is logged",
+        "React silently drops every prop that is not a valid attribute",
+        "React warns that it does not recognise `isActive` on a DOM element",
+        "The component throws, since camelCase attributes are invalid"
+      ],
+      "answer": 2,
+      "why": "React warns about unknown camelCase props on DOM elements (and about non-string values). Destructure what the component uses and spread only the rest: `const { isActive, ...rest } = props`. React does not validate or strip unknown props for you.",
+      "tags": [
+        "props",
+        "dom"
+      ],
+      "level": 2,
+      "asked": "Wrapper components leak props this way; the destructure-then-spread idiom is the answer."
+    },
+    {
+      "id": "rc-165",
+      "q": "`List` does `children.map(...)`. It works with two `<li>` children but throws \"children.map is not a function\" with one. Why?",
+      "choices": [
+        "React converts one child to a string before passing it on",
+        "Children are frozen objects, so `.map` is removed in dev",
+        "A single child is passed as the element itself, not an array",
+        "A single child turns `children` into a Set, which has no `map` method"
+      ],
+      "answer": 2,
+      "why": "`children` is opaque: an array for several children, a single element for one, and `undefined` for none. Use `Children.map` / `Children.toArray`, or better, accept an explicit array prop such as `items`.",
+      "tags": [
+        "children",
+        "components"
+      ],
+      "level": 2,
+      "asked": "Checks you know `children` has no fixed shape."
+    },
+    {
+      "id": "rc-166",
+      "q": "`SearchBox` renders `<input value={value} onChange={(e) => onChange(e.target.value)} />`. Typing does nothing. What is the likely cause?",
+      "choices": [
+        "The parent's `onChange` does not update the state it passes as `value`",
+        "`onChange` must receive the event, not `e.target.value`, to work",
+        "Controlled inputs need a `defaultValue` as well as a `value` to accept typing",
+        "The input must own a `useState` copy of `value` to be editable"
+      ],
+      "answer": 0,
+      "why": "A controlled child shows exactly what the parent passes. If the parent's handler logs but never calls its setter (or updates the wrong field), `value` never changes and every keystroke is reverted. Copying the prop into child state creates two sources of truth.",
+      "tags": [
+        "controlled",
+        "props"
+      ],
+      "level": 2,
+      "asked": "Tests debugging of the controlled-component data flow."
+    },
+    {
+      "id": "rc-167",
+      "q": "`Counter` holds its own count. What happens when the first button is clicked?",
+      "code": "function Pair() {\n  const el = <Counter />;\n  return <div>{el}{el}</div>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Each button shows 1, since the two are one shared instance",
+        "React throws, since an element cannot be rendered twice",
+        "Each button shows 1 after a second render, once they sync up",
+        "Only the first shows 1: each position is its own instance"
+      ],
+      "answer": 3,
+      "why": "An element is only a description; state belongs to the position in the tree where it is rendered. Rendering the same element object twice creates two independent `Counter` instances. Reusing element objects is allowed.",
+      "tags": [
+        "state",
+        "reconciliation"
+      ],
+      "level": 2,
+      "asked": "Separates elements (descriptions) from instances (state holders)."
+    },
+    {
+      "id": "rc-168",
+      "q": "One click calls a setter in `Parent` and a setter in `Child`. How many render passes does React 19 do?",
+      "choices": [
+        "Two: one for each component that has new state queued",
+        "One: updates from the same event are batched together",
+        "Three: parent, child, then the parent again",
+        "Two in development and one in production"
+      ],
+      "answer": 1,
+      "why": "React batches every update queued during one event, across components, and renders them in a single pass from the top, so `Child` renders once with both changes. Batching is not per component.",
+      "tags": [
+        "rendering",
+        "batching"
+      ],
+      "level": 2,
+      "asked": "Checks that batching is understood as per event, not per component."
+    },
+    {
+      "id": "rc-169",
+      "q": "In React 19 development, with `<StrictMode>`, a component's `console.log(\"render\")` appears twice on mount, the second one greyed out. Why?",
+      "choices": [
+        "React calls it twice to expose impure rendering, then discards one result",
+        "React renders twice and keeps the second result",
+        "The component mounted twice because the root was accidentally created twice",
+        "The log is echoed by DevTools; the component rendered only once"
+      ],
+      "answer": 0,
+      "why": "Strict Mode double-invokes component bodies in development to surface side effects in render. React 19 dims the second call's logs in the console. Production renders once, so never rely on the count.",
+      "tags": [
+        "strict-mode",
+        "purity"
+      ],
+      "level": 2,
+      "asked": "Usually asked as \"why does my component log twice?\"; naming dev-only and purity is the answer."
+    },
+    {
+      "id": "rc-170",
+      "q": "To toggle one flag, a handler does `const next = structuredClone(state); next.rows[5].open = true; setState(next)`. What is the cost?",
+      "choices": [
+        "None: a full deep copy is the textbook way to do an immutable update",
+        "Every object gets a new identity, so memoised rows all re-render",
+        "It mutates `state`, because `structuredClone` is shallow",
+        "It fails, because React state cannot be structured-cloned"
+      ],
+      "answer": 1,
+      "why": "Deep-cloning copies the whole tree, and every unchanged row becomes a new object, which defeats `memo` and reference checks everywhere. Immutable updates should copy only the path to the change and share the rest. `structuredClone` is deep, not shallow.",
+      "tags": [
+        "immutability",
+        "performance"
+      ],
+      "level": 3,
+      "asked": "Tests understanding of structural sharing, not just \"do not mutate\"."
+    },
+    {
+      "id": "rc-171",
+      "q": "Why did React 18 remove the \"Can't perform a React state update on an unmounted component\" warning?",
+      "choices": [
+        "Setting state after unmount now throws an error instead of logging a warning",
+        "React 18 keeps unmounted components alive, so the update applies",
+        "It mostly flagged harmless cases, like a fetch finishing after unmount",
+        "The warning moved into the ESLint plugin as a lint rule"
+      ],
+      "answer": 2,
+      "why": "The update is a no-op; the warning pushed people into `isMounted` workarounds that fixed nothing. Real leaks come from subscriptions or timers never cleaned up, which effect cleanups solve. Nothing throws and nothing is kept alive.",
+      "tags": [
+        "state",
+        "effects"
+      ],
+      "level": 3,
+      "asked": "Shows you know why `isMounted` flags are an anti-pattern."
+    },
+    {
+      "id": "rc-172",
+      "q": "A controlled input's `onChange` awaits a formatter and only then calls `setValue`. What goes wrong while typing?",
+      "choices": [
+        "Nothing; React waits for the promise before painting",
+        "The input becomes uncontrolled and React logs a warning",
+        "Every keystroke is applied twice, once now and again when the promise settles",
+        "React reverts the keystroke first, so the caret can jump to the end"
+      ],
+      "answer": 3,
+      "why": "After the event, React restores the DOM to the current state, erasing the keystroke; when state catches up later, the value is replaced and the caret moves to the end. Update state synchronously in `onChange` and do async work separately.",
+      "tags": [
+        "controlled",
+        "forms"
+      ],
+      "level": 3,
+      "asked": "A subtle but real bug; explaining the revert-then-replace sequence is the strong answer."
+    },
+    {
+      "id": "rc-173",
+      "q": "Why do `Children.toArray(children)` elements have keys like `.0` and `.$x`?",
+      "choices": [
+        "They are React's internal fiber ids, exposed for debugging",
+        "They are random keys that change on every call to `toArray`",
+        "They are HTML ids added to the DOM so testing libraries can find each child",
+        "It assigns keys from position or existing key so the array can be re-rendered"
+      ],
+      "answer": 3,
+      "why": "`toArray` prefixes each child's key: position-based (`.0`) for unkeyed children and escaped (`.$x`) for keyed ones, so you can sort or slice the array and still render it without key warnings. Keys never reach the DOM.",
+      "tags": [
+        "children",
+        "keys"
+      ],
+      "level": 3,
+      "asked": "Rare in app code but common in library code reviews."
+    },
+    {
+      "id": "rc-174",
+      "q": "A controlled `<select value={country}>` receives `\"zz\"`, which matches no `<option>`. What happens?",
+      "choices": [
+        "React adds a hidden option so the value is kept",
+        "The browser shows the first option while state still says \"zz\"",
+        "React throws an invalid-value error during render",
+        "The select shows a blank value and state quietly resets to an empty string"
+      ],
+      "answer": 1,
+      "why": "The DOM cannot select a missing value, so it falls back to the first option. State and UI now disagree, and submitting without a change sends \"zz\" from state but the user saw another country. Include a placeholder option for empty or unknown values.",
+      "tags": [
+        "forms",
+        "controlled"
+      ],
+      "level": 3,
+      "asked": "An easy way to ship wrong data; the placeholder option is the fix to mention."
+    },
+    {
+      "id": "rc-175",
+      "q": "`Table` defines `const Row = memo(RowView)` inside its own body. What happens to each row's state when `Table` re-renders?",
+      "choices": [
+        "It is reset: every render creates a new `Row` type, so rows remount",
+        "It is preserved, and `memo` even skips the row renders",
+        "It is preserved, because the wrapped `RowView` itself stays the same function each time",
+        "It is reset only for rows whose props have changed"
+      ],
+      "answer": 0,
+      "why": "React matches by element type, and `memo(...)` inside the body returns a new component each render, so every row unmounts and mounts again, losing state and focus. Call `memo` at module level. The wrapped function being the same does not help.",
+      "tags": [
+        "reconciliation",
+        "memo"
+      ],
+      "level": 3,
+      "asked": "The \"optimisation\" that makes things worse; tests type identity."
     }
   ]
 }

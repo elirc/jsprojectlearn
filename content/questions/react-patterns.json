@@ -601,6 +601,2463 @@
       ],
       "level": 3,
       "asked": "It probes design-system experience and TypeScript depth at the same time."
+    },
+    {
+      "id": "rp-034",
+      "q": "In React 19, a click lands on a button rendered through `createPortal` into `document.body`. The component that rendered the portal sits inside a `<div onClick={log}>`. Does `log` run?",
+      "choices": [
+        "No, because the button is not a DOM descendant of the div",
+        "Yes, because React events bubble along the component tree",
+        "Only if the portal target has `onClick` wired up to forward it",
+        "Only for capture listeners such as `onClickCapture` on the div"
+      ],
+      "answer": 1,
+      "why": "React dispatches synthetic events along the React tree, so a portal child still bubbles to its React ancestors even though its DOM node lives elsewhere. That is why a click inside a portalled modal can trigger an \"outside click\" handler on a parent unless you stop propagation or check the target.",
+      "tags": [
+        "portals",
+        "events"
+      ],
+      "level": 2,
+      "asked": "It catches people who built a modal with a portal and then chased a mystery \"click outside closes it\" bug."
+    },
+    {
+      "id": "rp-035",
+      "q": "What does `useContext(ThemeContext)` return when no `ThemeContext` provider exists above the component?",
+      "code": "const ThemeContext = createContext('light');",
+      "lang": "jsx",
+      "choices": [
+        "It throws, because context must always have a provider above it",
+        "`undefined`, because `'light'` is only used for type inference",
+        "`'light'`, the default value passed to `createContext`",
+        "The value from the nearest provider of any context in the tree"
+      ],
+      "answer": 2,
+      "why": "The argument to `createContext` is the fallback used when no provider is found. Many teams pass `null` and have a custom hook throw a clear error instead, so a missing provider fails loudly rather than silently using a default.",
+      "tags": [
+        "context"
+      ],
+      "level": 1,
+      "asked": "Leads straight into the follow-up: how do you make a missing provider fail loudly?"
+    },
+    {
+      "id": "rp-036",
+      "q": "Why do many codebases wrap `useContext` in a custom hook like this?",
+      "code": "export function useCart() {\n  const ctx = useContext(CartContext);\n  if (ctx === null) throw new Error('useCart needs <CartProvider>');\n  return ctx;\n}",
+      "lang": "jsx",
+      "choices": [
+        "A missing provider fails at once with a message naming the fix",
+        "The hook caches the context value so consumers render less often",
+        "Custom hooks let context be read from inside class components too",
+        "It stops the context value from being read outside of rendering"
+      ],
+      "answer": 0,
+      "why": "With a `null` default and a guard, forgetting the provider becomes a clear error at the call site, and TypeScript narrows the return type to non-null. The hook adds no caching: consumers still re-render whenever the provided value changes.",
+      "tags": [
+        "context",
+        "hooks"
+      ],
+      "level": 1,
+      "asked": "Shows you have wired context into a real codebase rather than only read the docs."
+    },
+    {
+      "id": "rp-037",
+      "q": "In React 19, which of these renders a provider for `ThemeContext`?",
+      "choices": [
+        "<ThemeContext.Consumer value=\"dark\">{children}</ThemeContext.Consumer>",
+        "<ThemeContext value=\"dark\">{children}</ThemeContext>",
+        "<Provider context={ThemeContext} value=\"dark\">{children}</Provider>",
+        "<ThemeContext.Root value=\"dark\">{children}</ThemeContext.Root>"
+      ],
+      "answer": 1,
+      "why": "React 19 lets you render the context object itself as the provider; `<ThemeContext.Provider>` still works but is on the path to deprecation. `Consumer` reads a value rather than providing one, and there is no generic `Provider` component or `.Root` in React.",
+      "tags": [
+        "context",
+        "react19"
+      ],
+      "level": 1,
+      "asked": "A quick check that you have kept up with React 19 syntax you will meet in code review."
+    },
+    {
+      "id": "rp-038",
+      "q": "In React 19, what can `use(ThemeContext)` do that `useContext(ThemeContext)` cannot?",
+      "choices": [
+        "Subscribe to only one field of the context value, skipping other changes",
+        "Read the context without a provider, ignoring the default value passed",
+        "Be called inside a condition or loop, not only at the top of a component",
+        "Read context in an event handler after the component has finished rendering"
+      ],
+      "answer": 2,
+      "why": "`use` is the one hook-like API allowed inside `if` blocks and loops, so you can read context only on the branch that needs it. It still re-renders on any change to the value, still uses the default without a provider, and like every hook it runs during render, not in handlers.",
+      "tags": [
+        "context",
+        "react19"
+      ],
+      "level": 2,
+      "asked": "Interviewers use it to see whether you know `use` is special-cased, not just a rename."
+    },
+    {
+      "id": "rp-039",
+      "q": "A single `AppContext` holds `{ user, theme, cart }`. Adding an item to the cart makes the header, the sidebar and the settings page re-render. What is the most direct fix?",
+      "choices": [
+        "Wrap every consumer in `React.memo` so context changes are skipped",
+        "Split it into contexts so each consumer subscribes to one concern",
+        "Move the provider lower so fewer components can read the cart",
+        "Store the cart in a ref so updating it never triggers a render"
+      ],
+      "answer": 1,
+      "why": "Every consumer of a context re-renders when its value changes, and `memo` does not block context updates. Splitting by concern (and by update frequency) means cart changes only reach cart consumers. A ref would stop the badge from ever updating at all.",
+      "tags": [
+        "context",
+        "performance"
+      ],
+      "level": 2,
+      "asked": "The classic follow-up to \"when would you use context?\"; strong candidates mention update frequency as the split line."
+    },
+    {
+      "id": "rp-040",
+      "q": "Why do some providers expose the state and the dispatch function through two separate contexts?",
+      "code": "<CountStateContext value={count}>\n  <CountDispatchContext value={dispatch}>\n    {children}\n  </CountDispatchContext>\n</CountStateContext>",
+      "lang": "jsx",
+      "choices": [
+        "React only lets one value be provided per context, so both need a slot",
+        "Dispatch has to be provided above the state to be read from reducers",
+        "Components that only dispatch do not re-render when the state changes",
+        "It lets the state be read in class components and dispatch in hooks"
+      ],
+      "answer": 2,
+      "why": "`dispatch` from `useReducer` is stable, so a context holding only it never changes and its consumers (buttons, forms) are not re-rendered by state updates. One context holding both would change on every state update. A context value can be any object, so one slot is not the reason.",
+      "tags": [
+        "context",
+        "performance"
+      ],
+      "level": 3,
+      "asked": "It shows you understand what actually triggers context re-renders and how to design around it."
+    },
+    {
+      "id": "rp-041",
+      "q": "A context value changes 60 times a second (a mouse position). What is the usual problem, and the usual fix?",
+      "choices": [
+        "Every consumer re-renders each frame; use local state or a store with selectors",
+        "The context drops updates after 16 ms; switch to a ref and a forced render instead",
+        "React batches the updates away; wrap each change in `flushSync` so none are lost",
+        "The provider remounts its children each time; add a stable `key` to the provider"
+      ],
+      "answer": 0,
+      "why": "Context has no selectors, so every consumer re-renders on every change, even if it only needs a derived value. High-frequency values belong in local state near their only user, or in an external store (Zustand, `useSyncExternalStore`) where components subscribe to the slice they need.",
+      "tags": [
+        "context",
+        "performance"
+      ],
+      "level": 2,
+      "asked": "Checks that you know context is dependency injection, not a general-purpose fast-changing store."
+    },
+    {
+      "id": "rp-042",
+      "q": "What is the \"slot\" pattern in component design?",
+      "code": "<PageLayout\n  header={<Breadcrumbs />}\n  sidebar={<Filters />}\n>\n  <OrdersTable />\n</PageLayout>",
+      "lang": "jsx",
+      "choices": [
+        "Passing a list of component names that the layout imports lazily",
+        "Letting the layout clone each child and inject its own props into it",
+        "Registering children with the layout through a context in an effect",
+        "Passing elements as named props so the layout places them itself"
+      ],
+      "answer": 3,
+      "why": "Elements are values, so any prop can carry one; the layout decides where each slot goes while the caller decides what fills it. It avoids prop drilling for the pieces and needs no cloning or registration. `children` is simply the default slot.",
+      "tags": [
+        "composition",
+        "props"
+      ],
+      "level": 1,
+      "asked": "A composition-first answer to layout questions is what separates mid-level from junior React code."
+    },
+    {
+      "id": "rp-043",
+      "q": "A `Tabs` component uses `React.Children.map` and `cloneElement` to pass `isActive` to each `Tab`. A teammate wraps one tab in a component called `PermissionGate`. What breaks?",
+      "choices": [
+        "`Children.map` throws, because it cannot iterate over custom components",
+        "The prop lands on `PermissionGate`, so the inner tab never gets it",
+        "Keys are lost, so every tab remounts and loses state on each render",
+        "Nothing breaks, because `cloneElement` recurses into nested children"
+      ],
+      "answer": 1,
+      "why": "`cloneElement` only touches the direct children it is given, so any wrapper swallows the injected props. Compound components that share state through context keep working no matter how deeply the parts are nested, which is why they have replaced cloning.",
+      "tags": [
+        "composition",
+        "patterns"
+      ],
+      "level": 2,
+      "asked": "Shows you know why modern compound components use context instead of `cloneElement`."
+    },
+    {
+      "id": "rp-044",
+      "q": "What is a \"headless\" component library (for example Radix Primitives, React Aria or Headless UI)?",
+      "choices": [
+        "A library that renders components on the server without a browser",
+        "Components that ship behaviour and accessibility but no styles",
+        "Components that render without a root DOM element of their own",
+        "A library of hooks that only works in apps without a design system"
+      ],
+      "answer": 1,
+      "why": "Headless components handle the hard parts (focus management, keyboard support, ARIA state) and leave styling to you, so they fit any design system. shadcn/ui is a popular set of styled components built on top of such primitives.",
+      "tags": [
+        "component-api",
+        "a11y"
+      ],
+      "level": 1,
+      "asked": "Interviewers want to hear that you would not hand-roll a combobox when an accessible primitive exists."
+    },
+    {
+      "id": "rp-045",
+      "q": "What does the \"prop getter\" pattern give a hook-based component like `useCombobox`?",
+      "code": "const { getInputProps, getItemProps } = useCombobox({ items });\n<input {...getInputProps({ onBlur: track })} />",
+      "lang": "jsx",
+      "choices": [
+        "The hook reads props from the input so it no longer needs its own state",
+        "It lets the hook replace the element with a custom one after rendering",
+        "It merges the caller's handlers with the ARIA and event wiring the hook needs",
+        "It memoises each prop object so the input skips re-rendering on typing"
+      ],
+      "answer": 2,
+      "why": "The getter returns every attribute the element needs (`role`, `aria-*`, `id`, handlers) and composes in the caller's own props, so passing `onBlur` does not overwrite the hook's handler. It is about correct merging, not memoisation.",
+      "tags": [
+        "component-api",
+        "patterns"
+      ],
+      "level": 3,
+      "asked": "A strong answer names the bug it prevents: a caller's handler silently replacing the library's."
+    },
+    {
+      "id": "rp-046",
+      "q": "A `Button` wrapper spreads unknown props onto the native element. Why put `{...rest}` before your own handler here?",
+      "code": "function Button({ onClick, ...rest }) {\n  return <button {...rest} onClick={(e) => { track(); onClick?.(e); }} />;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Later props win, so the tracking handler is never overwritten",
+        "JSX requires spreads to come first, before any explicitly named attributes",
+        "Props spread last are ignored by React when they duplicate a named prop",
+        "It makes TypeScript infer the button element type for the rest object"
+      ],
+      "answer": 0,
+      "why": "In JSX, later attributes override earlier ones, exactly like object spread. Putting `{...rest}` first means your composed handler wins, and because `onClick` was destructured out it is called inside it rather than overwriting it. Spreads may go anywhere in JSX.",
+      "tags": [
+        "component-api",
+        "props"
+      ],
+      "level": 2,
+      "asked": "Order of spread vs explicit props is a frequent code review comment on shared components."
+    },
+    {
+      "id": "rp-047",
+      "q": "What is the `asChild` (Slot) pattern used by libraries such as Radix?",
+      "code": "<Tooltip.Trigger asChild>\n  <a href=\"/help\">Help</a>\n</Tooltip.Trigger>",
+      "lang": "jsx",
+      "choices": [
+        "The trigger renders both its own button and the link as siblings",
+        "The child is rendered in a portal so the tooltip can position it",
+        "The link is converted into a button so it can receive focus",
+        "The trigger merges its props and ref into the child element"
+      ],
+      "answer": 3,
+      "why": "With `asChild`, the component renders no element of its own and clones its behaviour (handlers, ARIA, ref) onto the single child, so you avoid a `<button>` wrapping an `<a>`, which is invalid interactive nesting. It is an alternative to a polymorphic `as` prop.",
+      "tags": [
+        "component-api",
+        "composition"
+      ],
+      "level": 3,
+      "asked": "Shows familiarity with the component libraries most teams actually use in 2026."
+    },
+    {
+      "id": "rp-048",
+      "q": "A `DataTable` has grown 31 boolean props like `showFooter`, `compact`, `hideSearch`. Which refactor does a senior reviewer usually suggest?",
+      "choices": [
+        "Group the booleans into one `options` object prop with the same keys",
+        "Move the flags into a context so callers do not have to pass them",
+        "Split it into parts the caller composes, like `<Table.Search />`",
+        "Replace the flags with a single `variant` string covering each combination"
+      ],
+      "answer": 2,
+      "why": "Boolean props multiply combinations the component must handle and test. Composition lets callers include only the parts they need and keeps each part simple. An options object or context just moves the same flags around, and one variant per combination explodes.",
+      "tags": [
+        "composition",
+        "component-api"
+      ],
+      "level": 2,
+      "asked": "Tests whether you recognise \"boolean prop explosion\" and reach for composition."
+    },
+    {
+      "id": "rp-049",
+      "q": "What does `key={user.id}` on this form achieve?",
+      "code": "<EditUserForm key={user.id} user={user} />",
+      "lang": "jsx",
+      "choices": [
+        "Each user gets a fresh form, so leftover edits do not carry over",
+        "It lets React reuse the same form DOM nodes for faster switching",
+        "It memoises the form so it only re-renders when the user id changes",
+        "It tells React to keep draft state per user and restore it on return"
+      ],
+      "answer": 0,
+      "why": "A different key makes React unmount the old instance and mount a new one, so `useState(user.name)` initialisers run again. It does the opposite of reuse and does not store old drafts; switching back mounts yet another fresh form.",
+      "tags": [
+        "forms",
+        "state"
+      ],
+      "level": 1,
+      "asked": "It is the idiomatic answer to \"how do you reset a form when the selected record changes?\"."
+    },
+    {
+      "id": "rp-050",
+      "q": "What is an \"inversion of control\" API like this for?",
+      "code": "const [state, dispatch] = useToggle({\n  reducer: (state, action) =>\n    action.type === \"toggle\" && state.locked ? state : toggleReducer(state, action),\n});",
+      "lang": "jsx",
+      "choices": [
+        "It lets the hook dispatch actions to other hooks in the same component",
+        "Callers can change state transitions without forking the hook",
+        "It moves state out of React so the hook can run in a web worker",
+        "It lets a parent read the hook's state without it being lifted"
+      ],
+      "answer": 1,
+      "why": "The \"state reducer\" pattern hands the transition logic to the caller, who can override specific actions and delegate the rest to the default reducer. It is how reusable hooks cover edge cases without adding a new option for each one.",
+      "tags": [
+        "patterns",
+        "component-api"
+      ],
+      "level": 3,
+      "asked": "Appears when discussing reusable component libraries; it signals you have designed APIs for other developers."
+    },
+    {
+      "id": "rp-051",
+      "q": "In a React app, what is a \"custom hook\" boundary most useful for?",
+      "choices": [
+        "Sharing state between components, since each call returns the same state",
+        "Making code run faster by moving it outside the component body",
+        "Naming and hiding a piece of stateful logic so components read clearly",
+        "Avoiding re-renders, because updates inside a hook do not affect callers"
+      ],
+      "answer": 2,
+      "why": "A custom hook extracts logic, not state: each call gets its own state, and updates inside it re-render the calling component as usual. The win is readability and reuse (`useDebouncedValue`, `useOrders`), plus a seam you can test with `renderHook`.",
+      "tags": [
+        "hooks",
+        "architecture"
+      ],
+      "level": 1,
+      "asked": "The misconception that hooks share state between callers is common; interviewers probe for it."
+    },
+    {
+      "id": "rp-052",
+      "q": "Two components each call `useCart()`, which is `useState([])` inside. One adds an item. What does the other see?",
+      "choices": [
+        "The new item, because both calls read the same hook instance",
+        "The new item after its next render, once React syncs the hooks",
+        "An error, because a custom hook can only be used in one place",
+        "Nothing new, because each call owns separate state"
+      ],
+      "answer": 3,
+      "why": "Hooks share logic, not state: every call site gets its own `useState` slot. To share the cart you lift the state to a common parent, put it in context, or use an external store.",
+      "tags": [
+        "hooks",
+        "state"
+      ],
+      "level": 1,
+      "asked": "A quick filter for whether a candidate has a correct mental model of hooks."
+    },
+    {
+      "id": "rp-053",
+      "q": "Which statement about the container/presentational split is most accurate in a 2026 React codebase?",
+      "choices": [
+        "It is required, because hooks cannot be used in presentational components",
+        "It is replaced by custom hooks, yet still useful for Storybook and tests",
+        "It is obsolete, because Server Components forbid presentational components",
+        "It is mandatory for performance, because containers skip re-renders"
+      ],
+      "answer": 1,
+      "why": "Hooks let a component own its data logic directly, so strict containers are rarely needed. The idea survives where it pays: a pure view that takes props is trivial to render in Storybook or a test, with a thin wrapper doing the fetching.",
+      "tags": [
+        "architecture",
+        "patterns"
+      ],
+      "level": 2,
+      "asked": "Interviewers look for a nuanced answer: you know the pattern and when it still earns its keep."
+    },
+    {
+      "id": "rp-054",
+      "q": "What does this generic `List` component gain from the `renderItem` prop?",
+      "code": "function List({ items, renderItem }) {\n  return <ul>{items.map((it) => <li key={it.id}>{renderItem(it)}</li>)}</ul>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "The list owns markup and keys; the caller owns how an item looks",
+        "Items render lazily, so only the visible part of the list is rendered",
+        "The list can skip rendering items whose data has not changed since last time",
+        "The caller can reorder items without the list having to know their ids"
+      ],
+      "answer": 0,
+      "why": "A render prop is inversion of control over rendering: `List` owns structure and keys, the caller owns item presentation. It does nothing for laziness or memoisation; virtualisation needs a windowing library.",
+      "tags": [
+        "patterns",
+        "composition"
+      ],
+      "level": 1,
+      "asked": "Checks you can explain a render prop by what it decouples, not only by its syntax."
+    },
+    {
+      "id": "rp-055",
+      "q": "You need the same \"confirm before delete\" behaviour on six buttons across the app. Which design keeps it most reusable?",
+      "choices": [
+        "A higher-order component that wraps every page and intercepts all clicks",
+        "A global `window.confirm` override installed once in `main.jsx`",
+        "A context flag each delete handler checks before calling the API",
+        "A `useConfirm()` hook that opens one shared dialog and returns a promise"
+      ],
+      "answer": 3,
+      "why": "A promise-returning `useConfirm` (backed by one dialog rendered near the root) lets any handler write `if (await confirm(\"Delete?\")) remove()`. It keeps the flow linear and the dialog accessible. A page-wide HOC or a global override is invasive and hard to reason about.",
+      "tags": [
+        "patterns",
+        "ux"
+      ],
+      "level": 2,
+      "asked": "A design question that reveals whether you think in terms of reusable hooks and single shared UI."
+    },
+    {
+      "id": "rp-056",
+      "q": "In a compound `Accordion`, each `Accordion.Item` needs to know whether it is open. How should it get that?",
+      "choices": [
+        "From a context the `Accordion` root provides, read with a hook",
+        "From `cloneElement`, with the root injecting `isOpen` into each item",
+        "From a module-level variable shared by the root and every item",
+        "From the DOM, by reading `aria-expanded` on the item's own button"
+      ],
+      "answer": 0,
+      "why": "Context lets any descendant read the shared state regardless of nesting, and a module variable would be shared across every accordion on the page. Reading ARIA attributes back from the DOM inverts the data flow; the DOM should reflect state, not hold it.",
+      "tags": [
+        "composition",
+        "context"
+      ],
+      "level": 2,
+      "asked": "Expected follow-up after \"what are compound components?\": how do the parts talk to each other?"
+    },
+    {
+      "id": "rp-057",
+      "q": "Why is defining a component inside another component's body a bug?",
+      "code": "function Page() {\n  function Row({ item }) { return <li>{item.name}</li>; }\n  return <ul>{items.map((i) => <Row key={i.id} item={i} />)}</ul>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Inner components cannot use hooks, because they are not at the top level",
+        "React warns and falls back to rendering the inner function as plain markup",
+        "Each render makes a new `Row` type, so every row remounts",
+        "Inner components cannot receive a `key`, so the list order becomes unstable"
+      ],
+      "answer": 2,
+      "why": "Component identity is the function reference. A new function per render means a new type, so React tears down the old subtree and mounts a new one: inputs lose focus and state resets. Move `Row` to module scope and pass what it needs as props.",
+      "tags": [
+        "composition",
+        "performance"
+      ],
+      "level": 2,
+      "asked": "A common real bug; strong candidates explain it in terms of element type identity."
+    },
+    {
+      "id": "rp-058",
+      "q": "A modal needs to close when the user clicks outside it. Which approach avoids the usual bugs?",
+      "choices": [
+        "Listen for `click` on `window` and close whenever `e.target` is not the dialog",
+        "Stop propagation on every click inside the modal so the window never sees them",
+        "Close on backdrop `mousedown` only if the pointer went down on the backdrop itself",
+        "Use a `blur` handler on the dialog, because focus leaving means a click outside"
+      ],
+      "answer": 2,
+      "why": "Checking that the press started on the backdrop avoids closing when a text selection drag ends outside. Comparing `e.target` fails for clicks on children, blanket `stopPropagation` breaks other listeners, and `blur` fires on tabbing too. A native `<dialog>` with `closedby=\"any\"` handles this for you where supported.",
+      "tags": [
+        "modal",
+        "events"
+      ],
+      "level": 3,
+      "asked": "Real-world modal bugs are a favourite senior probe; this one separates people who have shipped one."
+    },
+    {
+      "id": "rp-059",
+      "q": "You build a component library. Why accept `className` and merge it rather than ignore it?",
+      "choices": [
+        "React warns about unknown props unless `className` is always passed along",
+        "Callers can adjust layout such as margins without forking the component",
+        "Merged class names are required for server rendering to hydrate correctly",
+        "Class names are the only way to pass a ref through a function component"
+      ],
+      "answer": 1,
+      "why": "Layout concerns like spacing belong to the parent, so a reusable component should accept and merge `className` (often with `clsx` plus `tailwind-merge`). It has nothing to do with refs or hydration, and React does not warn about a missing `className`.",
+      "tags": [
+        "component-api",
+        "styling"
+      ],
+      "level": 1,
+      "asked": "Small detail, but it shows you have built components other people consume."
+    },
+    {
+      "id": "rp-060",
+      "q": "In React 19, how does a function component expose its inner `<input>` DOM node to a parent that passes `ref`?",
+      "code": "function TextField({ label, ref, ...rest }) {\n  return <label>{label}<input ref={ref} {...rest} /></label>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "It cannot; the component must still be wrapped in `forwardRef`",
+        "It reads `ref` as a prop and attaches it to the input, as shown",
+        "The parent gets the `<label>`, because refs attach to the root element",
+        "React attaches the ref to the first focusable descendant automatically"
+      ],
+      "answer": 1,
+      "why": "Since React 19, `ref` is a normal prop for function components, so `forwardRef` is no longer needed for new code. You put it on whichever element the parent should get; React does not guess.",
+      "tags": [
+        "refs",
+        "react19"
+      ],
+      "level": 1,
+      "asked": "Checks that you have written React 19 code, not only React 18."
+    },
+    {
+      "id": "rp-061",
+      "q": "A parent keeps `isOpen` for a `Disclosure` and passes `open`/`onOpenChange`. Which name pair is the conventional API for a controlled component?",
+      "choices": [
+        "`defaultOpen` with `setOpen`, mirroring the `useState` return value",
+        "`open` with `onOpenChange`, plus `defaultOpen` for the uncontrolled case",
+        "`isOpen` with `toggle`, so the child can flip the value directly",
+        "`initialOpen` with `onClose`, so the parent only hears about closing"
+      ],
+      "answer": 1,
+      "why": "Libraries such as Radix follow the native pattern: `value`/`onChange` for controlled use and `defaultValue` for uncontrolled. `onOpenChange` reports the requested new value, so the parent stays the owner. A child-owned `toggle` would hide the state transition.",
+      "tags": [
+        "component-api"
+      ],
+      "level": 2,
+      "asked": "API naming consistency is a signal of experience with shared component libraries."
+    },
+    {
+      "id": "rp-062",
+      "q": "In a component library, why should a controlled component never also copy its `value` prop into its own state?",
+      "code": "function Rating({ value, onChange }) {\n  const [v, setV] = useState(value);\n  return <Stars value={v} onPick={(n) => { setV(n); onChange(n); }} />;\n}",
+      "lang": "jsx",
+      "choices": [
+        "It doubles the renders, but otherwise behaves exactly like the prop",
+        "It breaks the rules of hooks, because props cannot seed `useState`",
+        "State initialised from props is reset on every render of the parent",
+        "Once the parent changes or rejects `value`, the copy no longer follows it"
+      ],
+      "answer": 3,
+      "why": "`useState(value)` only reads `value` on mount. If the parent resets the rating or refuses a change, the component keeps showing its own copy: two sources of truth. A controlled component should render straight from the prop.",
+      "tags": [
+        "component-api",
+        "state"
+      ],
+      "level": 2,
+      "asked": "\"Mirroring props in state\" is one of the most common review comments; interviewers want the two-sources-of-truth explanation."
+    },
+    {
+      "id": "rp-063",
+      "q": "What does wrapping part of a page in `<Suspense fallback={<Spinner />}>` do?",
+      "choices": [
+        "Shows the fallback while anything inside suspends, e.g. a lazy import",
+        "Delays rendering of the children until all effects inside them have run",
+        "Catches errors from the children and shows the fallback instead of them",
+        "Renders the children on the server only, with the fallback on the client"
+      ],
+      "answer": 0,
+      "why": "Suspense shows its fallback while a descendant is waiting on something that suspends: a `lazy()` component, `use(promise)`, or a Suspense-enabled data library. Errors are the job of error boundaries, which are a separate mechanism.",
+      "tags": [
+        "suspense"
+      ],
+      "level": 1,
+      "asked": "People mix up Suspense and error boundaries; this checks you keep them apart."
+    },
+    {
+      "id": "rp-064",
+      "q": "A dashboard has four widgets that load independently. Why wrap each in its own `<Suspense>` rather than one around the page?",
+      "choices": [
+        "React only allows one suspended component per Suspense boundary",
+        "Each widget appears as soon as it is ready instead of waiting for the slowest",
+        "Separate boundaries make the four requests run in parallel instead of in series",
+        "Nested boundaries let the server stream HTML, which one boundary blocks"
+      ],
+      "answer": 1,
+      "why": "A boundary shows its fallback until everything inside it is ready, so one boundary means the whole page waits for the slowest widget. Boundaries control what is revealed together; they do not decide whether requests run in parallel, which depends on when the fetches start.",
+      "tags": [
+        "suspense",
+        "ux"
+      ],
+      "level": 2,
+      "asked": "Boundary placement is a design decision; interviewers want to hear \"what should appear together?\"."
+    },
+    {
+      "id": "rp-065",
+      "q": "Why is a `useEffect` that fetches in every widget a common source of request waterfalls?",
+      "choices": [
+        "Effects run in series, so each widget waits for the previous effect to finish",
+        "Browsers cap fetches started from effects at one per origin at a time",
+        "Effects run after render, so children fetch after parents finish loading",
+        "An effect cannot start a fetch until the component has hydrated twice"
+      ],
+      "answer": 2,
+      "why": "When a child only renders after its parent's data arrives, its own effect fetch starts late, giving parent-then-child sequential requests. Route loaders, a query library's prefetching, or starting fetches higher up let them run in parallel. Effects themselves are not serialised.",
+      "tags": [
+        "performance",
+        "data-loading"
+      ],
+      "level": 3,
+      "asked": "Understanding why fetch-in-effect produces waterfalls is the reason route loaders and query libraries exist."
+    },
+    {
+      "id": "rp-066",
+      "q": "Why does `Card` still re-render every time `App` re-renders?",
+      "code": "const Card = memo(function Card({ children }) {\n  return <div className=\"card\">{children}</div>;\n});\n\nfunction App() {\n  const [n, setN] = useState(0);\n  return <Card><span>Hello</span></Card>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`memo` never applies to components that render `children`",
+        "`<span>` is a new element object each render",
+        "State updates in a parent always bypass `memo` on its direct children",
+        "`memo` compares props deeply, and the span has no stable key"
+      ],
+      "answer": 1,
+      "why": "JSX compiles to a fresh element object each time `App` renders, so the `children` prop is a new reference and the shallow comparison fails. `memo` does work with children if you hoist the element or memoise it; the comparison is shallow, not deep.",
+      "tags": [
+        "performance",
+        "memo"
+      ],
+      "level": 3,
+      "asked": "A favourite trick question: it checks whether you know `memo` compares prop references, and JSX is always a new object."
+    },
+    {
+      "id": "rp-067",
+      "q": "A `ThemeProvider` holds theme state and renders `{children}`. When the theme changes, which components re-render?",
+      "code": "function ThemeProvider({ children }) {\n  const [theme, setTheme] = useState(\"light\");\n  const value = useMemo(() => ({ theme, setTheme }), [theme]);\n  return <ThemeContext value={value}>{children}</ThemeContext>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "Every component inside the provider, since the provider re-rendered",
+        "Only components that read `ThemeContext`",
+        "Only the direct children passed in `children`",
+        "None until the parent of the provider also re-renders"
+      ],
+      "answer": 1,
+      "why": "The `children` elements were created by the provider's parent, which did not re-render, so React sees the same element references and skips them. Only context consumers update. This is why providers take `children` rather than rendering the app tree themselves.",
+      "tags": [
+        "context",
+        "performance"
+      ],
+      "level": 3,
+      "asked": "Explaining why the children-as-props provider is cheap shows a real understanding of how React decides to re-render."
+    },
+    {
+      "id": "rp-068",
+      "q": "What does the React DevTools Profiler record?",
+      "choices": [
+        "Each network request and the component that started it",
+        "Each commit, with render time per component",
+        "The size of each component in the production JavaScript bundle",
+        "Memory used by each component, sampled once per second"
+      ],
+      "answer": 1,
+      "why": "The Profiler records commits and shows a flame graph and ranked chart of render durations, and with \"record why each component rendered\" enabled it tells you which props, state or hooks changed. Network and memory are the browser DevTools' jobs.",
+      "tags": [
+        "performance",
+        "profiling"
+      ],
+      "level": 1,
+      "asked": "Interviewers want to hear that you measure before you memoise."
+    },
+    {
+      "id": "rp-069",
+      "q": "The Profiler shows `ProductGrid` re-rendering on every keystroke in an unrelated search box. What is the first thing to check?",
+      "choices": [
+        "Whether `ProductGrid` has too many DOM nodes to render quickly",
+        "Whether the search state lives above `ProductGrid`",
+        "Whether the browser is throttling the page's main thread",
+        "Whether `ProductGrid` is missing a `key` prop at its call site"
+      ],
+      "answer": 1,
+      "why": "A component re-renders when an ancestor does, so search state held too high drags the grid along. Moving the state down into the search component (colocation) is usually the fix before any `memo`. DOM size affects how slow each render is, not why it happens.",
+      "tags": [
+        "performance",
+        "state"
+      ],
+      "level": 2,
+      "asked": "State placement is the cheapest performance fix; a strong answer reaches for it before memoisation."
+    },
+    {
+      "id": "rp-070",
+      "q": "In a `<Profiler onRender>` callback, what is the difference between `actualDuration` and `baseDuration`?",
+      "choices": [
+        "Actual is time in the browser; base is time spent in React code only",
+        "Actual is for the first mount; base is the average of later updates",
+        "Actual is this commit's render time; base estimates rendering all without memo",
+        "Actual includes effects; base covers render time up to the commit"
+      ],
+      "answer": 2,
+      "why": "`actualDuration` measures time spent rendering the profiled subtree for this commit, so it drops when memoisation skips work. `baseDuration` estimates the cost of re-rendering the whole subtree from scratch. Comparing them tells you how much memoisation is saving.",
+      "tags": [
+        "performance",
+        "profiling"
+      ],
+      "level": 3,
+      "asked": "Rarely asked directly, but knowing it shows you have used the Profiler API rather than guessed."
+    },
+    {
+      "id": "rp-071",
+      "q": "Why should you profile React performance with a production build rather than `npm run dev`?",
+      "choices": [
+        "Dev builds add checks and Strict Mode double renders",
+        "The Profiler tab is disabled in development to avoid slowing hot reload",
+        "Development builds skip memoisation, so `memo` has no effect there",
+        "Production builds are the only ones that include component names"
+      ],
+      "answer": 0,
+      "why": "Development React runs extra warnings and validation, and Strict Mode renders twice, so absolute numbers are misleading. Use a profiling-enabled production build to measure real cost. Memoisation works in both; dev builds actually keep more names.",
+      "tags": [
+        "performance",
+        "profiling"
+      ],
+      "level": 2,
+      "asked": "A practical detail that tells interviewers you have actually chased a performance problem."
+    },
+    {
+      "id": "rp-072",
+      "q": "When does `useCallback` on a handler actually save work?",
+      "choices": [
+        "Always, because creating a new function on each render is expensive",
+        "When it is passed to a `memo` child or used in an effect's dependencies",
+        "When the handler is attached to a native element such as a `<button>`",
+        "When the handler calls `setState`, because React batches it better"
+      ],
+      "answer": 1,
+      "why": "A stable function only matters to something that compares it: a memoised child's props or a dependency array. Creating functions is cheap, and native elements do not care about handler identity. Without such a consumer, `useCallback` is pure overhead.",
+      "tags": [
+        "performance",
+        "memo"
+      ],
+      "level": 2,
+      "asked": "Tests whether you memoise by habit or for a reason you can state."
+    },
+    {
+      "id": "rp-073",
+      "q": "What does the React Compiler (v1, 2025) do for a typical app?",
+      "choices": [
+        "It converts class components to function components during the build",
+        "It moves rendering into a web worker so the main thread stays free",
+        "It compiles JSX to direct DOM calls so React no longer needs a virtual DOM",
+        "It memoises components and values at build time, as manual `useMemo` would"
+      ],
+      "answer": 3,
+      "why": "The compiler analyses components and hooks and inserts fine-grained memoisation automatically, which makes most hand-written `useMemo`, `useCallback` and `memo` unnecessary. It relies on your code following the Rules of React and skips functions it cannot prove safe.",
+      "tags": [
+        "performance",
+        "react-compiler"
+      ],
+      "level": 1,
+      "asked": "Current-knowledge check: interviewers ask how the compiler changes memoisation advice."
+    },
+    {
+      "id": "rp-074",
+      "q": "The React Compiler is enabled, but one component mutates a prop during render. What happens?",
+      "choices": [
+        "The build fails until the mutation is removed from the component",
+        "The compiler copies the prop first so the mutation becomes safe",
+        "It may skip optimising that component, which then runs as before",
+        "The component is memoised anyway and may show stale values"
+      ],
+      "answer": 2,
+      "why": "The compiler assumes the Rules of React (pure render, no mutation of props or state). When it detects a violation it bails out of that function and leaves it unoptimised; the lint rules report the problem. It does not rewrite your logic.",
+      "tags": [
+        "react-compiler",
+        "purity"
+      ],
+      "level": 3,
+      "asked": "Shows you know the compiler is not magic: it depends on pure components."
+    },
+    {
+      "id": "rp-075",
+      "q": "What does list virtualisation cost you, in exchange for rendering only visible rows?",
+      "choices": [
+        "Browser find-in-page cannot see rows that are not rendered",
+        "Rows can no longer hold their own local state or effects",
+        "The list cannot be sorted without re-fetching all its data",
+        "Keyboard focus stops working inside any virtualised row"
+      ],
+      "answer": 0,
+      "why": "Off-screen rows do not exist in the DOM, so Ctrl+F, screen readers counting rows, and printing all see only the window; you also need known or measured heights. Rows keep state while mounted, and sorting is a data concern.",
+      "tags": [
+        "performance",
+        "lists"
+      ],
+      "level": 2,
+      "asked": "A good answer weighs the trade-off rather than treating virtualisation as free."
+    },
+    {
+      "id": "rp-076",
+      "q": "A table shows 50 rows per page from a paginated API. A teammate proposes virtualising it. What is the best response?",
+      "choices": [
+        "Agree, because virtualisation always improves scroll performance",
+        "Agree, but only if every row has a fixed height in CSS",
+        "Disagree, because virtualisation breaks server-side pagination",
+        "Decline: 50 rows are cheap, so measure first and keep it simple"
+      ],
+      "answer": 3,
+      "why": "Virtualisation pays off with hundreds or thousands of rows or heavy row components. At 50 rows the added complexity, accessibility caveats and scroll quirks cost more than they save. Libraries like TanStack Virtual handle variable heights too, so that is not the deciding factor.",
+      "tags": [
+        "performance",
+        "lists"
+      ],
+      "level": 2,
+      "asked": "Interviewers like candidates who push back on premature optimisation with a reason."
+    },
+    {
+      "id": "rp-077",
+      "q": "Why does this lazy component remount and flash its fallback on every render of `Page`?",
+      "code": "function Page() {\n  const Chart = lazy(() => import(\"./Chart\"));\n  return <Suspense fallback={<Spinner />}><Chart /></Suspense>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`lazy` must be wrapped in `useMemo` or it re-downloads the module",
+        "`import()` is not cached, so each call fetches the chunk again",
+        "Each render creates a new `lazy` component type",
+        "`Suspense` must sit outside `Page` for the fallback to be skipped"
+      ],
+      "answer": 2,
+      "why": "Every call to `lazy` returns a new component type, so React treats it as a different component each render, unmounts the old one and suspends again. The module itself is cached by the bundler; the problem is identity. Declare lazy components at the top level of the module.",
+      "tags": [
+        "performance",
+        "code-splitting"
+      ],
+      "level": 2,
+      "asked": "A real bug that looks innocent; it tests your grasp of component identity."
+    },
+    {
+      "id": "rp-078",
+      "q": "How can you make a lazily loaded `SettingsPanel` open without a visible loading delay?",
+      "code": "const loadSettings = () => import(\"./SettingsPanel\");\nconst SettingsPanel = lazy(loadSettings);",
+      "lang": "jsx",
+      "choices": [
+        "Call `loadSettings()` on hover or focus of the button",
+        "Wrap `SettingsPanel` in `memo` so its chunk stays in memory",
+        "Add `loading=\"eager\"` to the `<Suspense>` around the panel",
+        "Render it in a hidden `<div>` on mount so it is always present"
+      ],
+      "answer": 0,
+      "why": "Calling the same `import()` early starts downloading the chunk; the promise is cached, so when `lazy` later calls it the module is ready. Rendering it hidden defeats the split, and `memo` and `loading` attributes have nothing to do with chunk loading.",
+      "tags": [
+        "performance",
+        "code-splitting"
+      ],
+      "level": 2,
+      "asked": "Preloading on intent is a cheap UX win; mentioning it shows practical performance experience."
+    },
+    {
+      "id": "rp-079",
+      "q": "Which split usually gives the biggest first-load win in a single-page React app?",
+      "choices": [
+        "Splitting each small component into its own chunk",
+        "Splitting by route, so each page loads its own code",
+        "Splitting React itself into a separate vendor chunk",
+        "Splitting CSS files per component with dynamic imports"
+      ],
+      "answer": 1,
+      "why": "Users visit one route at a time, so route-level chunks keep most code off the first load with few boundaries to manage. Splitting tiny components creates request overhead and loading flashes. A vendor chunk helps caching but does not cut what the first page needs.",
+      "tags": [
+        "performance",
+        "code-splitting"
+      ],
+      "level": 1,
+      "asked": "The expected default answer for \"how would you reduce the initial bundle?\"."
+    },
+    {
+      "id": "rp-080",
+      "q": "A search box triggers an API call per keystroke and filters a large rendered list. What do debouncing and `useDeferredValue` each fix?",
+      "choices": [
+        "Each cuts network requests; deferring also cancels in-flight ones",
+        "Debouncing keeps typing smooth; deferring reduces the request count",
+        "Debouncing cuts requests; deferring keeps typing responsive",
+        "Neither cuts requests; that needs an `AbortController` per keystroke"
+      ],
+      "answer": 2,
+      "why": "Debouncing waits for a pause, so fewer requests fire. `useDeferredValue` makes React render the expensive list at lower priority so the input stays responsive, but it still renders every value eventually and sends nothing less over the network. They solve different problems and are often combined.",
+      "tags": [
+        "performance",
+        "transitions"
+      ],
+      "level": 3,
+      "asked": "Separates people who reach for transitions for everything from those who know what each tool addresses."
+    },
+    {
+      "id": "rp-081",
+      "q": "Why is `key={Math.random()}` on list items a performance problem?",
+      "choices": [
+        "Random keys collide, so React renders some rows twice",
+        "Every render gives every row a new key, so all rows remount",
+        "React has to sort the keys, which is slow for random numbers",
+        "Keys must be strings, so React converts each number on render"
+      ],
+      "answer": 1,
+      "why": "A changed key means \"a different item\", so React destroys and recreates every row on each render: DOM rebuilt, state lost, focus lost. Keys need to be stable identifiers from the data.",
+      "tags": [
+        "performance",
+        "lists"
+      ],
+      "level": 1,
+      "asked": "Easy points, but a surprising number of candidates think any unique key is fine."
+    },
+    {
+      "id": "rp-082",
+      "q": "A component filters and sorts 10,000 rows on each render, and it re-renders often for unrelated reasons. Which fix fits best?",
+      "code": "const visible = rows.filter(matches(query)).sort(byDate);",
+      "lang": "jsx",
+      "choices": [
+        "Move the filter into an effect that writes the result to state",
+        "Store the sorted rows in a ref so they are computed only once",
+        "Wrap the component in `memo` so the filter never runs again",
+        "Wrap it in `useMemo` keyed on `rows` and `query`"
+      ],
+      "answer": 3,
+      "why": "`useMemo` recomputes only when its inputs change, which is exactly what an expensive derived value needs. An effect adds an extra render and a stale frame; a ref would go stale when `rows` changes; `memo` still re-runs everything when props change.",
+      "tags": [
+        "performance",
+        "memo"
+      ],
+      "level": 1,
+      "asked": "The textbook case for `useMemo`; interviewers want \"derived, expensive, frequently re-rendered\"."
+    },
+    {
+      "id": "rp-083",
+      "q": "Why does wrapping this JSX in `useMemo` stop `Chart` re-rendering when `App` re-renders for other reasons?",
+      "code": "const chart = useMemo(() => <Chart data={data} />, [data]);\nreturn <>{chart}<Filters /></>;",
+      "lang": "jsx",
+      "choices": [
+        "React skips a child given the very same element object",
+        "The memoised element is rendered on a separate, lower-priority lane",
+        "`useMemo` also caches the rendered DOM output, not only the element",
+        "Elements from `useMemo` are treated as `memo` components with deep equality"
+      ],
+      "answer": 0,
+      "why": "When a parent re-renders and a child element is referentially identical to the previous one, React bails out of rendering that subtree. That is the same reason `children` passed from above do not re-render. It is shallow identity, not deep comparison or DOM caching.",
+      "tags": [
+        "performance",
+        "memo"
+      ],
+      "level": 3,
+      "asked": "An advanced detail that shows you know the real bail-out rule behind `memo` and composition."
+    },
+    {
+      "id": "rp-084",
+      "q": "A page freezes for 2 seconds while parsing a large CSV the user uploads. Which fix keeps the UI responsive?",
+      "choices": [
+        "Wrap the parse call in `startTransition` so React can interrupt it",
+        "Run the parse in a Web Worker and post the result back",
+        "Move the parse into `useEffect` so it runs after paint",
+        "Wrap the parsing component in `memo` so it renders once"
+      ],
+      "answer": 1,
+      "why": "Transitions only make React's own rendering interruptible; a synchronous 2 s function still blocks the main thread. Running it after paint in an effect still freezes the page. Only moving the work off the main thread (a worker) or chunking it keeps input responsive.",
+      "tags": [
+        "performance",
+        "workers"
+      ],
+      "level": 2,
+      "asked": "Checks you know the limits of React's scheduling: it cannot interrupt your own long-running code."
+    },
+    {
+      "id": "rp-085",
+      "q": "What does \"Highlight updates when components render\" in React DevTools show you?",
+      "choices": [
+        "Components whose DOM output changed since the last commit",
+        "Components that rendered, even if the DOM stayed the same",
+        "Components with effects that ran during the last commit",
+        "Components whose props failed their TypeScript types"
+      ],
+      "answer": 1,
+      "why": "It flashes an outline around every component that rendered, which makes wasted renders visible even when the DOM stays the same. It is a quick way to spot state held too high before opening the Profiler.",
+      "tags": [
+        "performance",
+        "profiling"
+      ],
+      "level": 1,
+      "asked": "A practical debugging tool that shows you can find render problems without guessing."
+    },
+    {
+      "id": "rp-086",
+      "q": "Why does `memo` do nothing for `Row` here?",
+      "code": "const Row = memo(RowImpl);\nfunction Table({ rows }) {\n  return rows.map((r) => (\n    <Row key={r.id} row={r} style={{ padding: 8 }} onSelect={() => select(r.id)} />\n  ));\n}",
+      "lang": "jsx",
+      "choices": [
+        "`memo` is ignored for components rendered inside `map`",
+        "`key` changes every render, so the memo cache is cleared",
+        "`style` and `onSelect` are new objects each render",
+        "`row` objects are compared deeply and always differ"
+      ],
+      "answer": 2,
+      "why": "The inline object and arrow function are new references on each render, so the shallow prop comparison always fails. Hoist the style to a constant and pass a stable `onSelect(id)` callback (or rely on the React Compiler). `key` is stable here, and `memo` is shallow.",
+      "tags": [
+        "performance",
+        "memo"
+      ],
+      "level": 1,
+      "asked": "The most common reason memoisation \"doesn't work\"; interviewers expect you to spot it instantly."
+    },
+    {
+      "id": "rp-087",
+      "q": "A large form with 80 controlled inputs lags on every keystroke. Which change targets the cause?",
+      "choices": [
+        "Replace `useState` with `useReducer` in the form component",
+        "Wrap the whole form in `Suspense` so typing is deferred",
+        "Debounce every `onChange` so state updates less often",
+        "Keep each field's state local, or use uncontrolled inputs"
+      ],
+      "answer": 3,
+      "why": "One big state object at the form root means every keystroke re-renders all 80 fields. Localising state per field, or letting the DOM hold values (as React Hook Form does), limits each keystroke to one field. `useReducer` changes the API, not the render scope; debouncing input makes typing feel broken.",
+      "tags": [
+        "performance",
+        "forms"
+      ],
+      "level": 2,
+      "asked": "Links form architecture to render cost, which is why form libraries exist."
+    },
+    {
+      "id": "rp-088",
+      "q": "A chat window renders 5,000 messages and scrolling stutters. Which approach fits best?",
+      "choices": [
+        "Virtualise it so only nearby messages are mounted",
+        "Wrap each message in `memo` so scrolling skips their renders",
+        "Add `will-change: transform` to every message element",
+        "Render the messages inside a portal to isolate their layout"
+      ],
+      "answer": 0,
+      "why": "Scrolling does not re-render React components, so `memo` cannot help: the cost is thousands of DOM nodes for layout and paint. Virtualisation cuts the node count. Applying `will-change` to thousands of nodes adds memory and can make it worse.",
+      "tags": [
+        "performance",
+        "lists"
+      ],
+      "level": 1,
+      "asked": "Distinguishes render cost from DOM size cost, which many candidates conflate."
+    },
+    {
+      "id": "rp-089",
+      "q": "Why should a scroll or resize handler that updates state be throttled with `requestAnimationFrame`?",
+      "choices": [
+        "React ignores state updates that arrive faster than once per frame",
+        "Browsers stop firing scroll events if handlers take longer than 16 ms",
+        "They fire many times per frame, but only one frame paints",
+        "State updates from native listeners are not batched in React 19"
+      ],
+      "answer": 2,
+      "why": "Scroll and resize can fire far more often than the screen repaints, so updating state on each event wastes renders nobody sees. Scheduling one update per animation frame matches the display rate. React 18+ batches all updates, and it does not drop fast ones.",
+      "tags": [
+        "performance",
+        "events"
+      ],
+      "level": 2,
+      "asked": "Shows you connect React rendering with the browser's frame budget."
+    },
+    {
+      "id": "rp-090",
+      "q": "You memoise every component in the app \"just in case\". What is the main cost?",
+      "choices": [
+        "Memoised components cannot use context or read refs",
+        "Extra code and comparisons, often for no measurable gain",
+        "React disables concurrent rendering for memoised trees",
+        "Memoised components always render twice in production"
+      ],
+      "answer": 1,
+      "why": "Each `memo` adds a prop comparison and each `useMemo` adds dependency bookkeeping and bugs when deps are wrong; if props change anyway, it is all overhead. Measure, fix state placement, then memoise hot spots, or let the React Compiler do it.",
+      "tags": [
+        "performance",
+        "memo"
+      ],
+      "level": 1,
+      "asked": "Interviewers probe for judgement: memoisation is a tool with costs, not a default."
+    },
+    {
+      "id": "rp-091",
+      "q": "A route renders a heavy `ReportView` behind a tab that most users never open. What does rendering it conditionally achieve over hiding it with CSS?",
+      "code": "{tab === \"report\" && <ReportView />}\n// vs\n<div hidden={tab !== \"report\"}><ReportView /></div>",
+      "lang": "jsx",
+      "choices": [
+        "Hiding with CSS unmounts it too, so the two are identical",
+        "The conditional version keeps its state when you switch tabs away",
+        "The CSS version is faster, because hidden elements skip rendering",
+        "The report is never rendered or fetched until the tab is chosen"
+      ],
+      "answer": 3,
+      "why": "With the `&&` version, `ReportView` does not exist until selected, so its render and effects never run. The `hidden` version mounts it immediately (running its effects and fetches) but preserves its state across tab switches. React 19.2's `<Activity mode=\"hidden\">` gives preserved state while deferring the work.",
+      "tags": [
+        "performance",
+        "rendering"
+      ],
+      "level": 2,
+      "asked": "A trade-off question: mount cost versus preserved state. Mentioning `<Activity>` shows current knowledge."
+    },
+    {
+      "id": "rp-092",
+      "q": "In React 19.2, what does wrapping a panel in `<Activity mode=\"hidden\">` do?",
+      "choices": [
+        "Unmounts the panel but keeps its DOM in a cache for later",
+        "Keeps the panel mounted and visible but pauses its re-renders",
+        "Hides it, keeps its state, and unmounts its effects",
+        "Renders the panel on the server and streams it in when shown"
+      ],
+      "answer": 2,
+      "why": "`<Activity>` hides its children, preserves their state and DOM, and unmounts their effects while hidden; updates are rendered at low priority. It gives you \"hidden tab keeps its form input\" without the running effects that CSS hiding would leave on.",
+      "tags": [
+        "react19",
+        "rendering"
+      ],
+      "level": 3,
+      "asked": "A 2025 addition; knowing it signals you track React releases."
+    },
+    {
+      "id": "rp-093",
+      "q": "In the browser, what does `Object.fromEntries(new FormData(form))` produce for this form when nothing is changed?",
+      "code": "<form>\n  <input name=\"email\" defaultValue=\"a@b.co\" />\n  <input name=\"plan\" defaultValue=\"pro\" disabled />\n  <input type=\"checkbox\" name=\"terms\" />\n</form>",
+      "lang": "jsx",
+      "choices": [
+        "`{ email: \"a@b.co\", plan: \"pro\", terms: \"off\" }`",
+        "`{ email: \"a@b.co\", plan: \"pro\", terms: false }`",
+        "`{ email: \"a@b.co\" }`",
+        "`{ email: \"a@b.co\", terms: null }`"
+      ],
+      "answer": 2,
+      "why": "Disabled controls and unchecked checkboxes are not submitted, so both keys are simply missing. Use `readOnly` if a value must be sent but not edited, and treat a missing checkbox key as false on the server.",
+      "tags": [
+        "forms",
+        "formdata"
+      ],
+      "level": 2,
+      "asked": "A classic source of \"the field is missing on the server\" bugs once teams move to FormData and actions."
+    },
+    {
+      "id": "rp-094",
+      "q": "A controlled `<input type=\"number\">` feeds `setQty(e.target.value)`. Later `qty + 1` shows `\"21\"` for an input of 2. Why?",
+      "choices": [
+        "React converts number inputs to strings to keep them controlled",
+        "`e.target.value` is always a string, even for number inputs",
+        "Number inputs return the previous value until the input blurs",
+        "The `+` operator concatenates whenever state came from an event"
+      ],
+      "answer": 1,
+      "why": "Input values are strings in the DOM regardless of `type`. Convert explicitly (`Number(v)` or `e.target.valueAsNumber`), and remember an empty field gives `\"\"` or `NaN`, so the state type should allow \"empty\".",
+      "tags": [
+        "forms",
+        "inputs"
+      ],
+      "level": 1,
+      "asked": "Easy, but it shows you have debugged real forms rather than only demo ones."
+    },
+    {
+      "id": "rp-095",
+      "q": "In a React form, the user presses Enter in the email field. Which handler should contain the save logic so this and clicking Save behave the same?",
+      "code": "<form onSubmit={handleSubmit}>\n  <input name=\"email\" />\n  <button type=\"submit\" onClick={handleClick}>Save</button>\n</form>",
+      "lang": "jsx",
+      "choices": [
+        "`handleClick`, because Enter triggers a click on the input",
+        "`handleSubmit`, which fires for Enter and for the button",
+        "An `onKeyDown` on the input that checks for the Enter key",
+        "Both, since Enter only fires `onSubmit` and a click only `onClick`"
+      ],
+      "answer": 1,
+      "why": "Implicit submission means Enter in a text field submits the form, and a submit button click also fires `submit`. Putting logic in `onSubmit` covers both paths plus native validation; a click handler misses keyboard users who press Enter.",
+      "tags": [
+        "forms",
+        "events"
+      ],
+      "level": 1,
+      "asked": "Checks you use the form element as intended, which also matters for accessibility."
+    },
+    {
+      "id": "rp-096",
+      "q": "Clicking \"Cancel\" in this React form unexpectedly saves it. Why?",
+      "code": "<form onSubmit={save}>\n  <input name=\"title\" />\n  <button onClick={close}>Cancel</button>\n  <button type=\"submit\">Save</button>\n</form>",
+      "lang": "jsx",
+      "choices": [
+        "A `<button>` inside a form defaults to `type=\"submit\"`",
+        "React runs `onSubmit` for every click inside a form",
+        "`close` returns a value, which React treats as a submit",
+        "The first button in a form is always the default action"
+      ],
+      "answer": 0,
+      "why": "Buttons default to `type=\"submit\"`, so Cancel submits the form after `close` runs. Give non-submit buttons `type=\"button\"`. Enter-key submission uses the first submit button, which is why the default matters.",
+      "tags": [
+        "forms",
+        "html"
+      ],
+      "level": 1,
+      "asked": "A classic bug reviewers catch in forms; it shows attention to HTML semantics in React."
+    },
+    {
+      "id": "rp-097",
+      "q": "In React 19, what happens to this uncontrolled input after the form action finishes successfully?",
+      "code": "<form action={async (fd) => { await save(fd.get(\"note\")); }}>\n  <input name=\"note\" defaultValue=\"\" />\n  <button>Add</button>\n</form>",
+      "lang": "jsx",
+      "choices": [
+        "It keeps the typed text until the component unmounts",
+        "It is reset to its default value automatically",
+        "It is cleared before the action runs, so `fd` is empty",
+        "It is disabled until the page is reloaded"
+      ],
+      "answer": 1,
+      "why": "When a function is passed to `<form action>`, React resets the form's uncontrolled fields after the action completes, which suits \"add a note\" flows. Controlled inputs keep whatever their state says. Use `requestFormReset` for manual control.",
+      "tags": [
+        "forms",
+        "react19"
+      ],
+      "level": 2,
+      "asked": "A React 19 behaviour change that surprises people migrating from `onSubmit` handlers."
+    },
+    {
+      "id": "rp-098",
+      "q": "Why is client-side validation in a React form not enough on its own?",
+      "choices": [
+        "Browsers skip client-side checks when the page is served over HTTPS",
+        "Anyone can call the API directly, so the server must validate too",
+        "React discards validation state whenever the component re-renders",
+        "Client validation only runs for fields that the user has focused"
+      ],
+      "answer": 1,
+      "why": "Client validation is for fast feedback; it offers no protection because requests can be sent with curl or a modified page. The server re-validates everything and returns field errors the form can display. Sharing one schema keeps the two consistent.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 1,
+      "asked": "Basic, but a wrong answer here is a security red flag."
+    },
+    {
+      "id": "rp-099",
+      "q": "After a successful upload, the chosen file name still shows in this input. What is the usual React fix?",
+      "code": "<input type=\"file\" onChange={(e) => setFile(e.target.files[0])} />",
+      "lang": "jsx",
+      "choices": [
+        "Set `value={file?.name ?? \"\"}` so React controls the input",
+        "Change a `key` on the input (or reset the form) to clear it",
+        "Call `setFile(null)`, which also clears the browser input",
+        "Set `files={[]}` on the input to drop the chosen file"
+      ],
+      "answer": 1,
+      "why": "Script can clear a file input but never set its value, so React cannot control it and clearing your state does not touch the DOM. Remounting with a new key, calling `form.reset()`, or setting `ref.current.value = \"\"` clears it; `files` is not a settable prop.",
+      "tags": [
+        "forms",
+        "inputs"
+      ],
+      "level": 2,
+      "asked": "Upload forms are common in CRUD apps; this checks you know the platform limits behind uncontrolled file inputs."
+    },
+    {
+      "id": "rp-100",
+      "q": "What format does a controlled `<input type=\"date\">` give you in `e.target.value`, regardless of the user's locale?",
+      "choices": [
+        "The date as displayed, such as `24/09/2026` in the UK",
+        "A `Date` object at local midnight on the chosen day",
+        "A timestamp in milliseconds since the Unix epoch",
+        "A string in `YYYY-MM-DD` form, such as `2026-09-24`"
+      ],
+      "answer": 3,
+      "why": "The display follows the locale but the value is always an ISO date string, or `\"\"` when empty. Parsing it with `new Date(\"2026-09-24\")` gives UTC midnight, which can shift the day in some time zones, so keep it as a string until you need a `Date`.",
+      "tags": [
+        "forms",
+        "inputs"
+      ],
+      "level": 2,
+      "asked": "Date handling bugs are common in CRUD forms; this probes whether you have met them."
+    },
+    {
+      "id": "rp-101",
+      "q": "A form has Country and Region selects, and the region list depends on the country. What should happen when the country changes?",
+      "choices": [
+        "Keep the region, since the server will reject an invalid pair anyway",
+        "Reset the region, since the old one may not exist in the new list",
+        "Disable the country select until the region is chosen again",
+        "Reload the page so both selects start from default values"
+      ],
+      "answer": 1,
+      "why": "Dependent fields must be cleared (or revalidated) when their parent changes, otherwise the form holds an impossible combination the user cannot see. Do it in the country change handler, not in an effect, so both updates happen in one render.",
+      "tags": [
+        "forms",
+        "state"
+      ],
+      "level": 1,
+      "asked": "Tests practical form design and whether you reach for handlers rather than effects."
+    },
+    {
+      "id": "rp-102",
+      "q": "A sign-up form checks \"username available?\" as the user types. Which design is sound?",
+      "choices": [
+        "Check on every keystroke and show the latest response that comes back",
+        "Check only on submit, because async validation confuses users",
+        "Debounce, drop stale replies, show pending, re-check on submit",
+        "Check once on blur, then cache that answer for the rest of the session"
+      ],
+      "answer": 2,
+      "why": "Debouncing limits requests, cancelling or ignoring stale responses prevents an old \"available\" overwriting a newer \"taken\", and a pending state explains the delay. The server must still enforce uniqueness at submit because the name can be taken in between.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 2,
+      "asked": "Combines race conditions, UX and server authority in one small feature, which is why it is popular."
+    },
+    {
+      "id": "rp-103",
+      "q": "A five-step checkout wizard keeps each step in its own component. Where should the collected answers live?",
+      "choices": [
+        "In each step's own state, read back through refs on the last step",
+        "In `localStorage`, written by each step and read on submit",
+        "In a parent or reducer that owns the answers and current step",
+        "In URL search params, one param per field across all the steps"
+      ],
+      "answer": 2,
+      "why": "Steps unmount as the user moves on, so their local state is lost; the parent that outlives them must own the data. A reducer keeps transitions (next, back, edit step 2) explicit. The URL suits the step number, not every field, and storage is for drafts that must survive reloads.",
+      "tags": [
+        "forms",
+        "state"
+      ],
+      "level": 2,
+      "asked": "A system-design-in-miniature question that shows how you reason about component lifetimes."
+    },
+    {
+      "id": "rp-104",
+      "q": "An edit form should warn users with unsaved changes before they leave. Which pair of mechanisms covers both cases?",
+      "choices": [
+        "`beforeunload` for tab closes plus a router blocker for links",
+        "A `window.confirm` in `useEffect` cleanup, which runs on any navigation",
+        "An `onBlur` on the form that saves the draft to local storage",
+        "A `visibilitychange` listener that cancels navigation when hidden"
+      ],
+      "answer": 0,
+      "why": "Closing or reloading the tab only fires `beforeunload` (with the browser's generic prompt); client-side route changes never fire it, so the router's blocking API (`useBlocker` in React Router) handles those. Effect cleanup cannot cancel anything, it just runs after the fact.",
+      "tags": [
+        "forms",
+        "routing"
+      ],
+      "level": 2,
+      "asked": "A real product requirement; knowing both halves shows you have implemented it."
+    },
+    {
+      "id": "rp-105",
+      "q": "What does \"dirty\" mean for a form field, and why track it?",
+      "choices": [
+        "The field failed validation, so it is shown with an error style",
+        "The field has been focused, so errors may now be shown for it",
+        "The field is waiting on async validation from the server",
+        "It differs from its initial value; drives Save and leave warnings"
+      ],
+      "answer": 3,
+      "why": "Dirty means changed from the default. It powers \"disable Save until something changed\", \"send only changed fields in a PATCH\", and unsaved-changes warnings. Focused-then-left is \"touched\", a separate flag used for error timing.",
+      "tags": [
+        "forms",
+        "state"
+      ],
+      "level": 1,
+      "asked": "Form libraries expose dirty and touched separately; knowing both shows you have used them."
+    },
+    {
+      "id": "rp-106",
+      "q": "An edit form sends `PATCH /users/7`. Why send only the dirty fields rather than the whole form?",
+      "choices": [
+        "PATCH requests are limited to a few hundred bytes by most servers",
+        "It avoids overwriting fields someone else changed meanwhile",
+        "Sending unchanged fields makes the server run validation twice",
+        "Browsers cache PATCH bodies, so unchanged fields would be ignored"
+      ],
+      "answer": 1,
+      "why": "Sending stale copies of untouched fields can silently revert someone else's edits (lost update). Sending only changes shrinks that window; an ETag or version check closes it fully. Size limits and caching have nothing to do with it.",
+      "tags": [
+        "forms",
+        "mutations"
+      ],
+      "level": 3,
+      "asked": "Links a front-end choice to a data integrity problem, which interviewers value."
+    },
+    {
+      "id": "rp-107",
+      "q": "A form library's `reset(user)` is called when fresh `user` data arrives. What problem does that solve?",
+      "choices": [
+        "It sets new defaults, so dirty checks compare with saved data",
+        "It clears validation errors caused by typing too quickly",
+        "It forces every input to become controlled by React state",
+        "It sends the form data to the server once more to confirm it"
+      ],
+      "answer": 0,
+      "why": "Default values are read once at mount; if data loads later, `reset` updates both field values and the baseline used for dirty checks. Calling it after a successful save also makes the form clean again.",
+      "tags": [
+        "forms",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "The async-default-values problem is one of the most common form-library questions on the job."
+    },
+    {
+      "id": "rp-108",
+      "q": "Which is the better place to trim whitespace and convert \"12.50\" to a number in a form?",
+      "choices": [
+        "In each input's `onChange`, so state always holds the final value",
+        "In a `useEffect` that normalises state after each render",
+        "At submit or in the validation schema, as a parse step",
+        "On the server only, since the client should send raw input"
+      ],
+      "answer": 2,
+      "why": "Normalising on every keystroke fights the user (you cannot type a trailing space or \"12.\"). Parsing at the boundary, often with a schema that trims and coerces, keeps the input free and the output clean; the server still validates what arrives.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 2,
+      "asked": "Shows you think about the difference between what users type and what the app stores."
+    },
+    {
+      "id": "rp-109",
+      "q": "Why is a single form-level error message (\"Something is wrong\") worse than field-level errors for a long form?",
+      "choices": [
+        "Screen readers cannot read errors that are not attached to fields",
+        "Browsers block form submission while a form-level message is shown",
+        "Users have to hunt for the field; field errors say what and where",
+        "React cannot re-render a form-level error without remounting it"
+      ],
+      "answer": 2,
+      "why": "Good errors name the field and the fix (\"Postcode must be 5 digits\") next to the input, linked with `aria-describedby`. A summary at the top helps for long forms, but only when it links to those specific fields.",
+      "tags": [
+        "forms",
+        "ux"
+      ],
+      "level": 1,
+      "asked": "Error UX is part of every CRUD job; interviewers want concrete, actionable messages."
+    },
+    {
+      "id": "rp-110",
+      "q": "Why must an error boundary be a class component (or come from a library such as `react-error-boundary`)?",
+      "choices": [
+        "Function components cannot render `children` returned from a catch",
+        "There is no hook equivalent of `getDerivedStateFromError` yet",
+        "Class components render faster, which matters during an error",
+        "Errors propagate only through class components in the tree"
+      ],
+      "answer": 1,
+      "why": "Catching render errors relies on the class lifecycle methods `static getDerivedStateFromError` and `componentDidCatch`; React 19 still has no hook for them. Most teams use `react-error-boundary`, which wraps that class with a friendlier API.",
+      "tags": [
+        "error-boundaries"
+      ],
+      "level": 1,
+      "asked": "Easy confirmation you have actually written or used an error boundary."
+    },
+    {
+      "id": "rp-111",
+      "q": "In an error boundary class, what are `getDerivedStateFromError` and `componentDidCatch` each for?",
+      "choices": [
+        "The first logs the error; the second switches to the fallback UI",
+        "The first handles render errors; the second handles effect errors",
+        "The first runs on the server; the second runs only in the browser",
+        "The first sets fallback state; the second reports the error"
+      ],
+      "answer": 3,
+      "why": "`getDerivedStateFromError` is a pure static method that returns state for the fallback render; `componentDidCatch` runs after commit with the error and component stack, so it is where side effects such as logging go. Both handle the same errors.",
+      "tags": [
+        "error-boundaries"
+      ],
+      "level": 2,
+      "asked": "Separating the pure part from the side-effect part mirrors how React is designed, which is what the question checks."
+    },
+    {
+      "id": "rp-112",
+      "q": "In React 19 with `createRoot`, a render error is thrown and no error boundary catches it. What does the user see?",
+      "choices": [
+        "The whole app unmounts, leaving an empty root element",
+        "Only the component that threw is removed from the screen",
+        "The last successfully rendered UI stays, frozen in place",
+        "React retries the render up to three times, then shows nothing"
+      ],
+      "answer": 0,
+      "why": "Since React 16, an uncaught render error unmounts the whole tree, because showing a half-broken UI can be worse than showing nothing. That is why every app needs at least a root-level boundary with a useful fallback.",
+      "tags": [
+        "error-boundaries"
+      ],
+      "level": 1,
+      "asked": "Explains why error boundaries are not optional, which is usually the point of the question."
+    },
+    {
+      "id": "rp-113",
+      "q": "Where should error boundaries go in a typical dashboard app?",
+      "choices": [
+        "Only one at the root, so every error shows the same fallback page",
+        "Around every component, so no error can ever escape its source",
+        "At the root, around each route, and around independent widgets",
+        "Only around components that fetch data, since only they can fail"
+      ],
+      "answer": 2,
+      "why": "A root boundary is the safety net, route boundaries keep navigation working when one page breaks, and widget boundaries let a failing chart show \"Couldn't load\" while the rest works. Wrapping every component adds noise, and render bugs are not limited to fetching components.",
+      "tags": [
+        "error-boundaries",
+        "architecture"
+      ],
+      "level": 2,
+      "asked": "Boundary granularity is a design question; interviewers want reasoning about blast radius."
+    },
+    {
+      "id": "rp-114",
+      "q": "An async click handler fails. How can you show it in the nearest error boundary's fallback?",
+      "code": "async function onExport() {\n  try { await exportCsv(); }\n  catch (err) { /* ??? */ }\n}",
+      "lang": "jsx",
+      "choices": [
+        "Rethrow `err` inside the catch; the boundary catches async errors",
+        "Call `console.error(err)`, which React routes to the nearest boundary",
+        "Call `setState(() => { throw err; })` to throw it in render",
+        "Call `window.onerror(err)`, which React forwards to the boundary"
+      ],
+      "answer": 2,
+      "why": "Boundaries only catch errors thrown while rendering. Throwing from a state updater (or `showBoundary` in `react-error-boundary`) moves the error into the next render. Rethrowing from an async handler just produces an unhandled rejection, and logging is only logging. (React 19 also routes errors thrown inside a transition action to boundaries.)",
+      "tags": [
+        "error-boundaries",
+        "async"
+      ],
+      "level": 3,
+      "asked": "A deeper probe that shows you know exactly which errors boundaries see and how to route others to them."
+    },
+    {
+      "id": "rp-115",
+      "q": "In React 19, what are the `onCaughtError` and `onUncaughtError` options of `createRoot` for?",
+      "choices": [
+        "Replacing error boundaries with a single root-level fallback UI",
+        "Retrying failed renders before an error boundary is shown",
+        "Reporting errors, such as sending them to a logging service",
+        "Catching errors from event handlers and async code as well"
+      ],
+      "answer": 2,
+      "why": "They are central hooks for reporting: `onCaughtError` fires for errors a boundary handled and `onUncaughtError` for those that reached the root. They do not render UI or catch handler errors; boundaries still decide what the user sees.",
+      "tags": [
+        "error-boundaries",
+        "react19"
+      ],
+      "level": 2,
+      "asked": "Shows awareness of React 19's error reporting hooks and how monitoring fits in."
+    },
+    {
+      "id": "rp-116",
+      "q": "After a deploy, users who kept a tab open get a blank page when they open a lazily loaded route. What is happening, and what is a good fix?",
+      "choices": [
+        "The old chunk is gone; catch it in a boundary offering reload",
+        "The browser cached the new chunk; clear local storage on each deploy",
+        "React refuses to load chunks built by another version; pin React",
+        "The service worker is blocking it; turn off `Suspense` for routes"
+      ],
+      "answer": 0,
+      "why": "Hashed chunk names change on each deploy, so an old page's `import()` can 404 and reject. A route error boundary that recognises the chunk-load failure and offers (or does) a reload recovers cleanly; keeping old assets for a while also helps.",
+      "tags": [
+        "error-boundaries",
+        "code-splitting"
+      ],
+      "level": 3,
+      "asked": "A real production issue in every code-split SPA; knowing it signals shipping experience."
+    },
+    {
+      "id": "rp-117",
+      "q": "A background refetch of the orders list fails, but the list loaded fine a minute ago. What is the best UX?",
+      "choices": [
+        "Replace the list with a full-page error until the next fetch succeeds",
+        "Keep the stale list and show a small \"Couldn't refresh, retry\" notice",
+        "Hide the failure, since the user already has data on screen",
+        "Clear the list and show the empty state so nothing wrong is shown"
+      ],
+      "answer": 1,
+      "why": "Stale data is still useful; replacing it with an error punishes the user for a transient failure, and hiding it means they may act on old data unknowingly. Query libraries keep `data` and `error` side by side precisely so you can show both.",
+      "tags": [
+        "ux",
+        "error-handling"
+      ],
+      "level": 2,
+      "asked": "Good error UX is a mid-level expectation; this checks you distinguish initial-load and refresh failures."
+    },
+    {
+      "id": "rp-118",
+      "q": "Which error message is best to show when saving a customer fails with a 409 Conflict?",
+      "choices": [
+        "\"Error 409: Conflict. The request could not be completed.\"",
+        "\"Something went wrong. Please try again later.\"",
+        "\"Request failed: PUT /customers/42 returned 409\"",
+        "\"Someone else changed this customer. Reload to see their changes.\""
+      ],
+      "answer": 3,
+      "why": "A useful message says what happened in the user's terms and what they can do next. Status codes and URLs mean nothing to most users (log them instead), and a generic \"try again\" is wrong here because retrying the same stale write will conflict again.",
+      "tags": [
+        "ux",
+        "error-handling"
+      ],
+      "level": 1,
+      "asked": "Checks that you translate technical failures into actionable UI."
+    },
+    {
+      "id": "rp-119",
+      "q": "A list screen can end in \"no results\" or in \"request failed\". Why render them as different states?",
+      "choices": [
+        "React cannot render an empty array, so errors must be rendered instead",
+        "They need different actions: clear filters versus retry or report",
+        "Error states must be rendered by an error boundary, not the list",
+        "Empty states are only needed when the list uses pagination"
+      ],
+      "answer": 1,
+      "why": "Showing \"No orders\" when the request failed tells the user something false, and they may act on it. An empty state suggests next steps (clear filters, create one); an error state explains the failure and offers retry. They come from different data (`data.length === 0` vs `error`).",
+      "tags": [
+        "ux",
+        "error-handling"
+      ],
+      "level": 1,
+      "asked": "A simple state-modelling question that reveals whether you treat failure as a first-class state."
+    },
+    {
+      "id": "rp-120",
+      "q": "When should an error toast not auto-dismiss after a few seconds?",
+      "choices": [
+        "When the user must act on it, such as a failed payment",
+        "When the page also shows a loading spinner at the same time",
+        "When the error came from a GET rather than a POST request",
+        "When the toast is announced by a screen reader live region"
+      ],
+      "answer": 0,
+      "why": "Auto-dismissing hides errors the user may not have read, and WCAG 2.2.1 requires users can extend or disable time limits. Transient confirmations can fade; errors that need action should stay (or be shown inline) until dismissed.",
+      "tags": [
+        "ux",
+        "a11y"
+      ],
+      "level": 2,
+      "asked": "Links UX judgement with accessibility requirements, which interviewers like to see together."
+    },
+    {
+      "id": "rp-121",
+      "q": "A reusable `TextField` component hard-codes `<label htmlFor=\"email\">` and `<input id=\"email\">`. What breaks when a page renders two of them?",
+      "choices": [
+        "React throws because two sibling elements share one `key`",
+        "The ids clash, so the second label targets the first input",
+        "The second input is rendered uncontrolled and ignores `value`",
+        "Screen readers skip both labels because the id is not unique"
+      ],
+      "answer": 1,
+      "why": "DOM ids must be unique; with duplicates, `htmlFor` and `aria-describedby` resolve to the first match, so clicking or announcing the second label targets the wrong input. Generate ids with `useId()` so each instance gets its own; React does not warn about duplicate DOM ids at all.",
+      "tags": [
+        "a11y",
+        "forms",
+        "hooks"
+      ],
+      "level": 1,
+      "asked": "Shows you think about components as reusable units rather than one-off markup."
+    },
+    {
+      "id": "rp-122",
+      "q": "A user deletes a row by pressing its Delete button with the keyboard. The row, and the focused button, disappear. What should the component do next?",
+      "choices": [
+        "Nothing, because the browser moves focus to the next row itself",
+        "Call `window.scrollTo(0, 0)` so the user starts again from the top",
+        "Move focus on purpose, to the next row or the list heading",
+        "Blur the active element so no stale focus ring is left on screen"
+      ],
+      "answer": 2,
+      "why": "When the focused element is removed, focus falls back to `<body>`, so keyboard and screen-reader users lose their place and must tab from the top. Moving focus to a sensible neighbour keeps them where they were; the browser does not do this for you.",
+      "tags": [
+        "a11y",
+        "focus",
+        "keyboard"
+      ],
+      "level": 2,
+      "asked": "Focus management after destructive actions is where accessible CRUD screens are won or lost."
+    },
+    {
+      "id": "rp-123",
+      "q": "A \"Saved\" message is rendered like this after a successful save, but screen readers never announce it. Why?",
+      "code": "{saved && (\n  <div role=\"status\">Saved</div>\n)}",
+      "lang": "jsx",
+      "choices": [
+        "The region appears already filled, so there is no change to announce",
+        "`role=\"status\"` only works on `<output>` elements, not on a `<div>`",
+        "Live regions are only announced when the element also has keyboard focus",
+        "Screen readers ignore live-region text that is shorter than a full sentence"
+      ],
+      "answer": 0,
+      "why": "Assistive technology announces changes to an existing live region. Render the empty `role=\"status\"` (or `aria-live=\"polite\"`) container up front and change only its text; a region that appears already filled is often missed.",
+      "tags": [
+        "a11y",
+        "live-regions"
+      ],
+      "level": 2,
+      "asked": "Toasts and inline \"saved\" feedback are everywhere, and most implementations are silent to screen readers."
+    },
+    {
+      "id": "rp-124",
+      "q": "Which problem does `<div onClick={openMenu}>Options</div>` have that `<button type=\"button\" onClick={openMenu}>Options</button>` does not?",
+      "choices": [
+        "The `div` fires `onClick` twice on touch devices",
+        "The `div` cannot be focused or activated with Enter or Space",
+        "React does not attach click listeners to non-interactive DOM elements",
+        "The `div` blocks the click from bubbling to parent handlers"
+      ],
+      "answer": 1,
+      "why": "A `div` has no role, is not in the tab order and ignores Enter and Space, so keyboard and screen-reader users cannot use it. Making it work needs `role`, `tabIndex` and key handlers, which a native button gives you free; React happily attaches the click handler either way.",
+      "tags": [
+        "a11y",
+        "keyboard"
+      ],
+      "level": 1,
+      "asked": "The most common accessibility bug in React code reviews; interviewers want the native-element instinct."
+    },
+    {
+      "id": "rp-125",
+      "q": "In a client-side routed React app, a screen-reader user follows a link to another page and hears nothing. What is the usual fix?",
+      "choices": [
+        "Force a full page reload on each navigation so the reader restarts",
+        "Add `aria-live=\"assertive\"` to the whole `<main>` element",
+        "Set `tabIndex={-1}` on every link so focus stays predictable",
+        "Update `document.title` and focus the new page heading"
+      ],
+      "answer": 3,
+      "why": "A full load makes the reader announce the new page; a client-side route swap does not. Updating the title and focusing the page heading (with `tabIndex={-1}`) restores that cue; an assertive live region on `main` would read the whole page out on every change.",
+      "tags": [
+        "a11y",
+        "routing",
+        "focus"
+      ],
+      "level": 2,
+      "asked": "Tests whether you know what an SPA takes away compared with plain page loads."
+    },
+    {
+      "id": "rp-126",
+      "q": "In React 19, why expose a small API with `useImperativeHandle` instead of passing the raw `<input>` node through `ref`?",
+      "code": "useImperativeHandle(ref, () => ({\n  focus: () => inputRef.current.focus(),\n  clear: () => setValue(\"\"),\n}));",
+      "lang": "jsx",
+      "choices": [
+        "It is required in React 19, because `ref` can no longer point at DOM nodes",
+        "It makes the handle reactive, so parents re-render when `value` changes",
+        "Parents get only the actions you support, so internals can change safely",
+        "It lets the parent read `value` synchronously without a re-render"
+      ],
+      "answer": 2,
+      "why": "An imperative handle is a deliberate, narrow API: parents can call `focus` and `clear` but cannot style or mutate the node, so you can restructure the component later. Refs still point at DOM nodes fine in React 19, and a handle is not reactive.",
+      "tags": [
+        "refs",
+        "component-api"
+      ],
+      "level": 3,
+      "asked": "Separates people who know refs are an escape hatch from those who reach for them by default."
+    },
+    {
+      "id": "rp-127",
+      "q": "In React 19, what is logged when this `Panel` unmounts?",
+      "code": "<div ref={(node) => {\n  console.log(\"attach\", node !== null);\n  return () => console.log(\"cleanup\");\n}} />",
+      "lang": "jsx",
+      "choices": [
+        "\"cleanup\" only, since the cleanup replaces the null call",
+        "\"attach false\" and then \"cleanup\"",
+        "\"attach false\" only, because cleanup functions are ignored on refs",
+        "Nothing, because callback refs are not called on unmount"
+      ],
+      "answer": 0,
+      "why": "React 19 lets a callback ref return a cleanup function; when it does, React calls the cleanup on detach instead of calling the ref with `null`. Code written for older versions that expects a `null` call will not see one once it returns a cleanup.",
+      "tags": [
+        "refs",
+        "react19"
+      ],
+      "level": 2,
+      "asked": "Checks you have kept up with React 19 and can set up observers on a node without leaks."
+    },
+    {
+      "id": "rp-128",
+      "q": "A component tracks `isLoading`, `isError` and `isSuccess` as three separate booleans. What is the main problem with this shape?",
+      "choices": [
+        "Three `useState` calls make the component render three times per update",
+        "It allows impossible combinations, such as loading and error at once",
+        "Booleans cannot be passed through context without being memoised",
+        "React batches only the first state update, so the others are lost"
+      ],
+      "answer": 1,
+      "why": "Independent flags can drift into states the UI cannot represent, and each transition must remember to reset the others. A single `status: \"idle\" | \"loading\" | \"error\" | \"success\"` makes illegal states unrepresentable; React batches all the updates, so render count is not the issue.",
+      "tags": [
+        "state",
+        "patterns"
+      ],
+      "level": 1,
+      "asked": "A modelling question in disguise: strong answers mention discriminated unions or a reducer."
+    },
+    {
+      "id": "rp-129",
+      "q": "When is `useReducer` a better fit than several `useState` calls?",
+      "choices": [
+        "Whenever a component has more than three pieces of state",
+        "When named events change several related fields together",
+        "When the state must survive the component unmounting and remounting",
+        "When the state is shared by sibling components without lifting it up"
+      ],
+      "answer": 1,
+      "why": "A reducer centralises transitions such as \"submitted\" or \"itemRemoved\" that touch several fields at once, and it can be unit-tested as a pure function. It gives no persistence or sharing on its own; count of fields is a poor rule of thumb.",
+      "tags": [
+        "state",
+        "hooks"
+      ],
+      "level": 1,
+      "asked": "Interviewers want a reason, not \"for complex state\", so name transitions and testability."
+    },
+    {
+      "id": "rp-130",
+      "q": "A list shows optimistic toggles. The user toggles item 5 twice quickly; the first request fails and the handler restores the snapshot it took before that request. What goes wrong?",
+      "choices": [
+        "Nothing, because each handler restores only its own snapshot",
+        "The rollback wipes out the second toggle, so the UI drifts",
+        "React discards the second click because a state update is already pending",
+        "The second request is cancelled by the browser when the first one fails"
+      ],
+      "answer": 1,
+      "why": "A whole-value snapshot taken before request 1 predates toggle 2, so restoring it silently undoes a change that may have succeeded. Roll back only the failed change, or refetch the item when mutations settle; React does not drop the second click.",
+      "tags": [
+        "mutations",
+        "ux",
+        "state"
+      ],
+      "level": 3,
+      "asked": "Optimistic UI is easy to demo and hard to get right under concurrency; this is the follow-up that separates levels."
+    },
+    {
+      "id": "rp-131",
+      "q": "A custom hook `useToggle` returns `[on, toggle]` rather than `{ on, toggle }`. What does the tuple give callers?",
+      "choices": [
+        "Faster renders, because arrays are cheaper to compare than objects",
+        "Automatic memoisation of `toggle` across renders",
+        "Freedom to name both values at each call site, as with `useState`",
+        "Type inference, which TypeScript cannot provide for returned object literals"
+      ],
+      "answer": 2,
+      "why": "Array destructuring lets each call site pick names like `[menuOpen, toggleMenu]` without aliasing. Objects read better once a hook returns more than two or three things; neither form memoises anything by itself.",
+      "tags": [
+        "hooks",
+        "component-api"
+      ],
+      "level": 1,
+      "asked": "A light API-design question; mentioning when to switch to an object shows judgement."
+    },
+    {
+      "id": "rp-132",
+      "q": "In React 19, why does this component crash with \"Maximum update depth exceeded\"?",
+      "code": "const s = useSyncExternalStore(\n  store.subscribe,\n  () => ({ count: store.count }),\n);",
+      "lang": "jsx",
+      "choices": [
+        "`store.subscribe` must be wrapped in `useCallback` before it is passed",
+        "`useSyncExternalStore` cannot return objects, only primitive values",
+        "The store has to call its listeners once during subscribe",
+        "`getSnapshot` returns a new object each call, so it never looks stable"
+      ],
+      "answer": 3,
+      "why": "React compares snapshots with `Object.is`; a fresh object every call looks like a change every time, so it re-renders forever (React also warns that the result should be cached). Return a stored, immutable snapshot, or a primitive like `store.count`. A stable `subscribe` avoids resubscribing but does not fix this.",
+      "tags": [
+        "state",
+        "hooks"
+      ],
+      "level": 3,
+      "asked": "Anyone who has written a small store adapter has hit this; it tests understanding of snapshot identity."
+    },
+    {
+      "id": "rp-133",
+      "q": "A search box writes `?q=` to the URL on every keystroke with a push navigation. What is the user-visible problem, and the fix?",
+      "choices": [
+        "Back steps through every keystroke; replace the entry instead",
+        "The page reloads on each keystroke; debounce the input by 300 ms",
+        "The query is lost on refresh; move it to `sessionStorage`",
+        "The URL grows without limit; store only the first ten characters"
+      ],
+      "answer": 0,
+      "why": "Each push adds a history entry, so Back walks through \"a\", \"ad\", \"ada\". Replacing the current entry (for example `setSearchParams(p, { replace: true })`) keeps the URL shareable without polluting history; a client-side router does not reload the page.",
+      "tags": [
+        "routing",
+        "state",
+        "ux"
+      ],
+      "level": 2,
+      "asked": "URL-as-state is a senior-leaning habit; knowing push versus replace shows you have shipped it."
+    },
+    {
+      "id": "rp-134",
+      "q": "New to-do items are created on the client and have no server id yet. What should they use as their list `key`?",
+      "choices": [
+        "The array index, since new items are always appended",
+        "The item text, because users rarely add the same to-do twice",
+        "An id made once at creation, e.g. `crypto.randomUUID()`",
+        "`Date.now()` computed inside the `map` while rendering"
+      ],
+      "answer": 2,
+      "why": "A key must be stable and unique for the item's lifetime, so generate it once when the item is created and store it with the item. Indexes break on delete or reorder, text can repeat, and anything computed during render changes every render.",
+      "tags": [
+        "lists",
+        "state"
+      ],
+      "level": 1,
+      "asked": "Checks you understand keys as identity, not as a warning to silence."
+    },
+    {
+      "id": "rp-135",
+      "q": "An optimistic \"add comment\" renders the new row with `key={comment.id}`, where the temporary id is swapped for the server id on success. The row's edit box loses focus at that moment. Why?",
+      "choices": [
+        "Replacing the array triggers a full list remount regardless of keys",
+        "Focus is lost because the server response arrives outside an event handler",
+        "React blurs inputs whenever a parent receives new props during a transition",
+        "The key changes, so React unmounts the old row and mounts a new one"
+      ],
+      "answer": 3,
+      "why": "A new key is a new identity to React, so the row and its DOM, focus and local state are thrown away. Keep a stable client id as the key for the row's whole life and store the server id as a separate field; React reuses rows whose keys stay the same.",
+      "tags": [
+        "lists",
+        "mutations",
+        "focus"
+      ],
+      "level": 3,
+      "asked": "A real optimistic-UI bug that only people who have built one tend to recognise."
+    },
+    {
+      "id": "rp-136",
+      "q": "The Submit button stays `disabled` until every field in a long form is valid. What is the main problem with that pattern?",
+      "choices": [
+        "Disabled buttons are still submitted, so the check is bypassed anyway",
+        "Users get no reason why, and keyboard users may not find it",
+        "React cannot re-enable a button once it has rendered as disabled",
+        "Browsers skip native validation on forms that contain a disabled button"
+      ],
+      "answer": 1,
+      "why": "A greyed-out button gives no reason, and disabled buttons are skipped by Tab, so keyboard users may not find it at all. Keep it enabled, validate on submit, and move focus to the first invalid field with a message. A disabled submit button does block submission; the problem is feedback.",
+      "tags": [
+        "forms",
+        "a11y",
+        "ux"
+      ],
+      "level": 2,
+      "asked": "Tests whether you design forms for people who get things wrong, which is everyone."
+    },
+    {
+      "id": "rp-137",
+      "q": "How should a field's error text be connected to its input so screen readers announce it?",
+      "code": "<input id={id} aria-invalid={!!error} ??? />\n<p id={`${id}-err`}>{error}</p>",
+      "lang": "jsx",
+      "choices": [
+        "`aria-label={error}` replacing the label while the error is shown",
+        "`title={error}` so it appears on hover and to assistive technology",
+        "`aria-describedby={`${id}-err`}` pointing at the error element",
+        "`role=\"alert\"` on the input itself so it is read on every keystroke"
+      ],
+      "answer": 2,
+      "why": "`aria-describedby` adds the error as the input's description, read after its name when focused, and `aria-invalid` marks the state. Replacing the label with `aria-label` loses the field name, and `title` is unreliable for assistive technology and invisible on touch.",
+      "tags": [
+        "a11y",
+        "forms"
+      ],
+      "level": 1,
+      "asked": "A concrete ARIA question that is easy to verify and common on form-heavy CRUD work."
+    },
+    {
+      "id": "rp-138",
+      "q": "A modal is built on the native `<dialog>` element and opened with `showModal()`. What does the browser give you without extra code?",
+      "choices": [
+        "Closing when the user clicks the backdrop, plus body scroll locking",
+        "An accessible name taken from the first heading inside the dialog",
+        "Top-layer rendering, an inert page behind it and Escape to close",
+        "A portal into `document.body`, so parent styles no longer apply"
+      ],
+      "answer": 2,
+      "why": "`showModal()` puts the dialog in the top layer (no z-index fights), makes the rest of the page inert and closes on Escape via the `cancel` event. Backdrop clicks and scroll locking still need code, and you still name the dialog with `aria-labelledby`.",
+      "tags": [
+        "modal",
+        "a11y"
+      ],
+      "level": 3,
+      "asked": "Knowing what the platform now does for modals saves a dependency and a class of focus bugs."
+    },
+    {
+      "id": "rp-139",
+      "q": "In React 19, a user profile renders `<a href={user.website}>`. An attacker sets their website to `javascript:stealCookies()`. What happens when a visitor clicks it?",
+      "choices": [
+        "The script runs, because React passes attribute strings through untouched",
+        "React refuses to render the `<a>` element and logs a warning instead",
+        "The browser blocks it, because inline `javascript:` URLs are always disabled",
+        "Nothing runs, because React replaces the URL with one that throws an error"
+      ],
+      "answer": 3,
+      "why": "React 19 rewrites `javascript:` URLs in attributes like `href` to a URL that throws \"React has blocked a javascript: URL\", while still rendering the link. Browsers do run such URLs without a strict CSP, so you should still validate URLs to `http:`/`https:` on input.",
+      "tags": [
+        "security",
+        "xss",
+        "react19"
+      ],
+      "level": 3,
+      "asked": "A security follow-up to `dangerouslySetInnerHTML` that shows you know where React does and does not protect you."
+    },
+    {
+      "id": "rp-140",
+      "q": "An icon-only button renders `<button onClick={close}><XIcon /></button>`. What does it need for screen-reader users?",
+      "choices": [
+        "An accessible name, such as `aria-label=\"Close\"`",
+        "A `role=\"button\"` attribute, since the button has no text",
+        "A `tabIndex={0}`, so that the icon can receive focus",
+        "An `alt` attribute on the `<button>` describing the icon"
+      ],
+      "answer": 0,
+      "why": "Without text, the button is announced as just \"button\". An `aria-label` (or visually hidden text) gives it a name; native buttons already have the role and are focusable, and `alt` belongs on images, not buttons.",
+      "tags": [
+        "a11y"
+      ],
+      "level": 1,
+      "asked": "The quickest accessibility check an interviewer can make on your component code."
+    },
+    {
+      "id": "rp-141",
+      "q": "A toolbar has eight buttons. Why do accessible toolbars use a \"roving tabindex\" instead of leaving every button in the tab order?",
+      "choices": [
+        "Browsers cap the tab order at a few focusable elements per landmark",
+        "One Tab stop enters the toolbar and arrow keys move within it",
+        "It stops screen readers announcing the buttons more than once",
+        "React re-renders fewer buttons when only one has `tabIndex={0}`"
+      ],
+      "answer": 1,
+      "why": "Only the active item has `tabIndex={0}` and the rest have `-1`, so Tab moves past the whole widget in one step and arrows move between items, as in native composite controls. It is about keyboard efficiency, not render cost or announcement.",
+      "tags": [
+        "a11y",
+        "keyboard",
+        "focus"
+      ],
+      "level": 2,
+      "asked": "Composite widgets (tabs, toolbars, grids) come up whenever you build design-system components."
+    },
+    {
+      "id": "rp-142",
+      "q": "A settings page opens an \"Edit address\" modal. Why might you store `?edit=address` in the URL instead of in local `useState`?",
+      "choices": [
+        "Modals rendered from the URL skip the portal and render faster",
+        "React Router closes the modal automatically on unmount",
+        "Local state inside a modal is always reset when the modal closes",
+        "The modal can be deep-linked, and Back closes it as users expect"
+      ],
+      "answer": 3,
+      "why": "URL state survives refresh, can be shared or linked from an email, and makes the browser Back button close the modal instead of leaving the page. It costs a little plumbing, so it suits significant views, not every tooltip.",
+      "tags": [
+        "routing",
+        "modal",
+        "state"
+      ],
+      "level": 2,
+      "asked": "Shows you consider navigation and shareability as part of UI state design."
+    },
+    {
+      "id": "rp-143",
+      "q": "Components call `fetch(\"/api/orders\")` directly in a dozen places. What does moving those calls into an `api/orders.ts` module mainly buy you?",
+      "choices": [
+        "One place for URLs, headers, errors and types, easy to mock",
+        "Automatic request caching, because modules are singletons in the bundle",
+        "Smaller bundles, because tree shaking removes duplicate `fetch` calls",
+        "Parallel requests, since functions in one module share a connection"
+      ],
+      "answer": 0,
+      "why": "A thin API layer centralises base URLs, auth headers, error mapping and response types, so a backend change is one edit and tests can mock one module. Being a module does not cache anything, and connection reuse is the browser's job either way.",
+      "tags": [
+        "architecture",
+        "data-loading"
+      ],
+      "level": 1,
+      "asked": "A small structural choice that shows you have maintained a codebase, not just started one."
+    },
+    {
+      "id": "rp-144",
+      "q": "In React 19.2, a chat effect connects to `roomId` and shows a notification using the current `theme`. Why wrap the notification code in `useEffectEvent`?",
+      "code": "const onConnected = useEffectEvent(() => {\n  showToast(\"Connected\", theme);\n});\nuseEffect(() => {\n  const c = connect(roomId, onConnected);\n  return () => c.close();\n}, [roomId]);",
+      "lang": "jsx",
+      "choices": [
+        "It runs the toast after paint instead of during the commit phase",
+        "It reads the latest `theme` without making a theme change reconnect",
+        "It lets you call `onConnected` during render to avoid an extra state",
+        "It memoises `connect`, so StrictMode no longer connects twice in dev"
+      ],
+      "answer": 1,
+      "why": "An effect event always sees the latest props and state but is not a dependency, so the effect re-runs only when `roomId` changes. Putting `theme` in the dependency array would reconnect on every theme toggle; effect events must not be called during render.",
+      "tags": [
+        "hooks",
+        "react19",
+        "effects"
+      ],
+      "level": 3,
+      "asked": "Dependency-array fights are a daily React pain; knowing the 19.2 answer shows you are current."
+    },
+    {
+      "id": "rp-145",
+      "q": "A React app animates list items sliding in. How should it respect users who have asked their OS for less motion?",
+      "choices": [
+        "Honour the `prefers-reduced-motion` media query",
+        "Detect screen readers and skip animations only for those users",
+        "Keep animations under one second, which the OS setting allows anyway",
+        "Add `aria-hidden=\"true\"` to animated elements so they are ignored"
+      ],
+      "answer": 0,
+      "why": "The `prefers-reduced-motion: reduce` media query (in CSS, or `matchMedia` in JS) reflects the OS setting, and WCAG asks you to avoid non-essential motion for those users. Screen-reader detection is not possible or relevant, and hiding elements from assistive technology is harmful.",
+      "tags": [
+        "a11y",
+        "ux"
+      ],
+      "level": 1,
+      "asked": "An easy accessibility win that interviewers use to see if you know the user preference media queries."
+    },
+    {
+      "id": "rp-146",
+      "q": "An order total is displayed with `\"$\" + total.toFixed(2)`. The app now ships in Germany and the UK. What is the better approach?",
+      "choices": [
+        "Keep `toFixed(2)` and swap the symbol with a lookup table per country",
+        "Store the price as a formatted string in the database for each locale",
+        "Use `Intl.NumberFormat(locale, { style: \"currency\", currency })`",
+        "Round with `Math.round(total * 100) / 100` and append the currency code"
+      ],
+      "answer": 2,
+      "why": "`Intl.NumberFormat` handles symbol position, decimal and grouping separators (\"1.234,50 €\" versus \"£1,234.50\") for any locale and currency. A symbol table misses separators and placement, and storing formatted strings breaks arithmetic.",
+      "tags": [
+        "i18n",
+        "ux"
+      ],
+      "level": 1,
+      "asked": "Money display is on nearly every CRUD screen; this checks you use the platform rather than string hacks."
+    },
+    {
+      "id": "rp-147",
+      "q": "`AuthProvider` calls `useApiClient()`, which reads `ApiContext`. In which order must the providers be nested?",
+      "choices": [
+        "`AuthProvider` outside `ApiProvider`, so auth is available to the client",
+        "`ApiProvider` outside, since consumers must sit inside their provider",
+        "Either order, because React resolves all contexts before the first render",
+        "Side by side as siblings, since nesting providers causes extra renders"
+      ],
+      "answer": 1,
+      "why": "A component reads the nearest provider above it in the tree, so anything that consumes `ApiContext` (including another provider) must sit inside `ApiProvider`. Outside it, `useApiClient` gets the default value; React does not reorder providers for you.",
+      "tags": [
+        "context",
+        "architecture"
+      ],
+      "level": 1,
+      "asked": "Provider order bugs are confusing the first time; interviewers check you know how lookup works."
+    },
+    {
+      "id": "rp-148",
+      "q": "In React 19, clicking a tab renders a slow `ReportTab`, and the UI freezes until it is done. How does `startTransition` for the tab change help?",
+      "code": "const [isPending, startTransition] = useTransition();\nconst select = (t) => startTransition(() => setTab(t));",
+      "lang": "jsx",
+      "choices": [
+        "It moves the render of `ReportTab` to a Web Worker off the main thread",
+        "It caches `ReportTab` so the second visit is instant",
+        "The old tab stays responsive while the new one renders",
+        "It delays the state update by a frame so the click animation finishes first"
+      ],
+      "answer": 2,
+      "why": "Transition updates are interruptible: React renders the new tab in the background, keeps showing and responding on the current one, and exposes `isPending` so you can dim it. The render still happens on the main thread and nothing is cached.",
+      "tags": [
+        "performance",
+        "transitions"
+      ],
+      "level": 2,
+      "asked": "Tests whether you know the concurrency tools exist for UX, not only for data fetching."
+    },
+    {
+      "id": "rp-149",
+      "q": "A product page wraps its details in `<Suspense>`. Navigating to the next product replaces the visible details with the spinner. What does triggering the navigation in a transition change?",
+      "choices": [
+        "React keeps showing the current product until the next one is ready",
+        "The spinner is shown only for requests that take longer than 300 ms",
+        "The next product is prefetched when the link is hovered",
+        "React retries the suspended request if it fails during the transition"
+      ],
+      "answer": 0,
+      "why": "Inside a transition, React avoids hiding content that is already revealed behind a fallback; it keeps the old UI on screen (you can show `isPending`) until the new tree can render. There is no built-in threshold, prefetching or retry. Routers do this by wrapping navigations in transitions.",
+      "tags": [
+        "suspense",
+        "transitions",
+        "ux"
+      ],
+      "level": 3,
+      "asked": "Explains why modern routers feel smooth, and shows you understand Suspense beyond the fallback prop."
+    },
+    {
+      "id": "rp-150",
+      "q": "A custom hook returns `{ start, end }` built fresh on every render. A component uses the result in an effect's dependency array. What happens?",
+      "code": "const range = useDateRange();\nuseEffect(() => {\n  load(range);\n}, [range]);",
+      "lang": "jsx",
+      "choices": [
+        "The effect runs once, because React compares objects by their keys",
+        "The effect never runs, because objects cannot be dependencies",
+        "React warns and falls back to comparing `range` with `JSON.stringify`",
+        "It runs after every render, as `range` is a new object each time"
+      ],
+      "answer": 3,
+      "why": "Dependencies are compared with `Object.is`, so a new object is always \"changed\" and `load` runs on every render, which can loop if `load` sets state. Depend on the primitive fields, or have the hook memoise what it returns.",
+      "tags": [
+        "hooks",
+        "effects"
+      ],
+      "level": 2,
+      "asked": "The source of many \"why is my API called 40 times\" bugs; a good answer names referential identity."
+    },
+    {
+      "id": "rp-151",
+      "q": "In React codebases, what is the usual naming convention for a prop that receives a callback versus the function that implements it?",
+      "choices": [
+        "Prop `handleSave`, implementation `onSave`",
+        "Prop `onSave`, implementation `handleSave`",
+        "Prop `saveCallback`, implementation `saveHandler`",
+        "Prop `doSave`, implementation `onSaveClick`"
+      ],
+      "answer": 1,
+      "why": "Props describe the event the component raises (`onSave`, `onChange`), mirroring DOM events, and the parent implements it as `handleSave`. It is only a convention, but a consistent one makes component APIs predictable and code reviews shorter.",
+      "tags": [
+        "component-api",
+        "props"
+      ],
+      "level": 1,
+      "asked": "Small, but it shows whether you have worked in a team codebase with conventions."
+    },
+    {
+      "id": "rp-152",
+      "q": "Why does `lazy(() => import(\"./charts\"))` fail when `charts.js` only has `export function Chart()`, and what is the fix?",
+      "choices": [
+        "`lazy` needs the path to end in `.jsx`; rename the file",
+        "`lazy` needs a class component; wrap `Chart` in a class",
+        "`lazy` needs a default export; map `m.Chart` to `default`",
+        "`lazy` needs a static import first; import `Chart` at the top of the file"
+      ],
+      "answer": 2,
+      "why": "`lazy` expects the promise to resolve to a module whose `default` is a component, so a named export resolves to `undefined` and rendering fails. Mapping the module to `{ default: m.Chart }` keeps the code split; a static import would defeat it.",
+      "tags": [
+        "code-splitting",
+        "performance"
+      ],
+      "level": 2,
+      "asked": "A practical snag the first time you split a codebase that uses named exports."
+    },
+    {
+      "id": "rp-153",
+      "q": "A notes editor should autosave while the user types. Which design is sound?",
+      "choices": [
+        "Save on every change event so no keystroke can ever be lost",
+        "Debounce, send the latest text, flush on unmount or page hide",
+        "Save only in a `beforeunload` handler when the user leaves the page",
+        "Save every 30 seconds on an interval, whether or not the text has changed"
+      ],
+      "answer": 1,
+      "why": "Debouncing batches bursts of typing into one request with the newest content, and flushing on unmount or `pagehide` covers leaving mid-pause. Saving per keystroke floods the API, `beforeunload` alone is unreliable on mobile, and blind intervals waste requests.",
+      "tags": [
+        "forms",
+        "mutations",
+        "ux"
+      ],
+      "level": 2,
+      "asked": "Autosave comes up in real product work and combines timing, cleanup and API design."
+    },
+    {
+      "id": "rp-154",
+      "q": "An autosave sends `PUT /notes/1` after each pause. Sometimes a slow older request finishes after a newer one and the server keeps the old text. What prevents this?",
+      "choices": [
+        "One save in flight at a time, or a version the server checks",
+        "Use `POST` instead of `PUT`, because POST requests are processed in order",
+        "Increase the debounce delay so two saves can never be in flight at once",
+        "Retry failed saves immediately, which puts the requests back in order"
+      ],
+      "answer": 0,
+      "why": "Requests can complete out of order, so either serialise saves (one in flight, then send the latest) or include a version or `If-Match` ETag so the server rejects stale writes. A longer debounce narrows the window but cannot close it, and HTTP methods give no ordering guarantee.",
+      "tags": [
+        "mutations",
+        "concurrency"
+      ],
+      "level": 3,
+      "asked": "A race-condition question grounded in CRUD; strong answers mention optimistic concurrency on the server."
+    },
+    {
+      "id": "rp-155",
+      "q": "A `Dropdown` component's `isOpen` state is read only by the dropdown itself. Where should it live?",
+      "choices": [
+        "In a global store, so any component can close open dropdowns",
+        "In the page component, since pages own all interactive state",
+        "In a `DropdownContext` at the app root for consistency",
+        "Inside `Dropdown` itself, with `useState`"
+      ],
+      "answer": 3,
+      "why": "Colocating state with the only component that uses it keeps re-renders local and the component self-contained. Lift it only when another component needs to read or change it, for example a parent that closes it on route change.",
+      "tags": [
+        "state",
+        "architecture"
+      ],
+      "level": 1,
+      "asked": "State placement is the core React design skill, and colocation is the default answer."
+    },
+    {
+      "id": "rp-156",
+      "q": "A table shows page 3 of 40 from a paginated API. Clicking the \"Price\" header sorts only the 25 visible rows. What is wrong?",
+      "choices": [
+        "Nothing, since sorting what is visible is the expected behaviour",
+        "The sort needs `useMemo`, or it is lost on the next render",
+        "The API must sort, and the table returns to page 1",
+        "The rows need stable keys, or React cannot reorder them"
+      ],
+      "answer": 2,
+      "why": "Users expect \"sort by price\" to order the whole dataset, so send the sort to the API (`?sort=price`) and go back to the first page. Sorting one page gives a misleading order; memoising or keys do not change which rows are fetched.",
+      "tags": [
+        "pagination",
+        "ux",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "A classic CRUD data-table bug that separates front-end-only thinking from full-stack thinking."
+    },
+    {
+      "id": "rp-157",
+      "q": "An app wraps everything in `<ThemeProvider value=\"light\">`. A sidebar is wrapped in `<ThemeProvider value=\"dark\">`. What theme does a button inside the sidebar read?",
+      "choices": [
+        "\"light\", because the outermost provider always wins",
+        "\"dark\", because a component reads the nearest provider above it",
+        "Whichever provider rendered last during the commit phase",
+        "An error, because nesting the same provider twice is not allowed"
+      ],
+      "answer": 1,
+      "why": "Context lookup walks up from the consumer and stops at the closest matching provider, so nested providers override for their subtree. This is how you theme a section differently or scope a form context per form.",
+      "tags": [
+        "context"
+      ],
+      "level": 1,
+      "asked": "Checks the basic mental model of context before moving on to its performance trade-offs."
+    },
+    {
+      "id": "rp-158",
+      "q": "What is a \"Skip to main content\" link at the top of a page for?",
+      "choices": [
+        "Letting search engines index the main content before the navigation",
+        "Improving load time by deferring the header until after the main content",
+        "Letting keyboard users jump past repeated navigation to the content",
+        "Giving screen readers a hint to read the page in reverse order"
+      ],
+      "answer": 2,
+      "why": "A skip link is the first focusable element and jumps focus to `<main>`, so keyboard users do not Tab through dozens of nav links on every page (WCAG \"Bypass Blocks\"). It has no effect on loading or indexing.",
+      "tags": [
+        "a11y",
+        "keyboard"
+      ],
+      "level": 1,
+      "asked": "A cheap, standard feature; mentioning it for your app shell signals accessibility awareness."
+    },
+    {
+      "id": "rp-159",
+      "q": "A \"Show filters\" button toggles a panel below it. Which attribute tells screen-reader users whether the panel is open?",
+      "choices": [
+        "`aria-pressed` on the panel, updated when it opens",
+        "`aria-hidden` on the button, mirroring the panel",
+        "`aria-expanded` on the button",
+        "`aria-selected` on the button, as used for tabs"
+      ],
+      "answer": 2,
+      "why": "A disclosure button announces its state with `aria-expanded=\"true|false\"`; `aria-controls` points at the panel it toggles. `aria-pressed` is for toggle buttons that are themselves on or off, and `aria-hidden` on the button would remove it from assistive technology.",
+      "tags": [
+        "a11y",
+        "component-api"
+      ],
+      "level": 2,
+      "asked": "Disclosure widgets are everywhere; picking the right ARIA state shows you have built them properly."
+    },
+    {
+      "id": "rp-160",
+      "q": "A shipping form has three radio buttons for delivery speed. How should the group get its question text (\"Delivery speed\") announced?",
+      "choices": [
+        "Put the radios in a `<fieldset>` with a `<legend>`",
+        "Give each radio a `title` attribute with the question",
+        "Put the question in a `<label>` wrapping all three radios",
+        "Add `aria-label` with the question to the form element"
+      ],
+      "answer": 0,
+      "why": "A `fieldset` with a `legend` names the group, so screen readers announce \"Delivery speed\" when focus enters it, and each radio keeps its own label. A single label can only label one control, and naming the whole form does not help the group.",
+      "tags": [
+        "a11y",
+        "forms"
+      ],
+      "level": 2,
+      "asked": "Native form semantics are cheaper and more robust than ARIA; interviewers want that instinct."
+    },
+    {
+      "id": "rp-161",
+      "q": "A tooltip measures its own size to decide whether to render above or below its anchor. With `useEffect`, it flickers in the wrong place for a frame. Why does `useLayoutEffect` fix it?",
+      "choices": [
+        "It runs before paint, so the user only sees the final position",
+        "It runs on the server as well, so the position is known before hydration",
+        "It batches the position update with the parent's render",
+        "It gives the measurement a higher priority in the concurrent scheduler"
+      ],
+      "answer": 0,
+      "why": "`useLayoutEffect` runs synchronously after DOM mutation but before paint, so a measure-then-set-state cycle completes before the user sees anything. `useEffect` usually runs after paint, hence the one-frame flash; layout effects do not run on the server at all.",
+      "tags": [
+        "hooks",
+        "effects",
+        "ux"
+      ],
+      "level": 2,
+      "asked": "Knowing when the rare `useLayoutEffect` is right shows you understand the render/commit/paint order."
+    },
+    {
+      "id": "rp-162",
+      "q": "Why does `Box` still re-render every time `App` re-renders?",
+      "code": "const Box = memo(function Box({ children }) {\n  return <div className=\"box\">{children}</div>;\n});\nfunction App({ n }) {\n  return <Box><span>hi</span></Box>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`memo` ignores components whose only prop is `children`",
+        "`App` is not memoised, so none of its children can skip rendering",
+        "`memo` only skips re-renders when a parent state setter is stable",
+        "`<span>hi</span>` is a new element each render, so props differ"
+      ],
+      "answer": 3,
+      "why": "JSX creates a fresh element object on every render, and `memo` compares props shallowly with `Object.is`, so `children` always looks new. Memoise the element with `useMemo`, or rely on the React Compiler, which caches such JSX for you.",
+      "tags": [
+        "performance",
+        "memo",
+        "composition"
+      ],
+      "level": 3,
+      "asked": "A sharp follow-up for anyone who says \"just wrap it in memo\"; it tests what memo actually compares."
+    },
+    {
+      "id": "rp-163",
+      "q": "In React 19, a lazily loaded `Chart` sits inside `<Suspense fallback={<Spinner />}>`. Its chunk fails to download. What does the user see?",
+      "choices": [
+        "The spinner forever, because Suspense waits until the chunk arrives",
+        "The Suspense fallback swapped for an inline error message",
+        "The nearest error boundary's fallback, or a blank root without one",
+        "The rest of the page, with `Chart` silently rendered as nothing"
+      ],
+      "answer": 2,
+      "why": "Suspense only handles the pending state; a rejected load is thrown as an error and travels to the nearest error boundary, so pair every Suspense boundary with one. With no boundary, React 19 unmounts the root and reports it through `onUncaughtError`.",
+      "tags": [
+        "suspense",
+        "error-boundaries"
+      ],
+      "level": 2,
+      "asked": "Checks you know loading and failure are separate boundaries, a common gap in lazy-loading answers."
+    },
+    {
+      "id": "rp-164",
+      "q": "An \"Add customer\" modal is always mounted and toggled with CSS. Reopening it shows the half-typed data from last time. What is the simplest fix?",
+      "choices": [
+        "Clear each field inside a `useEffect` that runs when `open` changes",
+        "Store the form data in a global store and reset it on close",
+        "Mount the form only while open, or change its `key`",
+        "Add `autoComplete=\"off\"` so the browser stops restoring the values"
+      ],
+      "answer": 2,
+      "why": "Unmounting (or changing `key`) discards the form's state, so every open starts fresh without manual resets. A resetting effect renders stale values first and must be kept in sync with every field; `autoComplete` is unrelated to React state.",
+      "tags": [
+        "forms",
+        "state",
+        "modal"
+      ],
+      "level": 2,
+      "asked": "Tests whether you reach for React's identity model before writing synchronisation code."
+    },
+    {
+      "id": "rp-165",
+      "q": "You design a reusable `Rating` component. Why call `onChange(4)` rather than passing the raw DOM event up?",
+      "choices": [
+        "DOM events are pooled and cleared, so parents would read `null`",
+        "Callers get the value, and your markup stays private",
+        "React forbids passing synthetic events to props of other components",
+        "Passing events up doubles the number of renders in the parent"
+      ],
+      "answer": 1,
+      "why": "A value-based `onChange(value)` hides whether the rating is built from radios, buttons or stars, so internals can change without breaking callers. Event pooling was removed in React 17, and passing events is allowed, just leaky.",
+      "tags": [
+        "component-api",
+        "props"
+      ],
+      "level": 2,
+      "asked": "API design for components is a mid-level signal; this checks you design for the caller."
     }
   ]
 }

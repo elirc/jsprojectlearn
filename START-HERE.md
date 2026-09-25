@@ -23,10 +23,10 @@ serves is generated onto disk and fetched from your own machine.
 
 And beyond the project folders:
 
-- **`content/modules/` (37 guides)** — the written material with no project
+- **`content/modules/` (189 guides)** — the written material with no project
   attached: HTTP, SQL, REST design, auth, EF Core, Docker, CI/CD, caching,
   observability, debugging, and the interview playbook.
-- **`content/questions/` (1,043 questions in 34 decks)** — the interview drill
+- **`content/questions/` (5,215 questions in 34 decks)** — the interview drill
   decks the app serves with spaced repetition. Plain JSON, readable offline,
   gated by `scripts/check-questions.mjs`.
 - **`upskilling/`** — the junior → senior journal: nine case studies drawn from

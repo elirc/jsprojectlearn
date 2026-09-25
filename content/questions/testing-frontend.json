@@ -419,6 +419,1596 @@
       ],
       "level": 1,
       "asked": "A common interview opinion question; the strong answer says what to assert instead."
+    },
+    {
+      "id": "tf-023",
+      "q": "A page renders `<h1>Orders</h1>`. Why prefer `getByRole(\"heading\", { name: \"Orders\" })` over `getByText(\"Orders\")` in the test?",
+      "choices": [
+        "It also checks the text is a heading, so a `<div>` would fail",
+        "`getByText` cannot match text inside heading elements",
+        "`getByRole` is faster because it skips the text content",
+        "`getByText` fails when the text also appears in the page title"
+      ],
+      "answer": 0,
+      "why": "A role query asserts semantics as well as text, so replacing the `h1` with a styled `div` breaks the test just as it breaks screen-reader navigation. `getByText` matches headings fine; role queries are actually slower, but the extra confidence is the point.",
+      "tags": [
+        "queries",
+        "accessibility"
+      ],
+      "level": 1,
+      "asked": "Checks you understand why Testing Library ranks queries, not just that it does."
+    },
+    {
+      "id": "tf-024",
+      "q": "In React Testing Library, why do most tests use `screen.getByRole(...)` rather than the queries returned by `render()`?",
+      "choices": [
+        "`render()` queries only search the first child of the container",
+        "`screen` queries run after React has flushed all pending effects",
+        "`screen` is bound to `document.body`, so portals are found too",
+        "`render()` queries are deprecated and removed in recent versions"
+      ],
+      "answer": 2,
+      "why": "`screen` queries the whole `document.body`, which includes content portalled out of the container such as modals, and saves destructuring in every test. The `render` queries still work and search the container; neither flushes effects.",
+      "tags": [
+        "queries"
+      ],
+      "level": 1,
+      "asked": "A small habit question; mentioning portals shows you have tested a modal."
+    },
+    {
+      "id": "tf-025",
+      "q": "A confirmation dialog and the page behind it both have a \"Delete\" button. How do you click the one in the dialog?",
+      "code": "const dialog = screen.getByRole(\"dialog\");\n// ?",
+      "lang": "tsx",
+      "choices": [
+        "`await user.click(screen.getAllByRole(\"button\", { name: \"Delete\" })[1])`",
+        "`await user.click(within(dialog).getByRole(\"button\", { name: \"Delete\" }))`",
+        "`await user.click(dialog.querySelector(\"button\"))`",
+        "`await user.click(screen.getByRole(\"button\", { name: \"Delete\", dialog: true }))`"
+      ],
+      "answer": 1,
+      "why": "`within(element)` scopes every query to that subtree, so the intent is explicit and it survives markup changes. Indexing into `getAllBy` depends on DOM order, `querySelector` picks whatever button comes first, and there is no `dialog` option.",
+      "tags": [
+        "queries"
+      ],
+      "level": 2,
+      "asked": "Real screens repeat labels, and interviewers want to see a query that states intent."
+    },
+    {
+      "id": "tf-026",
+      "q": "`getByLabelText(\"Email\")` throws \"Found a label with the text of: Email, however no form control was found associated to that label\". What is the likely cause?",
+      "code": "<label>Email</label>\n<input type=\"email\" />",
+      "lang": "html",
+      "choices": [
+        "The query needs `{ exact: false }` when the input type is `email`",
+        "`getByLabelText` works only with `aria-label`, not with `<label>`",
+        "The label is not linked: it needs `htmlFor` or to wrap the input",
+        "The input must have a `name` attribute before it can be labelled"
+      ],
+      "answer": 2,
+      "why": "A `<label>` names a control only through `for`/`htmlFor` matching an id, or by wrapping it. The test is exposing a real accessibility bug: clicking the label does nothing and screen readers announce an unnamed field.",
+      "tags": [
+        "queries",
+        "accessibility"
+      ],
+      "level": 1,
+      "asked": "Shows that accessible queries double as accessibility checks, which is the point of them."
+    },
+    {
+      "id": "tf-027",
+      "q": "An error message is rendered with the `hidden` attribute. What do these two queries return?",
+      "code": "screen.queryByText(\"Required\")\nscreen.queryByRole(\"alert\")  // <p role=\"alert\" hidden>",
+      "lang": "tsx",
+      "choices": [
+        "The element for the text query, and `null` for the role query",
+        "`null` for both, because hidden elements are never queried",
+        "The element for both, since hiding only affects visual tests",
+        "`null` for the text query, and the element for the role query"
+      ],
+      "answer": 0,
+      "why": "Role queries skip elements excluded from the accessibility tree (`hidden`, `display: none`, `aria-hidden`) unless you pass `{ hidden: true }`; text queries do not filter by visibility. To assert visibility itself, use `toBeVisible()`.",
+      "tags": [
+        "queries",
+        "accessibility"
+      ],
+      "level": 2,
+      "asked": "Explains a confusing \"text is there but role query fails\" moment, which most people hit."
+    },
+    {
+      "id": "tf-028",
+      "q": "An element is in the DOM but inside a parent with `display: none`. Which jest-dom assertion fails?",
+      "choices": [
+        "`expect(el).toBeInTheDocument()`",
+        "`expect(el).toHaveTextContent(\"Saved\")`",
+        "`expect(el).toBeVisible()`",
+        "`expect(el).toHaveAttribute(\"id\")`"
+      ],
+      "answer": 2,
+      "why": "`toBeVisible` checks the element and its ancestors for `display: none`, `visibility: hidden`, `hidden` and zero opacity. `toBeInTheDocument` only checks that the node is attached, so it passes for hidden content, which is a common false positive.",
+      "tags": [
+        "assertions"
+      ],
+      "level": 1,
+      "asked": "Picking the assertion that matches what the user sees is the core of meaningful UI tests."
+    },
+    {
+      "id": "tf-029",
+      "q": "In Testing Library, what is the difference between `getAllByRole(\"row\")` and `queryAllByRole(\"row\")` when no rows exist?",
+      "choices": [
+        "`getAllBy` returns `[]`; `queryAllBy` returns `null`",
+        "`getAllBy` throws; `queryAllBy` returns an empty array",
+        "Each returns `[]`, but `getAllBy` also logs the DOM",
+        "Each throws, as \"all\" queries need at least one match"
+      ],
+      "answer": 1,
+      "why": "`get*` variants throw when nothing matches, with a helpful DOM dump; `query*` variants return `null` or `[]`, which is only useful when asserting absence. The `All` suffix changes the return type, not the error behaviour.",
+      "tags": [
+        "queries"
+      ],
+      "level": 1,
+      "asked": "Basic, but tests that assert absence with the wrong query either throw or pass vacuously."
+    },
+    {
+      "id": "tf-030",
+      "q": "A close button renders `<button aria-label=\"Close\">×</button>`. What happens with `getByRole(\"button\", { name: \"×\" })`?",
+      "choices": [
+        "It finds the button, because the name option matches text content",
+        "It finds the button, because both label and text are checked",
+        "It throws, because the button's accessible name is \"Close\"",
+        "It throws, because symbols cannot be used in the name option"
+      ],
+      "answer": 2,
+      "why": "The `name` option matches the computed accessible name, and `aria-label` overrides the text content, so the name is \"Close\". This is what a screen reader announces too, which is exactly why the query checks it.",
+      "tags": [
+        "queries",
+        "accessibility"
+      ],
+      "level": 3,
+      "asked": "Tests whether you know what \"accessible name\" means, which underlies the whole query API."
+    },
+    {
+      "id": "tf-031",
+      "q": "A toolbar has \"Save\" and \"Save as draft\" buttons. Why does `getByRole(\"button\", { name: /save/i })` throw?",
+      "choices": [
+        "Regular expressions are only allowed for the `description` option",
+        "The regex matches both names, so `getBy` finds multiple elements",
+        "The `i` flag is ignored, so neither button matches \"save\"",
+        "Role queries need an exact string when there is more than one button"
+      ],
+      "answer": 1,
+      "why": "A regex matches anywhere in the name unless anchored, and `getBy` throws \"Found multiple elements\". Use the exact string `\"Save\"` (strings match the full name) or `/^save$/i`.",
+      "tags": [
+        "queries"
+      ],
+      "level": 2,
+      "asked": "A daily papercut; the fix shows you know how string versus regex matching works."
+    },
+    {
+      "id": "tf-032",
+      "q": "What does `await screen.findByRole(\"alert\")` do?",
+      "choices": [
+        "It returns `null` immediately if the alert is not in the DOM yet",
+        "It waits until the next React commit and then runs `getByRole` once",
+        "It retries `getByRole` until it matches or times out after 1 s",
+        "It waits for all pending network requests before it queries the DOM"
+      ],
+      "answer": 2,
+      "why": "`findBy*` is `getBy*` wrapped in `waitFor`: it polls (and reacts to DOM mutations) until the element appears, rejecting after the timeout, 1000 ms by default. It knows nothing about network requests.",
+      "tags": [
+        "async",
+        "queries"
+      ],
+      "level": 1,
+      "asked": "The first async tool in Testing Library; strong answers mention the default timeout."
+    },
+    {
+      "id": "tf-033",
+      "q": "Why is this a problem?",
+      "code": "await waitFor(async () => {\n  await user.click(screen.getByRole(\"button\", { name: \"Next\" }));\n  expect(screen.getByText(\"Step 2\")).toBeInTheDocument();\n});",
+      "lang": "tsx",
+      "choices": [
+        "`waitFor` does not accept async callbacks, so it resolves at once",
+        "The click repeats on every retry, so \"Next\" is clicked again",
+        "`user.click` cannot run inside `waitFor` because of `act` nesting",
+        "The assertion runs before the click, since `waitFor` hoists `expect`"
+      ],
+      "answer": 1,
+      "why": "`waitFor` re-runs its callback until it stops throwing, so any side effect inside it repeats. Do the click once outside, then wait only for the assertion (or use `findByText`). Async callbacks are allowed.",
+      "tags": [
+        "async"
+      ],
+      "level": 2,
+      "asked": "A classic flaky-test source; interviewers want \"no side effects in waitFor\"."
+    },
+    {
+      "id": "tf-034",
+      "q": "This test fails with \"The element(s) given to waitForElementToBeRemoved are already removed\". Why?",
+      "code": "render(<Users />);\nawait waitForElementToBeRemoved(() =>\n  screen.queryByText(\"Loading…\"));",
+      "lang": "tsx",
+      "choices": [
+        "`queryByText` must be `getByText` inside this helper",
+        "The spinner was never shown, so there was nothing to wait for",
+        "The helper requires a DOM node, not a callback",
+        "The helper cannot be used with the ellipsis character"
+      ],
+      "answer": 1,
+      "why": "The helper insists the element exists when it starts, so it fails if loading finished synchronously or the text differs (for example \"...\" versus \"…\"). It accepts a callback or a node; the error is telling you your assumption about the loading state is wrong.",
+      "tags": [
+        "async"
+      ],
+      "level": 3,
+      "asked": "Reading Testing Library errors precisely is a sign you have debugged many async tests."
+    },
+    {
+      "id": "tf-035",
+      "q": "In user-event v14, an input already contains \"Ada\". What value does it have after `await user.type(input, \"Lovelace\")`?",
+      "choices": [
+        "\"Lovelace\", since `type` replaces the value",
+        "\"AdaLovelace\", since `type` appends at the end",
+        "\"LovelaceAda\", since the caret starts at 0",
+        "\"Ada\", since `type` needs a prior `user.click`"
+      ],
+      "answer": 1,
+      "why": "`type` clicks the element and types at the end of the current value, like a user would. Call `await user.clear(input)` first to replace it; the click is built in, so no manual focus is needed.",
+      "tags": [
+        "interaction"
+      ],
+      "level": 1,
+      "asked": "Edit-form tests hit this immediately; it shows you have written them."
+    },
+    {
+      "id": "tf-036",
+      "q": "How do you choose \"Canada\" from a native `<select>` in a user-event v14 test?",
+      "choices": [
+        "`await user.click(screen.getByRole(\"option\", { name: \"Canada\" }))`",
+        "`fireEvent.change(select, \"Canada\")` followed by a blur",
+        "`await user.selectOptions(select, \"Canada\")`",
+        "`await user.type(select, \"Canada{Enter}\")`"
+      ],
+      "answer": 2,
+      "why": "`selectOptions` selects by value or label and fires the events a real selection would. Clicking an `<option>` does not select it in a native select, and typing into a select does not change it.",
+      "tags": [
+        "interaction",
+        "forms"
+      ],
+      "level": 1,
+      "asked": "Checks you know the right user-event API for common controls instead of fighting the DOM."
+    },
+    {
+      "id": "tf-037",
+      "q": "How do you test an avatar upload that uses `<input type=\"file\" accept=\"image/*\">`?",
+      "code": "const file = new File([\"png\"], \"me.png\", { type: \"image/png\" });",
+      "lang": "tsx",
+      "choices": [
+        "`await user.upload(screen.getByLabelText(\"Avatar\"), file)`",
+        "`input.value = \"C:\\\\me.png\"` and then fire a change event",
+        "`await user.type(screen.getByLabelText(\"Avatar\"), \"me.png\")`",
+        "Mock `FileReader` globally; file inputs cannot be driven in jsdom"
+      ],
+      "answer": 0,
+      "why": "`user.upload` sets the input's `files` and dispatches the input and change events, and by default respects `accept`. Browsers (and jsdom) forbid setting a file input's `value` to a path, and typing does nothing.",
+      "tags": [
+        "interaction",
+        "forms"
+      ],
+      "level": 2,
+      "asked": "File inputs are common in CRUD apps and a frequent \"how do I even test this\" moment."
+    },
+    {
+      "id": "tf-038",
+      "q": "You want to prove a login form can be completed with the keyboard. Which test fits?",
+      "choices": [
+        "Click each field in turn with `user.click`, then click Submit",
+        "Assert each input has a `tabIndex` greater than zero",
+        "Use `fireEvent.keyDown` with Tab on the document body",
+        "Tab with `user.tab()`, assert `toHaveFocus()`, then press Enter"
+      ],
+      "answer": 3,
+      "why": "`user.tab()` moves focus the way a browser would, so `toHaveFocus()` verifies the real order, and `{Enter}` checks implicit submission. A positive `tabIndex` is an anti-pattern, and a synthetic keydown does not move focus.",
+      "tags": [
+        "interaction",
+        "accessibility"
+      ],
+      "level": 2,
+      "asked": "Shows you can test accessibility behaviour, not only markup."
+    },
+    {
+      "id": "tf-039",
+      "q": "A test fails and you cannot tell what the DOM looks like at that moment. Which Testing Library tools help most?",
+      "choices": [
+        "`screen.debug()` and `logRoles(container)`",
+        "`console.log(container.innerHTML.length)`",
+        "`vi.spyOn(document, \"querySelector\")`",
+        "`render(<App />, { debug: true })`"
+      ],
+      "answer": 0,
+      "why": "`screen.debug()` pretty-prints the current DOM (or a given element), and `logRoles` lists every accessible role and name, which tells you exactly what `getByRole` can see. There is no `debug` render option.",
+      "tags": [
+        "debugging",
+        "queries"
+      ],
+      "level": 1,
+      "asked": "Knowing your debugging tools is what makes you fast at fixing red builds."
+    },
+    {
+      "id": "tf-040",
+      "q": "When is `getByTestId` the right query?",
+      "choices": [
+        "Always, because test ids never change when copy is edited",
+        "When nothing accessible identifies it, like a canvas chart",
+        "For any element inside a table, where roles are unreliable",
+        "For buttons with icons, since their names are unpredictable"
+      ],
+      "answer": 1,
+      "why": "Test ids are invisible to users, so they prove nothing about what users experience; Testing Library ranks them last. Tables have proper roles, and icon buttons should have accessible names that tests can use.",
+      "tags": [
+        "queries"
+      ],
+      "level": 1,
+      "asked": "Heavy test-id use is a code-review smell; interviewers probe whether you know why."
+    },
+    {
+      "id": "tf-041",
+      "q": "An element renders `<p>Total:   £12.50 </p>`. Which assertion passes?",
+      "choices": [
+        "`expect(screen.getByText(\"Total: £12.50 \")).toBeInTheDocument()`",
+        "`expect(screen.getByText(\"£12.50\")).toBeInTheDocument()`",
+        "`expect(screen.getByText(\"Total:\")).toBeInTheDocument()`",
+        "`expect(screen.getByText(\"Total: £12.50\")).toBeInTheDocument()`"
+      ],
+      "answer": 3,
+      "why": "The default text matcher trims and collapses whitespace, then requires the full string, case-sensitively. Substrings like \"£12.50\" or \"Total:\" need a regex or `{ exact: false }`.",
+      "tags": [
+        "queries"
+      ],
+      "level": 2,
+      "asked": "Understanding the default normaliser saves hours of \"but the text is right there\"."
+    },
+    {
+      "id": "tf-042",
+      "q": "Why is `expect(input.value).toBe(\"ada\")` weaker than `expect(input).toHaveValue(\"ada\")`?",
+      "choices": [
+        "`.value` is always stale until React re-renders the input",
+        "`toHaveValue` also verifies the input is visible and enabled",
+        "`.value` is undefined for React-controlled inputs in jsdom",
+        "`toHaveValue` handles types and fails with a clearer message"
+      ],
+      "answer": 3,
+      "why": "`toHaveValue` returns numbers for number inputs, arrays for multi-selects and checks the element is a form control, and its failure message names the element. `.value` works but reads worse and is always a string; neither checks visibility.",
+      "tags": [
+        "assertions"
+      ],
+      "level": 1,
+      "asked": "Checks you know the jest-dom matchers that make tests read like requirements."
+    },
+    {
+      "id": "tf-043",
+      "q": "A test asserts `expect(screen.getByRole(\"button\", { name: \"Submit\" })).toBeDisabled()`. The button is inside `<fieldset disabled>` but has no `disabled` attribute. What happens?",
+      "choices": [
+        "It fails, because `toBeDisabled` only reads the button's own attribute",
+        "It throws, because role queries skip controls in disabled fieldsets",
+        "It passes, because a disabled fieldset disables its form controls",
+        "It passes only with `{ hidden: true }` in the role query options"
+      ],
+      "answer": 2,
+      "why": "`toBeDisabled` follows the platform rules, including inheritance from a disabled `fieldset` (outside its first legend). Disabled controls are still in the accessibility tree, so the role query finds the button.",
+      "tags": [
+        "assertions",
+        "forms"
+      ],
+      "level": 3,
+      "asked": "Tests whether you know assertions follow browser semantics rather than attribute checks."
+    },
+    {
+      "id": "tf-044",
+      "q": "A test renders a list and asserts `expect(screen.getAllByRole(\"listitem\")).toHaveLength(3)`. Why is this better than `container.querySelectorAll(\".item\").length`?",
+      "choices": [
+        "It survives class renames and checks the list is real list markup",
+        "It runs faster because the role index is cached by jsdom",
+        "It waits for the items to load, while `querySelectorAll` does not",
+        "It ignores items that are scrolled out of the viewport"
+      ],
+      "answer": 0,
+      "why": "Role queries depend on semantics users rely on, not on CSS class names that change during refactors. `getAllBy` does not wait (that is `findAllBy`), and jsdom has no viewport to scroll.",
+      "tags": [
+        "queries"
+      ],
+      "level": 2,
+      "asked": "Frames the \"test behaviour, not implementation\" principle in a concrete choice."
+    },
+    {
+      "id": "tf-045",
+      "q": "Every component under test needs a `QueryClientProvider` and a router. What is the usual way to avoid repeating them in each test?",
+      "choices": [
+        "Wrap the whole app in the providers inside `vitest.config.ts`",
+        "A `renderWithProviders` helper using the `wrapper` option",
+        "Mock the provider modules so components run without them",
+        "Render `<App />` in every test and navigate to the component"
+      ],
+      "answer": 1,
+      "why": "RTL's `render(ui, { wrapper })` wraps the tree in providers; a shared helper creates fresh instances per test and re-exports Testing Library. Mocking providers hides real wiring, and rendering the whole app for every unit is slow and couples tests.",
+      "tags": [
+        "providers"
+      ],
+      "level": 1,
+      "asked": "The first thing to set up in a real test suite; interviewers want to know you have done it."
+    },
+    {
+      "id": "tf-046",
+      "q": "Why create a new `QueryClient` with `retry: false` for each test instead of sharing one?",
+      "code": "const client = new QueryClient({\n  defaultOptions: { queries: { retry: false } },\n});",
+      "lang": "tsx",
+      "choices": [
+        "Cached data leaks between tests, and retries delay errors",
+        "A shared client cannot be used with `render`, only with `renderHook`",
+        "Retries are disabled in test mode anyway, so this only saves memory",
+        "Each test needs its own client to run in parallel worker threads"
+      ],
+      "answer": 0,
+      "why": "A cache that survives between tests makes results depend on order, and the default three retries with backoff can push an error state past the `findBy` timeout. Workers already isolate modules per file; the problem is within one file.",
+      "tags": [
+        "providers",
+        "flakiness"
+      ],
+      "level": 2,
+      "asked": "Test isolation with caching libraries is a common source of order-dependent failures."
+    },
+    {
+      "id": "tf-047",
+      "q": "A component calls `useParams()` to read `:orderId`. How do you render it in a test?",
+      "choices": [
+        "Mock `useParams` with `vi.mock` to return `{ orderId: \"7\" }`",
+        "Set `window.location.pathname` to `/orders/7` before rendering",
+        "Pass `orderId=\"7\"` as a prop, since the hook falls back to props",
+        "Render it in a memory router at `/orders/7`"
+      ],
+      "answer": 3,
+      "why": "A `createMemoryRouter` (or `MemoryRouter`) with `initialEntries: [\"/orders/7\"]` and a `/orders/:orderId` route exercises the real routing. Mocking the hook skips the route definition you actually ship, and hooks never read props.",
+      "tags": [
+        "providers",
+        "routing"
+      ],
+      "level": 2,
+      "asked": "Checks you test through the router instead of around it."
+    },
+    {
+      "id": "tf-048",
+      "q": "After a successful save the form should navigate to `/orders`. What is the most robust assertion?",
+      "choices": [
+        "Mock `useNavigate` and assert it was called with \"/orders\"",
+        "Assert `window.location.href` ends with \"/orders\"",
+        "Render both routes; assert the orders heading appears",
+        "Spy on `history.pushState` and assert its last argument"
+      ],
+      "answer": 2,
+      "why": "Rendering the destination route and checking what the user sees tests the outcome, and still passes if you switch from `navigate` to a redirect in an action. A memory router does not touch `window.location`, and mocking `useNavigate` couples the test to one implementation.",
+      "tags": [
+        "routing",
+        "assertions"
+      ],
+      "level": 2,
+      "asked": "Outcome-over-implementation, shown through a very common case."
+    },
+    {
+      "id": "tf-049",
+      "q": "How do you check that a `LoginForm` calls its `onSubmit` prop with the typed values?",
+      "code": "const onSubmit = vi.fn();\nrender(<LoginForm onSubmit={onSubmit} />);\n// type and click Sign in",
+      "lang": "tsx",
+      "choices": [
+        "`expect(onSubmit.mock.results).toEqual([{ email: \"a@b.co\" }])`",
+        "`expect(onSubmit).toHaveBeenCalledWith({ email: \"a@b.co\" })`",
+        "`expect(onSubmit).toReturnWith({ email: \"a@b.co\" })`",
+        "`expect(onSubmit()).toEqual({ email: \"a@b.co\" })`"
+      ],
+      "answer": 1,
+      "why": "`toHaveBeenCalledWith` checks the arguments of a call to the mock. `mock.results` and `toReturnWith` are about return values, which a `vi.fn()` returns as `undefined`, and calling the mock yourself proves nothing.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 1,
+      "asked": "Basic mock assertions; mixing up calls and returns is a common junior slip."
+    },
+    {
+      "id": "tf-050",
+      "q": "In Vitest, why does this fail with an error about the mock factory?",
+      "code": "const fakeUser = { id: 1, name: \"Ada\" };\nvi.mock(\"./api\", () => ({\n  getUser: () => fakeUser,\n}));",
+      "lang": "ts",
+      "choices": [
+        "`vi.mock` needs the file extension in the module path",
+        "Factories must return a default export, not named exports",
+        "`vi.mock` is hoisted above `fakeUser`; share it via `vi.hoisted`",
+        "Mock factories must be async functions that return a promise"
+      ],
+      "answer": 2,
+      "why": "Vitest hoists `vi.mock` to the top of the file so it runs before imports, which means top-level variables are not initialised yet. Declare shared values with `vi.hoisted(() => ...)` or import them inside the factory.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 2,
+      "asked": "Everyone hits hoisting once; explaining why it exists shows you understand module mocking."
+    },
+    {
+      "id": "tf-051",
+      "q": "When would you use `vi.spyOn(api, \"getUser\")` instead of `vi.mock(\"./api\")`?",
+      "choices": [
+        "When one method changes and the rest of the module stays real",
+        "When the module is ESM, since `vi.mock` only works with CommonJS",
+        "When you need the mock to apply before the module is imported",
+        "When the function is async, since `vi.mock` cannot mock promises"
+      ],
+      "answer": 0,
+      "why": "`spyOn` wraps one property of an object you already hold, can call through or be stubbed, and is restored with `mockRestore`. `vi.mock` replaces the module for the whole file before imports and works with ESM and async functions alike.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 2,
+      "asked": "Choosing the smallest mock that does the job is a sign of test-design maturity."
+    },
+    {
+      "id": "tf-052",
+      "q": "On a `vi.spyOn(console, \"error\")` spy, what is the difference between `mockClear()` and `mockRestore()`?",
+      "choices": [
+        "`mockClear` stops the spy; `mockRestore` restarts it",
+        "`mockClear` removes the implementation; `mockRestore` removes the call history",
+        "`mockClear` wipes call history; `mockRestore` puts back the real method",
+        "None in Vitest 3; the two are aliases kept for Jest compatibility"
+      ],
+      "answer": 2,
+      "why": "`mockClear` resets `mock.calls` and `mock.results` but keeps the spy in place; `mockRestore` removes the spy so `console.error` is the original again. Forgetting to restore leaves a silenced `console.error` for later tests in the file.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 2,
+      "asked": "Leaky spies cause baffling cross-test failures; the vocabulary shows you know the fix."
+    },
+    {
+      "id": "tf-053",
+      "q": "What does `clearMocks: true` in `vitest.config.ts` do?",
+      "choices": [
+        "Deletes every `vi.mock` call so modules are real again",
+        "Clears the call history of all mocks before each test",
+        "Fails any test that leaves a mock uncalled",
+        "Removes mocks created with `vi.fn` after the file ends"
+      ],
+      "answer": 1,
+      "why": "It calls `mockClear()` on every mock before each test, so `toHaveBeenCalledTimes` counts only the current test's calls. `restoreMocks` goes further and restores spies; neither undoes `vi.mock` module replacements.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 1,
+      "asked": "Config-level hygiene is how teams stop \"passes alone, fails in suite\" bugs."
+    },
+    {
+      "id": "tf-054",
+      "q": "A component shows \"Due today\" when an invoice's due date equals today. How do you make the test independent of when it runs?",
+      "choices": [
+        "Build the fixture's due date from `new Date()` at the top of the test",
+        "Skip the test on weekends, when dates are most likely to differ",
+        "Use fake timers and `vi.setSystemTime(new Date(\"2026-03-10\"))`",
+        "Pass the current date through an environment variable in CI"
+      ],
+      "answer": 2,
+      "why": "Pinning the clock makes \"today\" a fixed value, so the test is deterministic and can cover edge cases like month ends. Building fixtures from `new Date()` mostly works but fails around midnight and time zones.",
+      "tags": [
+        "vitest",
+        "fake-timers",
+        "flakiness"
+      ],
+      "level": 2,
+      "asked": "Date-dependent flakes are common; this checks you control time rather than chase it."
+    },
+    {
+      "id": "tf-055",
+      "q": "A Vite app reads `import.meta.env.VITE_API_URL`. How do you test a branch that depends on it in Vitest?",
+      "choices": [
+        "Set `process.env.VITE_API_URL`, which Vite reads on every access",
+        "Rename the variable without the `VITE_` prefix for tests",
+        "Edit `.env.test` inside the test and re-import the module",
+        "`vi.stubEnv(\"VITE_API_URL\", \"http://x\")` in the test"
+      ],
+      "answer": 3,
+      "why": "`vi.stubEnv` changes both `process.env` and `import.meta.env` for the test, and `unstubAllEnvs` (or the `unstubEnvs` config) resets them. `.env` files are read once at startup, so editing them mid-run does nothing.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 2,
+      "asked": "Environment-dependent code is common in Vite apps, and teams often test it badly or not at all."
+    },
+    {
+      "id": "tf-056",
+      "q": "A new Vitest test fails with \"ReferenceError: document is not defined\". What is missing?",
+      "choices": [
+        "A DOM environment, e.g. `environment: \"jsdom\"`",
+        "An `import \"@testing-library/jest-dom\"` at the top of the test",
+        "The `globals: true` option, which injects browser globals",
+        "A call to `cleanup()` before the first render in the file"
+      ],
+      "answer": 0,
+      "why": "Vitest runs in plain Node by default; `jsdom` or `happy-dom` (per project, or per file via a `@vitest-environment` comment) supplies `document` and `window`. `globals` only exposes `describe`/`it`/`expect`, and jest-dom adds matchers.",
+      "tags": [
+        "vitest"
+      ],
+      "level": 1,
+      "asked": "A setup question, but it shows you know what jsdom is and that tests do not run in a browser by default."
+    },
+    {
+      "id": "tf-057",
+      "q": "A component uses `window.matchMedia` and `IntersectionObserver`. In a jsdom test it crashes on mount. What is the usual fix?",
+      "choices": [
+        "Switch the environment to `node`, which provides both APIs",
+        "Wrap the render in `act`, which polyfills missing browser APIs",
+        "Stub them in a setup file, e.g. with `vi.stubGlobal`",
+        "Upgrade jsdom, since recent versions implement layout and observers"
+      ],
+      "answer": 2,
+      "why": "jsdom implements the DOM but not layout, so APIs like `matchMedia`, `IntersectionObserver` and `ResizeObserver` are missing; a setup file stubs them with controllable fakes. Node has none of them, and `act` only flushes React work.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 2,
+      "asked": "Anyone who has tested a real component library has written these stubs."
+    },
+    {
+      "id": "tf-058",
+      "q": "A test checks that a sticky header gets a shadow once the page scrolls, which depends on layout and CSS. Why might Vitest browser mode or Playwright suit it better than jsdom?",
+      "choices": [
+        "jsdom does not support `scroll` events at all",
+        "jsdom has no layout, so sizes and scroll offsets are 0",
+        "jsdom runs CSS, but only from inline `style` attributes",
+        "jsdom is too slow for tests that need more than one render"
+      ],
+      "answer": 1,
+      "why": "jsdom has no rendering engine, so `getBoundingClientRect`, `offsetHeight` and scroll positions are 0 and CSS-driven behaviour cannot be observed. A real browser runs layout; jsdom does dispatch scroll events, and speed is its advantage, not its weakness.",
+      "tags": [
+        "vitest",
+        "e2e"
+      ],
+      "level": 3,
+      "asked": "Knowing the limits of jsdom is how you avoid tests that pass while the UI is broken."
+    },
+    {
+      "id": "tf-059",
+      "q": "How do you test a `useCart()` hook that reads `CartContext`?",
+      "choices": [
+        "Call `useCart()` directly inside the test function",
+        "`renderHook(useCart, { wrapper: CartProvider })`",
+        "Mock `useContext` to return a fake cart for the hook",
+        "Export the hook's internal reducer and test only that"
+      ],
+      "answer": 1,
+      "why": "`renderHook` runs the hook inside a test component, and `wrapper` supplies the provider it needs; calling a hook outside a component throws. Testing the reducer alone is fine as well, but it does not test the hook's wiring.",
+      "tags": [
+        "hooks",
+        "providers"
+      ],
+      "level": 2,
+      "asked": "Hook testing with context is where people first discover the `wrapper` option."
+    },
+    {
+      "id": "tf-060",
+      "q": "What does the \"Arrange, Act, Assert\" structure mean for a component test?",
+      "choices": [
+        "Import helpers, run the test, then clean up the DOM manually",
+        "Set up and render, do one action, then check the result",
+        "Write the assertion first, then the action, then the setup",
+        "Mock every dependency, render, then snapshot the output"
+      ],
+      "answer": 1,
+      "why": "Grouping setup, the single behaviour under test and its assertions makes tests easy to scan and keeps each one focused. It says nothing about mocking everything or snapshots.",
+      "tags": [
+        "test-design"
+      ],
+      "level": 1,
+      "asked": "Interviewers ask you to talk through a test; this structure makes that answer clear."
+    },
+    {
+      "id": "tf-061",
+      "q": "`checkout.ts` exports `calcTax` and `calcTotal`, and `calcTotal` calls `calcTax` internally. A test mocks only `calcTax` with `vi.mock` and `importOriginal`. Why does `calcTotal` still use the real `calcTax`?",
+      "choices": [
+        "Partial mocks apply only to default exports, not named ones",
+        "`importOriginal` restores every export after the first call",
+        "`calcTotal` is cached from a previous test file in the same worker",
+        "`calcTotal` calls the local binding, not the mocked export"
+      ],
+      "answer": 3,
+      "why": "A module mock replaces what importers see; code inside `checkout.ts` still refers to its own `calcTax` directly. Move `calcTax` to its own module, or test `calcTotal` with the real tax logic, which is usually better anyway.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 3,
+      "asked": "A deep module-system question that also nudges towards not mocking your own code."
+    },
+    {
+      "id": "tf-062",
+      "q": "Tests pass one by one but fail together with \"Found multiple elements with the role button\". The project uses Vitest with `globals: false`. What is the likely cause?",
+      "choices": [
+        "RTL's auto-cleanup never registered, so old renders remain",
+        "Vitest runs tests in one file in parallel, so their DOMs overlap",
+        "jsdom caches rendered elements between files in the same worker",
+        "`screen` is bound to the first test's container and never reset"
+      ],
+      "answer": 0,
+      "why": "RTL registers `cleanup` only if a global `afterEach` exists; with `globals: false` there is none, so each render stays mounted. Enable `globals` or call `cleanup()` in an `afterEach` in the setup file. Tests in a file run sequentially by default.",
+      "tags": [
+        "vitest",
+        "flakiness"
+      ],
+      "level": 3,
+      "asked": "A precise diagnosis question; the answer shows you understand how the tools are wired together."
+    },
+    {
+      "id": "tf-063",
+      "q": "You need to check a validator against ten inputs. What does `it.each` give you over ten copied tests?",
+      "code": "it.each([\n  [\"\", \"Required\"],\n  [\"ab\", \"Too short\"],\n])(\"%s gives %s\", (input, msg) => { /* ... */ });",
+      "lang": "ts",
+      "choices": [
+        "It runs the cases in parallel threads, so it is faster",
+        "It stops at the first failing case, saving time on CI",
+        "It shares one render between all cases to avoid setup cost",
+        "One test body; each failing case is reported by name"
+      ],
+      "answer": 3,
+      "why": "Table-driven tests keep the logic in one place and add cases as data; each row is its own test with a formatted title, so a failure names the input. Cases run sequentially and independently, and each gets its own setup.",
+      "tags": [
+        "vitest",
+        "test-design"
+      ],
+      "level": 1,
+      "asked": "A simple tool that makes validation tests thorough without being tedious."
+    },
+    {
+      "id": "tf-064",
+      "q": "A test that stores a draft in `localStorage` passes alone but makes a later test start with a pre-filled form. What is the fix?",
+      "choices": [
+        "Run each test in its own jsdom by setting `isolate: false`",
+        "Clear `localStorage` in an `afterEach` in the setup file",
+        "Mock `localStorage` with `vi.mock(\"localStorage\")`",
+        "Add a delay so the write finishes before the next test"
+      ],
+      "answer": 1,
+      "why": "jsdom's storage lives for the whole test file, so state leaks between tests unless you reset it. Clearing in `afterEach` restores isolation; storage is a global, not a module you can `vi.mock`, and `isolate: false` shares more, not less.",
+      "tags": [
+        "flakiness",
+        "test-design"
+      ],
+      "level": 2,
+      "asked": "Order-dependent tests are a common pain; this checks you reach for isolation first."
+    },
+    {
+      "id": "tf-065",
+      "q": "You test that an error boundary shows \"Something went wrong\" when a child throws. The output is flooded with React's error logs. What is the usual approach?",
+      "choices": [
+        "Wrap the render in `try/catch` so React does not log the error",
+        "Set `NODE_ENV=production` for the test to silence React",
+        "Stub `console.error` for this test, then restore it",
+        "Delete the error boundary's `componentDidCatch` in test builds"
+      ],
+      "answer": 2,
+      "why": "React reports caught render errors through `console.error`; a scoped `vi.spyOn(console, \"error\").mockImplementation(() => {})` keeps the output readable and can even assert it was called. The error never reaches your `try/catch` because the boundary handles it.",
+      "tags": [
+        "mocking",
+        "error-boundaries"
+      ],
+      "level": 2,
+      "asked": "Testing failure UI is part of mid-level work, and this is the practical snag."
+    },
+    {
+      "id": "tf-066",
+      "q": "You mock `./api` but want every other export to stay real. Which factory does that in Vitest?",
+      "choices": [
+        "Spread `await importOriginal()` in the factory and override `getUser`",
+        "Spread `require(\"./api\")` in the factory after `getUser: vi.fn()`",
+        "Pass `{ partial: true, getUser: vi.fn() }` as the second argument",
+        "Return `vi.importActual(\"./api\", [\"getUser\"])` from the factory"
+      ],
+      "answer": 0,
+      "why": "The factory receives `importOriginal`, which loads the real module so you can spread it and override one export. `require` inside an ESM mock would load the mock itself or fail, and there is no `partial` option.",
+      "tags": [
+        "vitest",
+        "mocking"
+      ],
+      "level": 3,
+      "asked": "Partial mocks are common in real suites; knowing the idiom saves a round of trial and error."
+    },
+    {
+      "id": "tf-067",
+      "q": "In MSW v2, which handler responds to `GET /api/users` with a JSON list?",
+      "choices": [
+        "`rest.get(\"/api/users\", (req, res, ctx) => res(ctx.json(users)))`",
+        "`http.get(\"/api/users\", () => HttpResponse.json(users))`",
+        "`http.get(\"/api/users\", () => ({ status: 200, body: users }))`",
+        "`http.get(\"/api/users\", (req, res) => res.json(users))`"
+      ],
+      "answer": 1,
+      "why": "MSW v2 handlers are built with `http` and return a Fetch API `Response`; `HttpResponse.json` sets the body and content type. The `rest`/`res(ctx...)` form is the v1 API, and plain objects or Express-style `res` are not supported.",
+      "tags": [
+        "msw"
+      ],
+      "level": 1,
+      "asked": "Many codebases are mid-migration; knowing the v2 shape shows you are current."
+    },
+    {
+      "id": "tf-068",
+      "q": "Why start the MSW server with `server.listen({ onUnhandledRequest: \"error\" })` in tests?",
+      "choices": [
+        "It fails requests no handler covers, so gaps are noticed",
+        "It turns every 4xx or 5xx response from a handler into a thrown error",
+        "It makes handlers throw when they receive an unexpected request body",
+        "It retries unhandled requests against the real API before failing"
+      ],
+      "answer": 0,
+      "why": "The default only warns, so a test can quietly hit the real network or an unexpected endpoint. With \"error\", MSW logs the request and fails it, which makes gaps in your handlers visible; it does not change how handled responses behave.",
+      "tags": [
+        "msw"
+      ],
+      "level": 1,
+      "asked": "A one-line config that prevents a class of accidental network calls in CI."
+    },
+    {
+      "id": "tf-069",
+      "q": "In MSW v2, how does a handler for `/api/orders` read the `page` in `/api/orders?page=2`?",
+      "choices": [
+        "`params.page`, since query strings are parsed into params",
+        "`request.query.page`, as MSW adds a parsed query object",
+        "`new URL(request.url).searchParams.get(\"page\")`",
+        "Register the handler as `/api/orders?page=:page`"
+      ],
+      "answer": 2,
+      "why": "`params` holds only path parameters like `:id`; query strings are read from the request URL with `URL`. MSW matches on the path and ignores query strings in handler URLs, warning if you include one.",
+      "tags": [
+        "msw"
+      ],
+      "level": 2,
+      "asked": "Pagination and filter tests need this constantly, and the params mix-up is common."
+    },
+    {
+      "id": "tf-070",
+      "q": "An MSW v2 handler for `POST /api/orders` should echo the created order with an id. How does it read the JSON body?",
+      "choices": [
+        "`const body = request.body`, which MSW parses for you",
+        "`const body = JSON.parse(request.text)`",
+        "`const body = params.body` from the resolver info",
+        "`const body = await request.json()`"
+      ],
+      "answer": 3,
+      "why": "The resolver gets a standard Fetch `Request`, so you read it with `await request.json()` (or `.formData()`, `.text()`). `request.body` is a raw stream, and `text` is a method, not a string.",
+      "tags": [
+        "msw"
+      ],
+      "level": 1,
+      "asked": "Mutation tests need realistic responses, and the Fetch API is what everything uses now."
+    },
+    {
+      "id": "tf-071",
+      "q": "What does a component's `fetch` see when an MSW handler returns `HttpResponse.error()` instead of `HttpResponse.json(null, { status: 500 })`?",
+      "choices": [
+        "A response with `status` 0, the same as a CORS-blocked response",
+        "The `fetch` promise rejects with a `TypeError`, as when offline",
+        "A 500 response whose body is an empty JSON object",
+        "An exception thrown synchronously from the `fetch` call"
+      ],
+      "answer": 1,
+      "why": "`HttpResponse.error()` simulates a network failure, so `fetch` rejects; a 500 resolves normally with `ok: false`. Your UI usually needs both paths tested, because code that checks `res.ok` can still forget to catch rejections.",
+      "tags": [
+        "msw",
+        "error-handling"
+      ],
+      "level": 2,
+      "asked": "Distinguishes network errors from HTTP errors, which many fetch wrappers conflate."
+    },
+    {
+      "id": "tf-072",
+      "q": "How do you assert that a spinner shows while orders load, without racing a fast mock?",
+      "choices": [
+        "Add `await delay(\"infinite\")` in a `server.use` handler for this test",
+        "Use fake timers so the MSW handler never gets a chance to run",
+        "Assert the spinner synchronously straight after `render`",
+        "Mock `fetch` with `vi.fn()` instead, as MSW always responds instantly"
+      ],
+      "answer": 0,
+      "why": "An infinitely delayed response keeps the request pending, so the loading state is stable for as long as you need. Asserting straight after render works only by luck of timing; faking timers without advancing them can hang other parts of the test.",
+      "tags": [
+        "msw",
+        "async"
+      ],
+      "level": 2,
+      "asked": "Loading states are part of the UI contract, and this makes them testable without flakiness."
+    },
+    {
+      "id": "tf-073",
+      "q": "You need to test that a failed request is retried once and then succeeds. Which MSW v2 setup models that?",
+      "code": "server.use(\n  http.get(\"/api/orders\", () => new HttpResponse(null, { status: 503 }), ???),\n);",
+      "lang": "ts",
+      "choices": [
+        "`{ retry: 1 }`, so MSW itself resends the request once",
+        "`{ times: 2 }`, so the 503 is returned on two requests",
+        "`{ once: true }`, so the base 200 handler answers the retry",
+        "`{ status: \"flaky\" }`, which alternates 503 and 200 responses"
+      ],
+      "answer": 2,
+      "why": "A `once` handler answers the first matching request and is then used up, so the next request falls through to the default happy-path handler. MSW has no retry, times or flaky options; retries are your client's job, which is what the test checks.",
+      "tags": [
+        "msw",
+        "mocking"
+      ],
+      "level": 3,
+      "asked": "Retry logic is easy to get wrong; this shows you can make it testable."
+    },
+    {
+      "id": "tf-074",
+      "q": "You want to check that \"Save\" sends `{ name: \"Ada\" }` to the API. What does MSW guidance recommend?",
+      "choices": [
+        "Spy on `window.fetch` and assert on its second argument",
+        "Assert the UI result, with the handler reacting to the body",
+        "Call `server.listHandlers()` and inspect the last request",
+        "Snapshot the request object inside the handler every time"
+      ],
+      "answer": 1,
+      "why": "Asserting on requests tests implementation; instead make the handler behave like the server (for example return 400 when `name` is missing) and assert what the user sees. When you truly need it, capture the body in a variable, but spying on `fetch` alongside MSW is redundant.",
+      "tags": [
+        "msw",
+        "test-design"
+      ],
+      "level": 2,
+      "asked": "Tests whether you can apply \"test behaviour\" even at the network boundary."
+    },
+    {
+      "id": "tf-075",
+      "q": "The app uses axios, not `fetch`. Does MSW's `setupServer` intercept its requests in a Vitest test?",
+      "choices": [
+        "No; MSW only intercepts `fetch`, so axios needs its own adapter mock",
+        "Only if axios is configured with `adapter: \"fetch\"` first",
+        "Yes; in Node it intercepts `fetch`, `http` and `XMLHttpRequest`",
+        "Only in browser mode, where the service worker sees all traffic"
+      ],
+      "answer": 2,
+      "why": "MSW's Node interceptors patch the request modules themselves, so axios, `fetch` and other clients are all caught. That library independence is why teams pick MSW over mocking a specific client.",
+      "tags": [
+        "msw"
+      ],
+      "level": 1,
+      "asked": "A practical question when joining a codebase that uses a different HTTP client."
+    },
+    {
+      "id": "tf-076",
+      "q": "Default handlers return a user list. One test calls `server.use(http.get(\"/api/users\", () => HttpResponse.json([])))`. Which handler answers in that test?",
+      "choices": [
+        "The default one, since handlers from `setupServer` take priority",
+        "Whichever handler was defined with the more specific URL",
+        "Both, and the component receives the responses merged",
+        "The runtime one, because `server.use` prepends handlers"
+      ],
+      "answer": 3,
+      "why": "Runtime handlers are prepended, so they win over the initial ones until `server.resetHandlers()` removes them. That is how you keep happy-path defaults and override only the case under test.",
+      "tags": [
+        "msw",
+        "mocking"
+      ],
+      "level": 2,
+      "asked": "The override pattern is the heart of a maintainable MSW setup."
+    },
+    {
+      "id": "tf-077",
+      "q": "In MSW v2, what happens when a matching handler's resolver returns nothing?",
+      "code": "http.get(\"/api/users/:id\", ({ params }) => {\n  if (params.id === \"404\") return HttpResponse.json(null, { status: 404 });\n})",
+      "lang": "ts",
+      "choices": [
+        "MSW sends an empty 200 response for the other ids",
+        "MSW treats it as a network error and `fetch` rejects",
+        "The request falls through to the next matching handler",
+        "MSW throws, because every resolver must return a response"
+      ],
+      "answer": 2,
+      "why": "Returning `undefined` means \"not handled here\", so MSW tries later handlers and, if none respond, applies the unhandled-request strategy. This lets a runtime handler override one case while the default keeps serving the rest.",
+      "tags": [
+        "msw"
+      ],
+      "level": 3,
+      "asked": "Understanding fall-through lets you write focused overrides instead of copying whole handlers."
+    },
+    {
+      "id": "tf-078",
+      "q": "What extra step does MSW need to mock requests in the browser during local development?",
+      "choices": [
+        "Install a browser extension that routes requests through MSW",
+        "Run `npx msw init public` to add the service worker script",
+        "Proxy the dev server through MSW's own HTTP server on port 9090",
+        "Replace `fetch` with MSW's client wherever the app makes calls"
+      ],
+      "answer": 1,
+      "why": "In the browser `setupWorker` uses a real Service Worker, which must be served from your origin, so `msw init` copies `mockServiceWorker.js` into the public folder. Application code stays unchanged, which is the point.",
+      "tags": [
+        "msw"
+      ],
+      "level": 1,
+      "asked": "Mocking in dev lets front-end work start before the API exists; interviewers like that workflow."
+    },
+    {
+      "id": "tf-079",
+      "q": "A team uses MSW in unit tests, Storybook and local dev. What structure keeps the mocks consistent?",
+      "choices": [
+        "Write separate handlers for each tool, tuned to its needs",
+        "Record real API traffic nightly and replay it in all three",
+        "Put every scenario, including errors, in one global handler list",
+        "Share happy-path handlers; override edge cases per test or story"
+      ],
+      "answer": 3,
+      "why": "One set of default handlers describes the API once; each test or story layers the error or empty case it needs with `server.use` (or story parameters). Separate copies drift, and a global list full of errors makes every consumer fight the defaults.",
+      "tags": [
+        "msw",
+        "test-design"
+      ],
+      "level": 2,
+      "asked": "Shows you think about mocks as shared infrastructure, not test-local hacks."
+    },
+    {
+      "id": "tf-080",
+      "q": "MSW handlers return hand-written JSON, and the backend publishes an OpenAPI schema. What most cheaply catches handlers drifting from the real API?",
+      "choices": [
+        "Type handler responses with types generated from the schema",
+        "Add snapshot tests of each handler's JSON response body",
+        "Run the MSW handlers against production once a week",
+        "Disable MSW in CI so every test uses the real staging API"
+      ],
+      "answer": 0,
+      "why": "Generated types (for example via `openapi-typescript`) plus typed handlers make TypeScript fail when a field is renamed or removed. Snapshots only freeze the mock itself, and real-API CI runs trade drift for flakiness; a few e2e tests still cover the true integration.",
+      "tags": [
+        "msw",
+        "mocking"
+      ],
+      "level": 3,
+      "asked": "Mock drift is the main criticism of network mocking; a strong answer has a mitigation."
+    },
+    {
+      "id": "tf-081",
+      "q": "Why do many teams mock the network with MSW rather than replacing `fetch` with `vi.fn()` in component tests?",
+      "choices": [
+        "MSW runs faster, because it skips React rendering entirely",
+        "The real client code still runs: URLs, headers, parsing, errors",
+        "`vi.fn()` cannot return promises, so async code cannot be tested",
+        "MSW records responses automatically from the real API"
+      ],
+      "answer": 1,
+      "why": "MSW intercepts below your code, so your API layer's URL building, headers and response handling are exercised as in production. A `fetch` stub bypasses all that and couples tests to the call shape; `vi.fn` can return promises fine.",
+      "tags": [
+        "msw",
+        "mocking"
+      ],
+      "level": 1,
+      "asked": "The \"why this tool\" answer interviewers want before diving into MSW details."
+    },
+    {
+      "id": "tf-082",
+      "q": "Two Vitest test files run in parallel workers. File A calls `server.use(...)` to return errors. Can that affect tests in file B?",
+      "choices": [
+        "Yes, because `setupServer` binds one shared port for all workers",
+        "Yes, until file A calls `resetHandlers` in its `afterEach`",
+        "No, but only if both files import the server from the same module",
+        "No; each file has its own module instances and its own server"
+      ],
+      "answer": 3,
+      "why": "Vitest isolates test files, so each gets its own copy of the handlers module and its own interceptor; MSW does not listen on a port. Leaks happen between tests in the same file, which is what `resetHandlers` in `afterEach` prevents.",
+      "tags": [
+        "msw",
+        "vitest"
+      ],
+      "level": 2,
+      "asked": "Knowing where isolation boundaries are helps you debug suite-order problems quickly."
+    },
+    {
+      "id": "tf-083",
+      "q": "An MSW handler should mimic the API returning 401 when no token is sent. How does it check?",
+      "choices": [
+        "Read `request.headers.get(\"Authorization\")` and return a 401 response",
+        "Read `params.token` and return `HttpResponse.unauthorized()`",
+        "Read `cookies.auth` and throw `new Error(\"401\")` if missing",
+        "Read `request.auth` and return `HttpResponse.json({}, 401)`"
+      ],
+      "answer": 0,
+      "why": "The resolver has the standard `Request`, so headers are read with `request.headers.get`, and a `Response` with status 401 models the server. There is no `unauthorized` helper or `request.auth`, and throwing in a resolver produces a 500, not a 401.",
+      "tags": [
+        "msw",
+        "auth"
+      ],
+      "level": 2,
+      "asked": "Auth flows (redirect to login, token refresh) are worth testing, and this is the building block."
+    },
+    {
+      "id": "tf-084",
+      "q": "You migrate tests from MSW v1 to v2. Which change is required?",
+      "choices": [
+        "Replace `setupServer` with `setupWorker`, which now works in Node too",
+        "Use `http` instead of `rest`, returning `Response` objects",
+        "Replace `server.use` with `server.prepend`, which was renamed",
+        "Replace handler URLs with regular expressions, as strings were removed"
+      ],
+      "answer": 1,
+      "why": "v2 aligned with the Fetch API: handlers come from `http`, resolvers receive `{ request, params, cookies }` and return `Response` or `HttpResponse`. `setupServer` (from `msw/node`), `server.use` and string paths all remain.",
+      "tags": [
+        "msw"
+      ],
+      "level": 2,
+      "asked": "Real-world upgrade experience; many codebases still carry v1 handlers."
+    },
+    {
+      "id": "tf-085",
+      "q": "With `onUnhandledRequest: \"error\"`, a component fetches an endpoint you forgot to mock, yet the test still passes. How?",
+      "choices": [
+        "The option only applies to requests made in `beforeAll` hooks",
+        "The request fails, the UI catches it, and no assertion looks there",
+        "MSW falls back to the real network once, then errors on the next call",
+        "Unhandled requests are only reported when the test file finishes"
+      ],
+      "answer": 1,
+      "why": "The strategy logs an error and makes that request fail, but if your code handles failed requests gracefully and the test asserts elsewhere, nothing throws in the test itself. Read the MSW errors in the output, or assert the absence of error UI.",
+      "tags": [
+        "msw",
+        "flakiness"
+      ],
+      "level": 3,
+      "asked": "Tests that pass for the wrong reason are the dangerous kind; this checks you read the output."
+    },
+    {
+      "id": "tf-086",
+      "q": "Where should `server.listen()`, `server.resetHandlers()` and `server.close()` be wired up in a Vitest project?",
+      "choices": [
+        "In `vitest.config.ts` under a `msw` option",
+        "At the top of every test file, before the imports",
+        "In a `setupFiles` module, via lifecycle hooks",
+        "In `main.tsx`, guarded by `import.meta.env.MODE === \"test\"`"
+      ],
+      "answer": 2,
+      "why": "A setup file runs before each test file, so every test gets the same lifecycle without repetition. Vitest has no `msw` option, and the app entry point is not loaded by component tests.",
+      "tags": [
+        "msw",
+        "vitest"
+      ],
+      "level": 1,
+      "asked": "Setup questions show whether you have configured a suite yourself."
+    },
+    {
+      "id": "tf-087",
+      "q": "A form maps API validation errors to fields. How do you test that path with MSW?",
+      "choices": [
+        "Throw a `ValidationError` from the handler with the field errors",
+        "Return a 422 via `server.use`; assert the field messages",
+        "Mock the form library's `setError` and assert it was called",
+        "Submit invalid data so the client-side schema produces the errors"
+      ],
+      "answer": 1,
+      "why": "Returning the same 422 problem-details body the API sends (for example `{ errors: { email: [...] } }`) exercises your real mapping code, and the test asserts what the user sees. Client-side validation would never reach the server path.",
+      "tags": [
+        "msw",
+        "forms"
+      ],
+      "level": 1,
+      "asked": "Server-side validation is where many forms fall down; testing it shows end-to-end thinking."
+    },
+    {
+      "id": "tf-088",
+      "q": "In a Vitest `jsdom` test, the API client calls `fetch(\"/api/users\")` and fails with \"Failed to parse URL\", although MSW has a `/api/users` handler. Why?",
+      "choices": [
+        "Node's `fetch` needs an absolute URL, so it fails first",
+        "MSW only matches absolute handler URLs in Node, not relative paths",
+        "jsdom blocks `fetch` to relative URLs until `location` is set",
+        "The handler must be registered before `jsdom` creates `window`"
+      ],
+      "answer": 0,
+      "why": "In the jsdom environment `fetch` is still Node's, which does not resolve relative URLs against `location`, so request construction throws. Give the client a base URL (for example from `import.meta.env`) in tests.",
+      "tags": [
+        "msw",
+        "vitest"
+      ],
+      "level": 3,
+      "asked": "A confusing first-day error with MSW; explaining it shows you know which fetch is running."
+    },
+    {
+      "id": "tf-089",
+      "q": "In Playwright, why prefer `page.getByRole(\"button\", { name: \"Checkout\" })` over `page.locator(\".btn-primary\")`?",
+      "choices": [
+        "CSS locators do not auto-wait, while role locators do",
+        "It targets what users perceive, so restyling won't break it",
+        "Role locators run in the page, CSS ones in the test runner",
+        "CSS class locators are deprecated since Playwright 1.40"
+      ],
+      "answer": 1,
+      "why": "Role and name are what users and assistive technology rely on, so the locator survives class renames and checks accessibility for free. All locators auto-wait the same way, and CSS locators are still supported.",
+      "tags": [
+        "playwright",
+        "e2e"
+      ],
+      "level": 1,
+      "asked": "The same principle as Testing Library, applied to e2e; interviewers look for consistency."
+    },
+    {
+      "id": "tf-090",
+      "q": "Why is the first Playwright assertion flaky and the second not?",
+      "code": "expect(await page.getByText(\"Saved\").isVisible()).toBe(true);\nawait expect(page.getByText(\"Saved\")).toBeVisible();",
+      "lang": "ts",
+      "choices": [
+        "`isVisible()` waits for page load, and `toBeVisible()` does not",
+        "`toBeVisible()` checks the DOM, while `isVisible()` checks a screenshot",
+        "`isVisible()` checks once; `toBeVisible()` retries until timeout",
+        "The first needs `{ timeout: 5000 }`, which the second sets for you"
+      ],
+      "answer": 2,
+      "why": "`isVisible()` returns the state at that instant, so it fails if \"Saved\" appears a moment later. Web-first assertions like `toBeVisible()` retry until the condition holds or the expect timeout (5 s by default) passes; `isVisible` has no timeout option to add.",
+      "tags": [
+        "playwright",
+        "async",
+        "flakiness"
+      ],
+      "level": 2,
+      "asked": "The single biggest cause of flaky Playwright tests; strong candidates name web-first assertions."
+    },
+    {
+      "id": "tf-091",
+      "q": "Forty Playwright tests each log in through the UI, adding minutes to every run. What is the recommended setup?",
+      "choices": [
+        "Log in once in a setup project; reuse its `storageState`",
+        "Disable test isolation so all tests share one logged-in page",
+        "Run the login test first and rely on the cookie persisting",
+        "Remove authentication from the app when `NODE_ENV` is test"
+      ],
+      "answer": 0,
+      "why": "A setup project signs in (via UI or API), saves cookies and storage to a file, and dependent projects start each isolated context with that `storageState`. Sharing a page or relying on test order breaks isolation, and removing auth stops you testing it.",
+      "tags": [
+        "playwright",
+        "auth"
+      ],
+      "level": 2,
+      "asked": "Fast, isolated authenticated tests are a practical Playwright skill interviewers check for."
+    },
+    {
+      "id": "tf-092",
+      "q": "In Playwright, one test adds items to the cart. Why does the next test start with an empty cart?",
+      "choices": [
+        "Playwright restarts the dev server between tests",
+        "Playwright truncates the database after each test",
+        "Each test runs in a fresh browser context with its own storage",
+        "The cart is cleared because each test uses a different browser"
+      ],
+      "answer": 2,
+      "why": "Every test gets a new, incognito-like browser context, so cookies, local storage and sessions start clean. Server-side data is not reset, which is why tests must create or isolate their own data.",
+      "tags": [
+        "playwright",
+        "e2e"
+      ],
+      "level": 1,
+      "asked": "Isolation is the foundation of reliable e2e suites; knowing what is and is not reset matters."
+    },
+    {
+      "id": "tf-093",
+      "q": "An e2e checkout test must not hit the real payment provider. How can Playwright handle that request?",
+      "choices": [
+        "Set `bypassCSP: true` so the payment script never loads",
+        "Mock the payment SDK module with `vi.mock` inside the test",
+        "Point the app at `localhost` for payments using a `.env` file",
+        "Fulfil the payment call with a fake via `page.route`"
+      ],
+      "answer": 3,
+      "why": "`page.route(url, route => route.fulfill({ json }))` intercepts browser requests, so you control third-party responses while your own stack stays real. `vi.mock` does not exist in Playwright tests, and CSP has nothing to do with network calls.",
+      "tags": [
+        "playwright",
+        "mocking"
+      ],
+      "level": 2,
+      "asked": "Knowing where to draw the mock boundary in e2e shows judgement about what you are testing."
+    },
+    {
+      "id": "tf-094",
+      "q": "Playwright tests run in four parallel workers against one database. Tests that edit \"the first customer\" interfere. What is the robust fix?",
+      "choices": [
+        "Run with `workers: 1` so only one test touches the data",
+        "Each test creates its own uniquely named data via the API",
+        "Reset the whole database in a `beforeEach` hook in every test",
+        "Retry failing tests three times so collisions usually resolve"
+      ],
+      "answer": 1,
+      "why": "Per-test data, created quickly via API calls or a fixture and named uniquely, removes shared state so tests can run in any order and in parallel. A single worker or full resets make the suite slow, and retries hide the bug.",
+      "tags": [
+        "playwright",
+        "flakiness",
+        "test-data"
+      ],
+      "level": 3,
+      "asked": "Test data strategy is what separates e2e suites that scale from ones that are disabled."
+    },
+    {
+      "id": "tf-095",
+      "q": "A Playwright test fails only on CI. With `trace: \"on-first-retry\"`, what does the trace give you?",
+      "choices": [
+        "A video of the run plus the CI machine's environment variables",
+        "A DOM snapshot, network log and console output for every step",
+        "The server logs from the backend for the same time window",
+        "A list of the locators that were slowest to resolve"
+      ],
+      "answer": 1,
+      "why": "The trace viewer shows each action with before/after DOM snapshots, network requests, console messages and source, so you can see exactly what the page looked like when it failed. Server logs and environment variables are not included.",
+      "tags": [
+        "playwright",
+        "debugging"
+      ],
+      "level": 2,
+      "asked": "Debugging CI-only failures is a daily e2e task; the trace viewer is the tool."
+    },
+    {
+      "id": "tf-096",
+      "q": "Playwright reports a test as \"flaky\": it failed, then passed on retry. What should the team do?",
+      "choices": [
+        "Nothing, because retries exist so that such tests pass",
+        "Raise the retry count so it stops showing in the report",
+        "Treat it as a bug and find the race using the trace",
+        "Delete the test, since flaky tests have no value"
+      ],
+      "answer": 2,
+      "why": "A flaky result means timing, shared data or ordering changes the outcome, which is either a test bug or a real race users can hit. Retries keep the pipeline moving while you investigate; hiding or deleting the signal wastes it.",
+      "tags": [
+        "flakiness",
+        "playwright"
+      ],
+      "level": 2,
+      "asked": "Interviewers want to hear that you treat flakiness as a defect, not as noise."
+    },
+    {
+      "id": "tf-097",
+      "q": "In Playwright, `await page.getByRole(\"link\", { name: \"Edit\" }).click()` throws a \"strict mode violation\". What does it mean?",
+      "choices": [
+        "The link was not visible within the action timeout",
+        "The locator matched more than one element on the page",
+        "The page is running in React StrictMode in development",
+        "The link's `href` points to a different origin"
+      ],
+      "answer": 1,
+      "why": "Locators are strict: an action on a locator that matches several elements throws instead of guessing. Narrow it with a parent locator, `filter({ hasText })` or a more specific name; use `.first()` only when order is truly what you mean.",
+      "tags": [
+        "playwright",
+        "e2e"
+      ],
+      "level": 2,
+      "asked": "A common error message whose fix reveals whether you write precise locators."
+    },
+    {
+      "id": "tf-098",
+      "q": "Many Playwright tests need a signed-in user and a fresh project. What does a custom fixture via `test.extend` give you?",
+      "choices": [
+        "Setup and teardown only for tests that ask for it",
+        "A shared project created once and reused by every worker",
+        "Faster tests, because fixtures skip the browser entirely",
+        "Automatic retries for any test that uses the fixture"
+      ],
+      "answer": 0,
+      "why": "Fixtures are lazy and scoped: a test that asks for `project` gets one created before and cleaned up after it, and tests that do not ask pay nothing. That composes better than `beforeEach` hooks and keeps data per test.",
+      "tags": [
+        "playwright",
+        "test-data"
+      ],
+      "level": 3,
+      "asked": "Fixtures are Playwright's main abstraction; using them well is a mid-to-senior signal."
+    },
+    {
+      "id": "tf-099",
+      "q": "Screenshot tests with `toHaveScreenshot()` pass on developers' Macs but fail on Linux CI with tiny text differences. What is the usual fix?",
+      "choices": [
+        "Raise `maxDiffPixelRatio` until the failures stop",
+        "Create baselines in the same OS image that CI uses",
+        "Switch every screenshot to a JPEG format with lower quality",
+        "Run the screenshot tests in headed mode on CI"
+      ],
+      "answer": 1,
+      "why": "Font rendering and anti-aliasing differ by OS, which is why Playwright stores baselines per platform. Updating them inside the same Docker image as CI makes comparisons meaningful; loosening thresholds hides real regressions.",
+      "tags": [
+        "playwright",
+        "visual-testing"
+      ],
+      "level": 3,
+      "asked": "Visual testing is valuable but notoriously noisy; this checks you know why."
+    },
+    {
+      "id": "tf-100",
+      "q": "A Playwright suite takes 40 minutes on one CI machine. What does `npx playwright test --shard=2/4` do?",
+      "choices": [
+        "Runs the second of four slices of the suite",
+        "Runs each test twice across four browsers to detect flakiness",
+        "Limits each worker to two tests to reduce memory use",
+        "Runs only tests tagged with a shard annotation of 2"
+      ],
+      "answer": 0,
+      "why": "Sharding splits the test files across machines; run `1/4` to `4/4` in a CI matrix and merge the blob reports. Workers parallelise within one machine, and sharding across machines multiplies that.",
+      "tags": [
+        "playwright",
+        "ci"
+      ],
+      "level": 2,
+      "asked": "Keeping e2e fast enough to run on every PR is a real engineering concern."
+    },
+    {
+      "id": "tf-101",
+      "q": "What does `npx playwright codegen http://localhost:5173` do?",
+      "choices": [
+        "It generates page objects from the app's route definitions",
+        "It converts existing Cypress tests into Playwright tests",
+        "It scaffolds a config file and example tests for the project",
+        "It records your clicks in a browser and writes test code"
+      ],
+      "answer": 3,
+      "why": "Codegen opens a browser and records actions as test code, choosing role-based locators where it can. It is a fast starting point, but you still add meaningful assertions and tidy the steps; `npm init playwright` is what scaffolds a project.",
+      "tags": [
+        "playwright"
+      ],
+      "level": 1,
+      "asked": "Shows familiarity with the tooling beyond writing tests by hand."
+    },
+    {
+      "id": "tf-102",
+      "q": "An automated axe check in your tests reports no violations. What can it still not tell you?",
+      "choices": [
+        "Whether images are missing `alt` attributes",
+        "Whether text meets colour-contrast minimums",
+        "Whether alt text and focus order make sense",
+        "Whether form inputs have associated labels"
+      ],
+      "answer": 2,
+      "why": "Automated rules catch mechanical failures such as missing names, labels and contrast, but judging whether alt text is meaningful or focus order is logical needs a human (or targeted keyboard tests). Treat axe as a floor, not a pass.",
+      "tags": [
+        "accessibility",
+        "e2e"
+      ],
+      "level": 2,
+      "asked": "Interviewers probe whether you think automation \"does accessibility\" for you."
+    },
+    {
+      "id": "tf-103",
+      "q": "A project has 100% line coverage. What does that tell you?",
+      "choices": [
+        "Every line ran in a test, not that it was checked",
+        "Every function has been tested with valid and invalid input",
+        "The code has no bugs that a unit test could possibly find",
+        "Every branch of every `if` statement was taken both ways"
+      ],
+      "answer": 0,
+      "why": "Coverage measures execution, so a test with no assertions still covers lines, and line coverage does not even imply branch coverage. It is useful for spotting untested areas, not as proof of quality.",
+      "tags": [
+        "coverage",
+        "test-design"
+      ],
+      "level": 1,
+      "asked": "A classic trap question; a thoughtful answer explains how you do use coverage."
+    },
+    {
+      "id": "tf-104",
+      "q": "For a typical React CRUD app, which tests usually give the most confidence per minute of effort?",
+      "choices": [
+        "Snapshot tests of every component, updated when they change",
+        "Unit tests of each hook and helper, with every import mocked",
+        "End-to-end tests of every screen and every validation rule",
+        "Screen-level tests with a mocked network, plus a few e2e"
+      ],
+      "answer": 3,
+      "why": "Rendering real screens with real components and only the network mocked catches wiring bugs cheaply, while a handful of e2e tests cover the true stack. Heavily mocked unit tests prove little, and e2e for every rule is slow and brittle.",
+      "tags": [
+        "test-design",
+        "e2e"
+      ],
+      "level": 2,
+      "asked": "Test strategy questions reveal how you balance cost and confidence."
+    },
+    {
+      "id": "tf-105",
+      "q": "A Playwright test fails about once in twenty runs locally. How do you reproduce it reliably?",
+      "choices": [
+        "Run with `--debug`, which slows every action down",
+        "Run with `--repeat-each=30` and capture a trace on failure",
+        "Run with `--headed`, since flakes only happen in headless mode",
+        "Run with `--update-snapshots` to reset state between runs"
+      ],
+      "answer": 1,
+      "why": "Repeating the test many times turns a rare failure into a likely one, and a trace from the failing run shows the race. Debug and headed modes change timing, which often hides the flake rather than exposing it.",
+      "tags": [
+        "flakiness",
+        "playwright"
+      ],
+      "level": 2,
+      "asked": "Having a method for flakes, not just intuition, is what interviewers are listening for."
+    },
+    {
+      "id": "tf-106",
+      "q": "A Playwright test asserts a date shows as \"10/03/2026\", but CI in a US time zone renders \"3/10/2026\". What is the fix?",
+      "choices": [
+        "Assert with a regex that accepts both date orders",
+        "Format dates on the server so the browser has no say",
+        "Set `locale` and `timezoneId` for the test",
+        "Run CI in the same country as the development team"
+      ],
+      "answer": 2,
+      "why": "Playwright can emulate `locale: \"en-GB\"` and `timezoneId: \"Europe/London\"` per project or test, making output deterministic, and you can add a project for another locale to test it deliberately. A loose regex would hide real formatting bugs.",
+      "tags": [
+        "playwright",
+        "flakiness"
+      ],
+      "level": 3,
+      "asked": "Locale and time-zone bugs are common in real apps; controlling them in tests shows care."
+    },
+    {
+      "id": "tf-107",
+      "q": "Which browser engines can Playwright run tests against?",
+      "choices": [
+        "Chromium only, with other browsers via Selenium",
+        "Chromium, Firefox and WebKit",
+        "Chrome and Edge, as both use Chromium",
+        "Any browser that implements WebDriver BiDi"
+      ],
+      "answer": 1,
+      "why": "Playwright ships patched builds of Chromium, Firefox and WebKit (Safari's engine), configured as projects, and can also drive branded Chrome and Edge. Cross-engine runs catch layout and API differences a Chromium-only suite misses.",
+      "tags": [
+        "playwright"
+      ],
+      "level": 1,
+      "asked": "A basics question that leads into whether you test beyond Chrome."
+    },
+    {
+      "id": "tf-108",
+      "q": "In Playwright, what does `locator.click()` wait for before clicking?",
+      "choices": [
+        "Only for the element to be attached to the DOM",
+        "For the network to be idle and all images to load",
+        "For a fixed 500 ms after the last DOM mutation",
+        "Until it is visible, stable, enabled and unobscured"
+      ],
+      "answer": 3,
+      "why": "Actionability checks mean Playwright waits until the element can actually receive the click, which removes most manual waits. It does not wait for network idle, which is unreliable in apps with polling or analytics.",
+      "tags": [
+        "playwright",
+        "async"
+      ],
+      "level": 2,
+      "asked": "Understanding auto-waiting explains why sleeps are unnecessary and harmful."
+    },
+    {
+      "id": "tf-109",
+      "q": "A form shows eight different field-level validation messages. Where should those cases be tested?",
+      "choices": [
+        "In component tests, with one e2e test for a successful submit",
+        "In e2e tests, since only a real browser shows messages correctly",
+        "In snapshot tests of the form in each invalid state",
+        "In manual QA, since validation copy changes too often"
+      ],
+      "answer": 0,
+      "why": "Component tests run in milliseconds and can cover every rule; an e2e test proves the whole flow works once. Pushing every case into e2e makes the suite slow and brittle without adding confidence.",
+      "tags": [
+        "test-design",
+        "e2e"
+      ],
+      "level": 2,
+      "asked": "Placing tests at the right level is the core skill behind a fast, trustworthy suite."
+    },
+    {
+      "id": "tf-110",
+      "q": "Clicking \"Open invoice\" opens a PDF in a new tab. How do you get hold of that tab in Playwright?",
+      "code": "const popupPromise = page.waitForEvent(\"popup\");\nawait page.getByRole(\"link\", { name: \"Open invoice\" }).click();\n// ?",
+      "lang": "ts",
+      "choices": [
+        "`const popup = page.context().pages()[0];` straight after the click",
+        "`const popup = await page.waitForNavigation();` after the click",
+        "`const popup = await popupPromise;`, started before the click",
+        "`const popup = await browser.newPage();` and go to the PDF URL"
+      ],
+      "answer": 2,
+      "why": "Start waiting for the `popup` event before the click so the event cannot fire before you listen, then await it to get the new `Page`. Index `0` is the original page, and opening a new page yourself skips the behaviour under test.",
+      "tags": [
+        "playwright",
+        "async"
+      ],
+      "level": 3,
+      "asked": "Event-ordering questions reveal whether you understand the race behind many flaky tests."
     }
   ]
 }

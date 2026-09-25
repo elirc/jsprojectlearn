@@ -431,6 +431,1726 @@
       "tags": ["flakiness", "quality"],
       "level": 1,
       "asked": "Order dependence is the commonest cause of flaky suites; spotting it in five lines is the junior bar."
+    },
+    {
+      "id": "tq-029",
+      "q": "`getUser(1)` returns a new object `{ id: 1, name: 'Ada' }`. Why does this Vitest assertion fail?",
+      "code": "expect(getUser(1)).toBe({ id: 1, name: 'Ada' });",
+      "lang": "js",
+      "choices": [
+        "`toBe` compares object keys in order, and `getUser` adds `name` first",
+        "`toBe` checks identity with `Object.is`, and these are two separate objects",
+        "`toBe` only accepts primitives and throws a type error for object arguments",
+        "`toBe` compares JSON strings, and the literal has a different key spacing"
+      ],
+      "answer": 1,
+      "why": "`toBe` is `Object.is`: same primitive value or the very same reference. Two objects built separately are never the same reference, so use `toEqual` for value comparison. `toBe` accepts objects happily; it just compares identity.",
+      "tags": ["assertions", "vitest"],
+      "level": 1,
+      "asked": "The first matcher mistake everyone makes; a strong answer names `Object.is` and reaches for `toEqual`."
+    },
+    {
+      "id": "tq-030",
+      "q": "What happens with this Vitest assertion, and which matcher would catch the difference?",
+      "code": "expect({ id: 1, deletedAt: undefined }).toEqual({ id: 1 });",
+      "lang": "js",
+      "choices": [
+        "It fails; `toEqual` treats a missing key and an `undefined` key as different",
+        "It fails; use `toMatchObject` instead, which ignores keys that are undefined",
+        "It passes; `toStrictEqual` would fail it, since it checks undefined keys too",
+        "It passes; no built-in matcher distinguishes the two, so compare `Object.keys`"
+      ],
+      "answer": 2,
+      "why": "`toEqual` recursively ignores properties whose value is `undefined`, so the two objects count as equal. `toStrictEqual` also checks undefined properties, array sparseness and class types, which matters when an API response must not carry a stray key.",
+      "tags": ["assertions", "vitest"],
+      "level": 2,
+      "asked": "Shows you know matchers have different equality rules, which matters when asserting API payloads."
+    },
+    {
+      "id": "tq-031",
+      "q": "What does the last line log?",
+      "code": "const next = vi.fn()\n  .mockReturnValueOnce(1)\n  .mockReturnValue(9);\n\nconsole.log([next(), next(), next()]);",
+      "lang": "js",
+      "choices": [
+        "[1, 9, 9]",
+        "[1, 1, 9]",
+        "[9, 9, 9]",
+        "[1, undefined, 9]"
+      ],
+      "answer": 0,
+      "why": "Once-values are consumed first, in order; when they run out the default from `mockReturnValue` applies. The chain order does not matter: a later `mockReturnValue` does not override queued once-values.",
+      "tags": ["doubles", "vitest"],
+      "level": 2,
+      "asked": "Checks you can script a stub for a retry path: fail once, then succeed."
+    },
+    {
+      "id": "tq-032",
+      "q": "The `vi.mock` call sits after the import of `signup`, which imports `./mailer.js`. Does `signup` get the fake mailer?",
+      "code": "import { test, expect, vi } from 'vitest';\nimport { signup } from './signup.js';\n\nvi.mock('./mailer.js', () => ({ send: vi.fn(() => 'fake') }));\n\ntest('uses the fake', () => {\n  expect(signup('a@b.c')).toBe('fake');\n});",
+      "lang": "js",
+      "choices": [
+        "No; the import ran first, so `signup` holds the real `send` binding",
+        "Only if `signup.js` is imported again with `await import()` in the test",
+        "No; `vi.mock` affects only the test file's own imports, not nested ones",
+        "Yes; Vitest hoists `vi.mock` above the imports before the file runs"
+      ],
+      "answer": 3,
+      "why": "Vitest rewrites the file so every `vi.mock` call runs before any import, and the mock applies to the whole module graph, including `signup.js`'s own import. That hoisting is also why a mock factory cannot use variables declared lower in the file.",
+      "tags": ["mocking", "vitest"],
+      "level": 2,
+      "asked": "Module mocking looks like magic until you know about hoisting; interviewers probe whether you do."
+    },
+    {
+      "id": "tq-033",
+      "q": "`parse('')` throws `Error('empty input')`. What does this test report?",
+      "code": "test('rejects empty input', () => {\n  expect(parse('')).toThrow();\n});",
+      "lang": "js",
+      "choices": [
+        "It passes, since `toThrow` sees that the call to `parse` threw an error",
+        "It fails with `empty input`, thrown before `expect` ever receives a value",
+        "It passes only if `parse` is async, because `toThrow` awaits the result",
+        "It fails with a message saying that `toThrow` needs a string argument"
+      ],
+      "answer": 1,
+      "why": "JavaScript evaluates the argument first, so `parse('')` throws while building the call to `expect` and the test fails with that error. `toThrow` needs a function it can call itself: `expect(() => parse('')).toThrow()`. For async code use `await expect(p).rejects.toThrow()`.",
+      "tags": ["assertions", "vitest"],
+      "level": 1,
+      "asked": "A small trap that reveals whether you understand what an assertion actually receives."
+    },
+    {
+      "id": "tq-034",
+      "q": "In Vitest, the spy is installed but the assertion fails with 10. Why?",
+      "code": "// lib.js\nexport function rate() { return 1; }\nexport function price(n) { return n * rate(); }\n\n// lib.test.js\nvi.spyOn(lib, 'rate').mockReturnValue(2);\nexpect(lib.price(10)).toBe(20);",
+      "lang": "js",
+      "choices": [
+        "`price` calls its local `rate` binding, not the export the spy replaced",
+        "`vi.spyOn` needs `mockImplementation`, since `mockReturnValue` is for `vi.fn`",
+        "The spy only applies after `await`, because ES module exports load lazily",
+        "`mockReturnValue(2)` affects the second call only, and `price` calls it once"
+      ],
+      "answer": 0,
+      "why": "Inside an ES module a call to `rate()` goes straight to the local function, whatever happens to the module's export object. Spying on the namespace only changes calls made through it. Fix the design: pass the rate in, or move `rate` to another module and mock that.",
+      "tags": ["mocking", "design"],
+      "level": 3,
+      "asked": "Separates people who mock by trial and error from those who understand module bindings, and usually leads to 'inject it instead'."
+    },
+    {
+      "id": "tq-035",
+      "q": "On a spy created with `vi.spyOn(mailer, 'send').mockResolvedValue('ok')`, what is the difference between `mockClear()` and `mockRestore()`?",
+      "choices": [
+        "`mockClear` deletes the fake result; `mockRestore` also wipes the call history",
+        "`mockClear` removes the spy; `mockRestore` keeps it but forgets its calls",
+        "`mockClear` wipes recorded calls; `mockRestore` puts the real `send` back",
+        "`mockClear` resets every spy in the file; `mockRestore` resets only this one"
+      ],
+      "answer": 2,
+      "why": "Clear forgets `mock.calls` and `mock.results` but keeps the fake implementation, which is what you want between tests sharing a stub. Restore undoes the spying, so `mailer.send` is the original method again. Reset sits between them, dropping the fake implementation.",
+      "tags": ["mocking", "vitest"],
+      "level": 2,
+      "asked": "Knowing the clear/reset/restore ladder is how you avoid mocks leaking between tests."
+    },
+    {
+      "id": "tq-036",
+      "q": "Test A calls `vi.spyOn(flags, 'isEnabled').mockReturnValue(true)`. Test B, later in the same file, expects the real flag value and fails only when A runs first. What is the fix?",
+      "choices": [
+        "Move test B above test A, so the spy is not installed yet when B runs",
+        "Restore spies after each test, via `restoreMocks: true` or an `afterEach`",
+        "Run the file with `--sequence.shuffle` so the order changes each time",
+        "Mark test B with `test.concurrent` so it runs in its own module copy"
+      ],
+      "answer": 1,
+      "why": "A spy replaces the method on a shared object until something restores it, so it leaks into every later test in that file. Restoring after each test removes the order dependency. Reordering hides it, and shuffling only exposes it more often.",
+      "tags": ["mocking", "flakiness"],
+      "level": 2,
+      "asked": "Order-dependent failures are a classic; the strong answer fixes cleanup rather than order."
+    },
+    {
+      "id": "tq-037",
+      "q": "Why use `vi.useFakeTimers()` to test a warning that appears 30 seconds before a session expires?",
+      "choices": [
+        "The test can move time forward instantly and exactly, instead of waiting 30 s",
+        "Real timers are disabled in the test environment, so `setTimeout` never fires",
+        "Fake timers also stub `fetch`, so the session refresh never reaches the server",
+        "It makes `setTimeout` run synchronously, so the warning shows on the first line"
+      ],
+      "answer": 0,
+      "why": "With fake timers, `vi.advanceTimersByTime(30_000)` fires due callbacks immediately and deterministically, so the test takes milliseconds and cannot race the clock. Timers still only fire when you advance them; nothing becomes synchronous by itself, and the network is untouched.",
+      "tags": ["time", "vitest"],
+      "level": 1,
+      "asked": "Tests that sleep are slow and flaky; interviewers want to hear that you control time instead."
+    },
+    {
+      "id": "tq-038",
+      "q": "`isOverdue(invoice)` compares the due date with `new Date()`. Which Vitest setup makes the test deterministic without changing the function?",
+      "choices": [
+        "`vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 2, 1))`",
+        "`process.env.TZ = 'UTC'` at the top of the test file, before any import",
+        "`vi.useFakeTimers()` then `vi.setSystemTime(new Date('2026-03-01T12:00:00Z'))`",
+        "`vi.stubGlobal('Date', { now: () => Date.UTC(2026, 2, 1) })` in `beforeEach`"
+      ],
+      "answer": 2,
+      "why": "`setSystemTime` fakes the clock that both `Date.now()` and a bare `new Date()` read. Spying on `Date.now` does not affect `new Date()`, which reads the clock directly, and stubbing `Date` with a plain object breaks the constructor. Fixing the time zone makes output stable but not the date.",
+      "tags": ["time", "vitest"],
+      "level": 2,
+      "asked": "Date-dependent tests are the top cause of 'fails on the 1st of the month'; a strong answer also mentions injecting a clock."
+    },
+    {
+      "id": "tq-039",
+      "q": "How many tests does this report?",
+      "code": "test.each([\n  [1, 1, 2],\n  [2, 2, 4],\n  [2, -2, 0],\n])('add(%i, %i) is %i', (a, b, sum) => {\n  expect(add(a, b)).toBe(sum);\n});",
+      "lang": "js",
+      "choices": [
+        "One test, which contains three assertions run one after the other",
+        "Nine tests, one for each number that appears in the table of cases",
+        "Three tests, but the first failing row stops the remaining rows",
+        "Three tests, each named from its row, for example `add(2, -2) is 0`"
+      ],
+      "answer": 3,
+      "why": "`test.each` generates one independent test per row, formatting the name with printf-style placeholders, so a failure names the exact case and the other rows still run. That is the point over a loop of assertions inside one test.",
+      "tags": ["parameterised", "vitest"],
+      "level": 1,
+      "asked": "Table-driven tests are the idiomatic way to cover boundaries; interviewers like hearing that failures name the case."
+    },
+    {
+      "id": "tq-040",
+      "q": "`createUser` returns an object with a random UUID `id`, the given `email` and a `createdAt` Date. Which assertion checks it without pinning the random values?",
+      "choices": [
+        "`expect(user).toEqual({ id: expect.any(String), email, createdAt: expect.any(Date) })`",
+        "`expect(user).toMatchObject({ email })`, then `expect(user.id).toBeTruthy()` for the rest",
+        "`expect(JSON.stringify(user)).toContain(email)`, so extra fields cannot break it",
+        "`expect(Object.keys(user)).toEqual(['id', 'email', 'createdAt'])`, checking only keys"
+      ],
+      "answer": 0,
+      "why": "Asymmetric matchers such as `expect.any(Date)` let the full shape be checked while tolerating values that differ each run. `toMatchObject` alone ignores extra or missing fields you care about, and the string or key-only checks miss wrong types.",
+      "tags": ["assertions", "vitest"],
+      "level": 1,
+      "asked": "Tests on generated ids and timestamps are everywhere in CRUD code; this shows you can keep them exact yet stable."
+    },
+    {
+      "id": "tq-041",
+      "q": "A developer commits a stray `test.only`. What happens when Vitest runs in CI, where the `CI` environment variable is set?",
+      "choices": [
+        "Only that test runs, and the pipeline goes green without the others",
+        "Vitest ignores `.only` in CI and runs the whole suite as normal",
+        "The run fails with an 'unexpected .only modifier' error instead",
+        "Vitest runs that test twice, once on its own and once with the suite"
+      ],
+      "answer": 2,
+      "why": "Vitest's `allowOnly` defaults to false when `CI` is set, so a stray `.only` fails the run rather than silently skipping everything else. Locally `.only` works as a focus tool. Many teams also add a lint rule such as `no-only-tests`.",
+      "tags": ["ci", "vitest"],
+      "level": 2,
+      "asked": "A realistic accident; the strong answer knows the tooling guard and mentions linting for it."
+    },
+    {
+      "id": "tq-042",
+      "q": "Why prefer `vi.stubEnv('FEATURE_EXPORT', 'on')` to assigning `process.env.FEATURE_EXPORT = 'on'` in a test?",
+      "choices": [
+        "Direct assignment is ignored, because `process.env` is frozen in test runs",
+        "`vi.stubEnv` encrypts the value, so it does not appear in the CI logs",
+        "`vi.stubEnv` also rewrites the `.env` file, so the app picks up the change",
+        "Vitest can undo stubbed values with `vi.unstubAllEnvs()` after each test"
+      ],
+      "answer": 3,
+      "why": "A plain assignment persists for the rest of the worker, so later tests silently see the flag on. Stubbed values are tracked and restored, manually or with the `unstubEnvs` config option. Nothing touches files on disk.",
+      "tags": ["config", "vitest"],
+      "level": 2,
+      "asked": "Shows you think about cleanup and cross-test leakage, not just making one test pass."
+    },
+    {
+      "id": "tq-043",
+      "q": "What does this mock give the tests in the file?",
+      "code": "vi.mock('./dates.js', async (importOriginal) => ({\n  ...(await importOriginal()),\n  today: () => new Date('2026-01-01T00:00:00Z'),\n}));",
+      "lang": "js",
+      "choices": [
+        "A module whose only export is `today`, so other imports are undefined",
+        "The real module, with only `today` swapped for the fixed-date version",
+        "The real module, with `today` patched only in tests that call `vi.mocked`",
+        "A copy of the module that is reloaded for each test in the file"
+      ],
+      "answer": 1,
+      "why": "A mock factory's return value becomes the entire module, so spreading the original keeps every real export and overrides just `today`. Without the spread, anything else imported from `dates.js` would be missing. The mock applies to the whole file, not per test.",
+      "tags": ["mocking", "vitest"],
+      "level": 2,
+      "asked": "Partial mocks are common in real suites; interviewers check you know a factory replaces the whole module."
+    },
+    {
+      "id": "tq-044",
+      "q": "A query-string parser returns `'1'` where the test expects the number `1`. With the legacy `node:assert` import rather than `node:assert/strict`, what does `assert.equal(1, '1')` do?",
+      "choices": [
+        "Throws, because the two values have different types",
+        "Passes, because legacy `equal` compares with `==`",
+        "Throws a deprecation error, since `equal` was removed",
+        "Passes only if both are converted with `String()` first"
+      ],
+      "answer": 1,
+      "why": "Legacy assertion mode uses loose equality, so `1 == '1'` passes and `deepEqual` is equally forgiving. Import `node:assert/strict` (or use `strictEqual` and `deepStrictEqual`) so a number-versus-string bug from JSON or a query string is caught.",
+      "tags": ["assertions", "node-test"],
+      "level": 1,
+      "asked": "A quick check that you would catch type bugs in tests rather than hide them."
+    },
+    {
+      "id": "tq-045",
+      "q": "In Node 24's test runner, what does this test log?",
+      "code": "test('timers', (t) => {\n  t.mock.timers.enable({ apis: ['setTimeout'] });\n  let hits = 0; setTimeout(() => hits++, 1000);\n  t.mock.timers.tick(999);\n  console.log(hits);\n  t.mock.timers.tick(1);\n  console.log(hits);\n});",
+      "lang": "js",
+      "choices": [
+        "1, then 1",
+        "0, then 0",
+        "0, then 1",
+        "1, then 2"
+      ],
+      "answer": 2,
+      "why": "Mocked timers fire only when time is advanced past their due point: 999 ms is not enough and one more millisecond is. Nothing fires on its own, and because it was a `setTimeout`, not `setInterval`, the callback runs once.",
+      "tags": ["time", "node-test"],
+      "level": 2,
+      "asked": "Shows you can test timeouts and retries with the built-in runner, without extra dependencies."
+    },
+    {
+      "id": "tq-046",
+      "q": "What does this assertion check?",
+      "code": "expect(send).toHaveBeenCalledWith(\n  'ada@example.com',\n  expect.stringContaining('Welcome'),\n);",
+      "lang": "js",
+      "choices": [
+        "That the most recent call to `send` had exactly these two arguments",
+        "That `send` was called once, with arguments matching these two exactly",
+        "That at least one call to `send` had matching arguments, in that order",
+        "That `send` was called with these arguments before any other mock ran"
+      ],
+      "answer": 2,
+      "why": "`toHaveBeenCalledWith` passes if any recorded call matches, and `stringContaining` accepts any body containing 'Welcome'. To pin the count, add `toHaveBeenCalledTimes(1)`; for the latest call use `toHaveBeenLastCalledWith`.",
+      "tags": ["doubles", "assertions"],
+      "level": 2,
+      "asked": "Interaction assertions are easy to over- or under-specify; this checks you know exactly what one proves."
+    },
+    {
+      "id": "tq-047",
+      "q": "The service calls `repo.findById(id).then(...)`. Which stub for `findById` makes it receive `user`?",
+      "choices": [
+        "`vi.fn().mockReturnValue(user)`",
+        "`vi.fn().mockResolvedValue(user)`",
+        "`vi.fn().mockImplementation(user)`",
+        "`vi.fn().mockReturnThis(user)`"
+      ],
+      "answer": 1,
+      "why": "`mockResolvedValue(user)` returns `Promise.resolve(user)`, so `.then` works like the real async repository. Returning the plain object makes `.then` undefined and the code throws; `mockImplementation` expects a function, not a value.",
+      "tags": ["doubles", "async"],
+      "level": 1,
+      "asked": "A basic async stubbing check; mismatched sync and async doubles cause confusing failures."
+    },
+    {
+      "id": "tq-048",
+      "q": "Why pass property matchers to this snapshot?",
+      "code": "expect(order).toMatchSnapshot({\n  id: expect.any(String),\n  createdAt: expect.any(Date),\n});",
+      "lang": "js",
+      "choices": [
+        "They mark `id` and `createdAt` as the only fields worth saving in the snapshot",
+        "They stop the snapshot being written until both fields hold real values",
+        "They make Vitest regenerate the snapshot whenever those two fields change",
+        "Those fields differ every run, so they are checked by type, the rest by value"
+      ],
+      "answer": 3,
+      "why": "Without matchers the snapshot would record one run's UUID and timestamp and fail on the next. Property matchers assert the type and store a placeholder, while every other field is still compared exactly.",
+      "tags": ["snapshots", "vitest"],
+      "level": 2,
+      "asked": "Snapshot tests that fail on every run get deleted; this shows you know how to keep them stable."
+    },
+    {
+      "id": "tq-049",
+      "q": "Vitest runs each test file in an isolated module environment by default. What does that protect you from?",
+      "choices": [
+        "Module-level state leaking between files; tests in one file still share it",
+        "Any shared state between tests, so no cleanup code is needed anywhere",
+        "Rows that one test file writes to a shared database being seen by another",
+        "Tests in the same file running at the same time and racing each other"
+      ],
+      "answer": 0,
+      "why": "Isolation gives each file fresh module instances, so a module-level cache or mock in one file cannot leak into another. Within a file, tests share those modules, and external state such as a database, files or ports is not isolated at all.",
+      "tags": ["isolation", "vitest"],
+      "level": 2,
+      "asked": "Knowing what the runner isolates, and what it cannot, is what lets you reason about order-dependent failures."
+    },
+    {
+      "id": "tq-050",
+      "q": "What is wrong with this test?",
+      "code": "test('saves every row', () => {\n  rows.forEach(async (row) => {\n    await save(row);\n    expect(await db.exists(row.id)).toBe(true);\n  });\n});",
+      "lang": "js",
+      "choices": [
+        "`forEach` runs the callbacks in parallel, so the saves overwrite each other",
+        "`expect` cannot be used inside a callback, so the assertions are ignored",
+        "The test must be marked `async`, or `await` inside the callback is a syntax error",
+        "`forEach` ignores the returned promises, so the test ends before the assertions"
+      ],
+      "answer": 3,
+      "why": "The test function returns synchronously, so the runner records a pass while the saves are still pending; failures surface later as stray unhandled errors, if at all. Use `for (const row of rows) { await ... }` or `await Promise.all(rows.map(...))` in an async test.",
+      "tags": ["async", "flakiness"],
+      "level": 2,
+      "asked": "A green test that asserts nothing is worse than no test; interviewers want you to spot the unawaited work."
+    },
+    {
+      "id": "tq-051",
+      "q": "Each test needs a fresh, empty in-memory repository. Where should it be created?",
+      "choices": [
+        "In `beforeAll`, so it is built once and shared by the tests in the file",
+        "In `beforeEach`, so every test starts from its own new instance",
+        "At the top of the file, so it is ready before the first test is collected",
+        "In `afterEach`, so it is rebuilt after one test ends and ready for the next"
+      ],
+      "answer": 1,
+      "why": "`beforeEach` runs before every test, so none can see another's writes and the order no longer matters. `beforeAll` or module scope share one instance across tests, which is how order-dependent failures start. Reserve `beforeAll` for expensive, read-only setup.",
+      "tags": ["isolation", "hooks"],
+      "level": 1,
+      "asked": "A junior check that you think about test independence from the first line of setup."
+    },
+    {
+      "id": "tq-052",
+      "q": "What does the string argument to `toThrow` check here?",
+      "code": "expect(() => parse('')).toThrow('empty');",
+      "lang": "js",
+      "choices": [
+        "That the thrown error's class is named `empty`",
+        "That the error's message is exactly `empty`",
+        "That the thrown error's `code` property is `empty`",
+        "That the error's message contains `empty`"
+      ],
+      "answer": 3,
+      "why": "A string argument matches a substring of the message; a regex matches by pattern and an error class checks `instanceof`. For an exact message use a regex anchored with `^` and `$`, or assert on the caught error directly.",
+      "tags": ["assertions", "vitest"],
+      "level": 1,
+      "asked": "Asserting on the right error, not just any error, is what stops tests passing for the wrong reason."
+    },
+    {
+      "id": "tq-053",
+      "q": "This file fails with \"Cannot access 'fake' before initialization\". Why, and what is the usual fix?",
+      "code": "import { today } from './dates.js';\n\nconst fake = vi.fn(() => 'x');\nvi.mock('./dates.js', () => ({ today: fake }));",
+      "lang": "js",
+      "choices": [
+        "`vi.fn` needs a type argument; add one, or declare `fake` with `let`",
+        "`vi.mock` is hoisted above `fake`; create `fake` inside `vi.hoisted()`",
+        "The factory must be async; return `Promise.resolve({ today: fake })`",
+        "The import must come after `vi.mock`; move the import line to the end"
+      ],
+      "answer": 1,
+      "why": "Vitest lifts `vi.mock` to the top of the file, so its factory runs before `const fake` is initialised. `const { fake } = vi.hoisted(() => ({ fake: vi.fn() }))` is lifted too, so the factory can use it and the test can still assert on it. Moving the import changes nothing, since hoisting already reorders it.",
+      "tags": ["mocking", "vitest"],
+      "level": 3,
+      "asked": "A real error message from real suites; knowing why it happens shows you understand how module mocking works."
+    },
+    {
+      "id": "tq-054",
+      "q": "In watch mode, you save a change to `src/pricing.js`. Which tests does Vitest re-run?",
+      "choices": [
+        "Every test file in the project, in the same order as the last run",
+        "Only the test file with the same name, `pricing.test.js`, if one exists",
+        "The test files whose import graph includes `pricing.js`",
+        "Only the tests that failed on the previous run, until they pass"
+      ],
+      "answer": 2,
+      "why": "Vitest tracks each test file's module graph and re-runs the files that import the changed module, directly or indirectly, which keeps feedback fast. Name matching would miss integration tests that reach `pricing.js` through another module.",
+      "tags": ["tooling", "vitest"],
+      "level": 1,
+      "asked": "An easy check of whether you use a fast feedback loop day to day."
+    },
+    {
+      "id": "tq-055",
+      "q": "`new InvoiceService(repo, logger)` needs a logger, but the behaviour under test never logs. What kind of test double do you pass for `logger`?",
+      "choices": [
+        "A mock, so the test can verify the logger was never called",
+        "A fake that writes to a temporary file the test deletes later",
+        "A dummy: any object that satisfies the parameter and is unused",
+        "A spy, so the test output shows everything that would have been logged"
+      ],
+      "answer": 2,
+      "why": "A dummy only fills a slot; nothing reads from it or asserts on it. Using a mock here would add an assertion the test does not care about, which is exactly how tests become brittle.",
+      "tags": ["doubles"],
+      "level": 1,
+      "asked": "Checks you use the lightest double that does the job rather than mocking everything."
+    },
+    {
+      "id": "tq-056",
+      "q": "What is the defining difference between a mockist (London-school) unit test and a classicist (Detroit-school) one?",
+      "choices": [
+        "Mockists write tests after the code; classicists always write the test first",
+        "Mockists replace every collaborator; classicists use real ones where cheap",
+        "Mockists test through the UI; classicists test functions one at a time",
+        "Mockists use a mocking library; classicists hand-write every test double"
+      ],
+      "answer": 1,
+      "why": "Mockists isolate the class under test from all collaborators and verify interactions; classicists treat a 'unit' as a behaviour, use real in-process objects, and double only awkward things such as I/O. Both can do TDD; the split is about what gets replaced.",
+      "tags": ["doubles", "strategy"],
+      "level": 3,
+      "asked": "Opens a discussion about brittleness; naming both schools and their trade-off signals real experience."
+    },
+    {
+      "id": "tq-057",
+      "q": "A 'sociable' unit test of `CheckoutService` does what?",
+      "choices": [
+        "Runs against the shared staging database so the whole team sees its data",
+        "Is written by pairing, so two developers agree on every assertion in it",
+        "Replaces every class `CheckoutService` uses with a mock, even pure ones",
+        "Uses the real in-process collaborators, such as the price calculator"
+      ],
+      "answer": 3,
+      "why": "Sociable tests let the unit talk to its real, fast collaborators and double only slow or non-deterministic edges such as the database or email. They survive internal refactors better than solitary tests that mock every class.",
+      "tags": ["doubles", "strategy"],
+      "level": 2,
+      "asked": "Shows you can talk about unit size precisely instead of equating 'unit' with 'one class'."
+    },
+    {
+      "id": "tq-058",
+      "q": "Your code calls the Stripe SDK directly in several services, and every test mocks the SDK's methods. What does 'don't mock what you don't own' suggest instead?",
+      "choices": [
+        "Call Stripe's live API from every test, so the tests are always realistic",
+        "Wrap Stripe in your own `PaymentGateway`, fake that, and test the wrapper",
+        "Record Stripe's HTTP responses once and replay them in each unit test",
+        "Mock only Stripe's HTTP client, so the SDK's own code still runs in tests"
+      ],
+      "answer": 1,
+      "why": "A thin adapter you own gives services a small interface that is easy to fake, while the adapter itself gets a few integration tests against Stripe's test mode. Mocking the vendor's API spreads your guesses about it through every test.",
+      "tags": ["doubles", "design"],
+      "level": 2,
+      "asked": "A mid-level design question; the adapter-plus-integration-test answer is what interviewers want."
+    },
+    {
+      "id": "tq-059",
+      "q": "`placeOrder` saves through a repository. Which assertion survives a refactor from `repo.save(order)` to `repo.saveMany([order])`?",
+      "choices": [
+        "`expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ total: 30 }))`",
+        "`expect(repo.save).toHaveBeenCalledTimes(1)`, then checking the first argument",
+        "`expect(await fakeRepo.findAll()).toEqual([expect.objectContaining({ total: 30 })])`",
+        "`expect(repo.save.mock.calls[0][0].total).toBe(30)`, reading the call directly"
+      ],
+      "answer": 2,
+      "why": "Checking the resulting state in an in-memory fake asserts the outcome, not the call used to reach it, so internal changes do not break it. The other three pin the exact method, which is an implementation detail here.",
+      "tags": ["doubles", "quality"],
+      "level": 2,
+      "asked": "State versus interaction verification is a core design question; a good answer says when each fits."
+    },
+    {
+      "id": "tq-060",
+      "q": "A module has a complicated private helper `normaliseAddress` that is not exported. How should it be tested?",
+      "choices": [
+        "Export it with an underscore prefix so tests can call it but callers know not to",
+        "Use a test-only build that exposes private functions through a debug global",
+        "Leave it untested, since private code is covered by code review instead",
+        "Through the public function that uses it, or move it to its own module"
+      ],
+      "answer": 3,
+      "why": "Tests through the public API survive refactoring of internals. If the helper is complex enough to need its own tests, it is a real unit: give it a module and a public API of its own. Exporting it for tests couples the tests to internals.",
+      "tags": ["design", "quality"],
+      "level": 1,
+      "asked": "A common junior question; the strong answer treats 'I want to test this private' as a design signal."
+    },
+    {
+      "id": "tq-061",
+      "q": "`applyLoyaltyDiscount` loads the customer, reads today's date, calculates the discount and saves the order. Which refactor makes the rule testable without any mocks?",
+      "choices": [
+        "Extract a pure `discountFor(customer, order, today)` and keep the I/O in a thin shell",
+        "Make the function async throughout, so a test can await each step in turn",
+        "Split it into four exported functions and mock three of them in each test",
+        "Add optional parameters that let tests turn off loading and saving entirely"
+      ],
+      "answer": 0,
+      "why": "Functional core, imperative shell: the decision becomes a pure function you test with plain values, and the shell that loads and saves is covered by a few integration tests. Test-only flags leave production code carrying paths that exist just for tests.",
+      "tags": ["design", "purity"],
+      "level": 2,
+      "asked": "This is the design move behind most testable code; interviewers like to see you reach for it unprompted."
+    },
+    {
+      "id": "tq-062",
+      "q": "`createInviteCode()` uses `crypto.randomUUID()` internally, and a test needs to assert the exact code stored. What is the cleanest approach?",
+      "choices": [
+        "Assert only that the stored code has the length of a UUID and move on",
+        "Seed `crypto` with a fixed value in `beforeEach` so UUIDs repeat each run",
+        "Run the test several times and assert that at least one code matches",
+        "Inject an id generator, so the test passes one returning a known value"
+      ],
+      "answer": 3,
+      "why": "Randomness is an input, like time: pass in `generateId` (defaulting to `crypto.randomUUID`) and the test controls it. Node's `crypto` has no seed you can set, and a length check would pass even if the wrong code were stored.",
+      "tags": ["design", "doubles"],
+      "level": 2,
+      "asked": "Checks that you treat non-determinism as a dependency, not something to work around in assertions."
+    },
+    {
+      "id": "tq-063",
+      "q": "What does the humble object pattern recommend for an Express route handler that parses the request, applies business rules and writes to the database?",
+      "choices": [
+        "Keep the handler thin and move the rules into a unit that has no HTTP types",
+        "Mock `req` and `res` fully, so the handler can be unit tested as written",
+        "Mark the handler as humble, which tells the coverage tool to ignore it",
+        "Split the handler into middleware functions, one for each business rule"
+      ],
+      "answer": 0,
+      "why": "The hard-to-test boundary (HTTP, UI, the framework) is left so simple it needs little testing, while the logic moves somewhere it can be tested with plain values. Hand-built `req`/`res` mocks are brittle and still leave the logic tangled with transport.",
+      "tags": ["design", "api-testing"],
+      "level": 3,
+      "asked": "Shows you know how to restructure framework-bound code for testing rather than fighting the framework."
+    },
+    {
+      "id": "tq-064",
+      "q": "An API client's tests replace global `fetch` with `vi.fn()` and assert on its arguments. What usually goes wrong over time?",
+      "choices": [
+        "`vi.fn()` cannot return a `Response`, so the client reads an empty body",
+        "Stubbing a global leaks into other files, since Vitest shares the global scope",
+        "The tests pin the exact call shape, so passing a `Request` object breaks them",
+        "Node 24's `fetch` is read-only, so the stub is ignored and the real call is made"
+      ],
+      "answer": 2,
+      "why": "A function-level stub couples tests to how `fetch` is called (URL string or `Request`, header casing, option names), so behaviour-preserving refactors fail. Intercepting at the network layer, with MSW or undici's `MockAgent`, asserts on the HTTP request instead.",
+      "tags": ["mocking", "api-testing"],
+      "level": 3,
+      "asked": "Discriminates people who have maintained mocked suites from those who have only written them."
+    },
+    {
+      "id": "tq-065",
+      "q": "Why do Express apps often export the `app` from one module and call `app.listen()` in another?",
+      "choices": [
+        "Express requires `listen` to run in a separate file when using ES modules",
+        "Tests can import the app and drive it with supertest without binding a port",
+        "It lets the app start faster, because all routes load before the server does",
+        "It stops the port number leaking into the bundle that ships to the browser"
+      ],
+      "answer": 1,
+      "why": "supertest accepts an app and starts it on an ephemeral port per request, so tests never clash over a fixed port or leave a server running. The entry file stays the only place that listens in production.",
+      "tags": ["api-testing", "node"],
+      "level": 1,
+      "asked": "A basic structure question for Node API testing; it shows you have actually wired tests to an app."
+    },
+    {
+      "id": "tq-066",
+      "q": "Each integration test runs inside a database transaction that is rolled back afterwards. When does this isolation technique break down?",
+      "choices": [
+        "When a test reads rows, because reads inside a transaction see no data",
+        "When the database is Postgres, which does not allow rollbacks in tests",
+        "When tests run one at a time, since rollbacks need parallel connections",
+        "When the code commits its own transaction or uses another connection"
+      ],
+      "answer": 3,
+      "why": "Rollback isolation only works if every query goes through the test's connection and transaction. Code that opens its own transaction, uses a pool, or hands work to a queue worker escapes it, and its writes persist. Truncating tables or a fresh database per worker avoids that.",
+      "tags": ["integration", "database"],
+      "level": 3,
+      "asked": "Interviewers probe whether you know the limits of the technique, not just its name."
+    },
+    {
+      "id": "tq-067",
+      "q": "How should the test database get its schema before an integration suite runs?",
+      "choices": [
+        "Run the same migrations that production runs, from an empty database",
+        "Copy the production database each night and run the tests against it",
+        "Have the ORM generate tables from the current models on every run",
+        "Keep a hand-written `schema.sql` for tests, updated when tests fail"
+      ],
+      "answer": 0,
+      "why": "Applying the real migrations tests them too, so a broken migration fails CI instead of the deploy. Generating from models skips the migrations entirely, and copying production data brings personal data into test environments.",
+      "tags": ["integration", "database"],
+      "level": 2,
+      "asked": "Links testing to deployment safety; a strong answer mentions that migrations are code that needs testing."
+    },
+    {
+      "id": "tq-068",
+      "q": "Vitest runs test files in parallel workers against one Postgres server. How do you stop files clobbering each other's rows?",
+      "choices": [
+        "Set `retry: 3` so a clobbered test passes on a later attempt",
+        "Give each worker its own database or schema, keyed by worker id",
+        "Wrap every query in `SELECT ... FOR UPDATE` while tests run",
+        "Truncate every table in the `afterAll` hook of each test file"
+      ],
+      "answer": 1,
+      "why": "Each worker gets an id (`VITEST_POOL_ID`), so setup can create `app_test_1`, `app_test_2` and so on, and files never share rows. Truncating after a file still races with other workers mid-run, and retries only hide the collisions.",
+      "tags": ["integration", "database"],
+      "level": 3,
+      "asked": "A realistic scaling problem for test suites; the answer shows you understand where parallelism collides."
+    },
+    {
+      "id": "tq-069",
+      "q": "An integration test posts an invalid body to `POST /orders` and asserts a 400 with a field error. Which extra assertion adds the most value?",
+      "choices": [
+        "That the response time was under 200 ms, to catch slow validation",
+        "That the response has a `Content-Length` header matching its body",
+        "That no order row was written, so validation runs before the insert",
+        "That the error message text matches a snapshot of the whole response"
+      ],
+      "answer": 2,
+      "why": "A 400 that still inserted a half-valid row is a real bug the status code hides; checking the database proves the side effect did not happen. Timing and full-body snapshots make the test brittle without covering a likely failure.",
+      "tags": ["api-testing", "integration"],
+      "level": 2,
+      "asked": "Tests that check side effects, not just responses, are what separate thorough from superficial API tests."
+    },
+    {
+      "id": "tq-070",
+      "q": "Which set of tests gives the most confidence that only an order's owner can `DELETE /orders/:id`?",
+      "choices": [
+        "Owner gets 204, and a request with a malformed id gets 400",
+        "Owner gets 204, run once each for an admin and a normal user",
+        "Anonymous gets 401, and the route is listed in the auth config",
+        "Owner gets 204, another user is refused, anonymous gets 401"
+      ],
+      "answer": 3,
+      "why": "The dangerous bug is another signed-in user deleting someone else's order (broken object-level authorisation), so a test with a second real user is essential. Checking config or only the happy path would miss it.",
+      "tags": ["api-testing", "security"],
+      "level": 2,
+      "asked": "Authorisation bugs are the top API vulnerability; interviewers like candidates who test the negative cases."
+    },
+    {
+      "id": "tq-071",
+      "q": "What is the 'mystery guest' test smell?",
+      "choices": [
+        "A test depends on data set up somewhere it does not show, such as a shared seed file",
+        "A test was written by someone no longer on the team, so nobody knows why it exists",
+        "A test calls a function whose name does not match what the test title describes",
+        "A test uses a random user from a pool, so a different guest appears on each run"
+      ],
+      "answer": 0,
+      "why": "When the key fact (this user is an admin, this order is paid) lives in a distant fixture, a reader cannot see why the test should pass, and editing the seed breaks unrelated tests. Builders that state the relevant fields inline fix it.",
+      "tags": ["quality", "smells"],
+      "level": 2,
+      "asked": "Naming test smells precisely is a sign you have reviewed and maintained real suites."
+    },
+    {
+      "id": "tq-072",
+      "q": "Why do many teams prefer DAMP (descriptive and meaningful phrases) over strict DRY in test code?",
+      "choices": [
+        "Test code is not shipped, so duplication in it has no cost to anyone",
+        "Each test should read on its own, even if that repeats a little setup",
+        "Test runners cannot import shared helpers, so repeated code is required",
+        "DRY test helpers run slower, because each call adds a stack frame"
+      ],
+      "answer": 1,
+      "why": "A failing test is read in isolation, often by someone else; if understanding it needs a tour of helpers and loops, it is slow to diagnose. Share builders and setup that hide noise, but keep the inputs and expectations that matter visible in the test.",
+      "tags": ["quality", "smells"],
+      "level": 2,
+      "asked": "Shows you have an opinion on test readability grounded in who reads failures."
+    },
+    {
+      "id": "tq-073",
+      "q": "What is the problem with this test?",
+      "code": "test('discounts', () => {\n  for (const o of sampleOrders) {\n    if (o.total > 100) expect(discount(o)).toBe(10);\n    else expect(discount(o)).toBe(0);\n  }\n});",
+      "lang": "js",
+      "choices": [
+        "It re-implements the rule in its branches, and a failure does not name the case",
+        "It runs too slowly, because loops inside a test are not optimised by the runner",
+        "`expect` cannot be called more than once per test, so only one branch is checked",
+        "It is fine, since looping over a sample list covers more cases than a table would"
+      ],
+      "answer": 0,
+      "why": "Logic in a test duplicates the logic under test, so a shared misunderstanding (is 100 discounted?) passes both. Explicit rows with expected values, via `test.each`, state the rule plainly and report which input failed.",
+      "tags": ["quality", "smells"],
+      "level": 1,
+      "asked": "Conditional logic in tests is a classic review comment; interviewers check you can explain why."
+    },
+    {
+      "id": "tq-074",
+      "q": "What does the guideline 'one assertion per test' really mean in practice?",
+      "choices": [
+        "A test may call `expect` only once, so each field needs its own test",
+        "Each test should check one behaviour, even with several expectations",
+        "Every test should assert one value and use snapshots for everything else",
+        "A test file should contain one test per function in the module it tests"
+      ],
+      "answer": 1,
+      "why": "The point is a single reason to fail. Checking status, body and the saved row of one request is one behaviour, while testing create and delete in one test is two. Splitting every `expect` into its own test multiplies setup for no gain.",
+      "tags": ["quality"],
+      "level": 1,
+      "asked": "Interviewers use it to see whether you apply rules dogmatically or understand the reason."
+    },
+    {
+      "id": "tq-075",
+      "q": "You must refactor a 400-line legacy pricing function that has no tests and no clear spec. What do you write first?",
+      "choices": [
+        "Unit tests for the new functions you plan to extract from it",
+        "An end-to-end test clicking through checkout for one product",
+        "Characterisation tests that record what it currently returns",
+        "Nothing yet; refactor carefully, then add tests for the result"
+      ],
+      "answer": 2,
+      "why": "Characterisation (golden master) tests capture current behaviour for a wide spread of inputs, bugs included, so the refactor can be checked for unintended changes. Fix bugs deliberately afterwards, with their own tests.",
+      "tags": ["legacy", "refactoring"],
+      "level": 2,
+      "asked": "Legacy code is most of real work; this checks you have a safe way into it."
+    },
+    {
+      "id": "tq-076",
+      "q": "Your OpenAPI spec says `GET /orders/:id` returns `total` as a number. What cheap test catches the implementation drifting from the spec?",
+      "choices": [
+        "A snapshot of the spec file, so any edit to it fails the build",
+        "A unit test that constructs the response object by hand",
+        "A linter rule that checks every route has a spec entry",
+        "Validating real responses against the spec in API tests"
+      ],
+      "answer": 3,
+      "why": "Running each integration-test response through a validator built from the spec turns the spec into an assertion, so a string `total` or a missing field fails CI. A snapshot or route lint only checks the documents, not what the API actually returns.",
+      "tags": ["api-testing", "contracts"],
+      "level": 3,
+      "asked": "Shows you treat an API spec as a testable contract, which matters when other teams consume it."
+    },
+    {
+      "id": "tq-077",
+      "q": "A payment webhook handler must be idempotent. Which test proves it?",
+      "choices": [
+        "Send an event with a bad signature and assert the handler returns 400",
+        "Deliver the same event twice and assert the order is marked paid once",
+        "Send two different events at once and assert both responses are 200",
+        "Deliver one event and assert the handler responds within five seconds"
+      ],
+      "answer": 1,
+      "why": "Providers retry deliveries, so duplicates are normal; the test replays the same event id and checks there is exactly one side effect (one payment row, one email). The signature and timing tests are useful but prove something else.",
+      "tags": ["api-testing", "integration"],
+      "level": 2,
+      "asked": "Idempotency comes up with any integration; a strong candidate knows how to test it, not just define it."
+    },
+    {
+      "id": "tq-078",
+      "q": "Two customers try to buy the last ticket at the same moment. How do you test that only one succeeds?",
+      "choices": [
+        "Send the two requests one after the other and assert the second gets 409",
+        "Mock the repository so the second call throws a conflict error",
+        "Fire both with `Promise.all` against a real database, expect one 409",
+        "Add a `setTimeout` in the handler during tests to widen the race window"
+      ],
+      "answer": 2,
+      "why": "Only concurrent requests against the real database exercise the lock, constraint or conditional update that prevents overselling. Sequential requests pass even with a race, and a mock just asserts what you told it. Repeat the test a few times, since one run may not interleave.",
+      "tags": ["integration", "concurrency"],
+      "level": 3,
+      "asked": "Race conditions in CRUD apps are a favourite mid-level topic; testing them is the follow-up."
+    },
+    {
+      "id": "tq-079",
+      "q": "Orders get `created_at DEFAULT now()` in Postgres. Why does `vi.setSystemTime` not make that value predictable in an integration test?",
+      "choices": [
+        "`setSystemTime` fakes the clock in the Node process, not the database server's",
+        "Postgres caches `now()` per connection, so the first value is reused forever",
+        "Fake timers only affect `setTimeout`, and `Date` is not changed by them",
+        "Postgres rejects timestamps from clients whose clock is set in the future"
+      ],
+      "answer": 0,
+      "why": "The default is evaluated by the database, which knows nothing about your test's fake clock. Either pass the timestamp from the application (via an injected clock) or assert a range around the real time.",
+      "tags": ["time", "database"],
+      "level": 3,
+      "asked": "Checks you know where fakes stop working, which is where confusing integration failures come from."
+    },
+    {
+      "id": "tq-080",
+      "q": "What is a test fixture?",
+      "choices": [
+        "A bug that has been fixed and now has a test to stop it coming back",
+        "The known state or data a test starts from, set up before it runs",
+        "A test that is pinned so it never runs in parallel with any other",
+        "The part of the CI configuration that decides which tests to run"
+      ],
+      "answer": 1,
+      "why": "A fixture is the baseline a test relies on: seeded rows, a temp directory, a started server. Good fixtures are fresh for each test or read-only, so no test depends on another's leftovers. A fixed bug with a test is a regression test.",
+      "tags": ["fixtures"],
+      "level": 1,
+      "asked": "Vocabulary check that comes before questions about isolation and shared state."
+    },
+    {
+      "id": "tq-081",
+      "q": "Why should unit tests not call a real third-party API such as a geocoding service?",
+      "choices": [
+        "Third-party APIs block requests that come from Node's test runner",
+        "Real calls make tests slow, flaky, rate-limited and sometimes billed",
+        "Unit tests cannot use `await`, so real network calls never get to finish",
+        "The API's HTTPS certificate is not trusted inside test processes"
+      ],
+      "answer": 1,
+      "why": "A unit test must be fast and deterministic; a network call brings latency, outages, quotas and cost into every run. Put the vendor behind an adapter you can fake, and cover the adapter with a few tagged integration tests.",
+      "tags": ["doubles", "strategy"],
+      "level": 1,
+      "asked": "An opener that leads to how you structure boundaries and what you test against the real service."
+    },
+    {
+      "id": "tq-082",
+      "q": "In an integration test, the email service is replaced by an in-memory outbox that stores each message. What does that let the test do?",
+      "choices": [
+        "Check that the real SMTP server accepts the message format used",
+        "Skip sending entirely, so no assertions about email are possible",
+        "Assert on the recipient and content of mail the app actually sent",
+        "Measure how long the email provider takes to deliver each message"
+      ],
+      "answer": 2,
+      "why": "A fake with a working, inspectable implementation lets the test read `outbox[0].to` and the subject after the request completes, asserting on outcome rather than on method calls. Whether the real provider accepts the message is a separate adapter test.",
+      "tags": ["doubles", "integration"],
+      "level": 1,
+      "asked": "Shows you prefer inspectable fakes at the boundary over brittle call-count mocks."
+    },
+    {
+      "id": "tq-083",
+      "q": "What makes a test 'flaky'?",
+      "choices": [
+        "It fails on every run until someone updates its expected values",
+        "It passes and fails on the same code, without any change to either",
+        "It takes longer than the runner's timeout on slower CI machines",
+        "It covers code that changes often, so it needs frequent manual edits"
+      ],
+      "answer": 1,
+      "why": "Flakiness means the result is not a function of the code: timing, ordering, shared state, time zones or the network leak in. A test that fails every run is simply failing, and one that needs edits is brittle, which is a different problem.",
+      "tags": ["flakiness"],
+      "level": 1,
+      "asked": "The definition matters because the fix for flaky and brittle tests is different."
+    },
+    {
+      "id": "tq-084",
+      "q": "This test passes on a developer laptop in London and fails on a teammate's laptop in New York. Why?",
+      "code": "const formatDate = (d) => d.toLocaleDateString('en-GB');\n\ntest('formats the due date', () => {\n  expect(formatDate(new Date('2026-03-01'))).toBe('01/03/2026');\n});",
+      "lang": "js",
+      "choices": [
+        "`toLocaleDateString` ignores the locale argument unless the ICU data is installed",
+        "`en-GB` formatting is only available when the machine's own locale is British",
+        "A date-only string parses as UTC midnight, which is 28 February in New York",
+        "`new Date('2026-03-01')` is parsed as month-first, so it means 3 January"
+      ],
+      "answer": 2,
+      "why": "ISO date-only strings are parsed as UTC, and formatting uses the machine's local zone, so west of Greenwich the date rolls back a day. Pin the zone in the formatter (`timeZone`) or in the test environment, and build dates with an explicit offset.",
+      "tags": ["flakiness", "time"],
+      "level": 2,
+      "asked": "Time-zone bugs are the classic 'works on my machine' test; a good answer fixes the code, not just CI."
+    },
+    {
+      "id": "tq-085",
+      "q": "An API test asserts `GET /users` returns `[ada, grace]` in that order. It passes for weeks, then fails after a database upgrade. What is the most likely cause?",
+      "choices": [
+        "The query has no `ORDER BY`, so the row order was never guaranteed",
+        "The new database version sorts rows alphabetically by name by default",
+        "The upgrade changed the default JSON serialiser for arrays",
+        "The test database kept rows cached from before the upgrade"
+      ],
+      "answer": 0,
+      "why": "Without `ORDER BY`, SQL databases return rows in whatever order is convenient, which can change with versions, plans, vacuuming or parallel scans. Add an explicit order if clients rely on it, or compare without order in the test if they do not.",
+      "tags": ["flakiness", "database"],
+      "level": 2,
+      "asked": "Shows you know which ordering is a contract and which is an accident."
+    },
+    {
+      "id": "tq-086",
+      "q": "A test starts a background export, then does `await sleep(200)` before asserting the file exists. It fails occasionally on CI. What is the best fix?",
+      "choices": [
+        "Raise the sleep to 2000 ms, so slow CI machines always have enough time",
+        "Mark the test `retry: 3`, since timing issues pass on a second attempt",
+        "Move the test to a nightly job where the machines are less loaded",
+        "Await the export's own promise, or poll with a timeout until it exists"
+      ],
+      "answer": 3,
+      "why": "A fixed sleep is a guess about how long work takes: too short flakes, too long slows every run. Wait for the actual completion signal, or use a polling helper such as `vi.waitFor` or `expect.poll` that returns as soon as the condition holds.",
+      "tags": ["flakiness", "async"],
+      "level": 2,
+      "asked": "Sleeps in tests are a top flakiness cause; interviewers want 'wait on a condition'."
+    },
+    {
+      "id": "tq-087",
+      "q": "Your team turns on automatic retries for failed tests in CI. What else should it do so retries do not hide bugs?",
+      "choices": [
+        "Retry only on the main branch, so pull requests still fail on the first error",
+        "Report which tests passed only after a retry, and fix or quarantine them",
+        "Raise the retry count until the flaky rate on the dashboard reaches zero",
+        "Retry each whole CI job instead, so every test gets a fresh machine"
+      ],
+      "answer": 1,
+      "why": "A retry turns a flaky failure green, and some flakes are real race conditions in the product. Tracking 'passed on retry' keeps them visible so each gets an owner. More retries only make the signal quieter.",
+      "tags": ["flakiness", "ci"],
+      "level": 2,
+      "asked": "Checks you treat retries as a tourniquet, not a cure."
+    },
+    {
+      "id": "tq-088",
+      "q": "What does quarantining a flaky test usually mean?",
+      "choices": [
+        "Deleting it and opening a ticket to rewrite it from scratch later",
+        "Running it only on the developer's machine who last touched it",
+        "Running it in a non-blocking job, with an owner and a deadline to fix",
+        "Marking it `skip` until the flaky behaviour stops happening by itself"
+      ],
+      "answer": 2,
+      "why": "Quarantine keeps the test running and visible without blocking merges, while the ticket and deadline stop it becoming permanent. Skipping or deleting loses the coverage and the signal about how often it fails.",
+      "tags": ["flakiness", "ci"],
+      "level": 2,
+      "asked": "Shows you can keep a pipeline trustworthy without throwing tests away."
+    },
+    {
+      "id": "tq-089",
+      "q": "Several test files each start the API on port 3000. Run in parallel, some fail with `EADDRINUSE`. What is the simplest fix?",
+      "choices": [
+        "Listen on port 0 so the OS assigns a free port, and read it back",
+        "Add a short random delay before each file starts its server",
+        "Close every server in a global `afterAll` hook that runs last",
+        "Pick a random port between 3000 and 4000 inside each test file"
+      ],
+      "answer": 0,
+      "why": "Port 0 asks the operating system for any free port; `server.address().port` gives the one assigned, so collisions cannot happen. Random ports and delays make clashes rarer, not impossible. supertest already does this when you pass it the app.",
+      "tags": ["flakiness", "api-testing"],
+      "level": 2,
+      "asked": "A practical parallel-testing problem with a crisp answer; interviewers like the port-0 trick."
+    },
+    {
+      "id": "tq-090",
+      "q": "Why turn on test order shuffling (for example Vitest's `sequence.shuffle`) in CI?",
+      "choices": [
+        "It spreads slow tests evenly across workers, so runs finish sooner",
+        "It exposes tests that only pass because an earlier test set things up",
+        "It prevents the runner caching results between two runs of the suite",
+        "It makes each test run twice, once in each order, to find any flakiness"
+      ],
+      "answer": 1,
+      "why": "A test that silently relies on another's leftovers passes in the usual order and fails when shuffled, revealing the hidden dependency. Log the seed so a failing order can be replayed. It does nothing for speed.",
+      "tags": ["flakiness", "isolation"],
+      "level": 2,
+      "asked": "Shows you think about isolation proactively rather than debugging order issues when they bite."
+    },
+    {
+      "id": "tq-091",
+      "q": "A test for `renewalDate` (today plus one month) has passed for months, then fails on 31 January. What is the right response?",
+      "code": "const d = new Date();\nd.setMonth(d.getMonth() + 1);\nreturn d;",
+      "lang": "js",
+      "choices": [
+        "Skip the test on the last day of each month, when the date maths is unreliable",
+        "Treat it as flaky, since passing on other days proves the function correct",
+        "Change the assertion to allow any date within three days of the expected one",
+        "Fix the date in the test and add 31 January as a case: it found a real bug"
+      ],
+      "answer": 3,
+      "why": "`setMonth` overflows: 31 January plus one month is 3 March in 2026. The test was right to fail; its problem was depending on today's date, which is why it only showed up once a month. Freeze the clock and cover month ends explicitly.",
+      "tags": ["time", "flakiness"],
+      "level": 2,
+      "asked": "Separates 'flaky' from 'found a real edge case', which interviewers care about."
+    },
+    {
+      "id": "tq-092",
+      "q": "Tests only ever pass `isMember: false` to this function. What does a coverage report show?",
+      "code": "export function shippingFee(order, isMember) {\n  const fee = isMember ? 0 : 5;\n  return order.total > 50 ? 0 : fee;\n}",
+      "lang": "js",
+      "choices": [
+        "Full line coverage, but branch coverage below 100%",
+        "Lines one and two uncovered, since `isMember` is false",
+        "Full line and branch coverage, since every line ran",
+        "Branch coverage at 100%, but line coverage at 67%"
+      ],
+      "answer": 0,
+      "why": "Every line executes, so line coverage is complete, but the `isMember ? 0` branch never ran. Branch coverage counts each side of every condition, which is why it is the more useful number for logic-heavy code.",
+      "tags": ["coverage"],
+      "level": 2,
+      "asked": "Checks you know which coverage number to look at and what each can hide."
+    },
+    {
+      "id": "tq-093",
+      "q": "What is a sensible way to use a coverage threshold in CI?",
+      "choices": [
+        "Require 100% so that every line in the codebase is guaranteed tested",
+        "Set it just below the current level so coverage cannot quietly drop",
+        "Require 80% on each file, including configuration and generated code",
+        "Avoid thresholds, since any coverage number encourages gaming it"
+      ],
+      "answer": 1,
+      "why": "A floor near today's level stops untested code sneaking in while avoiding pressure to write assertion-free tests to hit a target. Use the report itself to find risky untested areas; 100% mandates tend to produce tests that execute code without checking it.",
+      "tags": ["coverage", "ci"],
+      "level": 2,
+      "asked": "Interviewers want a pragmatic view of coverage, not a number."
+    },
+    {
+      "id": "tq-094",
+      "q": "In TDD's refactor step, what must stay true?",
+      "choices": [
+        "Coverage must rise, since refactoring adds new branches to test",
+        "At least one test must be failing, to guide the next change",
+        "The tests stay green: structure changes, behaviour does not",
+        "The public API is renamed to match the new internal structure"
+      ],
+      "answer": 2,
+      "why": "Red, green, refactor: refactoring means changing structure with behaviour held fixed, and the passing tests are the proof. If a test goes red during refactoring, you changed behaviour or the test was coupled to implementation.",
+      "tags": ["tdd", "refactoring"],
+      "level": 1,
+      "asked": "A simple check of whether you have actually done TDD or only read about it."
+    },
+    {
+      "id": "tq-095",
+      "q": "Your first TDD test is `expect(vat(100)).toBe(20)`, and `return 20` makes it pass. What does triangulation suggest next?",
+      "choices": [
+        "Delete the hard-coded value and write the full implementation straight away",
+        "Add a second example, such as `vat(50)` being 10, to force the general rule",
+        "Assert on the function's source code, to ensure it is not hard-coded",
+        "Replace the test with a snapshot, which will catch any hard-coded value"
+      ],
+      "answer": 1,
+      "why": "Triangulation adds examples until the only simple implementation is the real one. A second input breaks the constant and drives out `amount * 0.2`. It keeps each step small and gives the rule more than one witness.",
+      "tags": ["tdd"],
+      "level": 3,
+      "asked": "Shows real TDD practice rather than just the slogan."
+    },
+    {
+      "id": "tq-096",
+      "q": "Which bug does `tsc --strict` catch with no tests written at all?",
+      "choices": [
+        "A discount rule that applies at 100 when the spec says above 100",
+        "A query that returns orders in the wrong order for the account page",
+        "Passing a possibly `undefined` user to a function that needs a `User`",
+        "An API call that sends the wrong customer id to the payment provider"
+      ],
+      "answer": 2,
+      "why": "Strict null checks make 'maybe undefined' part of the type, so the call fails to compile. The other three are logic errors where the types are all correct, which is what tests are for. Types and tests catch different classes of bug.",
+      "tags": ["static-analysis", "typescript"],
+      "level": 1,
+      "asked": "Opens a conversation about how types and tests complement each other."
+    },
+    {
+      "id": "tq-097",
+      "q": "Which typescript-eslint rule reports `saveOrder(order);` where `saveOrder` returns a promise that nobody awaits or handles?",
+      "choices": [
+        "`no-unused-vars`",
+        "`require-await`",
+        "`no-floating-promises`",
+        "`no-unused-expressions`"
+      ],
+      "answer": 2,
+      "why": "`@typescript-eslint/no-floating-promises` uses type information to find promises that are neither awaited, returned nor given a `.catch`, which is how rejected saves disappear silently. `require-await` flags async functions without `await`, a different problem.",
+      "tags": ["static-analysis", "async"],
+      "level": 2,
+      "asked": "A lint rule that prevents a whole class of production bugs; naming it shows hands-on experience."
+    },
+    {
+      "id": "tq-098",
+      "q": "A pull request fixes a bug and adds a test. How can a reviewer check that the test really covers the fix?",
+      "choices": [
+        "Check that coverage for the changed file went up in the CI report",
+        "Run the new test twice and check that it passes both times",
+        "Check that the test's name mentions the ticket number for the bug",
+        "Revert the fix locally, run the test and check that it fails"
+      ],
+      "answer": 3,
+      "why": "A regression test that passes without the fix proves nothing. Seeing it red without the change and green with it is the only real evidence. Rising coverage just shows lines ran, not that the behaviour was asserted.",
+      "tags": ["review", "process"],
+      "level": 2,
+      "asked": "Shows you review tests with the same scepticism as production code."
+    },
+    {
+      "id": "tq-099",
+      "q": "What is a regression test?",
+      "choices": [
+        "A test that checks performance has not become slower than the last release",
+        "A test that pins a fixed bug or existing behaviour so it cannot return unseen",
+        "A test that runs the previous release alongside the new one to compare output",
+        "A test that is run only before a release, rather than on every single change"
+      ],
+      "answer": 1,
+      "why": "Regression tests guard behaviour that already works, typically written when a bug is fixed, so the same bug cannot come back silently. Any test in a suite that runs on every change acts as regression protection.",
+      "tags": ["process", "strategy"],
+      "level": 1,
+      "asked": "Vocabulary check that leads into 'how do you handle a production bug'."
+    },
+    {
+      "id": "tq-100",
+      "q": "What does a canary release catch that a thorough pre-production test suite cannot?",
+      "choices": [
+        "Syntax errors in the code, before any user downloads the new build",
+        "Type errors in the new code, since canaries run the TypeScript compiler",
+        "Failing unit tests, which are re-run on a small set of real servers",
+        "Problems that only appear with real traffic, data and infrastructure"
+      ],
+      "answer": 3,
+      "why": "Sending a small share of production traffic to the new version, while watching error rates and latency, surfaces issues no test environment reproduces: real data shapes, load, and third-party quirks. Rollback limits the blast radius.",
+      "tags": ["deployment", "strategy"],
+      "level": 3,
+      "asked": "Shows you see testing as continuing after deploy, with observability as the test oracle."
+    },
+    {
+      "id": "tq-101",
+      "q": "A new checkout flow ships behind a feature flag. How should tests handle the flag?",
+      "choices": [
+        "Cover both flag states while it exists, then delete the old path's tests",
+        "Test only the flag-on path, since that is the one that is going to ship soon",
+        "Test only the flag-off path, since that is what users see in production",
+        "Mock the flag service to return random values so both paths get covered"
+      ],
+      "answer": 0,
+      "why": "While the flag exists both paths are live code that can break; once it is removed, the dead branch and its tests go too. Random flag values make results depend on luck, which is a flakiness recipe.",
+      "tags": ["strategy", "deployment"],
+      "level": 2,
+      "asked": "Feature flags are common in real teams; interviewers check you have thought about their testing cost."
+    },
+    {
+      "id": "tq-102",
+      "q": "What is the main cost of relying on end-to-end tests for most of your coverage?",
+      "choices": [
+        "They cannot run in CI, because they need a real browser and a real person",
+        "They cannot test the database, because they only see the rendered page",
+        "They are slow and flakier, and a failure rarely says which part broke",
+        "They require every developer to learn a separate programming language"
+      ],
+      "answer": 2,
+      "why": "An end-to-end failure could be the UI, API, database, network or test itself, so diagnosis is slow, and each test takes seconds. Keep them for a few critical journeys and push detail down to faster tests. They do run headless in CI.",
+      "tags": ["strategy", "e2e"],
+      "level": 1,
+      "asked": "Checks you can explain the trade-off behind the shape of your suite."
+    },
+    {
+      "id": "tq-103",
+      "q": "A Vitest suite takes 18 minutes in CI. What does `vitest run --shard=1/3` on three parallel jobs do?",
+      "choices": [
+        "Runs the slowest third of the test files first on each of the three jobs",
+        "Splits the test files into three groups and runs one group on each job",
+        "Runs each file three times across the jobs to detect flaky failures",
+        "Runs only a third of the suite on each push, rotating through all three"
+      ],
+      "answer": 1,
+      "why": "Sharding partitions the files, so three machines run the whole suite once in about a third of the time; merge the reports afterwards. Nothing is skipped, which is what separates it from sampling.",
+      "tags": ["ci", "vitest"],
+      "level": 2,
+      "asked": "Pipeline speed is a real team concern; knowing sharding shows you have worked on one."
+    },
+    {
+      "id": "tq-104",
+      "q": "A pipeline runs only tests affected by changed files (for example `vitest --changed origin/main`). What is the risk?",
+      "choices": [
+        "It runs every test anyway, because Git reports all files as changed in CI",
+        "It cannot see TypeScript files, so changes to `.ts` sources are missed",
+        "It re-runs tests that already passed, which makes the pipeline slower",
+        "Changes outside the import graph, such as config or SQL, can be missed"
+      ],
+      "answer": 3,
+      "why": "Affected-test selection follows imports. A changed environment file, migration, JSON fixture read at runtime or a dependency bump may alter behaviour without appearing in any import chain, so run the full suite on main or before release.",
+      "tags": ["ci", "strategy"],
+      "level": 3,
+      "asked": "Shows you know the limits of speed optimisations in a pipeline."
+    },
+    {
+      "id": "tq-105",
+      "q": "What does a static analysis tool such as CodeQL add beyond a project's unit tests?",
+      "choices": [
+        "It runs the unit tests faster by caching their results between commits",
+        "It traces data flow to find risky patterns such as SQL built from input",
+        "It proves the code is free of bugs, so fewer tests need to be written",
+        "It generates unit tests automatically for every single function it can read"
+      ],
+      "answer": 1,
+      "why": "Static analysis reasons about all paths without running them, spotting tainted input reaching a query or a shell even where no test goes. It raises candidates, with false positives, and proves nothing about correct behaviour, which is still the tests' job.",
+      "tags": ["static-analysis", "security"],
+      "level": 2,
+      "asked": "Checks you know which tool catches which class of problem."
+    },
+    {
+      "id": "tq-106",
+      "q": "What property does this fast-check test assert?",
+      "code": "fc.assert(\n  fc.property(fc.string(), (s) => decode(encode(s)) === s),\n);",
+      "lang": "js",
+      "choices": [
+        "That `encode` never returns the same output for two different strings",
+        "That `encode` and `decode` are both fast enough for any string length",
+        "That decoding an encoded string gives back the original, for any input",
+        "That `decode` throws for any strings that were not produced by `encode`"
+      ],
+      "answer": 2,
+      "why": "This is a round-trip property: fast-check generates many strings, including empty, Unicode and odd whitespace, and checks each survives the trip. It finds edge cases a handful of hand-picked examples miss.",
+      "tags": ["property-based"],
+      "level": 2,
+      "asked": "Round-trip is the most useful property in CRUD code (serialisers, parsers, URL encoding), so it is a good first example."
+    },
+    {
+      "id": "tq-107",
+      "q": "A fast-check property fails. Why is the counterexample it reports usually tiny, such as `\" \"`?",
+      "choices": [
+        "fast-check only generates short strings, so failures are always small",
+        "The runner truncates long values to keep the failure message readable",
+        "It shrinks the failing input to a minimal case that still fails",
+        "It reports the first input generated, which is usually the smallest"
+      ],
+      "answer": 2,
+      "why": "After a failure, property-based libraries shrink: they try smaller variants of the input and keep any that still fail, ending with a minimal counterexample. It also prints a seed so the run can be replayed exactly.",
+      "tags": ["property-based"],
+      "level": 3,
+      "asked": "Knowing about shrinking shows you have actually debugged a property-based failure."
+    },
+    {
+      "id": "tq-108",
+      "q": "An integration test that seeds a database needs 12 seconds and hits Vitest's per-test timeout. What is the best first step?",
+      "choices": [
+        "Raise `testTimeout` for the whole project to 60 seconds so nothing times out",
+        "Find out why it is slow, then raise the timeout for that test or file only",
+        "Move the test to `beforeAll`, where the runner does not enforce timeouts",
+        "Split the test into four parts that each finish just under the limit"
+      ],
+      "answer": 1,
+      "why": "A 12-second test usually means seeding far more than needed or a missing index. Fix that first, and if it is still legitimately slow, give that test or file a longer timeout so fast unit tests still fail quickly when they hang.",
+      "tags": ["ci", "integration"],
+      "level": 2,
+      "asked": "Checks you treat slow tests as a signal rather than turning the dials globally."
+    },
+    {
+      "id": "tq-109",
+      "q": "Tests marked `test.concurrent` in one file each stub global `fetch` with different responses. What goes wrong?",
+      "choices": [
+        "Nothing; concurrent tests each run in their own worker with their own globals",
+        "Vitest rejects `vi.stubGlobal` inside concurrent tests with a clear error",
+        "The stubs are applied in alphabetical order of the test names in the file",
+        "They share one global, so a test can see another's stub mid-run"
+      ],
+      "answer": 3,
+      "why": "Concurrent tests in a file run interleaved in the same module scope, so global stubs and module state collide and results depend on timing. Keep tests that touch globals sequential, or inject the dependency per test.",
+      "tags": ["flakiness", "vitest"],
+      "level": 3,
+      "asked": "Shows you understand what 'concurrent' shares before reaching for it to speed things up."
+    },
+    {
+      "id": "tq-110",
+      "q": "What is a `describe` block for in Vitest or Node's test runner?",
+      "choices": [
+        "Grouping related tests under one name, with hooks that apply to that group",
+        "Running the tests inside it in parallel with every other test in the file",
+        "Documenting a test without running it, like a comment that shows in reports",
+        "Marking tests that describe expected behaviour, as opposed to bug fixes"
+      ],
+      "answer": 0,
+      "why": "`describe` nests tests so the report reads as a hierarchy (`OrderService > cancel > refunds a paid order`) and scopes `beforeEach` and friends to that group. It does not change how or when the tests run.",
+      "tags": ["hooks", "vitest"],
+      "level": 1,
+      "asked": "Basic structure; follow-ups usually ask how hooks nest."
+    },
+    {
+      "id": "tq-111",
+      "q": "What is the difference between `test.skip('refunds partial orders', ...)` and `test.todo('refunds partial orders')`?",
+      "choices": [
+        "`skip` runs the test but ignores its result; `todo` never runs anything",
+        "`skip` is reported only locally; `todo` fails the run when `CI` is set",
+        "`skip` disables a written test; `todo` records a test not written yet",
+        "`skip` hides the test from reports; `todo` shows it as a failed test"
+      ],
+      "answer": 2,
+      "why": "Both appear in the report without running. `todo` takes just a name and marks planned work; `skip` switches off an existing test body, and a skipped test left for months is dead coverage worth a lint warning.",
+      "tags": ["tooling", "vitest"],
+      "level": 1,
+      "asked": "Small, but it shows whether you leave visible markers for missing tests instead of silently deleting them."
+    },
+    {
+      "id": "tq-112",
+      "q": "`findUser(id)` returns `null` when nobody matches. Which assertion is the most precise for that case?",
+      "choices": [
+        "`expect(result).toBeFalsy()`",
+        "`expect(result).toBeNull()`",
+        "`expect(result).toBeUndefined()`",
+        "`expect(result).not.toBeTruthy()`"
+      ],
+      "answer": 1,
+      "why": "`toBeNull` passes only for `null`. `toBeFalsy` and `not.toBeTruthy` also pass for `undefined`, `0` or an empty string, so they would hide a bug that returns the wrong empty value; `toBeUndefined` fails outright.",
+      "tags": ["assertions", "vitest"],
+      "level": 1,
+      "asked": "Precise assertions catch more bugs; this is a quick check that you pick them deliberately."
+    },
+    {
+      "id": "tq-113",
+      "q": "Why does `expect(users).toContain({ id: 1, name: 'Ada' })` fail even though `users` holds an object with those exact fields?",
+      "choices": [
+        "`toContain` works only on strings, so an array argument always fails",
+        "`toContain` checks identity; `toContainEqual` compares objects by value",
+        "`toContain` needs the object's keys in the same order as in the array",
+        "`toContain` looks only at the first element unless you pass it an index"
+      ],
+      "answer": 1,
+      "why": "`toContain` uses `===`, so it finds primitives or the same object reference. For a value match inside an array use `toContainEqual`, or `expect.arrayContaining` with `expect.objectContaining` when only some fields matter.",
+      "tags": ["assertions", "vitest"],
+      "level": 1,
+      "asked": "A daily matcher mix-up; knowing the pair shows fluency with the tool."
+    },
+    {
+      "id": "tq-114",
+      "q": "What does `npm test` run in a Node project?",
+      "choices": [
+        "Every file ending in `.test.js`, using npm's own built-in test runner",
+        "The command in the `test` script of `package.json`",
+        "Vitest, which npm downloads if the project does not have it installed",
+        "The tests of every dependency listed in `node_modules`"
+      ],
+      "answer": 1,
+      "why": "npm has no test runner of its own; `npm test` is shorthand for `npm run test`, which runs whatever the `test` script says, such as `vitest run` or `node --test`. That script is what CI calls.",
+      "tags": ["tooling", "node"],
+      "level": 1,
+      "asked": "A basic check that you know how a project's test command is wired up."
+    },
+    {
+      "id": "tq-115",
+      "q": "How does a CI job know that the test suite failed?",
+      "choices": [
+        "It searches the log output for the word FAIL printed by the runner",
+        "The runner uploads a report file, and CI reads the failure count",
+        "The runner exits with a non-zero status code, which fails the step",
+        "It compares the number of tests with the count from the last run"
+      ],
+      "answer": 2,
+      "why": "Every CI system treats a command's exit code as success (0) or failure (anything else). Test runners exit non-zero on any failed test or error, so wrapping them in a script that swallows the exit code silently makes CI green.",
+      "tags": ["ci"],
+      "level": 1,
+      "asked": "Shows you understand the plumbing, which matters when a pipeline is green but should not be."
+    },
+    {
+      "id": "tq-116",
+      "q": "What is the difference between a test runner and an assertion library?",
+      "choices": [
+        "The runner writes the tests; the assertion library runs them in CI",
+        "The runner is for unit tests; the assertion library is for end-to-end",
+        "The runner is only used locally; the assertion library is used in CI",
+        "The runner finds and runs tests and reports; assertions check values"
+      ],
+      "answer": 3,
+      "why": "The runner (Vitest, Node's `node --test`, Jest) discovers files, runs tests and hooks, isolates them and reports. The assertion library (`expect`, `node:assert`, Chai) throws when a value is wrong. Vitest and Jest bundle both.",
+      "tags": ["tooling"],
+      "level": 1,
+      "asked": "Vocabulary that shows you understand the pieces of a test stack."
+    },
+    {
+      "id": "tq-117",
+      "q": "What is equivalence partitioning?",
+      "choices": [
+        "Grouping inputs that should behave the same and testing one from each",
+        "Splitting the test suite into equal parts so each CI job runs the same time",
+        "Checking that two implementations return equal results for all inputs",
+        "Writing one test for each equality operator the function uses internally"
+      ],
+      "answer": 0,
+      "why": "For a quantity field, 'valid 1 to 99', 'zero or negative', 'too large' and 'not a number' are partitions; one test per partition covers the behaviour without testing every value. Pair it with boundary values at each edge.",
+      "tags": ["strategy"],
+      "level": 1,
+      "asked": "Test-design vocabulary that shows you choose cases methodically rather than at random."
+    },
+    {
+      "id": "tq-118",
+      "q": "A junior's PR adds `POST /projects`, with one test showing a valid body returns 201. Which tests are most often missing?",
+      "choices": [
+        "A performance test proving the endpoint stays under 100 ms at peak",
+        "Failure cases: invalid body, unauthenticated, forbidden and conflict",
+        "A snapshot of the full JSON response, to catch any unexpected field",
+        "A test that the route is listed in the README's table of endpoints"
+      ],
+      "answer": 1,
+      "why": "Most production bugs and security holes live on unhappy paths: missing validation, missing auth checks, duplicate handling. The happy path is the one a developer checks by hand anyway.",
+      "tags": ["api-testing", "strategy"],
+      "level": 1,
+      "asked": "Interviewers look for candidates who test failure behaviour by default."
+    },
+    {
+      "id": "tq-119",
+      "q": "What is a false positive in testing?",
+      "choices": [
+        "A test that reports failure although the code works correctly",
+        "A test that passes, and the code really does work as intended",
+        "A test that is skipped but still counted as passed in the report",
+        "A test that passes, though the code it covers is actually broken"
+      ],
+      "answer": 0,
+      "why": "Following the usual convention, a positive is a reported failure: a false positive is a failing test with nothing wrong, like a flaky or brittle one. A green test over broken code is a false negative, and that is the dangerous kind, since nobody investigates it.",
+      "tags": ["quality", "flakiness"],
+      "level": 1,
+      "asked": "Both failure modes of a suite matter; strong answers explain which one erodes trust and which one ships bugs."
+    },
+    {
+      "id": "tq-120",
+      "q": "What does test isolation mean?",
+      "choices": [
+        "Each test runs in its own Docker container with its own database",
+        "Each test lives in its own file, with nothing shared between files",
+        "Each test can run alone or in any order and gets the same result",
+        "Each test mocks every dependency, so it touches no other module"
+      ],
+      "answer": 2,
+      "why": "Isolation is about outcome: no test depends on another's leftovers or order. You get it with fresh setup per test, cleanup, and unique data; containers and mocks are possible tools, not the definition.",
+      "tags": ["isolation"],
+      "level": 1,
+      "asked": "Foundation for every flakiness question; interviewers expect the behavioural definition."
+    },
+    {
+      "id": "tq-121",
+      "q": "A snapshot test fails after you intentionally changed the output format. What is the correct next step?",
+      "choices": [
+        "Delete the snapshot file, so a fresh one is written on the next run",
+        "Mark the snapshot test as skipped until the output has settled down",
+        "Review the diff, and if every change is intended, update with `-u`",
+        "Run the suite again, since snapshots often fail on the first run"
+      ],
+      "answer": 2,
+      "why": "The snapshot diff is the review: confirm each change is the one you meant, then accept it with `vitest -u` (or `u` in watch mode) and commit the updated file. Blindly updating turns snapshots into tests that always pass.",
+      "tags": ["snapshots", "process"],
+      "level": 1,
+      "asked": "Checks that you treat snapshot updates as a reviewed change rather than a chore."
+    },
+    {
+      "id": "tq-122",
+      "q": "What does `vi.fn()` give you with no arguments?",
+      "choices": [
+        "A function that throws until an implementation has been provided",
+        "A function that returns `undefined` and records every call made",
+        "A copy of the most recently imported function, with calls recorded",
+        "A function that returns a resolved promise with `undefined` in it"
+      ],
+      "answer": 1,
+      "why": "A bare `vi.fn()` accepts any arguments, returns `undefined`, and records `mock.calls` and `mock.results`. You then shape it with `mockReturnValue`, `mockResolvedValue` or `mockImplementation`. It is sync unless you make it async.",
+      "tags": ["doubles", "vitest"],
+      "level": 1,
+      "asked": "Baseline mocking fluency before harder questions about mock lifecycles."
+    },
+    {
+      "id": "tq-123",
+      "q": "What is exploratory testing good for, next to an automated suite?",
+      "choices": [
+        "Replacing unit tests on code that changes too often to automate",
+        "Proving the release is bug-free before it goes to production",
+        "Finding problems nobody thought to write an automated test for",
+        "Measuring the code coverage that the automated tests miss"
+      ],
+      "answer": 2,
+      "why": "Automated tests only check what someone anticipated. A person deliberately poking at a feature (odd inputs, double-clicks, back buttons, slow networks) finds the unanticipated, and each find can become an automated test.",
+      "tags": ["strategy", "process"],
+      "level": 1,
+      "asked": "Shows you do not think automation is the whole of quality."
+    },
+    {
+      "id": "tq-124",
+      "q": "Why run an Express API's tests with Vitest's `environment: 'node'` rather than `'jsdom'`?",
+      "choices": [
+        "jsdom cannot run `async` functions, so every one of the API tests would time out",
+        "jsdom adds browser globals and set-up cost that server code should not have",
+        "The `node` environment mocks the network, so no real requests are made",
+        "The `node` environment is required before supertest can be imported"
+      ],
+      "answer": 1,
+      "why": "Server code should run where it will run in production. jsdom injects `window` and `document`, which can mask code that wrongly depends on them and slows start-up. `node` is Vitest's default for good reason.",
+      "tags": ["tooling", "vitest"],
+      "level": 1,
+      "asked": "Checks you configure the test environment to match production."
+    },
+    {
+      "id": "tq-125",
+      "q": "Why should a unit test suite run in seconds, not minutes?",
+      "choices": [
+        "CI providers charge per test, so fewer seconds means fewer tests billed",
+        "Slow suites are skipped by the runner once they exceed a time budget",
+        "Developers run fast tests constantly, so mistakes are caught in minutes",
+        "Test runners cache results only for suites that finish in under a minute"
+      ],
+      "answer": 2,
+      "why": "Feedback speed decides how often tests get run: a suite that takes seconds runs on every save, while a slow one runs only in CI, long after the context is gone. Speed is why the bulk of logic tests avoid real I/O.",
+      "tags": ["strategy"],
+      "level": 1,
+      "asked": "An opener about why the shape of a suite matters to daily work."
+    },
+    {
+      "id": "tq-126",
+      "q": "Your team's integration tests call a shared staging API that other teams also deploy to. Why is that suite not hermetic, and why does it matter?",
+      "choices": [
+        "Its result depends on services and data it does not control, so it flakes",
+        "It uses HTTPS, which makes requests non-deterministic across different runs",
+        "It runs in CI, and hermetic tests are ones that only run on a laptop",
+        "It has more than one assertion per test, which hermetic tests forbid"
+      ],
+      "answer": 0,
+      "why": "A hermetic test brings up or fakes everything it needs, so only your change can alter its outcome. Depending on a shared environment means another team's deploy or data clean-up can fail your build. Use containers or fakes, and keep a few separate smoke tests against shared environments.",
+      "tags": ["integration", "flakiness"],
+      "level": 2,
+      "asked": "Shows you know why 'it failed because staging was down' is a design problem."
+    },
+    {
+      "id": "tq-127",
+      "q": "Tests share a database without truncating between files, and `users.email` is unique. How do you keep creates from colliding?",
+      "choices": [
+        "Catch unique-violation errors in the tests and treat them as a pass",
+        "Drop the unique constraint in the test database's migrations",
+        "Give each test unique data, such as an email with a random suffix",
+        "Run the files in alphabetical order so emails are created once"
+      ],
+      "answer": 2,
+      "why": "Unique per-test data (`ada+${randomUUID()}@test.dev`) lets tests coexist and run in parallel; assertions then look up their own rows rather than counting the whole table. Changing the schema for tests means you are no longer testing the real one.",
+      "tags": ["integration", "database"],
+      "level": 2,
+      "asked": "A practical isolation technique; interviewers like candidates who do not weaken the schema for tests."
+    },
+    {
+      "id": "tq-128",
+      "q": "Why does this assertion pass, and which matcher would fail it?",
+      "code": "class Money { constructor(amount) { this.amount = amount; } }\n\nexpect(new Money(5)).toEqual({ amount: 5 });",
+      "lang": "js",
+      "choices": [
+        "`toEqual` ignores the class; `toStrictEqual` checks the type too",
+        "`toEqual` calls `valueOf`; `toBe` would compare the two prototypes",
+        "`toEqual` compares JSON strings; `toMatchObject` checks classes",
+        "`toEqual` checks the class first; no matcher would fail it here"
+      ],
+      "answer": 0,
+      "why": "`toEqual` compares own enumerable properties recursively and ignores the prototype, so a `Money` equals a literal with the same fields. `toStrictEqual` also checks the type, which matters when behaviour lives on the class.",
+      "tags": ["assertions", "vitest"],
+      "level": 2,
+      "asked": "Shows you know exactly what 'equal' means to your assertion library."
+    },
+    {
+      "id": "tq-129",
+      "q": "A helper retries a failing call with `await sleep(1000 * 2 ** attempt)`. With fake timers, why does `vi.advanceTimersByTime(3000)` leave it stuck after the first attempt?",
+      "choices": [
+        "Fake timers do not support exponential values larger than 1000 ms",
+        "Each sleep starts after a promise settles, and the sync call never flushes it",
+        "`vi.advanceTimersByTime` only advances `setInterval`, not `setTimeout`",
+        "The retry helper must be mocked with `vi.fn()` before timers affect it"
+      ],
+      "answer": 1,
+      "why": "The first rejection is handled in a microtask, so the first sleep's timer does not exist yet when the synchronous advance runs. `await vi.advanceTimersByTimeAsync(3000)` interleaves promise flushing with timer firing, letting each retry schedule its next sleep.",
+      "tags": ["time", "async"],
+      "level": 3,
+      "asked": "Testing retries is common and this trap is real; knowing the async variant signals hands-on experience."
+    },
+    {
+      "id": "tq-130",
+      "q": "Stryker reports a surviving mutant that changes `total >= 100` to `total > 100` in the free-shipping rule. What does that tell you?",
+      "choices": [
+        "The mutation tool found a bug, so `>=` should become `>` in the code",
+        "The rule is too complex and should be split into two separate checks",
+        "The tests are flaky, since the mutant passed some runs and failed others",
+        "No test checks a total of exactly 100, so the boundary is unprotected"
+      ],
+      "answer": 3,
+      "why": "A survivor means the suite passes whether the boundary is inclusive or not, so nobody would notice if it changed. Add a test at exactly 100 (and 99.99) that pins the intended rule. The mutant is not a proposed fix.",
+      "tags": ["coverage", "strategy"],
+      "level": 3,
+      "asked": "Reading mutation results well shows you understand what tests are for, not just that the tool exists."
+    },
+    {
+      "id": "tq-131",
+      "q": "All tests pass, yet Vitest reports an 'Unhandled Rejection' error and exits non-zero. Why is failing the run the right behaviour?",
+      "choices": [
+        "Unhandled rejections crash Node 24, so the run is incomplete anyway",
+        "A rejection that escaped a test usually means an assertion ran unseen",
+        "Vitest treats all of the console output from tests as an error in CI mode",
+        "The error is always caused by the runner itself, not the tested code"
+      ],
+      "answer": 1,
+      "why": "A rejection outside any awaited chain often comes from a floating promise in a test or the code: an assertion that ran after its test finished, or an error the app swallows. Failing the run keeps that from hiding behind a green report.",
+      "tags": ["async", "vitest"],
+      "level": 3,
+      "asked": "Checks you investigate stray errors rather than muting them."
+    },
+    {
+      "id": "tq-132",
+      "q": "A Vitest `globalSetup` file starts a Postgres container and wants tests to know its connection string. How does it pass the value?",
+      "choices": [
+        "Assign it to a module-level variable that the test files import",
+        "Attach it to `globalThis`, which the worker processes all share",
+        "Write it into `vitest.config.ts`, which reloads after global setup",
+        "Call `provide('dbUrl', url)` there, and `inject('dbUrl')` in tests"
+      ],
+      "answer": 3,
+      "why": "`globalSetup` runs once in the main process, while tests run in separate workers, so its variables and globals are invisible to them. `provide`/`inject` (or an environment variable set before workers start) carries serialisable values across.",
+      "tags": ["integration", "vitest"],
+      "level": 3,
+      "asked": "Shows you understand the process model behind a test runner, which explains many 'why is this undefined' puzzles."
+    },
+    {
+      "id": "tq-133",
+      "q": "In a Pact contract between a web app and an orders API, what is a 'provider state' such as `order 42 exists`?",
+      "choices": [
+        "A health check the provider must pass before the consumer runs its tests",
+        "A version tag that states which provider release the contract applies to",
+        "A setup hook the provider runs to create that data before replaying",
+        "A cached response the consumer uses when the provider is unavailable"
+      ],
+      "answer": 2,
+      "why": "Each recorded interaction assumes some data exists. When the provider verifies the contract, it calls a state handler to seed `order 42` before replaying the request, so verification does not depend on whatever is in a shared database.",
+      "tags": ["contracts", "integration"],
+      "level": 3,
+      "asked": "Follows up 'what is contract testing' to see whether you have actually run one."
+    },
+    {
+      "id": "tq-134",
+      "q": "`POST /orders` saves the order and queues a 'send confirmation' job for a worker. How should an integration test assert the email?",
+      "choices": [
+        "Sleep for a few seconds after the request, then check the outbox",
+        "Assert only the 201, since background work cannot be tested",
+        "Run the queued jobs in-process, then assert on the fake outbox",
+        "Mock the queue so the job function is never called in tests"
+      ],
+      "answer": 2,
+      "why": "Draining the queue deterministically (an in-memory queue, or calling the worker's handler on each queued job) tests the whole flow without waiting on real time. Sleeping is flaky, and mocking the queue away leaves the job itself untested.",
+      "tags": ["integration", "async"],
+      "level": 3,
+      "asked": "Background work is where test suites get flaky; interviewers want a deterministic strategy."
+    },
+    {
+      "id": "tq-135",
+      "q": "A migration splits `users.name` into `first_name` and `last_name`, backfilling existing rows. What should its test check?",
+      "choices": [
+        "That the migration file name follows the team's usual timestamp convention",
+        "That the down migration deletes both new columns without an error",
+        "That the migration finishes within the deployment's time budget",
+        "That representative existing rows are backfilled into the right parts"
+      ],
+      "answer": 3,
+      "why": "The risky part is the data transformation: single names, extra spaces, compound surnames. Seed realistic rows, run the migration, and assert the results. Timing and rollbacks matter too, but they are not where data gets silently mangled.",
+      "tags": ["database", "integration"],
+      "level": 3,
+      "asked": "Data migrations are the change most likely to hurt production; testing them shows maturity."
+    },
+    {
+      "id": "tq-136",
+      "q": "Vitest's coverage report lists `src/utils/date.js` at 100% even though you know `formatRange` has a bug. How is that possible?",
+      "choices": [
+        "Coverage only reports files changed in the current branch",
+        "Every line ran, but no assertion checked `formatRange`'s result",
+        "The coverage tool skips functions that contain string templates",
+        "Coverage at 100% means the bug must be in another file instead"
+      ],
+      "answer": 1,
+      "why": "Coverage records execution, not verification: a test that calls a function and asserts nothing, or asserts on something else, still marks every line green. That is why coverage is a map of untested code, not proof of tested code.",
+      "tags": ["coverage"],
+      "level": 1,
+      "asked": "Checks you can explain what coverage cannot tell you, with a concrete example."
+    },
+    {
+      "id": "tq-137",
+      "q": "A test double for `PaymentGateway` returns `{ status: 'ok' }`, but the real gateway returns `{ status: 'succeeded' }`. What would have caught this?",
+      "choices": [
+        "Raising the unit test coverage threshold for the checkout module",
+        "Running the unit tests with `--sequence.shuffle` to vary their order",
+        "Typing the fake against the same interface the real adapter uses",
+        "Adding more mocks so every code path sees the `ok` status too"
+      ],
+      "answer": 2,
+      "why": "If the fake and the real adapter both implement one TypeScript interface with `status: 'succeeded' | 'failed'`, the fake cannot return `ok`. A small adapter test against the provider's sandbox keeps that interface honest.",
+      "tags": ["doubles", "typescript"],
+      "level": 2,
+      "asked": "Drifting fakes are the main weakness of test doubles; typing them is a cheap defence."
+    },
+    {
+      "id": "tq-138",
+      "q": "What is the point of a code review checklist item such as 'does every new branch have a test'?",
+      "choices": [
+        "It replaces the need for any coverage tools in the CI pipeline",
+        "It makes missing tests a normal thing to ask for, not personal",
+        "It lets reviewers approve without reading the code itself",
+        "It guarantees the change has no bugs once every box is ticked"
+      ],
+      "answer": 1,
+      "why": "Shared expectations make 'where is the test for the error case?' a routine question rather than a criticism, and catch gaps tools cannot judge, such as whether the test asserts the right thing. A checklist supplements reading the code; it does not replace it.",
+      "tags": ["review", "process"],
+      "level": 1,
+      "asked": "Shows you think about team habits around quality, not only individual skill."
+    },
+    {
+      "id": "tq-139",
+      "q": "What is the main job of a test's failure message?",
+      "choices": [
+        "To tell the reader what broke and why, without opening the test file",
+        "To print a stack trace of the runner so that the CI logs can be searched",
+        "To store the failure in the snapshot file for the next test run",
+        "To notify the author of the test by email when it starts failing"
+      ],
+      "answer": 0,
+      "why": "A good name plus a precise assertion ('expected status 403, received 200 for another user's order') lets whoever sees the red build diagnose it quickly. Vague checks such as `expect(ok).toBe(true)` throw that information away.",
+      "tags": ["quality", "assertions"],
+      "level": 1,
+      "asked": "Checks you write tests for the person who will read the failure."
+    },
+    {
+      "id": "tq-140",
+      "q": "A pure `calculateTax(order)` is unit tested with 40 cases. Checkout also has a test through the real API and database. What should that API test cover?",
+      "choices": [
+        "All 40 tax cases again, to prove the maths works end to end",
+        "Nothing about tax, since the unit tests already cover it fully",
+        "Only the database schema, since HTTP is covered by the framework",
+        "One or two cases, to prove the tax is wired into the saved order"
+      ],
+      "answer": 3,
+      "why": "Detail belongs in fast unit tests; the integration test proves the pieces are connected, for example that the saved order and response carry the computed tax. Repeating every case slows the suite and doubles the maintenance when rules change.",
+      "tags": ["strategy", "integration"],
+      "level": 2,
+      "asked": "This is the testing-strategy question in miniature: what goes at which level, and why."
     }
   ]
 }

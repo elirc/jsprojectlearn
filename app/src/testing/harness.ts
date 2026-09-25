@@ -178,6 +178,11 @@ export async function boot(options: BootOptions = {}): Promise<Harness> {
   await doAct(() => {
     root.render(createElement(StrictMode, null, createElement(HashRouter, null, createElement(App))));
   });
+  // The content gate parses several MB of JSON, so a fixed number of turns
+  // is not enough: wait until the shell is on screen (or give up after 30 s
+  // and let the test's own assertion report what did render).
+  const deadline = Date.now() + 30_000;
+  while (!container.querySelector('.sidebar') && Date.now() < deadline) await settle(1);
   await settle();
   return harness;
 }

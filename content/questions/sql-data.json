@@ -632,6 +632,2500 @@
       "tags": ["concurrency", "transactions"],
       "level": 3,
       "asked": "The classic stock or seat-booking race; the strong answer knows the check has to happen inside the write."
+    },
+    {
+      "id": "sq-042",
+      "q": "Order 1 (total 100) has three lines and order 2 (total 50) has one, both for customer 1. What does this return, and why?",
+      "code": "SELECT o.customer_id, SUM(o.total) AS spent\nFROM orders o\nJOIN order_lines l ON l.order_id = o.id\nGROUP BY o.customer_id;",
+      "lang": "sql",
+      "choices": [
+        "150, because SUM counts each order's total once however many lines it has",
+        "350, because the join repeats order 1 once per line before the SUM runs",
+        "An error, because o.total is neither grouped nor wrapped in an aggregate",
+        "400, because every order total is multiplied by the number of all lines"
+      ],
+      "answer": 1,
+      "why": "The join produces one row per line, so order 1's total appears three times: 300 + 50. This join fan-out silently inflates sums; aggregate the lines in a subquery first, or sum from `orders` alone. SUM has no idea which rows are 'the same order'.",
+      "tags": ["joins", "aggregation"],
+      "level": 2,
+      "asked": "Inflated totals from a join are one of the most common reporting bugs, and interviewers like candidates who spot the fan-out before running it."
+    },
+    {
+      "id": "sq-043",
+      "q": "`b.y` holds 2 and NULL; `a.x` holds 1, 2 and 3. What does this return in Postgres, SQL Server or SQLite?",
+      "code": "SELECT x FROM a\nWHERE x NOT IN (SELECT y FROM b);",
+      "lang": "sql",
+      "choices": [
+        "1 and 3, the values of x that do not appear anywhere in b",
+        "1, 2 and 3, because a NULL in the list makes the subquery be ignored entirely",
+        "No rows, because x <> NULL is unknown, so no row passes the test",
+        "An error, because a subquery used with IN may not contain NULLs"
+      ],
+      "answer": 2,
+      "why": "`x NOT IN (2, NULL)` expands to `x <> 2 AND x <> NULL`; the second part is unknown, so the whole test is never true. `NOT EXISTS` with a correlated subquery returns 1 and 3 as intended, which is why it is the safer anti-join.",
+      "tags": ["null", "subqueries"],
+      "level": 2,
+      "asked": "The NOT IN trap separates people who know three-valued logic from people who have only read about it."
+    },
+    {
+      "id": "sq-044",
+      "q": "You need every customer who has never placed an order. Which query is correct and portable?",
+      "choices": [
+        "SELECT c.* FROM customers c LEFT JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL",
+        "SELECT c.* FROM customers c JOIN orders o ON o.customer_id = c.id WHERE o.id IS NULL",
+        "SELECT c.* FROM customers c LEFT JOIN orders o ON o.customer_id = c.id AND o.id IS NULL",
+        "SELECT c.* FROM customers c RIGHT JOIN orders o ON o.customer_id = c.id WHERE c.id IS NULL"
+      ],
+      "answer": 0,
+      "why": "A LEFT JOIN keeps every customer, and customers with no match get NULL for every order column, so filtering `o.id IS NULL` in WHERE keeps exactly those. Putting the test in ON just changes which orders match and still returns every customer; an INNER JOIN has already dropped them.",
+      "tags": ["joins", "anti-join"],
+      "level": 1,
+      "asked": "'Find the rows with no match' is a standard whiteboard task; the strong answer also offers NOT EXISTS."
+    },
+    {
+      "id": "sq-045",
+      "q": "What does `SELECT COUNT(*) FROM sizes CROSS JOIN colours` return when sizes has 3 rows and colours has 4?",
+      "choices": [
+        "7, one row for every size followed by one row for every colour",
+        "4, one row for each colour paired with its first matching size",
+        "12, every size paired with every colour: the Cartesian product",
+        "3, because a cross join keeps only the rows of the left table"
+      ],
+      "answer": 2,
+      "why": "A CROSS JOIN pairs every left row with every right row, so the count multiplies. It is useful for generating combinations such as product variants or a calendar grid; appending rows is UNION ALL, which gives 7.",
+      "tags": ["joins"],
+      "level": 1,
+      "asked": "Asked to check you know joins multiply rows, which explains accidental Cartesian products from a missing ON."
+    },
+    {
+      "id": "sq-046",
+      "q": "`employees` has `id`, `name` and `manager_id` (another employee's id). How do you list each employee beside their manager's name, keeping the CEO who has no manager?",
+      "choices": [
+        "SELECT e.name, m.name FROM employees e JOIN employees m ON m.id = e.id",
+        "SELECT e.name, m.name FROM employees e LEFT JOIN employees m ON m.id = e.manager_id",
+        "SELECT e.name, m.name FROM employees e LEFT JOIN employees m ON m.manager_id = e.id",
+        "SELECT name, manager_id FROM employees GROUP BY manager_id"
+      ],
+      "answer": 1,
+      "why": "A self-join aliases the same table twice; the manager row is the one whose id equals this employee's manager_id. LEFT keeps the CEO with a NULL manager name. Joining `m.manager_id = e.id` goes the other way and lists each person's direct reports instead.",
+      "tags": ["joins", "self-join"],
+      "level": 1,
+      "asked": "Self-joins come up with hierarchies and 'compare a row with another row of the same table'; aliasing clearly is the skill."
+    },
+    {
+      "id": "sq-047",
+      "q": "For an INNER JOIN, what changes if you move `o.status = 'paid'` from the WHERE clause into the ON clause?",
+      "choices": [
+        "Nothing in the result: for an inner join both places filter the same rows",
+        "Customers without a paid order are kept, with NULLs in the order columns",
+        "The filter now runs after grouping, so aggregate totals are different",
+        "The query fails, as ON may only compare columns from two different tables"
+      ],
+      "answer": 0,
+      "why": "With an inner join, a row must satisfy both the join condition and the filter wherever you write them, and the planner treats them the same. The placement only matters for outer joins, where a condition in ON decides what matches while one in WHERE removes the NULL-extended rows.",
+      "tags": ["joins"],
+      "level": 2,
+      "asked": "A follow-up to the LEFT JOIN WHERE trap; knowing why it is harmless for INNER shows you understand the rule rather than memorising it."
+    },
+    {
+      "id": "sq-048",
+      "q": "What does a FULL OUTER JOIN between `ledger` and `bank_statement` on transaction reference give you that a LEFT JOIN does not?",
+      "choices": [
+        "Only the references present in both, with the columns of both sides",
+        "Every ledger row, plus a copy of each bank row for every ledger row",
+        "The ledger rows with no match, and nothing else from either of the two tables",
+        "Matched rows, plus unmatched rows from both sides with NULLs opposite"
+      ],
+      "answer": 3,
+      "why": "FULL OUTER keeps unmatched rows from both tables, so a reconciliation can show entries missing from the bank and entries missing from the ledger in one pass. MySQL has no FULL OUTER JOIN; you emulate it with a LEFT JOIN UNION a RIGHT JOIN anti-join.",
+      "tags": ["joins"],
+      "level": 2,
+      "asked": "Reconciliation reports are a real use of FULL OUTER JOIN; mentioning the MySQL gap is a bonus."
+    },
+    {
+      "id": "sq-049",
+      "q": "In Postgres, SQL Server or SQLite, `v` holds 10, NULL and 20. What do `AVG(v)`, `COUNT(v)` and `COUNT(*)` return?",
+      "choices": [
+        "10, 3, 3, because NULL is treated as zero by every aggregate",
+        "NULL, 2, 3, because any NULL input makes AVG return NULL",
+        "15, 3, 3, because COUNT always counts every row, whatever column it names",
+        "15, 2, 3, because aggregates skip NULLs but COUNT(*) counts rows"
+      ],
+      "answer": 3,
+      "why": "SUM, AVG, MIN, MAX and COUNT(column) ignore NULLs, so the average is (10 + 20) / 2. COUNT(*) counts rows regardless. If a missing value should count as zero, say so with `AVG(COALESCE(v, 0))`, which gives 10.",
+      "tags": ["aggregation", "null"],
+      "level": 1,
+      "asked": "A quick check that you know aggregates skip NULL, which changes averages in real reports."
+    },
+    {
+      "id": "sq-050",
+      "q": "A dashboard shows revenue with `SELECT SUM(total) FROM orders WHERE created_at >= $1`. On a day with no orders, what does the API receive?",
+      "choices": [
+        "0, because SUM over no rows starts from zero",
+        "NULL, because SUM over zero rows returns NULL",
+        "No row at all, because nothing matched the filter",
+        "An error, because SUM needs at least one input row"
+      ],
+      "answer": 1,
+      "why": "An aggregate without GROUP BY always returns exactly one row, and SUM of an empty set is NULL, not zero. Wrap it as `COALESCE(SUM(total), 0)` so the client does not print 'null' or crash on arithmetic. COUNT is the exception and returns 0.",
+      "tags": ["aggregation", "null"],
+      "level": 2,
+      "asked": "The empty-period NULL shows up as a real production bug in dashboards; COALESCE is the expected fix."
+    },
+    {
+      "id": "sq-051",
+      "q": "What does `GROUP BY region` do with rows whose region is NULL?",
+      "choices": [
+        "It drops them, because NULL cannot be compared with any group key",
+        "It puts each NULL row in its own group, as no two NULLs are equal",
+        "It puts all of them together in a single group with a NULL key",
+        "It raises an error unless the query uses COALESCE on the column"
+      ],
+      "answer": 2,
+      "why": "For grouping, DISTINCT and UNION, SQL treats NULLs as not distinct from each other, so they form one group. That is different from `=`, where NULL = NULL is unknown. Label the group with `COALESCE(region, 'Unknown')` in reports.",
+      "tags": ["aggregation", "null"],
+      "level": 2,
+      "asked": "It tests whether you know that grouping and equality treat NULL differently."
+    },
+    {
+      "id": "sq-052",
+      "q": "`ORDER BY last_login ASC` on a nullable column. Where do the NULL rows appear by default?",
+      "choices": [
+        "Last in Postgres; first in SQL Server, MySQL and SQLite",
+        "First in every engine, as NULL sorts below all values",
+        "Last in every engine, as NULL sorts above all values",
+        "In an unspecified position, as NULLs have no defined sort order"
+      ],
+      "answer": 0,
+      "why": "Postgres treats NULL as larger than any value, so it sorts last ascending; SQL Server, MySQL and SQLite treat it as smallest. Postgres and SQLite accept `NULLS FIRST` / `NULLS LAST`; in SQL Server sort on `CASE WHEN last_login IS NULL THEN 1 ELSE 0 END` first.",
+      "tags": ["null", "engines"],
+      "level": 2,
+      "asked": "Engine differences in NULL ordering break paginated lists after a migration; knowing NULLS LAST shows real cross-engine experience."
+    },
+    {
+      "id": "sq-053",
+      "q": "In Postgres or SQL Server, why does this fail?",
+      "code": "SELECT price * qty AS line_total\nFROM order_lines\nWHERE line_total > 100;",
+      "lang": "sql",
+      "choices": [
+        "Arithmetic is not allowed in the SELECT list alongside a WHERE",
+        "WHERE runs before SELECT, so the alias does not exist there yet",
+        "Aliases must be quoted in double quotes to be used in WHERE",
+        "A comparison against a computed column must go in a HAVING clause"
+      ],
+      "answer": 1,
+      "why": "Logically, FROM and WHERE are evaluated before SELECT, so the alias is unknown in WHERE. Repeat the expression, or wrap the query in a subquery or CTE. ORDER BY runs after SELECT, which is why aliases work there. MySQL allows aliases in HAVING and SQLite even in WHERE, which hides this habit.",
+      "tags": ["queries", "execution-order"],
+      "level": 1,
+      "asked": "It checks you know the logical order of evaluation, which explains a whole family of 'why can't I use that here' errors."
+    },
+    {
+      "id": "sq-054",
+      "q": "How do you count paid and refunded orders per customer in a single pass over `orders`?",
+      "choices": [
+        "COUNT(status = 'paid') and COUNT(status = 'refunded'), grouped by customer_id",
+        "SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END), and the same for 'refunded'",
+        "COUNT(*) with WHERE status IN ('paid', 'refunded'), grouped by customer_id",
+        "COUNT(*) with HAVING status IN ('paid', 'refunded'), grouped by customer_id"
+      ],
+      "answer": 1,
+      "why": "Conditional aggregation puts a CASE inside the aggregate, so each row adds 1 to the column it belongs to. `COUNT(status = 'paid')` counts every row where the comparison is non-NULL, true or false. Postgres and SQLite also offer `COUNT(*) FILTER (WHERE status = 'paid')`.",
+      "tags": ["aggregation", "conditional-aggregation"],
+      "level": 2,
+      "asked": "Pivot-style reports come up constantly; conditional aggregation is the portable answer interviewers look for."
+    },
+    {
+      "id": "sq-055",
+      "q": "In Postgres, SQL Server or SQLite, `s` holds 'a', 'b' and NULL. How many rows does `WHERE s <> 'a'` keep?",
+      "choices": [
+        "Two, because NULL is different from 'a' and so passes",
+        "Three, because <> ignores the NULL and keeps the row",
+        "Zero, because a NULL in the column fails the whole scan",
+        "One, because NULL <> 'a' is unknown and WHERE drops it"
+      ],
+      "answer": 3,
+      "why": "Any comparison with NULL yields unknown, and WHERE keeps only rows where the condition is true. To include rows with no value, write `s <> 'a' OR s IS NULL`, or `s IS DISTINCT FROM 'a'` in Postgres and SQL Server 2022.",
+      "tags": ["null"],
+      "level": 1,
+      "asked": "'Everything except X' filters quietly losing NULL rows is a real bug; the fix shows you think about missing data."
+    },
+    {
+      "id": "sq-056",
+      "q": "What do `5 / 2` and `5 / 2.0` return in Postgres, SQL Server and SQLite?",
+      "choices": [
+        "2.5 and 2.5, as division always produces a decimal result",
+        "3 and 2.5, as integer division rounds to the nearest whole",
+        "2 and 2.5, as dividing two integers truncates toward zero",
+        "2 and 2, as the left operand's type decides the result"
+      ],
+      "answer": 2,
+      "why": "Integer divided by integer is integer division in these engines, so percentages computed as `paid / total` come out as 0. Cast one side, for example `paid * 1.0 / total` or `CAST(paid AS numeric)`. MySQL is the odd one out: its `/` returns 2.5000 and `DIV` truncates.",
+      "tags": ["types", "engines"],
+      "level": 1,
+      "asked": "The 'every percentage is zero' bug is common in reporting queries; the cast fix is expected."
+    },
+    {
+      "id": "sq-057",
+      "q": "In Postgres or SQLite, what do `'a' || NULL` and `CONCAT('a', NULL)` return?",
+      "choices": [
+        "NULL and 'a': the operator propagates NULL, CONCAT skips it",
+        "'a' and 'a': both treat NULL as an empty string",
+        "NULL and NULL: any NULL input makes a string function NULL",
+        "'aNULL' and 'a': the operator prints NULL as a literal word"
+      ],
+      "answer": 0,
+      "why": "The `||` operator follows the NULL-in, NULL-out rule, so a full name built as `first || ' ' || middle || ' ' || last` vanishes when middle is NULL. `CONCAT` treats NULL as empty. SQL Server's `+` on strings also returns NULL, and its `CONCAT` behaves the same way.",
+      "tags": ["null", "strings"],
+      "level": 2,
+      "asked": "Disappearing display names are a classic NULL bug; the answer shows you know which functions propagate NULL."
+    },
+    {
+      "id": "sq-058",
+      "q": "What does this return when `status` is NULL?",
+      "code": "SELECT CASE status\n  WHEN NULL THEN 'missing'\n  ELSE 'present'\nEND\nFROM orders;",
+      "lang": "sql",
+      "choices": [
+        "'missing', because the simple CASE has a NULL branch",
+        "'present', because status = NULL is never true",
+        "NULL, because CASE propagates a NULL input",
+        "An error, because NULL is not allowed in WHEN"
+      ],
+      "answer": 1,
+      "why": "A simple CASE compares with `=`, and `NULL = NULL` is unknown, so the branch never matches and ELSE wins. Use the searched form, `CASE WHEN status IS NULL THEN 'missing' ...`, to test for NULL.",
+      "tags": ["null", "case"],
+      "level": 2,
+      "asked": "A compact NULL-semantics check; a strong candidate names the searched CASE form as the fix."
+    },
+    {
+      "id": "sq-059",
+      "q": "How do you return the first 10 rows by `created_at` in Postgres, SQL Server and MySQL respectively?",
+      "choices": [
+        "LIMIT 10 in all three, as it is part of the SQL standard",
+        "TOP 10; LIMIT 10; FETCH FIRST 10 ROWS ONLY",
+        "LIMIT 10; TOP 10 (or OFFSET/FETCH); LIMIT 10",
+        "ROWNUM <= 10; TOP 10; LIMIT 10 in a WHERE clause"
+      ],
+      "answer": 2,
+      "why": "Postgres, MySQL and SQLite use LIMIT (and OFFSET). SQL Server uses `SELECT TOP 10` or `ORDER BY ... OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY`, and Postgres also accepts the standard FETCH FIRST. ROWNUM is Oracle's older idiom. Any of them without ORDER BY returns an arbitrary 10.",
+      "tags": ["queries", "engines"],
+      "level": 1,
+      "asked": "Cheap to ask and quickly shows which engines you have actually used."
+    },
+    {
+      "id": "sq-060",
+      "q": "What does `SELECT DISTINCT customer_id, status FROM orders` remove?",
+      "choices": [
+        "Rows repeating a customer_id, keeping each customer's first status",
+        "Rows where customer_id or status is NULL, before comparing",
+        "Rows whose status appears for more than one customer",
+        "Rows identical in both columns, leaving unique pairs"
+      ],
+      "answer": 3,
+      "why": "DISTINCT applies to the whole selected row, not the first column, so a customer appears once per distinct status. To pick one row per customer you need GROUP BY with aggregates, a window function, or Postgres's `DISTINCT ON`.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "Misreading DISTINCT as 'distinct on the first column' is common; this checks the mental model."
+    },
+    {
+      "id": "sq-061",
+      "q": "In Postgres, what happens when this runs and some customer has two addresses?",
+      "code": "SELECT c.name,\n  (SELECT a.city FROM addresses a\n   WHERE a.customer_id = c.id) AS city\nFROM customers c;",
+      "lang": "sql",
+      "choices": [
+        "The row for that customer repeats once per address",
+        "The address inserted first is used for that customer",
+        "The two cities are concatenated into one comma-separated value",
+        "The query fails: a subquery returned more than one row"
+      ],
+      "answer": 3,
+      "why": "A subquery in the SELECT list must be scalar: at most one row, one column. With two rows it errors at run time (SQL Server does the same). It returns NULL when there are no rows. Decide which address you mean, with ORDER BY and LIMIT 1, or join and aggregate.",
+      "tags": ["subqueries"],
+      "level": 2,
+      "asked": "Scalar subqueries that work in dev and fail on real data are a familiar production error."
+    },
+    {
+      "id": "sq-062",
+      "q": "Which rule applies to the two SELECTs in a UNION?",
+      "choices": [
+        "They must have the same column count and compatible types; names come from the first",
+        "They must select from the same table, or from tables that share an identical schema",
+        "They must use identical column names, or the second query's names are used",
+        "They may differ in column count; any missing columns are padded out with NULL values"
+      ],
+      "answer": 0,
+      "why": "UNION matches columns by position, so both sides need the same number of columns with compatible types, and the result takes its column names from the first query. An ORDER BY applies to the combined result and goes at the very end.",
+      "tags": ["queries", "set-operations"],
+      "level": 1,
+      "asked": "Asked with a broken UNION to fix; matching by position rather than name is the key insight."
+    },
+    {
+      "id": "sq-063",
+      "q": "In Postgres, SQL Server or SQLite, which returns the ids in `import_batch` that are not already in `products`?",
+      "choices": [
+        "SELECT id FROM import_batch INTERSECT SELECT id FROM products",
+        "SELECT id FROM import_batch UNION SELECT id FROM products",
+        "SELECT id FROM import_batch EXCEPT SELECT id FROM products",
+        "SELECT id FROM products EXCEPT SELECT id FROM import_batch"
+      ],
+      "answer": 2,
+      "why": "`A EXCEPT B` returns the distinct rows of A that are not in B; the order matters, so the last option returns products missing from the batch. INTERSECT returns rows in both. Oracle spells EXCEPT as MINUS, and unlike NOT IN it treats NULLs as equal.",
+      "tags": ["set-operations"],
+      "level": 2,
+      "asked": "Set operators are a quick way to answer 'what's new or missing' in data migrations; interviewers like seeing them used."
+    },
+    {
+      "id": "sq-064",
+      "q": "In Postgres, what does this return for a customer with no orders?",
+      "code": "SELECT c.name,\n  (SELECT MAX(o.created_at) FROM orders o\n   WHERE o.customer_id = c.id) AS last_order\nFROM customers c;",
+      "lang": "sql",
+      "choices": [
+        "The customer is left out of the result",
+        "The customer's row, with last_order NULL",
+        "An error, because MAX saw no input rows",
+        "The customer's row, with last_order set to the epoch"
+      ],
+      "answer": 1,
+      "why": "The outer query drives the rows, so every customer appears; the scalar subquery returns MAX over no rows, which is NULL. A correlated subquery like this runs per customer in principle, but planners often rewrite it into a join; check the plan for large tables.",
+      "tags": ["subqueries", "null"],
+      "level": 2,
+      "asked": "It checks you can reason about correlated subqueries rather than only joins."
+    },
+    {
+      "id": "sq-065",
+      "q": "`RIGHT JOIN` shows up in a query you are reviewing. How does `a RIGHT JOIN b ON ...` relate to a LEFT JOIN?",
+      "choices": [
+        "It keeps only rows of b that have no match in a, the reverse of an anti-join",
+        "It returns the same rows as `b LEFT JOIN a ON ...`, just with a's columns first",
+        "It keeps every row of both a and b, filling in NULLs on whichever side has no match",
+        "It is faster than a LEFT JOIN when b is the larger of the two tables"
+      ],
+      "answer": 1,
+      "why": "A RIGHT JOIN keeps every row of the right table; swapping the tables and using LEFT gives the same result. Most teams write only LEFT JOINs so the 'kept' table always reads first. Keeping every row of both is FULL OUTER JOIN.",
+      "tags": ["joins"],
+      "level": 1,
+      "asked": "A simple clarity question; saying you would rewrite it as a LEFT JOIN is the answer reviewers like."
+    },
+    {
+      "id": "sq-066",
+      "q": "Rows in `orders` and `refunds` both have a nullable `coupon_code`. Why does a join on `o.coupon_code = r.coupon_code` never pair two rows that both have NULL?",
+      "choices": [
+        "Joins skip NULL keys only when the column is part of an index",
+        "NULL = NULL is unknown, and a join keeps only true matches",
+        "The planner removes NULL rows before a hash join, but not a merge join",
+        "The rows do pair, but the output shows the key column as NULL"
+      ],
+      "answer": 1,
+      "why": "Join conditions use ordinary equality, so NULL never matches NULL whatever the join algorithm. If 'both missing' should match, write `o.coupon_code IS NOT DISTINCT FROM r.coupon_code` (Postgres, SQL Server 2022), or rethink whether NULL is the right model.",
+      "tags": ["joins", "null"],
+      "level": 2,
+      "asked": "It checks you apply NULL rules to joins, where they cause 'missing row' bugs in reconciliation."
+    },
+    {
+      "id": "sq-067",
+      "q": "In SQL Server, `@code` is `varchar(3)` and NULL. What does `ISNULL(@code, 'UNKNOWN')` return?",
+      "choices": [
+        "'UNKNOWN', exactly as COALESCE would, as the types are compatible",
+        "NULL, because ISNULL only replaces empty strings",
+        "An error, because the replacement is too long",
+        "'UNK', because ISNULL takes the first argument's type"
+      ],
+      "answer": 3,
+      "why": "ISNULL's result type is the type of its first argument, so the replacement is silently truncated to three characters. COALESCE follows data-type precedence across all arguments and returns 'UNKNOWN'. It is one reason to prefer the standard COALESCE.",
+      "tags": ["null", "sql-server"],
+      "level": 3,
+      "asked": "A SQL Server gotcha that shows real experience; the strong answer is 'use COALESCE unless you have a reason'."
+    },
+    {
+      "id": "sq-068",
+      "q": "Which condition is true when both `a` and `b` are NULL, and false when exactly one of them is?",
+      "choices": [
+        "a = b OR a IS NULL",
+        "a IS NOT DISTINCT FROM b",
+        "COALESCE(a, 0) = COALESCE(b, 0)",
+        "NOT (a <> b)"
+      ],
+      "answer": 1,
+      "why": "`IS NOT DISTINCT FROM` is a null-safe equality: it treats two NULLs as equal and never returns unknown. It is supported in Postgres, SQL Server 2022 and SQLite (as `IS`); MySQL spells it `<=>`. `a = b` and `NOT (a <> b)` are unknown when either side is NULL, and a COALESCE sentinel wrongly matches a real 0.",
+      "tags": ["null"],
+      "level": 3,
+      "asked": "Useful for 'has this value changed?' checks in upserts and audits; knowing the operator saves a messy OR chain."
+    },
+    {
+      "id": "sq-069",
+      "q": "How does `EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = c.id)` behave for a customer with 500 orders?",
+      "choices": [
+        "It builds a list of all 500 order ids, then tests it for emptiness",
+        "It counts the 500 orders and compares the count with zero",
+        "It returns true and may stop at the first matching order",
+        "It returns 500 true rows, which the outer query collapses"
+      ],
+      "answer": 2,
+      "why": "EXISTS is a semi-join: it only asks whether any row matches, so the engine can stop at the first one, and the selected columns do not matter. `COUNT(*) > 0` asks the database to count every match first, which does more work for the same answer.",
+      "tags": ["subqueries", "semi-join"],
+      "level": 2,
+      "asked": "It shows you pick EXISTS over COUNT(*) > 0 for 'does any row exist', a small but real performance habit."
+    },
+    {
+      "id": "sq-070",
+      "q": "You run `SELECT customer_id, COUNT(*) FROM orders GROUP BY customer_id ORDER BY 2 DESC`. What does `ORDER BY 2` mean?",
+      "choices": [
+        "Sort by the second column of the table, whatever the SELECT list",
+        "Sort by the second column of the SELECT list, here the count",
+        "Sort by the constant value 2, so the order is left unchanged",
+        "Return only the first two groups, in descending order"
+      ],
+      "answer": 1,
+      "why": "A number in ORDER BY refers to a position in the SELECT list. It is handy in ad-hoc queries but fragile in code, because adding a column shifts the meaning; naming the alias is clearer. Positional GROUP BY works in Postgres and MySQL but not SQL Server.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "A small readability question; the good answer mentions why you avoid positional ordering in application SQL."
+    },
+    {
+      "id": "sq-071",
+      "q": "Which query returns the customers whose total spend is above the average customer's total spend?",
+      "choices": [
+        "WHERE SUM(total) > AVG(total), followed by GROUP BY customer_id",
+        "GROUP BY customer_id HAVING SUM(total) > AVG(total), in one query",
+        "HAVING SUM(total) > the average of per-customer sums, from a CTE",
+        "HAVING SUM(total) > (SELECT AVG(total) FROM orders), in a subquery"
+      ],
+      "answer": 2,
+      "why": "You need the average of per-customer totals, which is an aggregate of an aggregate, so it lives in a CTE or subquery. `HAVING SUM(total) > AVG(total)` compares each customer's sum with their own average order, and `AVG(total)` over all orders is the average order, not the average customer. Aggregates in WHERE are an error.",
+      "tags": ["aggregation", "subqueries"],
+      "level": 3,
+      "asked": "Nested aggregation separates people who can reason about grain from those who pattern-match HAVING."
+    },
+    {
+      "id": "sq-072",
+      "q": "What does declaring a column as the PRIMARY KEY give you, in Postgres, SQL Server and MySQL alike?",
+      "choices": [
+        "Uniqueness only; NULLs are still allowed, and you add an index yourself",
+        "An auto-incrementing value, whatever the column's declared type",
+        "Uniqueness and NOT NULL, enforced through an index the engine creates",
+        "A foreign key that every other table must reference, by convention"
+      ],
+      "answer": 2,
+      "why": "A primary key is unique and not null, and every mainstream engine backs it with a unique index (clustered by default in SQL Server and InnoDB). Auto-increment is separate: IDENTITY, a sequence or AUTO_INCREMENT. SQLite is the historical exception, allowing NULLs in some non-integer primary keys.",
+      "tags": ["constraints", "keys"],
+      "level": 1,
+      "asked": "A basic check that you know what the database enforces for you versus what is convention."
+    },
+    {
+      "id": "sq-073",
+      "q": "`users.email` has a plain UNIQUE constraint and is nullable. Two users sign up without an email. What happens?",
+      "choices": [
+        "The two inserts succeed in Postgres, MySQL and SQLite; SQL Server rejects the second NULL",
+        "The two inserts succeed everywhere, because a NULL is never checked for uniqueness",
+        "The second insert fails in every engine, as two NULLs count as duplicate values",
+        "The two inserts fail in Postgres, because a UNIQUE column implies it is NOT NULL"
+      ],
+      "answer": 0,
+      "why": "The standard treats NULLs as distinct, so Postgres, MySQL and SQLite allow many. SQL Server's unique constraint allows only one NULL; use a filtered unique index `WHERE email IS NOT NULL` there. Postgres 15+ can opt into the stricter rule with `UNIQUE NULLS NOT DISTINCT`.",
+      "tags": ["constraints", "null", "engines"],
+      "level": 2,
+      "asked": "Optional-but-unique columns are common, and this engine difference bites when a schema moves between databases."
+    },
+    {
+      "id": "sq-074",
+      "q": "`status` is `NOT NULL DEFAULT 'new'` and `note` is `DEFAULT 'x'`. What does `INSERT INTO t (id, note) VALUES (2, NULL)` store?",
+      "choices": [
+        "status 'new' and note 'x', as defaults replace any NULL that is supplied",
+        "An error, as the explicit NULL in note conflicts with note's default",
+        "status NULL and note NULL, as a default only fills the first column",
+        "status 'new' and note NULL, as a default fills only an omitted column"
+      ],
+      "answer": 3,
+      "why": "A default is used when the column is left out of the INSERT (or given the keyword DEFAULT). An explicit NULL is a value, so note becomes NULL. If the column should never be empty, the default is not enough: add NOT NULL, as status has.",
+      "tags": ["constraints", "ddl"],
+      "level": 2,
+      "asked": "ORMs sending explicit NULLs for unset properties is a common reason defaults 'don't work'."
+    },
+    {
+      "id": "sq-075",
+      "q": "You want to guarantee a product's price is never negative, whatever code writes to the table. What is the most direct tool?",
+      "choices": [
+        "A validation attribute on the API model, as every write goes through the API",
+        "A CHECK constraint such as CHECK (price >= 0) on the column",
+        "An AFTER INSERT trigger that deletes any row with a negative price",
+        "A view over the table that filters out rows with a negative price"
+      ],
+      "answer": 1,
+      "why": "A CHECK constraint is evaluated on every insert and update, from any client, and rejects the bad row. Keep the API validation too, for friendly messages, but it does not cover scripts, other services or ad-hoc fixes. A cleanup trigger lets the bad row exist and hides the error.",
+      "tags": ["constraints"],
+      "level": 1,
+      "asked": "Checks whether you let the database enforce invariants instead of trusting every writer."
+    },
+    {
+      "id": "sq-076",
+      "q": "In the sqlite3 CLI (or a driver with default settings), this table has a REFERENCES clause. Why might an order pointing at a missing customer still insert?",
+      "choices": [
+        "SQLite enforces foreign keys only on columns that also carry an index",
+        "SQLite checks foreign keys only when the transaction commits",
+        "Foreign keys are off per connection until PRAGMA foreign_keys = ON",
+        "SQLite ignores REFERENCES clauses unless the table is declared STRICT"
+      ],
+      "answer": 2,
+      "why": "For backward compatibility, SQLite parses foreign keys but enforces them only on connections that run `PRAGMA foreign_keys = ON`. Many wrappers switch it on (Node's built-in node:sqlite does), but not all, so set it explicitly on every connection. STRICT tables enforce column types, not foreign keys.",
+      "tags": ["constraints", "sqlite"],
+      "level": 2,
+      "asked": "SQLite is common in tests and small apps; this gotcha shows you have actually shipped with it."
+    },
+    {
+      "id": "sq-077",
+      "q": "`orders.coupon_id` references `coupons(id)` with `ON DELETE SET NULL`. What happens to orders when a coupon is deleted?",
+      "choices": [
+        "They are deleted along with the coupon, as with CASCADE",
+        "Their coupon_id becomes NULL, and the orders are kept",
+        "The delete fails while any order still uses the coupon",
+        "They keep the old id, now pointing at a missing coupon"
+      ],
+      "answer": 1,
+      "why": "SET NULL clears the reference and keeps the child row, which suits optional links such as a coupon. The default (NO ACTION or RESTRICT) blocks the delete, and CASCADE removes the children. The column must be nullable for SET NULL to work.",
+      "tags": ["constraints", "foreign-keys"],
+      "level": 1,
+      "asked": "It checks you choose delete behaviour per relationship rather than cascading everything."
+    },
+    {
+      "id": "sq-078",
+      "q": "In Postgres or SQL Server, a transaction inserts an order, receives id 101, then rolls back. What id does the next successful insert get?",
+      "choices": [
+        "101, because the rolled-back value is returned to the sequence",
+        "The lowest unused id in the table, found by scanning for gaps",
+        "An error until the sequence is reset to the last committed value",
+        "102, because sequence values are not reused, so ids have gaps"
+      ],
+      "answer": 3,
+      "why": "Sequences and IDENTITY hand out numbers outside the transaction so that concurrent inserts never wait on each other; a rollback does not return the number. Gaps are normal, so never use ids as a count or as a gap-free invoice number.",
+      "tags": ["keys", "transactions"],
+      "level": 2,
+      "asked": "Asked when someone wants 'no gaps' invoice numbers; knowing why ids have gaps shows you understand concurrency trade-offs."
+    },
+    {
+      "id": "sq-079",
+      "q": "After inserting a row, how should the application get its generated id?",
+      "choices": [
+        "Run SELECT MAX(id) FROM the table straight after the insert",
+        "Use RETURNING id (Postgres, SQLite) or OUTPUT INSERTED.id (SQL Server)",
+        "Generate the next id in the application by adding one to the last id it saw",
+        "Query the row back by all its other columns and read its id"
+      ],
+      "answer": 1,
+      "why": "RETURNING and OUTPUT hand back the value produced by this statement, in the same round trip, and are safe under concurrency. `MAX(id)` can return another session's row. MySQL uses `LAST_INSERT_ID()`, and SQL Server's `SCOPE_IDENTITY()` is the older equivalent.",
+      "tags": ["keys", "queries"],
+      "level": 1,
+      "asked": "The MAX(id) race is a classic junior mistake; the engine-specific answer shows hands-on experience."
+    },
+    {
+      "id": "sq-080",
+      "q": "Why can random UUIDv4 primary keys slow down inserts on a large table in SQL Server or InnoDB, and what is the usual remedy?",
+      "choices": [
+        "UUIDs are compared as strings; storing them as text avoids that cost",
+        "Random keys land all over the clustered index; use UUIDv7 or a bigint",
+        "UUIDs cannot be indexed, so each insert scans the table for duplicates",
+        "Every UUID is generated by the server; generating it in the app fixes it"
+      ],
+      "answer": 1,
+      "why": "Inserts into a clustered index at random positions split pages and touch far more of the index than appending at the end, and the index grows bigger and fragmented. Time-ordered UUIDv7 (native `uuidv7()` in Postgres 18) or a sequential id keeps inserts at the end while staying globally unique.",
+      "tags": ["keys", "indexes", "performance"],
+      "level": 3,
+      "asked": "Key choice comes up in design interviews; knowing why random keys hurt a B-tree shows depth."
+    },
+    {
+      "id": "sq-081",
+      "q": "In Postgres, what is the practical difference between `varchar(255)` and `text`?",
+      "choices": [
+        "text is stored outside the row, so it is always slower to read",
+        "varchar(255) is faster, as the engine can reserve a fixed width",
+        "Only the length check; both are stored and processed identically",
+        "text cannot be indexed in a B-tree, so varchar is needed for any lookups"
+      ],
+      "answer": 2,
+      "why": "In Postgres, varchar(n) is text plus a length check; storage and speed are the same, and long values of either type are moved out of line (TOASTed) automatically. Use a length limit when it is a real rule, or a CHECK constraint, rather than 255 by habit. SQL Server differs: nvarchar(max) has real costs.",
+      "tags": ["types", "postgres"],
+      "level": 2,
+      "asked": "It reveals whether you carry MySQL or SQL Server habits into Postgres without knowing why."
+    },
+    {
+      "id": "sq-082",
+      "q": "In SQL Server, why store customer names in `nvarchar` rather than `varchar` on a database with a default Latin collation?",
+      "choices": [
+        "varchar there cannot hold characters outside the code page, such as Chinese",
+        "nvarchar values are compressed, so they use less space than varchar",
+        "varchar columns cannot be indexed when they are longer than 50 characters",
+        "nvarchar always sorts case-sensitively, which names need for correct lookups"
+      ],
+      "answer": 0,
+      "why": "With a legacy code-page collation, varchar holds one code page and turns other characters into '?'. nvarchar stores UTF-16 and holds any character. SQL Server 2019+ also offers UTF-8 collations for varchar. Pass parameters as nvarchar too, or string literals need the N prefix: N'Zoë'.",
+      "tags": ["types", "sql-server"],
+      "level": 1,
+      "asked": "Question marks in customer names are a real support ticket; this checks you know the cause."
+    },
+    {
+      "id": "sq-083",
+      "q": "What range can a column declared `DECIMAL(10, 2)` hold?",
+      "choices": [
+        "Up to 10 digits before the decimal point and 2 digits after it",
+        "Up to 99,999,999.99: 10 digits in total, 2 after the point",
+        "Any value, rounded to 10 significant figures on insert",
+        "Up to 10.2 million, as the precision counts in millions"
+      ],
+      "answer": 1,
+      "why": "Precision is the total number of digits and scale is the number after the decimal point, so 8 remain before it. Values with more decimal places are rounded, and values too large are rejected with an overflow error rather than silently clamped.",
+      "tags": ["types"],
+      "level": 1,
+      "asked": "Precision and scale confusion causes overflow errors on real prices and totals."
+    },
+    {
+      "id": "sq-084",
+      "q": "`WHERE name = 'ann'` finds 'Ann' on SQL Server but not on Postgres. Why?",
+      "choices": [
+        "SQL Server lowercases all string literals before it compares them",
+        "Postgres needs double quotes around a string for it to match",
+        "SQL Server's usual default collation is case-insensitive; Postgres compares exactly",
+        "Postgres indexes store only uppercased copies of every string value they hold"
+      ],
+      "answer": 2,
+      "why": "Comparison rules come from the collation. SQL Server installs usually default to a case-insensitive collation such as SQL_Latin1_General_CP1_CI_AS; Postgres compares case-sensitively by default. In Postgres use `lower(name) = lower($1)` with an expression index, `citext`, or a nondeterministic ICU collation.",
+      "tags": ["collation", "engines"],
+      "level": 2,
+      "asked": "Case-insensitive login lookups break when moving between engines; this is a practical portability question."
+    },
+    {
+      "id": "sq-085",
+      "q": "What does `WHERE code LIKE 'A_1'` match?",
+      "choices": [
+        "Only the literal string 'A_1', underscore included",
+        "Any code starting with A and ending with 1, of any length",
+        "Any three-character code with A first and 1 last",
+        "Codes starting with 'A' followed by one or more 1s"
+      ],
+      "answer": 2,
+      "why": "In LIKE, `_` matches exactly one character and `%` matches any run, including none. To match a literal underscore, escape it: `LIKE 'A\\_1' ESCAPE '\\'` (or `[_]` in SQL Server). Codes containing underscores silently over-match otherwise.",
+      "tags": ["queries", "strings"],
+      "level": 2,
+      "asked": "Wildcard escaping comes up in search features; the ESCAPE clause is the detail interviewers listen for."
+    },
+    {
+      "id": "sq-086",
+      "q": "A search box builds `WHERE name LIKE $1` with the parameter `'%' + input + '%'`. A user types `%`. What happens?",
+      "choices": [
+        "Injection: the % is executed as SQL and the query text is changed",
+        "The query fails, because % cannot appear inside a bound parameter",
+        "Nothing unusual; bound parameters escape LIKE wildcards as well as quotes",
+        "The search matches every row, as parameters do not escape wildcards"
+      ],
+      "answer": 3,
+      "why": "A parameter keeps input out of the SQL text, so this is not injection, but inside the value `%` and `_` are still LIKE wildcards. Escape them in the app and add an ESCAPE clause if users should be able to search for them literally. A search for `%` returning everything can also be a performance problem on large tables.",
+      "tags": ["security", "strings"],
+      "level": 3,
+      "asked": "It separates 'parameters prevent injection' from 'parameters make input inert', a nuance strong candidates know."
+    },
+    {
+      "id": "sq-087",
+      "q": "An endpoint lets the client choose the sort column. Why can you not simply bind it as a parameter in `ORDER BY $1`?",
+      "choices": [
+        "Parameters carry values, not identifiers; map the input to an allowlist of columns",
+        "You can, but binding identifiers is slower, so string-concatenating is preferred",
+        "ORDER BY does not accept any expressions, so the column must be hard-coded",
+        "Parameters only work in WHERE clauses, so ORDER BY must go through a stored procedure"
+      ],
+      "answer": 0,
+      "why": "A bound value is treated as a constant, so `ORDER BY $1` sorts every row by the same literal string and does nothing useful (or errors). Identifiers cannot be parameters. Map the client's choice to a fixed set of column names in code, never interpolating raw input.",
+      "tags": ["security", "queries"],
+      "level": 2,
+      "asked": "Dynamic sorting is where parameterised-query discipline usually breaks; the allowlist answer is what reviewers expect."
+    },
+    {
+      "id": "sq-088",
+      "q": "In Postgres with node-postgres, how do you pass a variable-length list of ids safely to a query?",
+      "code": "const ids = [3, 9, 27];\nawait pool.query(/* ? */, [ids]);",
+      "lang": "js",
+      "choices": [
+        "'SELECT * FROM users WHERE id IN ($1)', which expands the array into a list",
+        "'SELECT * FROM users WHERE id = ANY($1)', binding the array as one parameter",
+        "'SELECT * FROM users WHERE id IN (' + ids.join(',') + ')', since ids are numbers",
+        "'SELECT * FROM users WHERE id IN $1', which node-postgres turns into a tuple"
+      ],
+      "answer": 1,
+      "why": "Postgres accepts an array parameter, and `= ANY($1)` tests membership, with one plan for any list length. `IN ($1)` compares id with the whole array and fails. Concatenating 'safe' numbers is a habit that breaks the day the list comes from a query string. In SQL Server, use a table-valued parameter or one parameter per item.",
+      "tags": ["security", "postgres"],
+      "level": 2,
+      "asked": "Filtering by a list of ids is everyday work; the ANY pattern shows Postgres fluency."
+    },
+    {
+      "id": "sq-089",
+      "q": "In Postgres with no explicit BEGIN, you run two UPDATE statements from a client and the second fails. What state is the first update in?",
+      "choices": [
+        "Committed, because each statement ran in its own implicit transaction",
+        "Rolled back, because the session undoes everything since it connected",
+        "Pending, because it waits for an explicit COMMIT from the client",
+        "Rolled back, because the second failure aborts the whole batch"
+      ],
+      "answer": 0,
+      "why": "Clients default to autocommit: every statement outside an explicit transaction is committed on its own. To make the two changes all-or-nothing, wrap them in BEGIN ... COMMIT (or your driver's transaction API). SQL Server behaves the same unless IMPLICIT_TRANSACTIONS is on.",
+      "tags": ["transactions"],
+      "level": 1,
+      "asked": "Partial updates after an error are how people learn about autocommit; this checks you already know."
+    },
+    {
+      "id": "sq-090",
+      "q": "Inside a Postgres transaction, an INSERT fails on a unique constraint. The code catches the error and runs another SELECT in the same transaction. What happens?",
+      "choices": [
+        "The SELECT runs normally, and COMMIT keeps the other statements",
+        "The SELECT runs, but COMMIT silently commits only the SELECT",
+        "The SELECT fails: the transaction is aborted until you roll back",
+        "The failed INSERT is retried automatically before the SELECT is allowed to run"
+      ],
+      "answer": 2,
+      "why": "After an error, Postgres marks the transaction aborted and rejects every further command ('current transaction is aborted') until ROLLBACK; a COMMIT then acts as a rollback. To recover from an expected error mid-transaction, set a SAVEPOINT before it and roll back to it. SQL Server, by contrast, often continues unless XACT_ABORT is on.",
+      "tags": ["transactions", "postgres"],
+      "level": 2,
+      "asked": "The 'current transaction is aborted' error confuses many developers; explaining it shows real Postgres experience."
+    },
+    {
+      "id": "sq-091",
+      "q": "What is a SAVEPOINT useful for inside a transaction?",
+      "choices": [
+        "Committing part of the work early while the transaction continues",
+        "Rolling back to a marked point and continuing, without losing earlier work",
+        "Making the transaction's changes visible to other sessions ahead of commit",
+        "Raising the isolation level for the statements that follow the savepoint"
+      ],
+      "answer": 1,
+      "why": "`ROLLBACK TO SAVEPOINT x` undoes only what happened after x, and the transaction carries on; nothing is committed or visible to others until the final COMMIT. ORMs use savepoints for nested transactions, and they are how you try an insert that may conflict without aborting the whole unit.",
+      "tags": ["transactions"],
+      "level": 2,
+      "asked": "Nested transactions in ORMs are implemented with savepoints; knowing that explains otherwise puzzling behaviour."
+    },
+    {
+      "id": "sq-092",
+      "q": "In Postgres, you add a foreign key `orders.customer_id REFERENCES customers(id)`. What index work does that do for you?",
+      "choices": [
+        "It indexes orders.customer_id automatically, as MySQL InnoDB does",
+        "None; the referenced key is already indexed, the referencing column is not",
+        "It indexes both columns and clusters orders by customer_id",
+        "It creates a hash index on customer_id, which serves equality lookups only"
+      ],
+      "answer": 1,
+      "why": "Postgres and SQL Server require a unique index on the referenced key but do not index the referencing column; InnoDB does. Without one, joins from customers to orders and every customer delete (which must check for children) scan orders. Add the index yourself.",
+      "tags": ["indexes", "foreign-keys"],
+      "level": 2,
+      "asked": "Missing FK indexes are one of the most common real performance problems; this checks you know to add them."
+    },
+    {
+      "id": "sq-093",
+      "q": "Is a single-column index on `is_active` (true for 98% of rows) likely to speed up `WHERE is_active = true`?",
+      "choices": [
+        "Yes, every column used in a WHERE clause should get an index",
+        "Yes, but only when the index is declared UNIQUE, so each lookup stops early",
+        "No, as boolean columns can never be included in an index",
+        "No, as the filter keeps most rows, so a table scan is cheaper"
+      ],
+      "answer": 3,
+      "why": "An index pays off when it narrows the search to a small fraction of rows. Reading 98% of a table through an index costs more than scanning it. The rare value (inactive rows) might benefit, and a partial index `WHERE is_active = false` keeps that small.",
+      "tags": ["indexes", "performance"],
+      "level": 1,
+      "asked": "'Index everything in the WHERE' is a junior instinct; selectivity is the concept interviewers want."
+    },
+    {
+      "id": "sq-094",
+      "q": "What is the difference between a view and a materialised view (Postgres; an indexed view in SQL Server)?",
+      "choices": [
+        "A view is a stored query run on each use; a materialised view stores results",
+        "A view is read-only; a materialised view accepts inserts and updates",
+        "A view exists only for the current session; a materialised view persists for all",
+        "A view can join tables; a materialised view reads from one table"
+      ],
+      "answer": 0,
+      "why": "A plain view is a named query that is expanded into each query that uses it, so it is always current and costs the same as the query. A materialised view stores the result and must be refreshed (`REFRESH MATERIALIZED VIEW`), trading freshness for speed; SQL Server's indexed views are maintained on every write instead.",
+      "tags": ["views"],
+      "level": 2,
+      "asked": "Asked when discussing slow dashboards; the freshness trade-off is the part that matters."
+    },
+    {
+      "id": "sq-095",
+      "q": "You must run a one-off `UPDATE` in production to fix some rows. What is the safest habit?",
+      "choices": [
+        "Run it quickly outside any transaction so that locks are held briefly",
+        "Run it in a transaction, check the affected row count, then commit",
+        "Copy the whole table first with SELECT INTO, then run the update",
+        "Disable the table's triggers and constraints first so it cannot fail"
+      ],
+      "answer": 1,
+      "why": "Wrapping the change in BEGIN lets you compare the affected row count (and a SELECT of the result) with what you expected, then COMMIT or ROLLBACK. Test the WHERE clause as a SELECT first. Keep the transaction short so locks are not held while you think.",
+      "tags": ["transactions", "operations"],
+      "level": 1,
+      "asked": "Everyone has a story about an UPDATE without a WHERE; interviewers want to hear the habit that prevents it."
+    },
+    {
+      "id": "sq-096",
+      "q": "How do you update `orders.region` from the matching `customers.region`, in Postgres and SQL Server respectively?",
+      "choices": [
+        "Postgres: UPDATE orders o JOIN customers c ON ...; SQL Server: UPDATE ... USING customers",
+        "Both: UPDATE orders SET region = customers.region, as the join is inferred from the FK",
+        "Postgres: UPDATE orders SET ... FROM customers c WHERE ...; SQL Server: UPDATE o SET ... FROM orders o JOIN customers c",
+        "Neither engine can join inside an UPDATE, so you loop over customers and update orders one at a time"
+      ],
+      "answer": 2,
+      "why": "Postgres adds the other table with FROM and joins it in WHERE; SQL Server names the alias after UPDATE and joins in FROM; MySQL writes `UPDATE orders o JOIN customers c ON ... SET ...`. For deletes, Postgres uses `DELETE ... USING`. A set-based statement beats looping row by row.",
+      "tags": ["queries", "engines"],
+      "level": 2,
+      "asked": "Set-based updates across tables are routine data fixes; the syntax differences catch people out."
+    },
+    {
+      "id": "sq-097",
+      "q": "Dates are stored as text like '2026-9-30' and '2026-10-01'. Why does `ORDER BY created` put October before September?",
+      "choices": [
+        "Text columns sort in insertion order when no index covers them",
+        "The engine parses the text as dates, but guesses the wrong format",
+        "Text sorts by character, and '1' comes before '9' at that point",
+        "Sorting text always places longer strings ahead of shorter ones"
+      ],
+      "answer": 2,
+      "why": "Text is compared character by character, so '2026-10' sorts before '2026-9'. Zero-padded ISO 8601 strings do sort correctly, which is why SQLite apps get away with text dates, but a real date or timestamp type also validates values and supports date arithmetic.",
+      "tags": ["types", "dates"],
+      "level": 1,
+      "asked": "A simple way to check you use real date types and understand why ISO format matters when you cannot."
+    },
+    {
+      "id": "sq-098",
+      "q": "In Postgres, how do you count orders per calendar day?",
+      "choices": [
+        "GROUP BY created_at, which the engine rounds to the day",
+        "GROUP BY date_trunc('day', created_at), or created_at::date",
+        "GROUP BY DAY(created_at), which returns the full date",
+        "GROUP BY created_at, with a HAVING clause keeping only midnight"
+      ],
+      "answer": 1,
+      "why": "Truncate the timestamp to the day and group on that. With timestamptz, 'which day' depends on the time zone, so convert first, for example `(created_at AT TIME ZONE 'Europe/London')::date`. `DAY()` in SQL Server and MySQL returns only the day of the month, 1 to 31, merging different months.",
+      "tags": ["aggregation", "dates"],
+      "level": 2,
+      "asked": "Daily-count reports are routine; the time-zone caveat is what makes the answer strong."
+    },
+    {
+      "id": "sq-099",
+      "q": "Page 5,000 of a product list uses `ORDER BY id LIMIT 20 OFFSET 99980` and is slow. Why?",
+      "choices": [
+        "OFFSET forces a full sort of the table, even when id is indexed",
+        "The database must still read and discard all 99,980 rows before the page",
+        "OFFSET disables every index, so the query falls back to a table scan",
+        "Large OFFSET values are cached less, so each request misses the buffer cache and reads disk"
+      ],
+      "answer": 1,
+      "why": "OFFSET is implemented by producing the skipped rows and throwing them away, so cost grows with the page number even when an index supplies them in order. Keyset pagination (`WHERE id > last_seen ORDER BY id LIMIT 20`) jumps straight to the page through the index.",
+      "tags": ["pagination", "performance"],
+      "level": 2,
+      "asked": "Explaining why OFFSET degrades is the setup for recommending keyset pagination in API design interviews."
+    },
+    {
+      "id": "sq-100",
+      "q": "How do you add a NOT NULL constraint to an existing column that already contains some NULLs?",
+      "choices": [
+        "Just add it; existing NULLs are converted to the column default",
+        "Just add it; it applies only to rows inserted from now on",
+        "Backfill the NULLs with real values first, then add the constraint",
+        "Drop the column and re-create it with NOT NULL, as it cannot change"
+      ],
+      "answer": 2,
+      "why": "Adding NOT NULL validates existing rows and fails if any are NULL, so fix the data first with an UPDATE. On big live tables do the backfill in batches. In Postgres 12+ you can add a validated `CHECK (col IS NOT NULL)` first, which lets SET NOT NULL skip its own full scan.",
+      "tags": ["ddl", "migrations"],
+      "level": 1,
+      "asked": "Tightening a schema on existing data is everyday migration work; this checks you expect the validation."
+    },
+    {
+      "id": "sq-101",
+      "q": "Why prefer a unique constraint over a unique index when the rule is part of the data model?",
+      "choices": [
+        "A unique constraint is enforced at commit, while an index checks nothing",
+        "A unique index cannot span more than a single column of the table",
+        "A constraint states intent and can be a foreign key target; enforcement is the same",
+        "Only constraints are enforced under concurrency; a unique index can let concurrent duplicates in"
+      ],
+      "answer": 2,
+      "why": "Engines implement a unique constraint with a unique index, so enforcement is identical. The constraint documents a business rule, shows up in schema tools, and can be referenced by foreign keys in all engines. A unique index lets you add things constraints cannot, such as a WHERE clause or expressions.",
+      "tags": ["constraints", "indexes"],
+      "level": 2,
+      "asked": "A nuance question: knowing both enforce the same way, and when you need the index form, shows you know the engine internals."
+    },
+    {
+      "id": "sq-102",
+      "q": "`products` has prices 9, 10, 15, 20 and 21. Which prices does `WHERE price BETWEEN 10 AND 20` keep?",
+      "choices": [
+        "15 only, because both end values are excluded",
+        "10 and 15, because the upper end value is excluded",
+        "10, 15 and 20, because both ends are included",
+        "15 and 20, because the lower end value is excluded"
+      ],
+      "answer": 2,
+      "why": "`BETWEEN a AND b` means `>= a AND <= b` in every mainstream engine. That inclusive upper bound is why it is a trap for timestamps: `BETWEEN '2026-03-01' AND '2026-03-31'` misses most of 31 March, so half-open ranges (`>= start AND < next`) are safer there.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "It is basic, but the follow-up about dates shows whether you have been bitten by the inclusive end."
+    },
+    {
+      "id": "sq-103",
+      "q": "`users` holds (Smith, Al), (Jones, Bo), (Smith, Cy). What order does this return?",
+      "code": "SELECT last_name, first_name FROM users\nORDER BY last_name, first_name DESC;",
+      "lang": "sql",
+      "choices": [
+        "Smith Cy, Smith Al, Jones Bo",
+        "Jones Bo, Smith Al, Smith Cy",
+        "Smith Al, Smith Cy, Jones Bo",
+        "Jones Bo, Smith Cy, Smith Al"
+      ],
+      "answer": 3,
+      "why": "Each ORDER BY key has its own direction, and the default is ASC, so last_name sorts ascending and DESC applies only to first_name as the tiebreaker. Writing DESC once at the end does not flip every column.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "Multi-column sorts are in every list endpoint, and misreading DESC's scope is a frequent bug."
+    },
+    {
+      "id": "sq-104",
+      "q": "What does `COALESCE(nickname, first_name, 'Guest')` return for a user whose nickname is NULL and first_name is 'Ann'?",
+      "choices": [
+        "'Ann', the first non-NULL argument",
+        "NULL, because one argument is NULL",
+        "'Guest', the final fallback value",
+        "'Ann Guest', joined from the non-NULLs"
+      ],
+      "answer": 0,
+      "why": "COALESCE returns its first argument that is not NULL, reading left to right, so it only falls through to 'Guest' when both columns are NULL. It is standard SQL across Postgres, SQL Server, MySQL and SQLite, and it never concatenates.",
+      "tags": ["null"],
+      "level": 1,
+      "asked": "Defaulting NULLs for display or maths is daily work, and COALESCE is the portable tool."
+    },
+    {
+      "id": "sq-105",
+      "q": "What does this return for a score of 75?",
+      "code": "SELECT CASE\n  WHEN score >= 50 THEN 'pass'\n  WHEN score >= 70 THEN 'merit'\n  ELSE 'fail'\nEND AS grade;",
+      "lang": "sql",
+      "choices": [
+        "'merit', because it is the more specific match",
+        "'pass', because the first true branch wins",
+        "'pass merit', because both branches are true",
+        "An error, because two branches overlap"
+      ],
+      "answer": 1,
+      "why": "A searched CASE evaluates WHEN branches top to bottom and stops at the first true one, so the stricter test must come first. Overlapping conditions are legal and produce no warning, which is exactly why this bug survives review.",
+      "tags": ["queries", "case"],
+      "level": 1,
+      "asked": "Bucketing values with CASE is common in reports, and branch order is the classic mistake."
+    },
+    {
+      "id": "sq-106",
+      "q": "Which query lists email addresses that appear on more than one row of `users`?",
+      "choices": [
+        "SELECT email FROM users WHERE COUNT(*) > 1 GROUP BY email;",
+        "SELECT DISTINCT email FROM users WHERE email IS NOT UNIQUE;",
+        "SELECT email FROM users GROUP BY email HAVING COUNT(*) > 1;",
+        "SELECT email, COUNT(*) FROM users ORDER BY 2 DESC LIMIT 1;"
+      ],
+      "answer": 2,
+      "why": "Grouping by email collapses duplicates, and HAVING filters on the aggregate after grouping. WHERE runs before grouping so it cannot see COUNT(*), and the LIMIT 1 version returns only the single most common email, even if it is unique.",
+      "tags": ["aggregation", "data-cleanup"],
+      "level": 1,
+      "asked": "Finding duplicates before adding a unique constraint is a real migration task, not a puzzle."
+    },
+    {
+      "id": "sq-107",
+      "q": "Ana has two orders and Ben has none. What do `a` and `b` show for Ben?",
+      "code": "SELECT c.name, COUNT(*) AS a, COUNT(o.id) AS b\nFROM customers c\nLEFT JOIN orders o ON o.customer_id = c.id\nGROUP BY c.id, c.name;",
+      "lang": "sql",
+      "choices": [
+        "a = 0 and b = 0",
+        "a = 1 and b = 1",
+        "a = 0 and b = 1",
+        "a = 1 and b = 0"
+      ],
+      "answer": 3,
+      "why": "The LEFT JOIN keeps Ben as one row with NULL order columns, so `COUNT(*)` counts that row (1) while `COUNT(o.id)` skips the NULL (0). Always count a column from the optional side when counting children.",
+      "tags": ["joins", "aggregation", "null"],
+      "level": 2,
+      "asked": "'Orders per customer including zero' is a common request, and COUNT(*) here is a subtle wrong-number bug."
+    },
+    {
+      "id": "sq-108",
+      "q": "How do you copy last year's rows from `orders` into `orders_archive`, which has the same columns?",
+      "choices": [
+        "INSERT INTO orders_archive SELECT * FROM orders WHERE created_at < '2026-01-01';",
+        "INSERT INTO orders_archive VALUES (SELECT * FROM orders WHERE created_at < '2026-01-01');",
+        "SELECT * INTO orders WHERE created_at < '2026-01-01' FROM orders_archive;",
+        "COPY orders TO orders_archive WHERE created_at < '2026-01-01';"
+      ],
+      "answer": 0,
+      "why": "`INSERT INTO target SELECT ...` inserts every row the query returns, set-based in one statement; listing columns explicitly on both sides is safer than `*`. VALUES takes literal rows, not a subquery of many rows, and SQL Server's `SELECT INTO` creates a new table rather than appending.",
+      "tags": ["queries", "dml"],
+      "level": 1,
+      "asked": "Set-based copies replace slow row-by-row loops in app code, which interviewers like to see."
+    },
+    {
+      "id": "sq-109",
+      "q": "An API runs `UPDATE products SET price = $1 WHERE id = $2` for an id that does not exist. What happens?",
+      "choices": [
+        "The statement fails with a 'row not found' error",
+        "It succeeds and reports 0 rows affected",
+        "It inserts a new row with that id and price",
+        "It succeeds and reports 1 row affected"
+      ],
+      "answer": 1,
+      "why": "A WHERE that matches nothing is not an error, so the driver returns a row count of 0; the API must check it and return 404, otherwise the client is told the update worked. Inserting when missing needs an explicit upsert.",
+      "tags": ["dml", "queries"],
+      "level": 1,
+      "asked": "Checking rows affected is how update and delete endpoints return correct status codes."
+    },
+    {
+      "id": "sq-110",
+      "q": "In SQL Server, `Code` is `varchar(10)` and a row holds 'ABC  ' (two trailing spaces). What does `WHERE Code = 'ABC'` do?",
+      "choices": [
+        "It does not match, because the stored value is longer",
+        "It raises an error, because the lengths are different",
+        "It matches, as trailing spaces are ignored by `=`",
+        "It matches only if ANSI_PADDING was OFF at creation"
+      ],
+      "answer": 2,
+      "why": "SQL Server follows the ANSI rule of padding the shorter string with spaces before comparing, so trailing spaces never affect `=` (LIKE does see them). Postgres `text` and `varchar` compare them as real characters, so the same data can match on one engine and not the other.",
+      "tags": ["strings", "sql-server", "engines"],
+      "level": 3,
+      "asked": "It explains mysterious duplicate-key errors and lookup mismatches when data moves between engines."
+    },
+    {
+      "id": "sq-111",
+      "q": "Which cut-off expressions select orders from the last 7 days in Postgres and in SQL Server respectively?",
+      "choices": [
+        "PG: now() - 7 * 86400; SQL Server: DATEADD(second, -7, SYSUTCDATETIME())",
+        "PG: date('now', '-7 days'); SQL Server: DATEDIFF(day, 7, SYSUTCDATETIME())",
+        "PG: DATEADD(day, -7, now()); SQL Server: SYSUTCDATETIME() - interval '7 days'",
+        "PG: now() - interval '7 days'; SQL Server: DATEADD(day, -7, SYSUTCDATETIME())"
+      ],
+      "answer": 3,
+      "why": "Postgres subtracts an interval from a timestamp; SQL Server uses DATEADD, and the UTC function suits UTC-stored data. `date('now', '-7 days')` is SQLite syntax, and DATEDIFF returns a count of boundaries, not a date.",
+      "tags": ["dates", "engines"],
+      "level": 1,
+      "asked": "Date arithmetic differs in every engine, and knowing both forms is expected in mixed-stack shops."
+    },
+    {
+      "id": "sq-112",
+      "q": "In SQL Server, `Rating` is an `int` column holding 4 and 5. What does `SELECT AVG(Rating)` return?",
+      "choices": [
+        "4, because the average is an int",
+        "4.5, as a decimal value",
+        "5, because the result is rounded",
+        "4.50, as a money value"
+      ],
+      "answer": 0,
+      "why": "SQL Server's AVG returns the same type as its input, so an int column averages with integer division and truncates to 4. Use `AVG(CAST(Rating AS decimal(5,2)))` or `AVG(Rating * 1.0)`. Postgres returns numeric (4.5) for the same query.",
+      "tags": ["aggregation", "sql-server", "types"],
+      "level": 2,
+      "asked": "Ratings and scores are often ints, and silent truncation ships wrong numbers to dashboards."
+    },
+    {
+      "id": "sq-113",
+      "q": "In SQL Server, `SELECT SUM(Quantity) FROM OrderLines` fails with an arithmetic overflow on a large table, though Quantity values are small. Why?",
+      "choices": [
+        "SUM switches to float after a million rows, which loses precision",
+        "SUM over int returns int, which overflows past about 2.1 billion",
+        "SUM needs an index on Quantity once the table exceeds its buffer",
+        "SUM overflows because NULL quantities are counted as the maximum"
+      ],
+      "answer": 1,
+      "why": "SQL Server's SUM over int returns int, so a total above 2,147,483,647 overflows even though each value is small. `SUM(CAST(Quantity AS bigint))` fixes it; COUNT has the same issue, hence COUNT_BIG. Postgres widens SUM(int) to bigint automatically.",
+      "tags": ["aggregation", "sql-server", "types"],
+      "level": 3,
+      "asked": "Reports that worked for years fail as data grows, and this is one of the classic causes."
+    },
+    {
+      "id": "sq-114",
+      "q": "`order_lines` has (price 10, qty 2), (price 5, qty NULL) and (price 3, qty 1). What does `SELECT SUM(price * qty)` return?",
+      "choices": [
+        "NULL, because one line total is NULL",
+        "28, treating the NULL quantity as 1",
+        "23, because the NULL line total is skipped",
+        "An error, because NULL cannot be multiplied"
+      ],
+      "answer": 2,
+      "why": "Any arithmetic with NULL gives NULL, so the middle line total is NULL, and SUM ignores NULLs, adding 20 + 3. That quietly drops a line from the invoice; `COALESCE(qty, 0)` or a NOT NULL constraint makes the intent explicit.",
+      "tags": ["null", "aggregation"],
+      "level": 1,
+      "asked": "NULLs silently disappearing from totals is a common money bug."
+    },
+    {
+      "id": "sq-115",
+      "q": "A conversion-rate query divides `orders / visits`, and some days have 0 visits. What does `orders / NULLIF(visits, 0)` do?",
+      "choices": [
+        "Returns zero for those days rather than raising an error",
+        "Returns orders unchanged by dividing by 1 instead",
+        "Skips those days, removing them from the result set",
+        "Returns NULL for those days instead of raising an error"
+      ],
+      "answer": 3,
+      "why": "NULLIF(x, 0) returns NULL when x is 0, and dividing by NULL yields NULL rather than a divide-by-zero error (which Postgres and SQL Server raise; SQLite already returns NULL). Wrap it in COALESCE if you want 0 displayed; the row stays in the result.",
+      "tags": ["null", "queries"],
+      "level": 2,
+      "asked": "Rate calculations hit zero denominators constantly, and NULLIF is the idiomatic guard."
+    },
+    {
+      "id": "sq-116",
+      "q": "What does `GROUP BY country, city` produce?",
+      "choices": [
+        "One row per distinct combination of country and city",
+        "One row per country, with the cities listed inside it",
+        "One row per country, then one row per city, stacked",
+        "One row per city, merging same-named cities worldwide"
+      ],
+      "answer": 0,
+      "why": "Grouping by several columns makes a group for each distinct pair, so Paris, France and Paris, Texas stay separate. Subtotals per country as extra rows need ROLLUP or GROUPING SETS.",
+      "tags": ["aggregation"],
+      "level": 1,
+      "asked": "It checks you picture what a group is before writing report queries."
+    },
+    {
+      "id": "sq-117",
+      "q": "In Postgres 17 or SQL Server 2022, how do `WHERE id IN (SELECT customer_id FROM orders)` and the equivalent `WHERE EXISTS (...)` usually compare in speed?",
+      "choices": [
+        "IN is always slower, because it builds the whole list first",
+        "They are usually planned identically, as a semi-join",
+        "EXISTS is always slower, because it runs once per outer row",
+        "IN is faster, because it can use an index but EXISTS cannot"
+      ],
+      "answer": 1,
+      "why": "Modern optimisers rewrite both into a semi-join and choose hash, merge or nested-loop freely, so the plans usually match. The real difference is NULL handling with NOT IN versus NOT EXISTS, not speed; old advice about IN building a list comes from much older engines.",
+      "tags": ["subqueries", "performance"],
+      "level": 2,
+      "asked": "Interviewers want to see you check the plan instead of repeating folklore."
+    },
+    {
+      "id": "sq-118",
+      "q": "In SQL Server 2022 (or Postgres before 16), why does this fail?",
+      "code": "SELECT AVG(n)\nFROM (SELECT customer_id, COUNT(*) AS n\n      FROM orders GROUP BY customer_id);",
+      "lang": "sql",
+      "choices": [
+        "Aggregates cannot be nested across a subquery boundary",
+        "COUNT(*) needs an alias only when used inside HAVING",
+        "A derived table in FROM must be given an alias",
+        "GROUP BY is not allowed inside a subquery in FROM"
+      ],
+      "answer": 2,
+      "why": "Derived tables must be named, e.g. `) AS per_customer`, in SQL Server, MySQL and Postgres up to 15; Postgres 16 made the alias optional. Averaging the per-customer counts this way is otherwise perfectly valid.",
+      "tags": ["subqueries", "engines"],
+      "level": 2,
+      "asked": "Two-level aggregation (average of counts) is a common report shape and needs a derived table or CTE."
+    },
+    {
+      "id": "sq-119",
+      "q": "Where does the ORDER BY apply in this query?",
+      "code": "SELECT name FROM customers\nUNION\nSELECT name FROM suppliers\nORDER BY name;",
+      "lang": "sql",
+      "choices": [
+        "Only to the suppliers query, the one it follows",
+        "Nowhere; ORDER BY is an error after a UNION",
+        "To each SELECT separately, before they are merged",
+        "To the combined result of the whole UNION"
+      ],
+      "answer": 3,
+      "why": "A trailing ORDER BY sorts the final result of the set operation. To sort or limit one branch on its own you need parentheses or a subquery. UNION also removes duplicates, which any per-branch ordering would not survive anyway.",
+      "tags": ["set-operations", "queries"],
+      "level": 2,
+      "asked": "It checks you know set operations produce one result that is then ordered."
+    },
+    {
+      "id": "sq-120",
+      "q": "What does `SELECT customer_id FROM orders INTERSECT SELECT id FROM vip_customers` return?",
+      "choices": [
+        "Customer ids found in both queries, with duplicates removed",
+        "Customer ids found in either query, with duplicates removed",
+        "Customer ids found in orders but not in vip_customers",
+        "Every pairing of order rows with VIP rows that share an id"
+      ],
+      "answer": 0,
+      "why": "INTERSECT keeps distinct rows present in both results, like an inner semi-join on all columns. Either-side is UNION, orders-but-not-VIP is EXCEPT, and pairings are a join, which would also repeat an id per order.",
+      "tags": ["set-operations"],
+      "level": 1,
+      "asked": "Set operators are compact answers to 'in both lists' questions that people otherwise write as awkward joins."
+    },
+    {
+      "id": "sq-121",
+      "q": "`WHERE name LIKE 'ann%'` finds 'Ann Lee' in SQLite and on a default SQL Server install, but not in Postgres. Why?",
+      "choices": [
+        "Postgres needs `%` escaped as `%%` inside a LIKE pattern",
+        "Postgres LIKE is case-sensitive; the others are not here",
+        "Postgres LIKE matches whole words only, not prefixes",
+        "Postgres LIKE requires an index before it matches anything"
+      ],
+      "answer": 1,
+      "why": "Postgres LIKE compares case-sensitively (use ILIKE or lower()), SQLite's LIKE is case-insensitive for ASCII, and SQL Server follows the column collation, whose default is case-insensitive. Prefix matching with `%` works the same in all three.",
+      "tags": ["strings", "collation", "engines"],
+      "level": 2,
+      "asked": "Search behaving differently after a database switch is a real migration surprise."
+    },
+    {
+      "id": "sq-122",
+      "q": "In Postgres, how do you stop 'Ann@x.com' and 'ann@x.com' registering as two accounts?",
+      "choices": [
+        "A UNIQUE constraint on email, which ignores case by default",
+        "A CHECK constraint that email is equal to lower(email)",
+        "A unique index on lower(email), or the citext column type",
+        "A trigger that deletes the older row on each new insert"
+      ],
+      "answer": 2,
+      "why": "Postgres text comparison is case-sensitive, so a plain UNIQUE treats the two as different. A unique expression index on `lower(email)` (queried with `lower(email) = lower($1)`) or a citext column enforces it. A CHECK forcing lower case works only if every writer normalises input.",
+      "tags": ["constraints", "postgres"],
+      "level": 2,
+      "asked": "Case-insensitive uniqueness for emails and usernames is a standard sign-up requirement."
+    },
+    {
+      "id": "sq-123",
+      "q": "Which query returns the five best-selling products by units from `order_lines (product_id, qty)`?",
+      "choices": [
+        "SELECT product_id, MAX(qty) AS units FROM order_lines GROUP BY product_id ORDER BY units DESC LIMIT 5;",
+        "SELECT TOP 5 product_id FROM order_lines GROUP BY product_id HAVING MAX(qty) > 0;",
+        "SELECT product_id, COUNT(qty) AS units FROM order_lines GROUP BY product_id ORDER BY units LIMIT 5;",
+        "SELECT product_id, SUM(qty) AS units FROM order_lines GROUP BY product_id ORDER BY units DESC LIMIT 5;"
+      ],
+      "answer": 3,
+      "why": "You need total units per product: group, SUM, sort descending, then limit (TOP 5 or FETCH FIRST in SQL Server). The MAX version ranks each product's biggest single line, the COUNT version counts lines ascending, and the HAVING version never sorts.",
+      "tags": ["aggregation", "queries"],
+      "level": 1,
+      "asked": "A 'top N by total' report is the most common aggregation question in interviews."
+    },
+    {
+      "id": "sq-124",
+      "q": "What makes this subquery correlated, and what does that mean?",
+      "code": "SELECT c.name,\n  (SELECT MAX(o.created_at) FROM orders o\n   WHERE o.customer_id = c.id) AS last_order\nFROM customers c;",
+      "lang": "sql",
+      "choices": [
+        "It refers to c.id; it is evaluated for each customer row",
+        "It uses MAX; the engine caches one maximum for all rows",
+        "It sits in SELECT; it is run once and joined to every row",
+        "It has no GROUP BY; the engine rejects it on large tables"
+      ],
+      "answer": 0,
+      "why": "A correlated subquery references the outer query, so logically it runs per outer row; with an index on `orders (customer_id, created_at)` that is cheap, and optimisers may turn it into a join. It returns NULL for customers without orders, unlike an inner join with GROUP BY.",
+      "tags": ["subqueries"],
+      "level": 2,
+      "asked": "Correlated subqueries are readable and often fine; interviewers want you to know their cost model."
+    },
+    {
+      "id": "sq-125",
+      "q": "Is `COUNT(1)` faster than `COUNT(*)` in Postgres, SQL Server or MySQL?",
+      "choices": [
+        "Yes, COUNT(*) reads every column of each row",
+        "No, both count rows and are planned the same way",
+        "No, COUNT(*) is faster because 1 is evaluated per row",
+        "Yes, COUNT(1) can use an index but COUNT(*) cannot"
+      ],
+      "answer": 1,
+      "why": "`COUNT(*)` means 'count rows' and never reads column values; `COUNT(1)` counts a non-NULL constant, so the result and plan are the same (Postgres is marginally faster with `*`). `COUNT(col)` is the one that differs, because it skips NULLs.",
+      "tags": ["aggregation", "performance"],
+      "level": 1,
+      "asked": "It is a myth check: strong candidates move the conversation to COUNT(col) versus COUNT(*)."
+    },
+    {
+      "id": "sq-126",
+      "q": "A query was written as `SELECT * FROM orders, customers WHERE orders.total > 100`. Why does it return millions of rows?",
+      "choices": [
+        "The comma syntax is a LEFT JOIN, which keeps unmatched rows",
+        "The WHERE clause is applied after LIMIT, so it has no effect",
+        "No join condition, so each order pairs with every customer",
+        "The comma syntax is a UNION, which stacks both tables' rows"
+      ],
+      "answer": 2,
+      "why": "Listing tables with commas is an old-style inner join whose condition belongs in WHERE; without `orders.customer_id = customers.id` it becomes a cross join. Explicit `JOIN ... ON` syntax makes a missing condition much harder to miss.",
+      "tags": ["joins"],
+      "level": 1,
+      "asked": "Accidental cross joins are a classic outage-inducing mistake and a reason teams mandate explicit JOIN syntax."
+    },
+    {
+      "id": "sq-127",
+      "q": "Adding `JOIN prices p ON p.product_id = o.product_id` to an orders report doubled its row count and revenue. What is the most likely cause?",
+      "choices": [
+        "The join became a cross join because product_id is not a key",
+        "The optimiser duplicated rows while using a hash join strategy",
+        "The JOIN defaulted to a FULL OUTER JOIN and added unmatched rows",
+        "prices has several rows per product, such as one per date range"
+      ],
+      "answer": 3,
+      "why": "A join returns one row per matching pair, so a product with two price rows doubles each order. Join on the full key (product plus the effective date range) or pick one row per product first. Join algorithms never change results, and JOIN means INNER JOIN.",
+      "tags": ["joins", "data-quality"],
+      "level": 2,
+      "asked": "Row multiplication after a join is the most common reporting bug, and diagnosing it quickly is a mid-level skill."
+    },
+    {
+      "id": "sq-128",
+      "q": "`purchases (customer_id, product_id)` may repeat pairs. Which query finds customers who bought both product 1 and product 2?",
+      "choices": [
+        "SELECT customer_id FROM purchases WHERE product_id IN (1, 2) GROUP BY customer_id HAVING COUNT(DISTINCT product_id) = 2;",
+        "SELECT customer_id FROM purchases WHERE product_id = 1 AND product_id = 2 GROUP BY customer_id;",
+        "SELECT DISTINCT customer_id FROM purchases WHERE product_id IN (1, 2) ORDER BY customer_id;",
+        "SELECT customer_id FROM purchases WHERE product_id IN (1, 2) GROUP BY customer_id HAVING COUNT(*) = 2;"
+      ],
+      "answer": 0,
+      "why": "Filter to the two products, group per customer and require two distinct products. A single row cannot have two product ids, IN alone finds either product, and COUNT(*) = 2 is fooled by someone who bought product 1 twice.",
+      "tags": ["aggregation", "queries"],
+      "level": 2,
+      "asked": "'Has all of these' questions show whether you can move from row filters to group-level conditions."
+    },
+    {
+      "id": "sq-129",
+      "q": "In Postgres, SQL Server or SQLite, a `middle_name` column holds `''` for some rows and NULL for others. What does `WHERE middle_name IS NULL` return?",
+      "choices": [
+        "Every such row, since an empty string is stored as NULL",
+        "Only the NULL rows; an empty string is a real value",
+        "Only the '' rows, since NULL cannot be tested this way",
+        "Neither kind, because IS NULL needs a NOT NULL column"
+      ],
+      "answer": 1,
+      "why": "In these engines '' is a known, empty value and NULL is unknown or absent, so they need separate handling (Oracle is the exception that treats '' as NULL). Decide on one representation, often NULL plus a CHECK against '', so queries stay simple.",
+      "tags": ["null", "strings"],
+      "level": 1,
+      "asked": "Mixed '' and NULL values cause filters that silently miss rows."
+    },
+    {
+      "id": "sq-130",
+      "q": "In Postgres, why is `SELECT count(*) FROM events` on a 500-million-row table slow even though `id` is the primary key?",
+      "choices": [
+        "Primary key indexes are not used for aggregates in Postgres",
+        "count(*) reads every column, unlike count(id), which uses the key",
+        "MVCC gives no single row count, so rows must be visited",
+        "count(*) takes an exclusive lock and waits for all writers first"
+      ],
+      "answer": 2,
+      "why": "Different transactions can see different row sets, so Postgres cannot keep a single stored count and must scan the table or an index (with visibility checks). For a dashboard, `reltuples` from pg_class gives a fast estimate, or maintain a counter table. count(*) takes no blocking lock.",
+      "tags": ["performance", "postgres", "mvcc"],
+      "level": 3,
+      "asked": "Paginated UIs showing exact totals on huge tables are a common performance trap."
+    },
+    {
+      "id": "sq-131",
+      "q": "Tasks must be listed urgent first, then open, then everything else, with id as a tiebreaker. What is the idiomatic ORDER BY?",
+      "choices": [
+        "ORDER BY status IN ('urgent', 'open') DESC, status, id",
+        "ORDER BY status = 'urgent' DESC, status = 'open', id",
+        "ORDER BY status DESC, id",
+        "ORDER BY CASE status WHEN 'urgent' THEN 0 WHEN 'open' THEN 1 ELSE 2 END, id"
+      ],
+      "answer": 3,
+      "why": "A CASE expression maps each status to a sort rank, which works in every engine. Alphabetical DESC matches only by coincidence and breaks once a status like 'review' exists; the IN version sorts open before urgent, and `status = 'open'` ascending puts open rows last.",
+      "tags": ["queries", "case"],
+      "level": 2,
+      "asked": "Custom sort orders come up in every task or ticket UI."
+    },
+    {
+      "id": "sq-132",
+      "q": "A customer has many orders; each order belongs to one customer. Where does the foreign key go?",
+      "choices": [
+        "orders.customer_id, pointing at the owning customer",
+        "customers.order_id, pointing at the customer's latest order",
+        "A customer_orders junction table holding both ids",
+        "On both tables, each pointing at the other one"
+      ],
+      "answer": 0,
+      "why": "In one-to-many the 'many' side holds the reference, because each order has exactly one customer, while a customer can have any number of orders. A junction table is for many-to-many, and mutual FKs create a circular dependency that complicates inserts.",
+      "tags": ["modelling", "foreign-keys"],
+      "level": 1,
+      "asked": "It is the first modelling question in most interviews and anchors everything after it."
+    },
+    {
+      "id": "sq-133",
+      "q": "Each user has at most one profile row with extra settings. What is the usual way to enforce one-to-one?",
+      "choices": [
+        "users.profile_id with a plain index, so profile lookups are quick",
+        "user_profiles.user_id as a foreign key that is also UNIQUE",
+        "A user_profile_links junction table holding two foreign keys",
+        "A CHECK constraint on users that counts matching profile rows"
+      ],
+      "answer": 1,
+      "why": "A foreign key alone allows many profiles per user; making user_id unique (often the profile's primary key too) caps it at one. An index on the other side does not enforce anything, and CHECK constraints cannot count rows in another table.",
+      "tags": ["modelling", "constraints"],
+      "level": 1,
+      "asked": "One-to-one looks trivial, but most candidates forget the uniqueness half."
+    },
+    {
+      "id": "sq-134",
+      "q": "Why store phone numbers in a text column rather than an integer column?",
+      "choices": [
+        "Integer columns cannot hold more than about seven digits",
+        "Text columns are faster to index and compare than integers",
+        "Integers drop leading zeros and '+', and no maths is done on them",
+        "Integer columns cannot be given a UNIQUE constraint in most engines"
+      ],
+      "answer": 2,
+      "why": "A phone number is an identifier made of digits, not a quantity: '07700' becomes 7700 and '+44' cannot be stored. The same reasoning applies to postcodes and account numbers. Integers index well and allow UNIQUE; bigint holds 19 digits.",
+      "tags": ["modelling", "types"],
+      "level": 1,
+      "asked": "Type choice questions reveal whether you think about what data means, not just what it looks like."
+    },
+    {
+      "id": "sq-135",
+      "q": "A user may review each product at most once. What enforces that in the database?",
+      "choices": [
+        "A NOT NULL constraint on both user_id and product_id columns",
+        "A UNIQUE constraint on the user_id column of the reviews table",
+        "A foreign key from reviews.user_id to the users.id column",
+        "A UNIQUE constraint on (user_id, product_id) in reviews"
+      ],
+      "answer": 3,
+      "why": "A composite unique constraint allows each pair once, so a user can review many products and a product can have many reviewers. Unique on user_id alone limits each user to one review in total; foreign keys and NOT NULL only ensure the ids exist.",
+      "tags": ["constraints", "modelling"],
+      "level": 1,
+      "asked": "Business rules like 'once per' are best enforced by the database, and this is the simplest example."
+    },
+    {
+      "id": "sq-136",
+      "q": "Which type do you normally use for a true/false flag in SQL Server?",
+      "choices": [
+        "bit, which stores 0, 1 or NULL",
+        "boolean, the same as Postgres",
+        "tinyint with a CHECK for 0 or 1",
+        "char(1) holding 'Y' or 'N'"
+      ],
+      "answer": 0,
+      "why": "SQL Server has no boolean column type; `bit` is the idiomatic flag, and EF Core maps C# bool to it. Postgres has a real `boolean`. The tinyint and 'Y'/'N' patterns work but add constraints and conversions for no gain.",
+      "tags": ["types", "sql-server"],
+      "level": 1,
+      "asked": "Knowing each engine's basic types avoids awkward schema designs when switching stacks."
+    },
+    {
+      "id": "sq-137",
+      "q": "A `posts` table stores tags as `'sql,react,css'` in one column. What is the main problem?",
+      "choices": [
+        "Text columns cannot store commas unless each one is escaped",
+        "It breaks 1NF: tags cannot be indexed, joined or constrained",
+        "It takes far more storage than a separate tags table would",
+        "It breaks 2NF, because the table's primary key is composite"
+      ],
+      "answer": 1,
+      "why": "Multiple values in one column break 1NF: finding posts tagged 'sql' needs string matching (slow and error-prone), renaming a tag means rewriting strings, and nothing stops misspelt tags. A post_tags junction table fixes all three. Commas are ordinary characters.",
+      "tags": ["modelling", "normalisation"],
+      "level": 1,
+      "asked": "Spotting a repeated group in one column is the most practical normalisation skill."
+    },
+    {
+      "id": "sq-138",
+      "q": "Students enrol in many courses and each enrolment has a grade. Where should `grade` live?",
+      "choices": [
+        "On students, as one column per course taken",
+        "On courses, as the average of all students' grades",
+        "On the enrolments junction table, beside both ids",
+        "In a JSON column on students keyed by course id"
+      ],
+      "answer": 2,
+      "why": "The grade is a fact about the pair (this student in this course), so it belongs on the junction row. Junction tables often carry such attributes: joined_at, role, quantity. Per-course columns and JSON maps lose constraints and indexability.",
+      "tags": ["modelling"],
+      "level": 1,
+      "asked": "It checks whether you see a junction table as a real entity rather than plumbing."
+    },
+    {
+      "id": "sq-139",
+      "q": "Why use a `countries` lookup table with a foreign key instead of letting users type a free-text country?",
+      "choices": [
+        "Free-text columns cannot be indexed or sorted reliably in SQL",
+        "Foreign keys are required on every column that users can edit",
+        "Lookup tables speed up every query by avoiding string compares",
+        "It keeps values consistent: no 'UK' beside 'United Kingdom'"
+      ],
+      "answer": 3,
+      "why": "A foreign key restricts values to known rows, so grouping and filtering work reliably and renames happen in one place. Free text can be indexed, and lookups add a join rather than making everything faster; the benefit is data quality.",
+      "tags": ["modelling", "foreign-keys"],
+      "level": 1,
+      "asked": "Data quality is a design choice, and interviewers like candidates who push rules into the schema."
+    },
+    {
+      "id": "sq-140",
+      "q": "Why declare columns NOT NULL wherever the value is always required?",
+      "choices": [
+        "It rejects missing data at write time and simplifies every query",
+        "NOT NULL columns take noticeably less disk space than nullable ones",
+        "Nullable columns cannot be included in any index on the table",
+        "NOT NULL forces you to give the column a default value as well"
+      ],
+      "answer": 0,
+      "why": "The constraint rejects bad writes from any code path, and readers no longer need IS NULL handling or COALESCE for impossible cases. Storage savings are minor, nullable columns can be indexed, and NOT NULL does not require a default.",
+      "tags": ["constraints", "null"],
+      "level": 1,
+      "asked": "Defaulting to nullable everywhere is a common junior habit that interviewers probe."
+    },
+    {
+      "id": "sq-141",
+      "q": "`products` has a surrogate `id` primary key. Why add a UNIQUE constraint on `sku` as well?",
+      "choices": [
+        "The primary key index cannot be used for lookups by sku",
+        "The id alone lets the same real product be inserted twice",
+        "A table must have at least two unique columns to be valid",
+        "UNIQUE on sku makes id generation faster for new rows"
+      ],
+      "answer": 1,
+      "why": "A surrogate id is always unique, so it never detects duplicates of the real-world thing; the natural key (sku, email, ISBN) still needs its own unique constraint. That constraint also gives you an index for lookups by sku.",
+      "tags": ["keys", "constraints"],
+      "level": 1,
+      "asked": "Surrogate keys without natural-key constraints are a common source of duplicate data."
+    },
+    {
+      "id": "sq-142",
+      "q": "`orders.coupon_id` is a nullable foreign key. What does a NULL there mean?",
+      "choices": [
+        "The coupon row was deleted and the FK was switched off",
+        "The coupon exists but has not been loaded by the ORM",
+        "The order has no coupon; the relationship is optional",
+        "The foreign key check is skipped until the order is paid"
+      ],
+      "answer": 2,
+      "why": "Foreign keys only check non-NULL values, so a nullable FK models an optional relationship (zero or one coupon), while NOT NULL makes it mandatory. Deleting a referenced coupon is blocked or handled by the ON DELETE rule, not by nulls appearing on their own.",
+      "tags": ["foreign-keys", "null"],
+      "level": 1,
+      "asked": "Optional versus required relationships are the first thing to decide when adding a foreign key."
+    },
+    {
+      "id": "sq-143",
+      "q": "`orders` stores `customer_id` and also `customer_city`, copied from `customers`. What problem does this create?",
+      "choices": [
+        "A foreign key cannot exist while a copy of the column is present",
+        "The copy makes customer_id a composite primary key",
+        "Queries on orders become slower because rows are wider",
+        "A customer who moves leaves old orders and customers disagreeing"
+      ],
+      "answer": 3,
+      "why": "customer_city depends on the customer, not the order: a transitive dependency that breaks third normal form, so an update in one place leaves stale copies (an update anomaly). The exception is when you deliberately want the city at the time of the order, which is a different fact.",
+      "tags": ["modelling", "normalisation"],
+      "level": 2,
+      "asked": "Explaining normal forms through anomalies, not definitions, is what interviewers are really after."
+    },
+    {
+      "id": "sq-144",
+      "q": "`order_lines` stores `unit_price` even though `products.price` exists. Is that a normalisation mistake?",
+      "choices": [
+        "No; it records the price charged at the time, a different fact",
+        "Yes; the line should always join to products for its current price",
+        "Yes; it is acceptable only if a trigger keeps the two in sync",
+        "No; duplicating any column is always fine for read performance"
+      ],
+      "answer": 0,
+      "why": "The product's price changes over time, but the invoice must not, so the line's price is its own historical fact. Syncing it with a trigger would rewrite past invoices. The same applies to shipping addresses and tax rates on orders.",
+      "tags": ["modelling", "normalisation"],
+      "level": 2,
+      "asked": "Distinguishing a snapshot from a duplicate shows real-world modelling judgement."
+    },
+    {
+      "id": "sq-145",
+      "q": "In Postgres, what is the main downside of a native `CREATE TYPE status AS ENUM (...)` compared with a lookup table or a CHECK constraint?",
+      "choices": [
+        "Enum columns cannot be indexed or used in a WHERE clause at all",
+        "Values can be added, but removing one means rebuilding the type",
+        "Each enum value takes more storage than the equivalent text value",
+        "Enum types are visible only to the database role that created them"
+      ],
+      "answer": 1,
+      "why": "`ALTER TYPE ... ADD VALUE` and `RENAME VALUE` work, but dropping a value means creating a new type and migrating columns. A lookup table can also carry labels and ordering and be changed by data, not DDL. Enums index fine and are compact (4 bytes).",
+      "tags": ["modelling", "postgres"],
+      "level": 2,
+      "asked": "Status columns exist in every app, and the enum-versus-table choice has long-term migration cost."
+    },
+    {
+      "id": "sq-146",
+      "q": "`orders.total` is stored as well as being derivable from `order_lines`. What must the code do to keep it trustworthy?",
+      "choices": [
+        "Recompute it nightly with a batch job, since drift is expected",
+        "Store it as a float so rounding differences cannot build up",
+        "Update it in the same transaction as any line change",
+        "Mark the column UNIQUE so duplicate totals are rejected"
+      ],
+      "answer": 2,
+      "why": "A stored aggregate is deliberate denormalisation: faster reads, but every write path must update it atomically with the lines, or readers see a total that disagrees with them. A nightly job leaves hours of wrong data; floats make money worse, not better.",
+      "tags": ["modelling", "transactions"],
+      "level": 2,
+      "asked": "Denormalising is fine when you name the consistency cost, which is what interviewers want to hear."
+    },
+    {
+      "id": "sq-147",
+      "q": "In SQL Server 2022, why prefer `datetime2` (or `datetimeoffset`) over `datetime` for new columns?",
+      "choices": [
+        "datetime cannot be indexed or used as part of a clustered key",
+        "datetime2 stores an IANA time zone name alongside each value",
+        "datetime always stores server local time, even when sent UTC",
+        "datetime rounds to about 3 ms; datetime2 is precise to 100 ns"
+      ],
+      "answer": 3,
+      "why": "Legacy datetime has 1/300-second precision and a 1753 lower bound, so .NET DateTime values get rounded and equality checks fail. datetime2 matches .NET precision; datetimeoffset adds the UTC offset (not a zone name). datetime stores whatever value you send.",
+      "tags": ["types", "dates", "sql-server"],
+      "level": 2,
+      "asked": "Rounding bugs between .NET and datetime are common in older schemas."
+    },
+    {
+      "id": "sq-148",
+      "q": "In Postgres, why use the `uuid` type rather than `varchar(36)` for UUID keys?",
+      "choices": [
+        "uuid takes 16 bytes and rejects malformed values; text does not",
+        "varchar columns cannot hold hyphens when used as a primary key",
+        "uuid values are generated faster when the column type is uuid",
+        "varchar keys cannot be the target of foreign keys in Postgres"
+      ],
+      "answer": 0,
+      "why": "The native type stores the 128 bits in 16 bytes, rejects malformed input and compares faster, which matters in every index and foreign key that repeats it. Generation speed is unrelated to storage type, and text keys can be referenced normally.",
+      "tags": ["types", "keys", "postgres"],
+      "level": 2,
+      "asked": "Key types multiply through indexes and joins, so small choices matter at scale."
+    },
+    {
+      "id": "sq-149",
+      "q": "In SQL Server 2016+, what does a system-versioned temporal table give you?",
+      "choices": [
+        "Automatic deletion of rows older than a configured retention period",
+        "A history table of old row versions, queryable AS OF a past time",
+        "A copy of the table on a read replica, refreshed once every minute",
+        "Row-level locks that are released automatically after a set time"
+      ],
+      "answer": 1,
+      "why": "The engine moves each old row version into a history table with validity periods on every UPDATE and DELETE, so 'what did this row look like last Tuesday?' is a query, not custom audit code. Retention can be configured, but history is the point.",
+      "tags": ["modelling", "auditing", "sql-server"],
+      "level": 2,
+      "asked": "Audit history is a common requirement, and built-in features beat hand-written triggers."
+    },
+    {
+      "id": "sq-150",
+      "q": "A multi-tenant SaaS keeps every tenant in shared tables with a `tenant_id` column. What is the biggest risk, and a database-level guard?",
+      "choices": [
+        "Tables grow too large; guard with one database per tenant",
+        "Ids collide between tenants; guard with a composite primary key",
+        "A query missing the filter leaks data; use row-level security",
+        "Tenants lock each other's rows; guard with SERIALIZABLE isolation"
+      ],
+      "answer": 2,
+      "why": "One forgotten `WHERE tenant_id = ...` exposes other customers' data. Postgres row-level security (or SQL Server security policies) applies the filter to every query based on a session setting, and ORMs add global query filters. Surrogate ids do not collide.",
+      "tags": ["modelling", "security", "multi-tenancy"],
+      "level": 2,
+      "asked": "Tenant isolation is a top concern in B2B apps, and naming a defence beyond 'be careful' is expected."
+    },
+    {
+      "id": "sq-151",
+      "q": "You need an order's current status and its full status history. What is a common, robust design?",
+      "choices": [
+        "Just a status column on orders, overwritten on each change",
+        "One nullable timestamp column per status, like paid_at, shipped_at",
+        "Just a JSON array of past statuses appended to on the order row",
+        "A status_events table, plus a current status updated alongside"
+      ],
+      "answer": 3,
+      "why": "An append-only events table keeps who changed what and when, while a denormalised current status keeps list queries simple; updating both in one transaction keeps them consistent. Overwriting loses history, a JSON array loses constraints, and per-status columns cannot record a status twice.",
+      "tags": ["modelling", "auditing"],
+      "level": 2,
+      "asked": "Workflow history is in every order, ticket and approval system."
+    },
+    {
+      "id": "sq-152",
+      "q": "Two requests add a comment at the same moment, and each runs this. Why is the count sometimes one too low?",
+      "code": "-- app reads posts.comment_count as n\nUPDATE posts SET comment_count = @n + 1\nWHERE id = @postId;",
+      "lang": "sql",
+      "choices": [
+        "Each request reads the same n, so both write n + 1",
+        "The UPDATE takes a table lock and drops the second write",
+        "The parameter @n is cached by the plan from the first call",
+        "The second UPDATE fails silently on a unique constraint"
+      ],
+      "answer": 0,
+      "why": "Read-then-write in the app is a lost update: both read 5 and both write 6. `SET comment_count = comment_count + 1` makes the database do the increment atomically under the row lock, so both land. Plan caching affects plans, not parameter values.",
+      "tags": ["concurrency", "dml"],
+      "level": 2,
+      "asked": "Counters are the simplest lost-update example, and atomic updates are the simplest fix."
+    },
+    {
+      "id": "sq-153",
+      "q": "Where should user-uploaded images usually be stored in a typical web app?",
+      "choices": [
+        "In a varbinary or bytea column, so backups always include them",
+        "In object storage such as S3, with the object key in the database",
+        "On the web server's local disk, with the file path in the database",
+        "Base64-encoded in a text column, so JSON APIs can return them as-is"
+      ],
+      "answer": 1,
+      "why": "Object storage is cheap, scales separately and serves files via a CDN, while the database keeps small metadata rows. Large blobs in the database bloat backups and memory, local disk vanishes with a container or is not shared across instances, and Base64 adds a third in size.",
+      "tags": ["modelling", "operations"],
+      "level": 2,
+      "asked": "File storage design comes up in every CRUD app with uploads."
+    },
+    {
+      "id": "sq-154",
+      "q": "An API exposes orders at `/orders/1041`, using the sequential primary key. Why do many teams expose a separate random public id?",
+      "choices": [
+        "Sequential ids are not permitted in URLs under RFC 9110 rules",
+        "Primary keys change when rows are updated, breaking old links",
+        "Sequential ids reveal volume and invite guessing other records",
+        "Random ids make database joins faster than integer ids can be"
+      ],
+      "answer": 2,
+      "why": "Consecutive numbers leak business volume and make it trivial to try 1042, 1043: if an authorisation check is missed, that becomes an IDOR breach. A random public id (UUID or slug) reduces exposure, though authorisation checks are still the real fix. Primary keys do not change.",
+      "tags": ["keys", "security"],
+      "level": 2,
+      "asked": "Id design links data modelling to security, which interviewers like to probe together."
+    },
+    {
+      "id": "sq-155",
+      "q": "Why do many teams use `bigint` rather than `int` for primary keys on tables that grow fast?",
+      "choices": [
+        "bigint keys are compared faster than int keys by the CPU",
+        "bigint is the only key type that foreign keys can reference",
+        "int keys cannot be generated by an identity column or sequence",
+        "int tops out near 2.1 billion, and changing it later is painful"
+      ],
+      "answer": 3,
+      "why": "A signed int identity runs out at 2,147,483,647, and gaps from rollbacks use values up faster; migrating a primary key and every foreign key to bigint on a live table is a major operation. The extra 4 bytes per row are usually a cheap insurance premium.",
+      "tags": ["keys", "types"],
+      "level": 2,
+      "asked": "Running out of int ids is a real outage story, and planning for growth is a mid-level trait."
+    },
+    {
+      "id": "sq-156",
+      "q": "Each order line must reference a product from the same tenant. In Postgres or SQL Server, how can the schema enforce that?",
+      "choices": [
+        "A composite FK (tenant_id, product_id) to products (tenant_id, id)",
+        "A CHECK constraint comparing the two tables' tenant_id values",
+        "Two separate foreign keys, one on tenant_id and one on product_id",
+        "A unique index on order_lines covering (tenant_id, product_id)"
+      ],
+      "answer": 0,
+      "why": "Carrying tenant_id in the foreign key forces the referenced product to have the same tenant. CHECK constraints cannot look at other tables, two separate FKs check each value independently, and a unique index limits duplicates instead of checking ownership.",
+      "tags": ["multi-tenancy", "foreign-keys", "constraints"],
+      "level": 3,
+      "asked": "Cross-tenant references are a subtle data leak that composite keys prevent structurally."
+    },
+    {
+      "id": "sq-157",
+      "q": "Room bookings must never overlap for the same room. In Postgres, what enforces this in the schema?",
+      "choices": [
+        "A UNIQUE constraint across (room_id, starts_at, ends_at) columns",
+        "EXCLUDE USING gist (room_id WITH =, during WITH &&)",
+        "A CHECK constraint comparing ends_at with other rows' starts_at",
+        "A self-referencing foreign key from bookings.room_id to bookings"
+      ],
+      "answer": 1,
+      "why": "An exclusion constraint rejects a row if any existing row matches on every listed operator: same room and overlapping range (`&&` on a tstzrange; the btree_gist extension is needed for `=` on the id). UNIQUE only blocks identical times, and CHECK cannot see other rows. In SQL Server you would need a transaction with locking or a trigger.",
+      "tags": ["constraints", "postgres", "concurrency"],
+      "level": 3,
+      "asked": "Double bookings are a classic race, and a database-level answer shows depth."
+    },
+    {
+      "id": "sq-158",
+      "q": "In Postgres, what is the difference between `ON DELETE RESTRICT` and the default `ON DELETE NO ACTION`?",
+      "choices": [
+        "RESTRICT deletes the child rows; NO ACTION leaves them orphaned",
+        "RESTRICT applies only to updates; NO ACTION only to deletes",
+        "RESTRICT checks at once; NO ACTION at statement end, deferrably",
+        "They differ only in the wording of the error message raised"
+      ],
+      "answer": 2,
+      "why": "Both reject deleting a referenced parent, but NO ACTION runs its check at the end of the statement (or at commit if the constraint is DEFERRABLE INITIALLY DEFERRED), so a statement that also fixes the children can succeed. RESTRICT checks immediately. SQL Server only offers NO ACTION.",
+      "tags": ["foreign-keys", "postgres"],
+      "level": 3,
+      "asked": "It separates people who have read the constraint docs from those who only know CASCADE."
+    },
+    {
+      "id": "sq-159",
+      "q": "Playlist items have `UNIQUE (playlist_id, position)`. Why does `UPDATE items SET position = position + 1 WHERE playlist_id = 7` fail in Postgres, and what is one fix?",
+      "choices": [
+        "UPDATE cannot touch a column in a unique constraint; drop and re-add it",
+        "The WHERE matches too many rows at once; update positions one by one",
+        "Arithmetic on key columns is not allowed; compute positions in the app",
+        "The check runs per row mid-update and collides; make it DEFERRABLE"
+      ],
+      "answer": 3,
+      "why": "Postgres checks a non-deferrable unique constraint as each row is updated, so moving 1 to 2 collides with the existing 2 depending on row order. Declaring it `DEFERRABLE` (checked at statement end or commit) fixes it; gapped or fractional positions avoid renumbering entirely.",
+      "tags": ["constraints", "postgres"],
+      "level": 3,
+      "asked": "Reordering lists is a common feature that runs straight into this constraint behaviour."
+    },
+    {
+      "id": "sq-160",
+      "q": "`comments` has `commentable_type` ('post' or 'photo') and `commentable_id`. What does this polymorphic design give up?",
+      "choices": [
+        "commentable_id cannot have a real foreign key to either table",
+        "Comments can no longer be sorted reliably by their creation time",
+        "Each comment row can only be loaded by one ORM entity at a time",
+        "Posts and photos can no longer use integer primary key columns"
+      ],
+      "answer": 0,
+      "why": "A foreign key must reference one table, so the database cannot stop comments pointing at deleted or non-existent parents, and joins need the type column. Alternatives are one nullable FK per parent with a CHECK that exactly one is set, or separate post_comments and photo_comments tables.",
+      "tags": ["modelling", "foreign-keys"],
+      "level": 3,
+      "asked": "Polymorphic associations are common in Rails-style apps, and seniors can name the trade-off and alternatives."
+    },
+    {
+      "id": "sq-161",
+      "q": "A design proposes `attributes (entity_id, name, value text)` so any product can have any field. What is the main problem with this entity-attribute-value model?",
+      "choices": [
+        "It cannot store more than one attribute value for each entity",
+        "Values lose types and constraints; filters need many self-joins",
+        "It forces every product to carry exactly the same attribute set",
+        "It needs a new table to be created for every attribute name added"
+      ],
+      "answer": 1,
+      "why": "Everything becomes text, so nothing checks that weight is a number or that required fields exist, and filtering on three attributes means three joins or pivots. A JSON column with validation, or real columns for common fields, is usually the better compromise.",
+      "tags": ["modelling", "json"],
+      "level": 3,
+      "asked": "EAV keeps being reinvented; recognising it and offering alternatives is a senior-leaning signal."
+    },
+    {
+      "id": "sq-162",
+      "q": "Categories are stored with `parent_id` (an adjacency list). The UI constantly needs 'all descendants of X' on a deep tree. What alternative model makes that a simple indexed query?",
+      "choices": [
+        "A trigger copying each category's child ids into a text column",
+        "A self-join repeated once per level of the deepest branch",
+        "A materialised path like '/1/4/9/', or a closure table",
+        "A table per level, such as level1_categories, level2_categories"
+      ],
+      "answer": 2,
+      "why": "A path column turns 'descendants of 4' into a prefix match (`LIKE '/1/4/%'`), and a closure table into a plain join, each served by an index. The adjacency list is simplest for writes and fine with recursive CTEs; the alternatives trade write complexity for fast reads. Postgres's ltree type implements the path idea.",
+      "tags": ["modelling", "hierarchies"],
+      "level": 3,
+      "asked": "Trees appear in categories, comments and org charts, and knowing more than parent_id shows range."
+    },
+    {
+      "id": "sq-163",
+      "q": "A booking app stores a dentist appointment for 9:00 next March in London as a UTC timestamp. What can go wrong?",
+      "choices": [
+        "UTC cannot represent a time that is more than a year in the future",
+        "Nothing can go wrong; UTC is always correct for every timestamp",
+        "UTC timestamps lose their minutes when converted to London time",
+        "If DST rules change before then, the instant no longer means 9:00"
+      ],
+      "answer": 3,
+      "why": "For past events UTC is right, but a future local appointment is really 'wall-clock 9:00 in Europe/London'; if the government changes DST rules, the precomputed UTC instant becomes 8:00 or 10:00. Store the local time plus the IANA zone id and compute the instant when needed.",
+      "tags": ["dates", "modelling"],
+      "level": 3,
+      "asked": "It is a known exception to 'always store UTC', and mentioning it signals real scheduling experience."
+    },
+    {
+      "id": "sq-164",
+      "q": "An ORM maps `Payment` with subclasses `CardPayment` and `BankPayment`. What is the trade-off of one table with a discriminator column (table-per-hierarchy) versus a table per subclass?",
+      "choices": [
+        "One table avoids joins but forces subclass columns to be nullable",
+        "One table needs joins on every read; per-subclass tables never do",
+        "One table cannot hold rows for more than two subclasses at a time",
+        "Per-subclass tables cannot have foreign keys to the base table"
+      ],
+      "answer": 0,
+      "why": "Table-per-hierarchy (EF Core's default) keeps reads join-free, but card-only columns must allow NULL for bank rows, so NOT NULL rules move to CHECK constraints or code. Table-per-type keeps columns strict at the cost of joins on every query; the subclass tables reference the base table by foreign key.",
+      "tags": ["modelling", "orm"],
+      "level": 3,
+      "asked": "Inheritance mapping comes up once domain models get richer, and the NULL trade-off is the key insight."
+    },
+    {
+      "id": "sq-165",
+      "q": "Which parameter placeholder style does each Node driver use: node-postgres (`pg`), `mysql2` and `mssql` (SQL Server)?",
+      "choices": [
+        "pg: ?; mysql2: $1; mssql: :name",
+        "pg: $1; mysql2: ?; mssql: @name",
+        "pg: @name; mysql2: $1; mssql: ?",
+        "pg: :name; mysql2: @name; mssql: $1"
+      ],
+      "answer": 1,
+      "why": "node-postgres uses Postgres's numbered `$1, $2` placeholders, mysql2 uses positional `?`, and mssql binds named `@name` inputs via `.input()`. Mixing them up produces syntax errors, which is why some teams hide the difference behind a query builder.",
+      "tags": ["security", "engines"],
+      "level": 1,
+      "asked": "Writing a parameterised query from memory in your stack's driver is a basic practical check."
+    },
+    {
+      "id": "sq-166",
+      "q": "What is the difference between a migration and a seed script?",
+      "choices": [
+        "Migrations insert sample rows; seeds change the table structure",
+        "Migrations run only in production; seeds run only in development",
+        "Migrations change schema in order; seeds load starting data",
+        "Migrations are written in SQL; seeds must be written in the ORM"
+      ],
+      "answer": 2,
+      "why": "Migrations are versioned, ordered schema changes applied once per database; seeds insert reference or sample data and are often rerunnable. Reference data every environment needs (such as countries) is sometimes shipped in a migration instead, but demo users never should be.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Keeping schema and data concerns apart avoids fragile deployments."
+    },
+    {
+      "id": "sq-167",
+      "q": "Nightly database backups have run for a year. What is the only way to know they work?",
+      "choices": [
+        "Check that each night's backup file has a non-zero size",
+        "Confirm the backup job's exit code in the scheduler logs",
+        "Compare backup file checksums with the previous night's",
+        "Restore one regularly on another server and query it"
+      ],
+      "answer": 3,
+      "why": "Backups fail in ways a job log never shows: missing permissions, excluded databases, corrupt files, or a restore that takes longer than the business can wait. A scheduled test restore proves both the data and the recovery time. Checksums only show the file did not change.",
+      "tags": ["operations", "backups"],
+      "level": 1,
+      "asked": "Interviewers like hearing 'an untested backup is not a backup' because it signals production experience."
+    },
+    {
+      "id": "sq-168",
+      "q": "What is a read replica mainly used for?",
+      "choices": [
+        "Serving read queries to take load off the primary",
+        "Taking writes when the primary database is too busy",
+        "Keeping deleted rows so they can be restored later",
+        "Running migrations before they reach the primary"
+      ],
+      "answer": 0,
+      "why": "A replica streams changes from the primary and accepts reads only, so reports and heavy list queries can move there. It lags slightly behind the primary, which matters for read-after-write flows. It is not a backup: a bad DELETE replicates too.",
+      "tags": ["operations", "scaling"],
+      "level": 1,
+      "asked": "Scaling reads is the first database-scaling step, and interviewers expect you to mention lag."
+    },
+    {
+      "id": "sq-169",
+      "q": "An app runs BEGIN, two INSERTs, then the network drops before COMMIT is sent. What happens to the two rows in Postgres or SQL Server?",
+      "choices": [
+        "They stay committed, because each INSERT succeeded on its own",
+        "They are rolled back when the server notices the dead session",
+        "The first stays and the second is rolled back automatically",
+        "They stay locked, uncommitted, until an administrator steps in"
+      ],
+      "answer": 1,
+      "why": "Nothing inside an open transaction is durable until COMMIT succeeds, and when the server detects the lost connection it aborts the transaction and releases its locks. That is atomicity in practice: all or nothing. The app must treat the outcome as unknown and retry idempotently.",
+      "tags": ["transactions"],
+      "level": 1,
+      "asked": "Reasoning about failure mid-transaction is what atomicity is for."
+    },
+    {
+      "id": "sq-170",
+      "q": "Which database login should a production web app use?",
+      "choices": [
+        "The server admin (sa or postgres), so every query works",
+        "The database owner, so the app can run migrations too",
+        "A login with only the data rights the app needs",
+        "A separate login per end user of the web application"
+      ],
+      "answer": 2,
+      "why": "Least privilege limits the blast radius of SQL injection or a leaked connection string: no DROP, no access to other databases, no server settings. Migrations run under a separate, more privileged login in the deployment pipeline. Per-end-user logins break connection pooling.",
+      "tags": ["security", "operations"],
+      "level": 1,
+      "asked": "Least privilege on database accounts is a basic security expectation that many apps ignore."
+    },
+    {
+      "id": "sq-171",
+      "q": "What is the quickest way to spot an N+1 query problem while developing an endpoint?",
+      "choices": [
+        "Measure the response size of the endpoint in the browser",
+        "Check CPU usage on the database server while you click around",
+        "Look for SELECT * in the ORM's generated SQL statements",
+        "Turn on SQL logging and count the queries one request runs"
+      ],
+      "answer": 3,
+      "why": "N+1 shows up as the same query repeated once per row, which SQL logging (EF Core's `LogTo`, Prisma's query log, or a pg statement log) makes obvious. With small dev data the endpoint may still feel fast and CPU stays low, so timing alone hides it.",
+      "tags": ["orm", "performance"],
+      "level": 1,
+      "asked": "Knowing how to see the SQL your ORM runs is a core mid-level habit."
+    },
+    {
+      "id": "sq-172",
+      "q": "`products` has an index on `name`. Can it help `SELECT * FROM products ORDER BY name LIMIT 20`?",
+      "choices": [
+        "Yes, the engine can read the first 20 entries in order",
+        "No, indexes only help WHERE clauses and never ORDER BY",
+        "No, LIMIT forces the engine to sort every row first",
+        "Yes, but only when the table has under 20 rows total"
+      ],
+      "answer": 0,
+      "why": "A B-tree keeps entries sorted, so the engine can walk the index from the start and stop after 20 rows without sorting the table. Whether it chooses to depends on costs, but ORDER BY with LIMIT is one of the best cases for an index.",
+      "tags": ["indexes"],
+      "level": 1,
+      "asked": "Indexes serve sorting as well as filtering, which many juniors do not realise."
+    },
+    {
+      "id": "sq-173",
+      "q": "In a migration tool with `up` and `down` methods, what is `down` for?",
+      "choices": [
+        "Running before `up` to check that the database is reachable",
+        "Reverting that migration's change, mostly in local dev",
+        "Deleting every row the migration's `up` step has inserted",
+        "Downgrading the database engine to its previous version"
+      ],
+      "answer": 1,
+      "why": "`down` undoes the schema change so you can roll back and iterate locally. In production teams usually roll forward with a new migration, since reversing a destructive change (a dropped column) cannot bring the data back.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "It opens the discussion about rolling back versus rolling forward in production."
+    },
+    {
+      "id": "sq-174",
+      "q": "In Postgres, what is `public` in `SELECT * FROM public.users`?",
+      "choices": [
+        "A permission level that lets any role read the table",
+        "The name of the database the table is stored in",
+        "The default schema, a namespace inside the database",
+        "A flag marking the table as replicated to readers"
+      ],
+      "answer": 2,
+      "why": "Postgres databases contain schemas, and tables live in a schema; `public` is the default one found via search_path. Schemas group tables (for example per module or tenant) and carry permissions. SQL Server's equivalent default is `dbo`.",
+      "tags": ["postgres", "ddl"],
+      "level": 1,
+      "asked": "Qualified names appear in every migration, and knowing schema versus database avoids confusion."
+    },
+    {
+      "id": "sq-175",
+      "q": "Developers want a copy of production data to debug an issue locally. What must happen first?",
+      "choices": [
+        "Nothing, as long as the copy stays on company laptops",
+        "Indexes are dropped so the copy uses less disk space",
+        "The copy is compressed so it downloads in reasonable time",
+        "Personal data is masked or anonymised before it leaves"
+      ],
+      "answer": 3,
+      "why": "Real names, emails and addresses on laptops are a privacy and GDPR liability. Mask or synthesise personal data (keeping shapes and volumes), or debug against a secured staging copy. Compression and disk space are conveniences, not safeguards.",
+      "tags": ["security", "operations"],
+      "level": 1,
+      "asked": "Handling production data responsibly is part of being trusted with database access."
+    },
+    {
+      "id": "sq-176",
+      "q": "Why should each migration be small and do one logical change?",
+      "choices": [
+        "Small steps are easier to review, deploy and roll forward",
+        "Migration tools refuse files with more than one statement",
+        "Engines can only lock one table per migration transaction",
+        "Large migrations are silently skipped by most ORM tools"
+      ],
+      "answer": 0,
+      "why": "A focused migration is easy to review, fails in an obvious place, and fits expand-and-contract deployments where each step must be compatible with running code. Tools happily run multi-statement migrations; the size is about safety, not a limit.",
+      "tags": ["migrations"],
+      "level": 1,
+      "asked": "Migration hygiene is a proxy for how carefully someone ships schema changes."
+    },
+    {
+      "id": "sq-177",
+      "q": "With node-postgres, why does this sometimes run the INSERTs outside the transaction?",
+      "code": "await pool.query('BEGIN');\nawait pool.query('INSERT INTO a ...');\nawait pool.query('INSERT INTO b ...');\nawait pool.query('COMMIT');",
+      "lang": "js",
+      "choices": [
+        "pool.query cannot run BEGIN; transactions need pool.transaction()",
+        "Each pool.query may use a different connection from the pool",
+        "node-postgres wraps each query in its own implicit SAVEPOINT",
+        "The awaits let other requests interleave inside the same BEGIN"
+      ],
+      "answer": 1,
+      "why": "A transaction belongs to one connection, but `pool.query` borrows any free client for each call, so BEGIN and the INSERTs can land on different sessions. Use `const client = await pool.connect()`, run everything on that client, and `client.release()` in a finally block.",
+      "tags": ["transactions", "node"],
+      "level": 2,
+      "asked": "It is the most common transaction bug in Node apps and a favourite code-review question."
+    },
+    {
+      "id": "sq-178",
+      "q": "With node-postgres defaults, `SELECT COUNT(*) AS n FROM users` gives `rows[0].n`. What type is it in JavaScript?",
+      "choices": [
+        "number, because COUNT always returns a small integer",
+        "bigint, because pg maps int8 to the JavaScript BigInt type",
+        "string, since COUNT returns bigint, which pg leaves unparsed",
+        "number, unless the table holds more than 2^31 rows"
+      ],
+      "answer": 2,
+      "why": "Postgres COUNT returns bigint (int8), and node-postgres returns int8 as a string by default because it can exceed Number's safe range. `n === 5` then fails silently. Cast in SQL (`COUNT(*)::int`) or register a type parser.",
+      "tags": ["types", "node", "postgres"],
+      "level": 2,
+      "asked": "String counts cause subtle comparison and JSON bugs in Node APIs."
+    },
+    {
+      "id": "sq-179",
+      "q": "Your app runs pending migrations at startup, and you deploy four instances at once. What can go wrong?",
+      "choices": [
+        "Nothing, because migration tools always run each file once",
+        "Only the first instance to start will be able to connect at all",
+        "The instances run migrations in alphabetical order, not by version",
+        "Several instances may apply the same migration at the same time"
+      ],
+      "answer": 3,
+      "why": "Unless the tool takes a lock (some do, via an advisory lock or lock table), parallel startups race and fail or double-apply. Running migrations as a separate deployment step before rollout avoids the race and keeps app logins unprivileged.",
+      "tags": ["migrations", "operations"],
+      "level": 2,
+      "asked": "Scaling out exposes startup-time side effects, and migrations are the classic one."
+    },
+    {
+      "id": "sq-180",
+      "q": "A user edits their profile and the page reloads showing the old name. Reads go to a replica. What is the likely cause and a fix?",
+      "choices": [
+        "Replication lag; read from the primary right after writes",
+        "The write failed; retry it until the replica shows the change",
+        "Browser caching; add a random query string to every request",
+        "The ORM cached the entity; restart the app to clear it"
+      ],
+      "answer": 0,
+      "why": "Asynchronous replicas trail the primary by milliseconds to seconds, so a read right after a write can miss it. Routing a user's reads to the primary for a short time after they write (read-your-writes) or returning the updated row from the write fixes it.",
+      "tags": ["operations", "scaling"],
+      "level": 2,
+      "asked": "Replicas trade consistency for scale, and interviewers want to see you handle the lag."
+    },
+    {
+      "id": "sq-181",
+      "q": "What is the main trade-off of putting business logic in stored procedures rather than in application code?",
+      "choices": [
+        "Procedures cannot use transactions, so logic is less safe",
+        "Fewer round trips, but harder to test, version and deploy",
+        "Procedures are always slower because their plans are not cached",
+        "Procedures cannot accept parameters, so they invite injection"
+      ],
+      "answer": 1,
+      "why": "Procedures run close to the data and can cut chatty round trips, but logic in the database is harder to unit test, review and deploy alongside the app, and ties you to one engine. They support transactions and parameters, and their plans are cached.",
+      "tags": ["architecture"],
+      "level": 2,
+      "asked": "Teams differ strongly on this; a balanced answer beats dogma."
+    },
+    {
+      "id": "sq-182",
+      "q": "Under load, a Node API starts hanging on every database call, although the database is idle. What is the most likely bug?",
+      "code": "const client = await pool.connect();\nconst r = await client.query(sql, params);\nclient.release();\nreturn r.rows;",
+      "lang": "js",
+      "choices": [
+        "The pool size is too large, so the database rejects connections",
+        "client.query ignores params, so every query is re-planned",
+        "A throwing query skips release(), so clients leak away",
+        "pool.connect opens a fresh TCP connection on every call"
+      ],
+      "answer": 2,
+      "why": "When `client.query` throws, `release()` never runs, so each failure leaks a client; once the pool is empty, callers wait forever. Put `release()` in a finally block, or use `pool.query` for single statements, which releases for you.",
+      "tags": ["node", "operations"],
+      "level": 2,
+      "asked": "Pool exhaustion from leaked connections is a classic production incident."
+    },
+    {
+      "id": "sq-183",
+      "q": "An insert violates a unique constraint. Which error codes identify that, so the API can return 409 Conflict?",
+      "choices": [
+        "Postgres SQLSTATE 40001; SQL Server error 1205",
+        "Postgres SQLSTATE 42P01; SQL Server error 208",
+        "Postgres SQLSTATE 23503; SQL Server error 547",
+        "Postgres SQLSTATE 23505; SQL Server 2627 or 2601"
+      ],
+      "answer": 3,
+      "why": "23505 is unique_violation in Postgres; SQL Server raises 2627 for a unique constraint and 2601 for a unique index. 40001 and 1205 are serialisation failure and deadlock, 23503 and 547 are foreign key violations, and 42P01 and 208 mean the table does not exist.",
+      "tags": ["constraints", "error-handling"],
+      "level": 2,
+      "asked": "Mapping database errors to HTTP statuses is everyday API work."
+    },
+    {
+      "id": "sq-184",
+      "q": "A data layer retries failed transactions automatically. Which failure should it NOT retry?",
+      "choices": [
+        "A unique constraint violation (23505)",
+        "A serialisation failure (SQLSTATE 40001)",
+        "A deadlock victim error (40P01 or 1205)",
+        "A dropped connection before any statement ran"
+      ],
+      "answer": 0,
+      "why": "Deadlocks, serialisation failures and connection drops are transient: running the same transaction again can succeed. A unique violation is a deterministic outcome of the data and will fail identically, so it should become a 409 or be handled as a business case.",
+      "tags": ["transactions", "error-handling"],
+      "level": 2,
+      "asked": "Retrying the wrong errors hides bugs and multiplies load, so interviewers probe the distinction."
+    },
+    {
+      "id": "sq-185",
+      "q": "A migration dropped a column and was deployed. A day later you find a bug in it. What do teams usually do in production?",
+      "choices": [
+        "Run the migration's down step, which restores the column and its data",
+        "Write a new forward migration that fixes the problem",
+        "Edit the applied migration file and redeploy it in place",
+        "Restore last night's backup over the live database"
+      ],
+      "answer": 1,
+      "why": "Applied migrations are history: editing them desynchronises environments, and a down step recreates the column empty because the data is gone. A new migration (plus a targeted data restore if needed) rolls forward safely. Restoring a whole backup discards a day of other writes.",
+      "tags": ["migrations", "operations"],
+      "level": 2,
+      "asked": "Roll-forward thinking is what separates production migration experience from tutorial experience."
+    },
+    {
+      "id": "sq-186",
+      "q": "You must delete 50 million old rows from a busy `events` table. Why delete in batches of, say, 10,000?",
+      "choices": [
+        "DELETE cannot affect more than 65,535 rows in one statement",
+        "Batches make the rows recoverable if you need them back later",
+        "One huge DELETE holds locks and bloats the log for a long time",
+        "Batches let the engine skip writing the deleted rows to the log"
+      ],
+      "answer": 2,
+      "why": "A single statement runs as one transaction: it holds its locks (SQL Server may escalate to a table lock), grows the transaction log or WAL, and lags replicas until it commits. Small batches commit often and let other work interleave. Partitioning, where available, turns this into a partition drop.",
+      "tags": ["dml", "operations", "performance"],
+      "level": 2,
+      "asked": "Data retention jobs are common, and doing them without an outage is a practical skill."
+    },
+    {
+      "id": "sq-187",
+      "q": "In SQL Server with the default collation, a UNIQUE constraint on `Username` rejects 'ann' because 'Ann' exists. Why?",
+      "choices": [
+        "UNIQUE constraints always lower-case values before checking",
+        "The unique index uses a hash that ignores letter case",
+        "SQL Server stores varchar values in upper case internally",
+        "The default collation is case-insensitive, so they match"
+      ],
+      "answer": 3,
+      "why": "Default SQL Server collations such as SQL_Latin1_General_CP1_CI_AS are case-insensitive (CI), so comparisons, sorting and uniqueness treat the two as equal. Postgres behaves the opposite way by default. A case-sensitive collation (CS) on the column changes it.",
+      "tags": ["collation", "constraints", "sql-server"],
+      "level": 2,
+      "asked": "Collation differences explain many 'works on my database' bugs between engines."
+    },
+    {
+      "id": "sq-188",
+      "q": "A customer is soft-deleted (`deleted_at` set). Their orders have `ON DELETE CASCADE` to customers. What happens to the orders?",
+      "choices": [
+        "Nothing; no DELETE ran, so the cascade never fires",
+        "They are deleted, because the cascade fires on deleted_at",
+        "They get deleted_at set too, copied by the foreign key",
+        "The update fails, because the cascade forbids the change"
+      ],
+      "answer": 0,
+      "why": "Cascades react to real DELETEs (and key updates), not to setting a column. With soft delete, child rows need explicit handling in code or a trigger, and every query must decide whether to show orders of deleted customers.",
+      "tags": ["foreign-keys", "modelling"],
+      "level": 2,
+      "asked": "Soft delete interacts badly with relational features, and this is the most concrete example."
+    },
+    {
+      "id": "sq-189",
+      "q": "In Postgres, how can you stop a runaway report query from running for an hour and hogging the database?",
+      "choices": [
+        "Set max_connections lower for the reporting role",
+        "Set statement_timeout for that role or session",
+        "Set work_mem to zero so large sorts fail at once",
+        "Set the isolation level to READ UNCOMMITTED"
+      ],
+      "answer": 1,
+      "why": "statement_timeout cancels any statement running longer than the limit, and can be set per role (`ALTER ROLE reports SET statement_timeout = '30s'`), per session or per transaction. Connection limits do not end long queries, and Postgres treats READ UNCOMMITTED as READ COMMITTED.",
+      "tags": ["operations", "postgres"],
+      "level": 2,
+      "asked": "Timeouts are a basic production guardrail, and naming the setting shows hands-on experience."
+    },
+    {
+      "id": "sq-190",
+      "q": "A payment API accepts an `Idempotency-Key` header so client retries do not charge twice. What is the core database piece?",
+      "choices": [
+        "A SERIALIZABLE transaction around every payment request",
+        "A trigger that deletes duplicate payments once a night",
+        "A table keyed by the idempotency key, with a UNIQUE rule",
+        "A read replica that stores the responses for replay"
+      ],
+      "answer": 2,
+      "why": "Inserting the key (with the stored response) under a unique constraint makes the second attempt fail or find the existing row, even when two retries race. SERIALIZABLE alone does not know two requests are the same, and nightly cleanup is too late.",
+      "tags": ["constraints", "concurrency"],
+      "level": 2,
+      "asked": "Idempotent writes are a common API design question, and the unique constraint is the heart of it."
+    },
+    {
+      "id": "sq-191",
+      "q": "From Node, you must insert 5,000 rows into Postgres. What is usually the fastest reasonable approach?",
+      "choices": [
+        "5,000 pool.query calls fired in parallel with Promise.all",
+        "One INSERT per row inside a loop with await on each",
+        "5,000 separate INSERTs, each in its own transaction",
+        "One INSERT with many VALUES rows, or unnest of arrays"
+      ],
+      "answer": 3,
+      "why": "A multi-row INSERT (batched to stay under the 65,535 parameter limit) or `INSERT ... SELECT * FROM unnest($1::int[], $2::text[])` sends the data in a few round trips and one transaction; COPY is faster still for big loads. Parallel single inserts just exhaust the pool.",
+      "tags": ["performance", "node", "postgres"],
+      "level": 2,
+      "asked": "Bulk loading is a common task, and round trips dominate its cost."
+    },
+    {
+      "id": "sq-192",
+      "q": "A middleware opens a transaction at the start of every HTTP request and commits at the end. What is the main downside?",
+      "choices": [
+        "Locks and a connection are held for the whole request",
+        "Transactions cannot span more than one SQL statement",
+        "Reads made inside a transaction can no longer use any index",
+        "Each request is forced to run at SERIALIZABLE isolation"
+      ],
+      "answer": 0,
+      "why": "Every lock taken early lives until the response is built, including time spent calling other services or rendering, which increases blocking and pool usage. Scope transactions to the unit of work that needs atomicity. The isolation level stays at the default.",
+      "tags": ["transactions", "architecture"],
+      "level": 2,
+      "asked": "Transaction scope is an architecture decision, and interviewers want it to be deliberate."
+    },
+    {
+      "id": "sq-193",
+      "q": "A serverless API (one Lambda or Azure Function instance per concurrent request) exhausts Postgres connections under load. What is the usual fix?",
+      "choices": [
+        "Raise max_connections to 10,000 on the database server",
+        "Put a pooler such as PgBouncer or RDS Proxy in front",
+        "Open a new connection per query and close it straight after",
+        "Switch every query to READ UNCOMMITTED to cut lock use"
+      ],
+      "answer": 1,
+      "why": "Each function instance has its own small pool, so hundreds of instances open hundreds of connections, and each Postgres connection is a process costing memory. A pooler multiplexes many client connections onto a few server ones. Raising max_connections hurts performance; per-query connects add latency.",
+      "tags": ["operations", "scaling", "postgres"],
+      "level": 3,
+      "asked": "Serverless plus relational databases is a common architecture trap."
+    },
+    {
+      "id": "sq-194",
+      "q": "Behind PgBouncer in transaction pooling mode, which app behaviour can break?",
+      "choices": [
+        "Plain parameterised SELECTs sent one at a time by the driver",
+        "Transactions that contain more than one INSERT statement",
+        "Session state such as SET, advisory locks or LISTEN",
+        "Queries that read from more than one table using a JOIN"
+      ],
+      "answer": 2,
+      "why": "In transaction mode each transaction may run on a different server connection, so anything tied to a session (SET without LOCAL, session advisory locks, LISTEN, temp tables, and named prepared statements on PgBouncer before 1.21) can vanish or leak to another client. Ordinary queries and transactions are fine.",
+      "tags": ["operations", "postgres"],
+      "level": 3,
+      "asked": "It explains strange bugs that appear only in production after a pooler is added."
+    },
+    {
+      "id": "sq-195",
+      "q": "node-postgres returns a `numeric(12,2)` total as the string '19.99'. Why is `parseFloat` for money a poor default?",
+      "choices": [
+        "parseFloat throws on strings that contain a decimal point",
+        "The string is already in cents, so parsing doubles the value",
+        "parseFloat rounds the value to the nearest whole number",
+        "Floats cannot represent most decimals exactly, so sums drift"
+      ],
+      "answer": 3,
+      "why": "Binary floats approximate values like 0.1, so `0.1 + 0.2` is 0.30000000000000004 and totals can be off by a cent. The driver returns strings precisely to avoid that; keep them as strings, use integer cents, or a decimal library, and do sums in SQL.",
+      "tags": ["types", "node"],
+      "level": 3,
+      "asked": "Money precision across the database-to-JS boundary is a real bug class in Node APIs."
+    },
+    {
+      "id": "sq-196",
+      "q": "In Postgres, why does updating a non-indexed column (`last_seen_at`) often cost less than updating an indexed one?",
+      "choices": [
+        "It can be a HOT update, skipping every index when none change",
+        "Updates to non-indexed columns are written only to memory",
+        "Non-indexed columns are stored in a separate, smaller file",
+        "Postgres batches non-indexed updates until the next VACUUM"
+      ],
+      "answer": 0,
+      "why": "Postgres writes a new row version on every update; if no indexed column changes and the page has room, it makes a heap-only tuple and skips every index. Changing an indexed column forces new entries in all indexes. That is one more reason not to index frequently updated columns.",
+      "tags": ["indexes", "postgres", "performance"],
+      "level": 3,
+      "asked": "Write amplification from indexes is an advanced performance topic that seniors can explain."
+    },
+    {
+      "id": "sq-197",
+      "q": "An API uses a `version` column for optimistic concurrency. How is it typically exposed over HTTP?",
+      "choices": [
+        "As a cookie the server sets after each successful GET",
+        "As an ETag on GET, echoed in If-Match, with 412 on mismatch",
+        "As a query-string parameter the server increments on each request",
+        "As a response header the client may ignore on updates"
+      ],
+      "answer": 1,
+      "why": "The ETag carries the version; the client echoes it in `If-Match`, the server runs `UPDATE ... WHERE id = @id AND version = @v`, and zero affected rows means someone else changed it, so 412 Precondition Failed. That turns a database check into standard HTTP semantics.",
+      "tags": ["concurrency", "http"],
+      "level": 3,
+      "asked": "Connecting the data layer to HTTP semantics is a sign of end-to-end thinking."
+    },
+    {
+      "id": "sq-198",
+      "q": "A service saves an order and then publishes an `OrderPlaced` message to a broker. If it crashes between the two, the message is lost. What pattern fixes this?",
+      "choices": [
+        "Publish first, then save the order if publishing succeeded",
+        "Wrap the INSERT and the publish call in one SERIALIZABLE transaction",
+        "Write it to an outbox table in the same transaction",
+        "Retry the publish call in a loop until the broker acknowledges"
+      ],
+      "answer": 2,
+      "why": "The transactional outbox makes the order and the message one atomic database write; a relay then publishes outbox rows and marks them sent, at least once. Publishing first can announce orders that never saved, a broker is not part of the database transaction, and retries do nothing if the process died.",
+      "tags": ["transactions", "architecture"],
+      "level": 3,
+      "asked": "Dual writes are a classic distributed-systems trap, even in simple CRUD services."
+    },
+    {
+      "id": "sq-199",
+      "q": "A migration backfills a new column on 80 million rows. What is the usual safe approach in production?",
+      "choices": [
+        "One UPDATE for all rows inside a single long transaction",
+        "Run the UPDATE on a read replica and let it copy back",
+        "Drop and recreate the table with the column already filled",
+        "Small batches by key range, each committed and throttled"
+      ],
+      "answer": 3,
+      "why": "Batching by primary key ranges (for example 10,000 ids at a time) keeps each transaction short, limits locks and WAL or log bursts, and lets you pause if replica lag grows. A single UPDATE locks many rows for a long time; replicas are read-only.",
+      "tags": ["migrations", "zero-downtime"],
+      "level": 3,
+      "asked": "Backfills are the risky middle step of expand-and-contract migrations."
+    },
+    {
+      "id": "sq-200",
+      "q": "At READ COMMITTED, a report runs `SELECT SUM(amount) FROM debits` then `SELECT SUM(amount) FROM credits`, and they do not balance though transfers always write both. Why, and what fixes it?",
+      "choices": [
+        "Each statement gets a new snapshot; use REPEATABLE READ",
+        "SUM skips rows locked by writers; add a NOLOCK hint to both queries",
+        "The two queries run on different connections; use a single JOIN",
+        "The planner cached an old plan; recompile both queries first"
+      ],
+      "answer": 0,
+      "why": "READ COMMITTED gives each statement its own snapshot, so a transfer committing between the two SELECTs is half-visible. REPEATABLE READ in Postgres (or SNAPSHOT in SQL Server) gives the whole transaction one snapshot. NOLOCK would add dirty reads, not consistency.",
+      "tags": ["transactions", "isolation"],
+      "level": 3,
+      "asked": "Multi-statement reports are where READ COMMITTED's per-statement snapshot surprises people."
+    },
+    {
+      "id": "sq-201",
+      "q": "In Postgres, `created_at` is `timestamp` (without time zone) and holds UTC values. Why can `WHERE created_at > now() - interval '1 hour'` be wrong?",
+      "choices": [
+        "Interval arithmetic is not supported on timestamp without time zone",
+        "now() is cast via the session TimeZone, shifting the cut-off",
+        "now() returns the time the server started, not the current time",
+        "Comparisons between timestamp types always return NULL in Postgres"
+      ],
+      "answer": 1,
+      "why": "now() is timestamptz; comparing it with a plain timestamp casts it to local time in the session's TimeZone, so a session set to Europe/London in summer shifts the window by an hour. Using timestamptz columns, or a UTC session, avoids it. now() is the transaction start time.",
+      "tags": ["dates", "postgres"],
+      "level": 3,
+      "asked": "Time zone bugs are subtle and costly, and knowing the implicit cast is expert-level."
+    },
+    {
+      "id": "sq-202",
+      "q": "A sync job fetches `WHERE id > @lastSeenId ORDER BY id` every minute to pick up new rows. Why can it miss rows in Postgres or SQL Server?",
+      "choices": [
+        "Identity values are reused after a delete, so old ids reappear",
+        "ORDER BY id is not guaranteed to be ascending without an index",
+        "Ids are assigned at insert, so a lower id can commit later",
+        "The job's READ COMMITTED snapshot hides every row inserted since it began"
+      ],
+      "answer": 2,
+      "why": "Transaction A takes id 101 and commits slowly; B takes 102 and commits first. The job reads 102, stores it as the cursor, and never sees 101. Using an overlap window, a commit-ordered change feed (CDC, logical replication) or an outbox avoids it. Identities are not reused.",
+      "tags": ["concurrency", "keys"],
+      "level": 3,
+      "asked": "Incremental sync by id or timestamp is common, and this race causes silent data loss."
+    },
+    {
+      "id": "sq-203",
+      "q": "In Postgres, what does adding a foreign key as `NOT VALID` and later running `VALIDATE CONSTRAINT` achieve on a large live table?",
+      "choices": [
+        "It skips checking existing rows forever while still checking new ones",
+        "It creates the constraint on a replica first and then copies it back",
+        "It lets you add the constraint without creating an index on the column",
+        "The add is quick; validation scans under a lighter lock"
+      ],
+      "answer": 3,
+      "why": "`ADD CONSTRAINT ... NOT VALID` enforces the rule for new writes immediately without scanning existing rows; `VALIDATE CONSTRAINT` then scans with a lock that allows normal reads and writes. Adding it in one step blocks writes during the full check. The same trick works for CHECK constraints.",
+      "tags": ["migrations", "zero-downtime", "postgres"],
+      "level": 3,
+      "asked": "Knowing how to add constraints without an outage is a hallmark of production Postgres experience."
+    },
+    {
+      "id": "sq-204",
+      "q": "The intent is 'toys or games costing over 10'. Rows are (a, 5, toys), (b, 20, toys), (c, 5, games), (d, 20, games). Which names come back?",
+      "code": "SELECT name FROM products\nWHERE price > 10 AND category = 'toys'\n   OR category = 'games';",
+      "lang": "sql",
+      "choices": [
+        "b, c and d",
+        "b and d, as intended",
+        "d only",
+        "a, b, c and d"
+      ],
+      "answer": 0,
+      "why": "AND binds tighter than OR, so this reads as `(price > 10 AND toys) OR games`, and cheap game c slips through. Parenthesise the OR: `price > 10 AND (category = 'toys' OR category = 'games')`, or use `category IN ('toys', 'games')`.",
+      "tags": ["queries"],
+      "level": 1,
+      "asked": "Operator precedence bugs in WHERE clauses return plausible-looking wrong data, so reviewers look for missing parentheses."
+    },
+    {
+      "id": "sq-205",
+      "q": "A list endpoint uses `ORDER BY id LIMIT 10 OFFSET 20`. Which rows does it return?",
+      "choices": [
+        "Rows 20 to 29 of the ordered result",
+        "Rows 21 to 30 of the ordered result",
+        "Rows 11 to 20 of the ordered result",
+        "Rows 1 to 10, starting after id 20"
+      ],
+      "answer": 1,
+      "why": "OFFSET skips that many rows and LIMIT then takes the next ten, so page 3 of ten-per-page is rows 21 to 30 (`OFFSET (page - 1) * size`). OFFSET counts rows, not id values, which only coincide when ids have no gaps.",
+      "tags": ["pagination", "queries"],
+      "level": 1,
+      "asked": "Off-by-one page maths is a common API bug, and knowing OFFSET counts rows sets up the keyset discussion."
     }
   ]
 }

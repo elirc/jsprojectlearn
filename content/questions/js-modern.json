@@ -367,6 +367,1429 @@
       "tags": ["builtins"],
       "level": 2,
       "asked": "Wrapping errors with context without losing the root cause is a production-debugging habit interviewers look for."
+    },
+    {
+      "id": "jsm-025",
+      "q": "In Node 24, you run `node a.mjs`. What happens?",
+      "code": "// a.mjs\nimport { label } from './b.mjs';\nexport const PREFIX = 'INV-';\nconsole.log(label);\n// b.mjs\nimport { PREFIX } from './a.mjs';\nexport const label = PREFIX + '001';",
+      "lang": "js",
+      "choices": [
+        "A ReferenceError: PREFIX is not initialised yet",
+        "A SyntaxError: cycles are not allowed in ESM",
+        "It logs 'INV-001', since imports resolve first",
+        "It logs 'undefined001', since PREFIX is hoisted"
+      ],
+      "answer": 0,
+      "why": "With a cycle, `b.mjs` is evaluated first (it is a dependency of the entry), while `a.mjs`'s `const PREFIX` is still in its temporal dead zone. Circular imports are legal, but top-level code must not use a binding from the other side; move shared constants into a third module.",
+      "tags": ["modules", "esm"],
+      "level": 2,
+      "asked": "Circular imports cause confusing start-up crashes in growing codebases; knowing the TDZ reason is the strong answer."
+    },
+    {
+      "id": "jsm-026",
+      "q": "`side.mjs` contains only `console.log('side')`. In Node 24, what does `main.mjs` print?",
+      "code": "// main.mjs\nconsole.log('main');\nimport './side.mjs';",
+      "lang": "js",
+      "choices": [
+        "main only",
+        "A SyntaxError: imports must come first",
+        "main, then side",
+        "side, then main"
+      ],
+      "answer": 3,
+      "why": "Static imports are hoisted: every imported module is loaded and evaluated before any statement of the importing module runs, wherever the `import` line appears. That is why a polyfill or env loader imported \"after\" some code still runs first, and why order-sensitive set-up belongs in its own module.",
+      "tags": ["modules", "esm"],
+      "level": 1,
+      "asked": "A quick check of module evaluation order, which explains many \"why did my set-up run first\" surprises."
+    },
+    {
+      "id": "jsm-027",
+      "q": "`cfg.mjs` has `export let x = 1`. In Node 24, what does this print?",
+      "code": "import * as cfg from './cfg.mjs';\ntry { cfg.x = 2; } catch (e) { console.log(e.name); }\nconsole.log(cfg.x);",
+      "lang": "js",
+      "choices": [
+        "1 (the write is silently ignored)",
+        "2",
+        "TypeError, then 1",
+        "TypeError, then 2"
+      ],
+      "answer": 2,
+      "why": "A module namespace object is sealed and its properties are read-only views of the exports, and module code is always strict, so the write throws a TypeError. Only the exporting module can change `x`; expose a setter function if other modules need to.",
+      "tags": ["modules", "esm"],
+      "level": 2,
+      "asked": "Tests whether you know imports are read-only views, a common surprise when people try to patch config or mock a module."
+    },
+    {
+      "id": "jsm-028",
+      "q": "A stock module exports the same variable twice, once as the default. After `restock()`, what does `shop.mjs` print in Node 24?",
+      "code": "// stock.mjs\nlet qty = 1;\nexport default qty;\nexport { qty as current };\nexport function restock() { qty++; }\n// shop.mjs\nimport qty, { restock, current } from './stock.mjs';\nrestock(); console.log(qty, current);",
+      "lang": "js",
+      "choices": ["1 1", "1 2", "2 1", "2 2"],
+      "answer": 1,
+      "why": "`export default qty` exports the value of an expression, evaluated once, so the default stays 1. `export { qty as current }` exports the binding itself, which is live and shows 2. Export named bindings (or a function) when consumers must see updates.",
+      "tags": ["modules", "esm"],
+      "level": 3,
+      "asked": "Goes one step past \"imports are live\": default-exporting an expression is a snapshot."
+    },
+    {
+      "id": "jsm-029",
+      "q": "`s1.mjs` has `export const a = 1; export default 'd';`. `index.mjs` is only `export * from './s1.mjs';`. What does this print in Node 24?",
+      "code": "import * as ns from './index.mjs';\nconsole.log(Object.keys(ns));",
+      "lang": "js",
+      "choices": ["[ 'a' ]", "[ 'default' ]", "[]", "[ 'a', 'default' ]"],
+      "answer": 0,
+      "why": "`export *` re-exports every named export but never `default`. A barrel file has to add `export { default } from './s1.mjs'` (or a named alias) explicitly, which is a frequent reason a default import from an index file comes back missing.",
+      "tags": ["modules", "esm"],
+      "level": 2,
+      "asked": "Barrel files are everywhere; this is the classic \"why is the default missing\" bug."
+    },
+    {
+      "id": "jsm-030",
+      "q": "A barrel re-exports two modules with `export *`, and both export `format`. In Node 24, what happens on `import { format } from './utils/index.mjs'`?",
+      "choices": [
+        "`format` is imported as undefined, with a warning",
+        "The module listed last wins, silently",
+        "The module listed first wins, silently",
+        "A SyntaxError about conflicting star exports for `format`"
+      ],
+      "answer": 3,
+      "why": "Conflicting names from two `export *` sources are ambiguous, so they are left out of the namespace (a `import * as ns` simply lacks `format`), and naming one explicitly fails at link time. Resolve it with an explicit `export { format } from './dates.mjs'` in the barrel.",
+      "tags": ["modules", "esm"],
+      "level": 3,
+      "asked": "Shows real experience with barrel files; the silent omission from namespaces is the part people miss."
+    },
+    {
+      "id": "jsm-031",
+      "q": "`chart.mjs` has `export default function chart() { ... }`. What is wrong here?",
+      "code": "const chart = await import('./chart.mjs');\nchart();",
+      "lang": "js",
+      "choices": [
+        "`await import` only works inside an async function",
+        "Nothing: dynamic import returns the default export",
+        "`chart` is the module namespace, so call `chart.default()`",
+        "Dynamic import needs a full URL, not a relative path"
+      ],
+      "answer": 2,
+      "why": "`import()` resolves to the module namespace object, not the default export, so calling it throws \"chart is not a function\". Use `(await import(...)).default` or destructure `const { default: chart } = await import(...)`. React.lazy expects exactly that `{ default }` shape.",
+      "tags": ["modules"],
+      "level": 1,
+      "asked": "The most common dynamic-import mistake, and the reason React.lazy wants a default export."
+    },
+    {
+      "id": "jsm-032",
+      "q": "In Node 24, `legacy.cjs` does `module.exports = buildApi();`, which returns `{ a: 1 }`. What does `import { a } from \"./legacy.cjs\"` do in an ES module?",
+      "choices": [
+        "Imports 1, because Node reads module.exports at runtime",
+        "Fails with a SyntaxError: named export `a` not found",
+        "Imports undefined, because CJS modules have no exports",
+        "Imports the whole object `{ a: 1 }` as `a`"
+      ],
+      "answer": 1,
+      "why": "Node guesses the named exports of a CommonJS file by statically scanning it (`exports.a = ...` or an object literal), and it cannot see through a function call. The default import always works: `import legacy from \"./legacy.cjs\"` gives `module.exports`, so `legacy.a` is 1.",
+      "tags": ["modules", "esm", "node"],
+      "level": 3,
+      "asked": "CJS/ESM interop errors are daily life during migrations; the default-import workaround is the practical answer."
+    },
+    {
+      "id": "jsm-033",
+      "q": "In Node 24, a CommonJS file does `const m = require('./chart.mjs')`, where `chart.mjs` has only a default export. What does this print?",
+      "code": "console.log(typeof m, typeof m.default);",
+      "lang": "js",
+      "choices": [
+        "object function",
+        "undefined undefined",
+        "A ERR_REQUIRE_ESM error",
+        "function undefined"
+      ],
+      "answer": 0,
+      "why": "Node 22.12+ and 24 can `require()` a synchronous ES module and return its namespace object, so the default export sits on `.default`. Older Node threw ERR_REQUIRE_ESM, and a module with top-level await still cannot be required.",
+      "tags": ["modules", "esm", "node"],
+      "level": 2,
+      "asked": "A 2025-era change that simplifies migrations; knowing the `.default` detail shows you have actually used it."
+    },
+    {
+      "id": "jsm-034",
+      "q": "In Node 24, what does this ES module print?",
+      "code": "console.log(this);",
+      "lang": "js",
+      "choices": ["globalThis", "module.exports", "{}", "undefined"],
+      "answer": 3,
+      "why": "At the top level of an ES module, `this` is undefined. In a CommonJS file it is `module.exports` (initially `{}`), which is why old code using `this` at the top level breaks after an ESM migration.",
+      "tags": ["modules", "esm"],
+      "level": 1,
+      "asked": "A small but telling ESM-versus-CommonJS difference."
+    },
+    {
+      "id": "jsm-035",
+      "q": "In an ES module, what happens when this runs?",
+      "code": "function applyDiscount() {\n  total = 90;\n}\napplyDiscount();",
+      "lang": "js",
+      "choices": [
+        "It creates `total` on the module namespace",
+        "It creates a global `total` equal to 90",
+        "It throws ReferenceError: total is not defined",
+        "It silently does nothing"
+      ],
+      "answer": 2,
+      "why": "ES modules are always in strict mode, so assigning to an undeclared variable throws instead of creating an accidental global. You never need `\"use strict\"` in a module or a class body.",
+      "tags": ["modules", "esm"],
+      "level": 1,
+      "asked": "Checks that you know modules are strict by default, one of the benefits of moving to ESM."
+    },
+    {
+      "id": "jsm-036",
+      "q": "A plain HTML page (no bundler) has `<script type=\"module\">import { debounce } from 'lodash-es';</script>`. What happens?",
+      "choices": [
+        "The browser downloads lodash-es from the npm registry",
+        "It fails: bare specifiers need an import map or a bundler",
+        "It loads `node_modules/lodash-es` next to the page",
+        "It works only if the page is served over HTTPS"
+      ],
+      "answer": 1,
+      "why": "Browsers only resolve URLs and relative paths. A bare name like `lodash-es` throws \"Failed to resolve module specifier\" unless an `<script type=\"importmap\">` maps it to a URL. Bundlers and Vite rewrite bare imports for you, which is one reason they exist.",
+      "tags": ["modules", "tooling"],
+      "level": 1,
+      "asked": "A good way to explain what a bundler actually does for imports."
+    },
+    {
+      "id": "jsm-037",
+      "q": "Why does `import data from './data.json' with { type: 'json' }` require the `with` clause?",
+      "choices": [
+        "So a server response can never be run as JavaScript by mistake",
+        "Because JSON modules export named keys only with the clause",
+        "It makes the import lazy, like a dynamic `import()`",
+        "It tells the bundler to minify the JSON at build time"
+      ],
+      "answer": 0,
+      "why": "Browsers decide how to treat a module by its MIME type; without the attribute, a compromised or misconfigured server could send JavaScript where you expected data. The attribute makes the import fail unless the response really is JSON. JSON modules only have a default export.",
+      "tags": ["modules", "security"],
+      "level": 2,
+      "asked": "Import attributes are new (ES2025); knowing the security reason behind the syntax is what stands out."
+    },
+    {
+      "id": "jsm-038",
+      "q": "What does `\"sideEffects\": false` in a library's package.json tell a bundler?",
+      "choices": [
+        "That every function in the library is pure and can be inlined",
+        "That the library must not run in the browser",
+        "That the library has no dependencies to bundle",
+        "Unused modules can be dropped, since importing them does nothing"
+      ],
+      "answer": 3,
+      "why": "Tree-shaking removes unused exports, but a bundler must keep a module whose top-level code might do something (register a polyfill, add CSS). The flag promises it is safe to skip whole files; list files such as CSS that really do have side effects.",
+      "tags": ["modules", "tooling", "performance"],
+      "level": 2,
+      "asked": "A standard bundle-size question; mentioning CSS imports as the exception shows real experience."
+    },
+    {
+      "id": "jsm-039",
+      "q": "A shared `components/index.ts` barrel re-exports 300 components. What cost can it add?",
+      "choices": [
+        "It forces every component into its own network request",
+        "None: re-exports are removed at compile time",
+        "Every import from it may load and evaluate all 300 modules",
+        "Type-checking fails once a barrel exceeds 256 exports"
+      ],
+      "answer": 2,
+      "why": "Without perfect tree-shaking (and always in dev servers, tests and Node), importing one name from a barrel loads everything it re-exports. That slows test start-up and dev reloads, and can pull side effects into bundles. Import from the component file directly in hot paths.",
+      "tags": ["modules", "performance", "tooling"],
+      "level": 2,
+      "asked": "Slow Jest or Vitest start-up is often a barrel file; this is a practical performance question."
+    },
+    {
+      "id": "jsm-040",
+      "q": "In Node 24, what does `import.meta.resolve(\"./chart.mjs\")` return?",
+      "choices": [
+        "A promise of the module namespace",
+        "The absolute `file:` URL string of that module",
+        "The file contents as a string",
+        "true or false, depending on whether it exists"
+      ],
+      "answer": 1,
+      "why": "`import.meta.resolve` resolves a specifier against the current module synchronously and returns a URL string without loading anything. It is handy for locating worker scripts, assets or package files, and works in browsers too.",
+      "tags": ["modules", "esm"],
+      "level": 2,
+      "asked": "A newer API that replaces hand-built path juggling; knowing it returns a URL, not a path, is the detail."
+    },
+    {
+      "id": "jsm-041",
+      "q": "In Node 24, `once.mjs` logs \"eval\" at the top level. What does this print?",
+      "code": "const a = await import('./once.mjs');\nconst b = await import('./once.mjs');\nconst c = await import('./once.mjs?v=2');\nconsole.log(a === b, a === c);",
+      "lang": "js",
+      "choices": [
+        "eval, eval, then true false",
+        "eval, eval, eval, then false false",
+        "eval, then true false",
+        "eval, then true true"
+      ],
+      "answer": 0,
+      "why": "Modules are cached by their full URL, so the second import reuses the first instance, but a different query string is a different URL: a second, separate instance is evaluated. That is how test tools and hot-reloaders get fresh copies, and why a module-level cache can accidentally be duplicated.",
+      "tags": ["modules", "esm"],
+      "level": 3,
+      "asked": "Explains both module singletons and how cache-busting works, which comes up with hot reload and tests."
+    },
+    {
+      "id": "jsm-042",
+      "q": "In Node 24, what does this print?",
+      "code": "function* ids() { let i = 0; while (true) yield i++; }\nconst out = ids().filter((n) => n % 2).map((n) => n * 10).take(3).toArray();\nconsole.log(out);",
+      "lang": "js",
+      "choices": [
+        "[ 0, 20, 40 ]",
+        "TypeError: filter is not a function",
+        "It never finishes: the generator is infinite",
+        "[ 10, 30, 50 ]"
+      ],
+      "answer": 3,
+      "why": "Iterator helpers (ES2025) are lazy: each value flows through filter and map one at a time, and `take(3)` stops pulling after three results, so an infinite source is fine. Arrays can't do this, since `.filter` on an array walks the whole thing first.",
+      "tags": ["iterators", "generators"],
+      "level": 2,
+      "asked": "Iterator helpers are new; interviewers use them to check that you understand lazy versus eager evaluation."
+    },
+    {
+      "id": "jsm-043",
+      "q": "In Node 24, what does this print?",
+      "code": "const users = new Map([[1, { name: 'Ada' }], [2, { name: 'Lin' }]]);\nconst names = users.values().map((u) => u.name);\nconsole.log(names.length, Array.isArray(names));",
+      "lang": "js",
+      "choices": [
+        "It logs 2 true (an array)",
+        "It logs 2 false (an iterator)",
+        "It logs undefined false",
+        "It throws: map is not a function"
+      ],
+      "answer": 2,
+      "why": "`values()` returns an iterator, and in Node 24 iterators have `.map`, but it returns another lazy iterator, not an array, so there is no `length`. Call `.toArray()` or spread it when you need an array to render or send.",
+      "tags": ["iterators"],
+      "level": 1,
+      "asked": "A quick check that you know iterators and arrays are different things even when they share method names."
+    },
+    {
+      "id": "jsm-044",
+      "q": "In Node 24, what does this print?",
+      "code": "const doubled = [1, 2, 3].values().map((x) => x * 2);\nconsole.log([...doubled], [...doubled]);",
+      "lang": "js",
+      "choices": ["[ 2, 4, 6 ] [ 2, 4, 6 ]", "[ 2, 4, 6 ] []", "[] []", "[ 1, 2, 3 ] [ 2, 4, 6 ]"],
+      "answer": 1,
+      "why": "An iterator is single-use: the first spread consumes it and the second finds it already done. Arrays can be walked any number of times, so keep an array (or re-create the iterator) when you need to read the data twice.",
+      "tags": ["iterators"],
+      "level": 2,
+      "asked": "The same trap bites with generators and streams; recognising \"consumed\" state is the point."
+    },
+    {
+      "id": "jsm-045",
+      "q": "In Node 24, what does this print?",
+      "code": "let calls = 0;\nconst first = [1, 2, 3, 4].values().map((x) => { calls++; return x; }).take(2).toArray();\nconsole.log(first, calls);",
+      "lang": "js",
+      "choices": ["[ 1, 2 ] 2", "[ 1, 2 ] 0", "[ 1, 2, 3, 4 ] 4", "[ 1, 2 ] 4"],
+      "answer": 0,
+      "why": "With iterator helpers the mapping runs only for values that are actually pulled, so `take(2)` means two calls. The array version, `arr.map(fn).slice(0, 2)`, would call `fn` four times. That matters when the mapping is expensive.",
+      "tags": ["iterators"],
+      "level": 2,
+      "asked": "Makes lazy evaluation concrete by counting the work done."
+    },
+    {
+      "id": "jsm-046",
+      "q": "In Node 24, what does this print?",
+      "code": "const old = new Set(['admin', 'editor']);\nconst next = new Set(['editor', 'viewer']);\nconsole.log(old.difference(next), next.difference(old));",
+      "lang": "js",
+      "choices": [
+        "Set(1) { 'editor' } Set(1) { 'editor' }",
+        "Set(1) { 'viewer' } Set(1) { 'admin' }",
+        "Set(2) { 'admin', 'viewer' } Set(0) {}",
+        "Set(1) { 'admin' } Set(1) { 'viewer' }"
+      ],
+      "answer": 3,
+      "why": "`a.difference(b)` keeps what is in `a` but not `b`, so the two calls give the roles to revoke and the roles to grant. The ES2025 Set methods (union, intersection, difference, symmetricDifference and the subset checks) replace hand-written filter loops.",
+      "tags": ["builtins", "sets"],
+      "level": 1,
+      "asked": "Role and tag diffs come up in every admin screen; the new Set methods make them one line."
+    },
+    {
+      "id": "jsm-047",
+      "q": "An endpoint requires the `read` and `write` scopes. Which check is correct in Node 24, given `required` and `granted` are Sets?",
+      "choices": [
+        "`required.union(granted).size > 0`",
+        "`granted.isSubsetOf(required)`",
+        "`required.isSubsetOf(granted)`",
+        "`required.isDisjointFrom(granted)`"
+      ],
+      "answer": 2,
+      "why": "Every required scope must be in the granted set, which is `required.isSubsetOf(granted)` (or `granted.isSupersetOf(required)`). The first option gets the direction backwards and would reject a user with extra scopes.",
+      "tags": ["builtins", "sets"],
+      "level": 2,
+      "asked": "Direction mistakes in permission checks are security bugs, so interviewers like this one."
+    },
+    {
+      "id": "jsm-048",
+      "q": "In Node 24, what happens?",
+      "code": "const tags = new Set(['js']);\nconsole.log(tags.union(['ts']));",
+      "lang": "js",
+      "choices": [
+        "It logs Set(1) { 'js' }",
+        "It throws a TypeError (not set-like)",
+        "It logs Set(2) { 'js', [ 'ts' ] }",
+        "It logs Set(2) { 'js', 'ts' }"
+      ],
+      "answer": 1,
+      "why": "The Set methods accept any \"set-like\" argument with `size`, `has` and `keys`, such as a Set or a Map, but an array has no `size`, so it throws. Wrap it first: `tags.union(new Set(arr))`.",
+      "tags": ["builtins", "sets"],
+      "level": 3,
+      "asked": "Checks precise knowledge of a new API rather than guessing from the name."
+    },
+    {
+      "id": "jsm-049",
+      "q": "In Node 24, what does this print?",
+      "code": "const a = new Set([1, 2]);\nconst b = new Set([2, 3]);\nconsole.log(a.union(b), a.intersection(b), a);",
+      "lang": "js",
+      "choices": [
+        "Set(3) { 1, 2, 3 } Set(1) { 2 } Set(2) { 1, 2 }",
+        "Set(4) { 1, 2, 2, 3 } Set(1) { 2 } Set(2) { 1, 2 }",
+        "Set(3) { 1, 2, 3 } Set(2) { 1, 3 } Set(2) { 1, 2 }",
+        "Set(3) { 1, 2, 3 } Set(1) { 2 } Set(3) { 1, 2, 3 }"
+      ],
+      "answer": 0,
+      "why": "The Set methods return new Sets and never modify the receiver, so `a` is unchanged. The result has no duplicates, as every Set, and `intersection` keeps only the shared values.",
+      "tags": ["builtins", "sets"],
+      "level": 1,
+      "asked": "A basic check of the new Set API and its non-mutating design."
+    },
+    {
+      "id": "jsm-050",
+      "q": "A dashboard tile shows follower counts. In Node 24, what does this print?",
+      "code": "const f = new Intl.NumberFormat('en', { notation: 'compact' });\nconsole.log(f.format(1234567), f.format(1500));",
+      "lang": "js",
+      "choices": ["1M 2K", "1.23M 1.50K", "1,234,567 1,500", "1.2M 1.5K"],
+      "answer": 3,
+      "why": "Compact notation abbreviates large numbers for the locale ('1.2M' in English, '123万' in Japanese) with sensible rounding. It replaces the hand-rolled `if (n > 1e6)` helpers that never localise.",
+      "tags": ["intl", "numbers"],
+      "level": 1,
+      "asked": "A quick check that you reach for Intl instead of string-building numbers by hand."
+    },
+    {
+      "id": "jsm-051",
+      "q": "In Node 24, what does this print?",
+      "code": "const pct = new Intl.NumberFormat('en-GB', { style: 'percent' });\nconsole.log(pct.format(0.256));",
+      "lang": "js",
+      "choices": ["0.256%", "25.6%", "26%", "0%"],
+      "answer": 2,
+      "why": "Percent style multiplies by 100 and, by default, shows no fraction digits, so 0.256 becomes 26%. Pass a ratio, not a number already multiplied by 100, and set `maximumFractionDigits` if you need 25.6%.",
+      "tags": ["intl", "numbers"],
+      "level": 1,
+      "asked": "Passing 25.6 instead of 0.256 is a common bug that turns into 2,560%."
+    },
+    {
+      "id": "jsm-052",
+      "q": "In Node 24, what does this print?",
+      "code": "const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });\nconsole.log(rtf.format(-1, 'day'), '|', rtf.format(2, 'week'));",
+      "lang": "js",
+      "choices": [
+        "1 day ago | in 2 weeks",
+        "yesterday | in 2 weeks",
+        "-1 day | 2 weeks",
+        "yesterday | 2 weeks from now"
+      ],
+      "answer": 1,
+      "why": "With `numeric: 'auto'` the formatter uses words like 'yesterday' and 'tomorrow' where the language has them; the default `'always'` gives '1 day ago'. You still choose the unit and value yourself, typically from a date difference.",
+      "tags": ["intl", "dates"],
+      "level": 1,
+      "asked": "Activity feeds need 'posted 3 hours ago'; Intl does the wording and translation for you."
+    },
+    {
+      "id": "jsm-053",
+      "q": "A label must read '1 item' or '3 items', and later be translated. In Node 24, what does this print?",
+      "code": "const pr = new Intl.PluralRules('en');\nconsole.log(pr.select(0), pr.select(1), pr.select(2));",
+      "lang": "js",
+      "choices": ["other one other", "one one other", "zero one other", "zero one two"],
+      "answer": 0,
+      "why": "PluralRules returns the language's plural category, which you use as a key into your messages. English only has 'one' and 'other', so 0 is 'other' ('0 items'); languages such as Polish or Arabic have more categories, which is why `n === 1 ? '' : 's'` does not translate.",
+      "tags": ["intl"],
+      "level": 2,
+      "asked": "Tests awareness that pluralisation is language-specific, not just adding an s."
+    },
+    {
+      "id": "jsm-054",
+      "q": "In Node 24, what does this print?",
+      "code": "const po = new Intl.PluralRules('en', { type: 'ordinal' });\nconst suffix = { one: 'st', two: 'nd', few: 'rd', other: 'th' };\nconsole.log([1, 2, 3, 11, 22].map((n) => n + suffix[po.select(n)]).join(' '));",
+      "lang": "js",
+      "choices": [
+        "1st 2nd 3rd 11th 22th",
+        "1th 2th 3th 11th 22th",
+        "1st 2nd 3rd 11st 22nd",
+        "1st 2nd 3rd 11th 22nd"
+      ],
+      "answer": 3,
+      "why": "Ordinal rules know that 11, 12 and 13 take 'th' while 21, 22 and 23 go back to 'st', 'nd' and 'rd'. Hand-written `n % 10` logic usually gets the teens wrong.",
+      "tags": ["intl"],
+      "level": 2,
+      "asked": "'Write an ordinal suffix function' is a classic; knowing PluralRules handles it is the senior answer."
+    },
+    {
+      "id": "jsm-055",
+      "q": "In Node 24, what does this print?",
+      "code": "const names = ['Ada', 'Lin', 'Sam'];\nconsole.log(new Intl.ListFormat('en-GB').format(names));\nconsole.log(new Intl.ListFormat('en', { type: 'disjunction' }).format(['card', 'PayPal']));",
+      "lang": "js",
+      "choices": [
+        "Ada and Lin and Sam, then card or PayPal",
+        "Ada, Lin, Sam, then card, PayPal",
+        "Ada, Lin and Sam, then card or PayPal",
+        "Ada, Lin, and Sam, then card and PayPal"
+      ],
+      "answer": 2,
+      "why": "ListFormat joins items the way the locale does: British English omits the Oxford comma that 'en-US' adds ('Ada, Lin, and Sam'), and 'disjunction' uses 'or'. It saves the `join(', ')` plus last-item special case.",
+      "tags": ["intl"],
+      "level": 1,
+      "asked": "Small but practical: every \"shared with Ada, Lin and 3 others\" string needs this."
+    },
+    {
+      "id": "jsm-056",
+      "q": "A duplicate-name check must treat \"Résumé\" and \"resume\" as the same. In Node 24, what does this print?",
+      "code": "const col = new Intl.Collator('en', { sensitivity: 'base' });\nconsole.log(col.compare('Résumé', 'resume'), 'Résumé' === 'resume');",
+      "lang": "js",
+      "choices": ["0 true", "0 false", "1 false", "-1 false"],
+      "answer": 1,
+      "why": "`sensitivity: 'base'` ignores case and accents, so `compare` returns 0 for strings a user would call the same. Lower-casing alone does not remove accents; for database uniqueness you still need a matching collation or a normalised column.",
+      "tags": ["intl"],
+      "level": 2,
+      "asked": "Search and duplicate checks with accented names are a real internationalisation bug source."
+    },
+    {
+      "id": "jsm-057",
+      "q": "A comment box shows a character count. In Node 24, what does this print for the text below?",
+      "code": "const s = 'Nice 👍🏽!';\nconst seg = new Intl.Segmenter('en', { granularity: 'grapheme' });\nconsole.log(s.length, [...s].length, [...seg.segment(s)].length);",
+      "lang": "js",
+      "choices": ["10 8 7", "10 10 7", "8 8 8", "7 7 7"],
+      "answer": 0,
+      "why": "`length` counts UTF-16 code units, spread counts code points, and only a grapheme segmenter counts what a user sees as characters: the thumbs-up plus skin-tone modifier is one. Use `Intl.Segmenter` for user-facing limits and truncation so you never cut an emoji in half.",
+      "tags": ["intl", "strings"],
+      "level": 3,
+      "asked": "Character limits that break on emoji are a common bug; this shows you know the three kinds of \"length\"."
+    },
+    {
+      "id": "jsm-058",
+      "q": "A country dropdown stores ISO codes such as 'DE'. How do you show the country name in the user's language without a lookup table?",
+      "choices": [
+        "`new Intl.Locale('DE').country`, which returns the local name",
+        "`'DE'.toLocaleString(locale, { style: 'country' })`",
+        "`Intl.getCountryName('DE', locale)`, added in ES2021",
+        "`new Intl.DisplayNames([locale], { type: 'region' }).of('DE')`"
+      ],
+      "answer": 3,
+      "why": "DisplayNames translates region, language, currency and script codes using the runtime's locale data ('Germany' in English, 'Allemagne' in French). The other APIs do not exist in that form.",
+      "tags": ["intl"],
+      "level": 1,
+      "asked": "Saves shipping a translated country list; a nice sign of Intl breadth."
+    },
+    {
+      "id": "jsm-059",
+      "q": "How do you find the time zone of the user's browser, for example to send with a booking?",
+      "choices": [
+        "`Date.prototype.timeZone`, added in ES2020",
+        "`new Date().getTimezoneOffset()`, which returns the zone name",
+        "`Intl.DateTimeFormat().resolvedOptions().timeZone`",
+        "`navigator.timeZone`, set from the OS settings"
+      ],
+      "answer": 2,
+      "why": "It returns an IANA zone id such as 'Europe/London'. `getTimezoneOffset()` only gives today's offset in minutes, which changes with daylight saving and cannot tell two zones with the same offset apart, so it is not enough for future events.",
+      "tags": ["intl", "time-zones"],
+      "level": 1,
+      "asked": "Storing the zone id rather than an offset is what makes recurring and future events correct."
+    },
+    {
+      "id": "jsm-060",
+      "q": "You need to render a price with the currency symbol in a smaller font. What helps in Node 24 and browsers?",
+      "code": "const f = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' });\nconsole.log(f.formatToParts(1234.5).map((p) => p.type).join(','));",
+      "lang": "js",
+      "choices": [
+        "Nothing: split the formatted string on the first digit",
+        "`formatToParts`, which returns typed pieces",
+        "`format` with `{ parts: true }`, which wraps each piece in a span",
+        "`resolvedOptions().symbol`, then prepend it by hand"
+      ],
+      "answer": 1,
+      "why": "`formatToParts` gives `[{ type: 'currency', value: '£' }, { type: 'integer', value: '1' }, ...]` so you can wrap pieces in markup without guessing where the symbol sits. In many locales the symbol comes after the number, so string splitting breaks.",
+      "tags": ["intl", "numbers"],
+      "level": 2,
+      "asked": "Shows you know where the symbol goes varies by locale, which breaks string slicing."
+    },
+    {
+      "id": "jsm-061",
+      "q": "In Node 24, what does this print for 5 March 2026?",
+      "code": "const d = new Date(Date.UTC(2026, 2, 5, 12));\nconst f = (loc) => new Intl.DateTimeFormat(loc, { dateStyle: 'short', timeZone: 'UTC' }).format(d);\nconsole.log(f('en-US'), '|', f('en-GB'));",
+      "lang": "js",
+      "choices": [
+        "3/5/26 | 05/03/2026",
+        "05/03/2026 | 3/5/26",
+        "3/5/26 | 3/5/26",
+        "2026-03-05 | 2026-03-05"
+      ],
+      "answer": 0,
+      "why": "US English writes month first and UK English day first, so hard-coding 'MM/DD/YYYY' confuses half your users. Use `dateStyle` with the user's locale for display, and ISO 8601 for anything a machine reads.",
+      "tags": ["intl", "dates"],
+      "level": 1,
+      "asked": "Checks that you separate display formatting from storage and API formats."
+    },
+    {
+      "id": "jsm-062",
+      "q": "A report shows how long an export took. In Node 24, what does this print?",
+      "code": "const df = new Intl.DurationFormat('en', { style: 'long' });\nconsole.log(df.format({ hours: 1, minutes: 5 }));",
+      "lang": "js",
+      "choices": [
+        "1 hr, 5 min, in short style",
+        "PT1H5M, as ISO 8601",
+        "1:05:00, in digital style",
+        "1 hour, 5 minutes"
+      ],
+      "answer": 3,
+      "why": "`Intl.DurationFormat` (ES2025) formats a duration object in the user's language; `style: 'digital'` gives '1:05:00' instead. It pairs naturally with `Temporal.Duration`, and replaces hand-built 'h/m' strings.",
+      "tags": ["intl", "dates"],
+      "level": 2,
+      "asked": "A newer Intl API; knowing it exists avoids yet another hand-rolled formatter."
+    },
+    {
+      "id": "jsm-063",
+      "q": "An order total arrives from the API as the decimal string `\"12345678901234567890.12\"`. In Node 24, what does this print?",
+      "code": "const f = new Intl.NumberFormat('en');\nconst s = '12345678901234567890.12';\nconsole.log(f.format(s));\nconsole.log(f.format(Number(s)));",
+      "lang": "js",
+      "choices": [
+        "NaN, then a rounded value",
+        "The exact digits both times",
+        "Exact digits, then a rounded value",
+        "A rounded value both times"
+      ],
+      "answer": 2,
+      "why": "`format` accepts a decimal string and formats it exactly, while converting to a Number first loses everything past about 17 significant digits. Keep money as strings or integer minor units from the database to the formatter.",
+      "tags": ["intl", "numbers"],
+      "level": 3,
+      "asked": "Money precision is a favourite interview topic; formatting straight from the string is a neat detail."
+    },
+    {
+      "id": "jsm-064",
+      "q": "A KPI tile shows change since last week, such as '+5%'. In Node 24, what does this print?",
+      "code": "const f = new Intl.NumberFormat('en', { style: 'percent', signDisplay: 'exceptZero' });\nconsole.log(f.format(0.05), f.format(0), f.format(-0.05));",
+      "lang": "js",
+      "choices": ["+5% +0% -5%", "+5% 0% -5%", "+5% ±0% -5%", "5% 0% -5%"],
+      "answer": 1,
+      "why": "`signDisplay: 'exceptZero'` adds '+' to positive values and leaves zero unsigned; `'always'` would print '+0%'. It is the standard setting for deltas.",
+      "tags": ["intl", "numbers"],
+      "level": 2,
+      "asked": "A small option that removes a whole class of string concatenation."
+    },
+    {
+      "id": "jsm-065",
+      "q": "A server renders prices with `amount.toLocaleString()` and no arguments. Why do the numbers look different in production?",
+      "choices": [
+        "It uses the server process's default locale, which varies by host",
+        "It rounds differently when the NODE_ENV is production",
+        "It always uses en-US, so the difference must be in the data",
+        "toLocaleString uses the browser locale even on a server"
+      ],
+      "answer": 0,
+      "why": "With no locale argument, formatting uses the runtime's default (from environment variables and the ICU data it was built with), which can differ between your laptop and a container. Always pass the user's locale explicitly on the server.",
+      "tags": ["intl", "debugging"],
+      "level": 2,
+      "asked": "A classic 'works on my machine' bug in server rendering and emails."
+    },
+    {
+      "id": "jsm-066",
+      "q": "In Node 24, what does this print?",
+      "code": "const f = new Intl.NumberFormat('en', { maximumFractionDigits: 2 });\nconsole.log(f.format(1.005), (1.005).toFixed(2));",
+      "lang": "js",
+      "choices": ["1.005 1.01", "1.01 1.01", "1.00 1.00", "1.01 1.00"],
+      "answer": 3,
+      "why": "1.005 is stored as 1.00499999…, and `toFixed` rounds that exact binary value down. Intl rounds the shortest decimal form, \"1.005\", half away from zero. Mixing the two in one app gives totals that disagree by a penny, so pick one rounding path (ideally integer pence).",
+      "tags": ["intl", "numbers"],
+      "level": 3,
+      "asked": "Rounding mismatches between display and calculation are a real finance bug."
+    },
+    {
+      "id": "jsm-067",
+      "q": "Using Temporal (Node 24 with `--harmony-temporal`, or the polyfill), what does this print?",
+      "code": "const d = Temporal.PlainDate.from('2026-01-31');\nconsole.log(d.month, d.add({ months: 1 }).toString());",
+      "lang": "js",
+      "choices": ["0 2026-02-28", "1 2026-03-03", "1 2026-02-28", "0 2026-03-03"],
+      "answer": 2,
+      "why": "Temporal months are 1-based, unlike `Date`'s 0-based months, and adding a month clamps to the last valid day instead of overflowing into March. Pass `{ overflow: 'reject' }` to get an error instead.",
+      "tags": ["temporal", "dates"],
+      "level": 2,
+      "asked": "Contrasts Temporal with the two best-known Date traps in one line."
+    },
+    {
+      "id": "jsm-068",
+      "q": "Using Temporal (Node 24 with `--harmony-temporal`), what does this print?",
+      "code": "const due = Temporal.PlainDate.from('2026-01-31');\nconst next = due.add({ days: 1 });\nconsole.log(due.toString(), next.toString());",
+      "lang": "js",
+      "choices": [
+        "2026-02-01 2026-02-01",
+        "2026-01-31 2026-02-01",
+        "2026-01-31 2026-01-31",
+        "2026-02-01 2026-01-31"
+      ],
+      "answer": 1,
+      "why": "Temporal objects are immutable: `add` returns a new object and leaves `due` alone. With `Date`, `setDate` mutates in place, which is how a shared date gets changed by accident.",
+      "tags": ["temporal", "dates"],
+      "level": 1,
+      "asked": "Immutability is the headline improvement over Date."
+    },
+    {
+      "id": "jsm-069",
+      "q": "Using Temporal (Node 24 with `--harmony-temporal`), what happens?",
+      "code": "const a = Temporal.PlainDate.from('2026-03-01');\nconst b = Temporal.PlainDate.from('2026-03-01');\nconsole.log(a === b, a.equals(b));\nconsole.log(a < b);",
+      "lang": "js",
+      "choices": [
+        "false true, then a TypeError",
+        "false false, then false",
+        "false true, then false",
+        "true true, then false"
+      ],
+      "answer": 0,
+      "why": "Two Temporal objects are different objects, so `===` is false; use `equals`. Temporal deliberately throws from `valueOf` so that `<` and `>` fail loudly instead of comparing strings or NaN; sort with `Temporal.PlainDate.compare`.",
+      "tags": ["temporal", "dates"],
+      "level": 2,
+      "asked": "Comparing dates is where Date code most often goes subtly wrong."
+    },
+    {
+      "id": "jsm-070",
+      "q": "Using Temporal (Node 24 with `--harmony-temporal`), what does this print?",
+      "code": "const start = Temporal.PlainDate.from('2026-03-01');\nconsole.log(start.until('2026-03-15').days);\nconsole.log(start.until('2026-04-15', { largestUnit: 'months' }).toString());",
+      "lang": "js",
+      "choices": ["15, then P1M15D", "14, then P1M2W", "14, then P45D", "14, then P1M14D"],
+      "answer": 3,
+      "why": "`until` returns a `Temporal.Duration`. By default a PlainDate difference is expressed in days, so asking for months needs `largestUnit`. The result is an ISO 8601 duration string, which you can also send over an API.",
+      "tags": ["temporal", "dates"],
+      "level": 2,
+      "asked": "'How many days until renewal' is everyday CRUD; Temporal removes the millisecond arithmetic."
+    },
+    {
+      "id": "jsm-071",
+      "q": "Clocks in London go forward at 01:00 on 29 March 2026. Using Temporal (Node 24 with `--harmony-temporal`), what does this print?",
+      "code": "const z = Temporal.ZonedDateTime.from('2026-03-29T00:30[Europe/London]');\nconsole.log(z.add({ hours: 1 }).toString());",
+      "lang": "js",
+      "choices": [
+        "A RangeError: 01:30 does not exist that day",
+        "2026-03-29T01:30:00+00:00[Europe/London]",
+        "2026-03-29T02:30:00+01:00[Europe/London]",
+        "2026-03-29T01:30:00+01:00[Europe/London]"
+      ],
+      "answer": 2,
+      "why": "One real hour after 00:30 GMT is 01:30 GMT, which is 02:30 BST, and ZonedDateTime knows the zone's rules. Adding `{ days: 1 }` instead keeps the wall-clock time, which is what you want for 'same time tomorrow'.",
+      "tags": ["temporal", "time-zones"],
+      "level": 3,
+      "asked": "Daylight-saving bugs are a staple; the exact vs wall-clock distinction is the strong answer."
+    },
+    {
+      "id": "jsm-072",
+      "q": "A clinic books a 09:00 appointment in Sydney for next year. What should you store so it still means 09:00 there if the offset rules change?",
+      "choices": [
+        "A UTC timestamp computed now, from the current offset",
+        "The local date-time plus the zone id, such as 'Australia/Sydney'",
+        "The local date-time with its current offset, such as +11:00",
+        "The user's browser offset from `getTimezoneOffset()`"
+      ],
+      "answer": 1,
+      "why": "For future local events, the zone id plus wall-clock time is the source of truth (a ZonedDateTime); convert to an instant when you need it. A UTC timestamp or fixed offset computed today becomes wrong if daylight-saving rules change. Past events are fine as UTC instants.",
+      "tags": ["temporal", "time-zones"],
+      "level": 3,
+      "asked": "Separates people who have built scheduling features from people who have only stored created_at."
+    },
+    {
+      "id": "jsm-073",
+      "q": "Using Temporal (Node 24 with `--harmony-temporal`), what does this print?",
+      "code": "const open = Temporal.PlainTime.from('09:00');\nconsole.log(open.add({ hours: 16 }).toString());",
+      "lang": "js",
+      "choices": [
+        "01:00:00",
+        "A RangeError: time out of range",
+        "09:00:00, as PlainTime cannot add",
+        "25:00:00"
+      ],
+      "answer": 0,
+      "why": "A PlainTime is a wall-clock time with no date, so arithmetic wraps around midnight. If you need to know the day changed, use a PlainDateTime or ZonedDateTime instead, which carry the date along.",
+      "tags": ["temporal", "dates"],
+      "level": 2,
+      "asked": "Choosing the right Temporal type is the main skill; this shows what you lose with PlainTime."
+    },
+    {
+      "id": "jsm-074",
+      "q": "A Postgres driver returns a `bigint` column as a BigInt. In Node 24, what happens here?",
+      "code": "const orderId = 10n;\nconsole.log(orderId + 1);",
+      "lang": "js",
+      "choices": [
+        "It logs '101', as strings",
+        "It logs 11, converting 10n",
+        "It logs 11n, converting the 1",
+        "It throws a TypeError"
+      ],
+      "answer": 3,
+      "why": "BigInt and Number never mix implicitly, because silent conversion could lose precision. Write `orderId + 1n`, or convert deliberately with `Number(orderId)` when you know the value is small enough.",
+      "tags": ["syntax", "numbers"],
+      "level": 1,
+      "asked": "The first thing that breaks when a database starts returning BigInt ids."
+    },
+    {
+      "id": "jsm-075",
+      "q": "In Node 24, what does this print?",
+      "code": "console.log(7n / 2n, -7n / 2n);",
+      "lang": "js",
+      "choices": ["3.5n -3.5n", "3n -4n", "3n -3n", "4n -4n"],
+      "answer": 2,
+      "why": "BigInt division truncates towards zero, since BigInts have no fractional part. For money in minor units that means you must decide the rounding rule yourself instead of relying on division.",
+      "tags": ["syntax", "numbers"],
+      "level": 2,
+      "asked": "Checks that you know BigInt is integer-only before using it for amounts."
+    },
+    {
+      "id": "jsm-076",
+      "q": "A query builder returns rows created with `Object.create(null)`. In Node 24, which check works?",
+      "code": "const row = Object.create(null);\nrow.id = 1;",
+      "lang": "js",
+      "choices": [
+        "`row.hasOwnProperty('id')`",
+        "`Object.hasOwn(row, 'id')`",
+        "`row.has('id')`",
+        "`'id' in Object.prototype`"
+      ],
+      "answer": 1,
+      "why": "A null-prototype object has no `hasOwnProperty` method, so calling it throws a TypeError. `Object.hasOwn` (ES2022) is a static function, so it works on any object and cannot be shadowed by a property called `hasOwnProperty`.",
+      "tags": ["builtins"],
+      "level": 1,
+      "asked": "Linters now prefer `Object.hasOwn`; knowing why shows you read past the rule name."
+    },
+    {
+      "id": "jsm-077",
+      "q": "In Node 24, what does this print?",
+      "code": "const orders = [{ id: 1, status: 'paid' }, { id: 2, status: 'open' }, { id: 3, status: 'paid' }];\nconst g = Object.groupBy(orders, (o) => o.status);\nconsole.log(g.paid.map((o) => o.id), g.refunded);",
+      "lang": "js",
+      "choices": ["[ 1, 3 ] undefined", "[ 1 ] undefined", "[ 1, 3 ] null", "[ 1, 3 ] []"],
+      "answer": 0,
+      "why": "`Object.groupBy` (ES2024) returns an object whose keys are only the groups that actually occur, so an empty group is undefined, not `[]`. Default it when rendering: `g.refunded ?? []`.",
+      "tags": ["builtins", "arrays"],
+      "level": 1,
+      "asked": "Grouping is everyday CRUD work, and the missing-group case is where UIs crash."
+    },
+    {
+      "id": "jsm-078",
+      "q": "In Node 24, what does this print?",
+      "code": "const g = Object.groupBy([{ s: 'a' }], (x) => x.s);\nconsole.log(Object.getPrototypeOf(g), 'toString' in g);",
+      "lang": "js",
+      "choices": ["{} true", "Object false", "[Object: null prototype] {} true", "null false"],
+      "answer": 3,
+      "why": "The result has a null prototype, so a group called 'constructor' or 'toString' cannot collide with inherited properties. The flip side: methods like `g.hasOwnProperty` do not exist, so use `Object.hasOwn` or `Object.keys`.",
+      "tags": ["builtins"],
+      "level": 3,
+      "asked": "A detail that explains a surprising TypeError when people call methods on the grouped result."
+    },
+    {
+      "id": "jsm-079",
+      "q": "You group order lines by their `customer` object, and several lines share the same customer object. Why use `Map.groupBy` instead of `Object.groupBy`?",
+      "choices": [
+        "`Map.groupBy` sorts the groups by key, and objects cannot",
+        "`Map.groupBy` is faster, but the results are the same",
+        "Object keys become the string \"[object Object]\", merging every customer",
+        "`Object.groupBy` throws when the key function returns an object"
+      ],
+      "answer": 2,
+      "why": "Object keys are always strings, so every customer object would land in one group called \"[object Object]\". A Map keeps the object itself as the key, compared by reference, so lines for the same customer object group together.",
+      "tags": ["builtins", "arrays"],
+      "level": 2,
+      "asked": "Checks you understand why Map exists alongside plain objects."
+    },
+    {
+      "id": "jsm-080",
+      "q": "In Node 24, what does this print?",
+      "code": "console.log(1_000_000 === 1000000, Number('1_000'), parseInt('1_000'));",
+      "lang": "js",
+      "choices": ["true 1000 1000", "true NaN 1", "false NaN NaN", "true 1000 1"],
+      "answer": 1,
+      "why": "Numeric separators (ES2021) are only source-code syntax for readability. They are not accepted when parsing strings: `Number` rejects the whole string and `parseInt` stops at the underscore. Don't expect users or CSV files to use them.",
+      "tags": ["syntax", "numbers"],
+      "level": 2,
+      "asked": "A quick check that you separate literal syntax from string parsing."
+    },
+    {
+      "id": "jsm-081",
+      "q": "In Node 24, what does this print?",
+      "code": "class Account {\n  #balance = 100;\n  owner = 'Ada';\n}\nconsole.log(JSON.stringify(new Account()), Object.keys(new Account()));",
+      "lang": "js",
+      "choices": [
+        "{\"owner\":\"Ada\"} [ 'owner' ]",
+        "{\"owner\":\"Ada\"} [ 'owner', '#balance' ]",
+        "{} []",
+        "{\"owner\":\"Ada\",\"#balance\":100} [ 'owner', '#balance' ]"
+      ],
+      "answer": 0,
+      "why": "Private `#` fields are not properties at all, so JSON, `Object.keys`, spread and `for...in` never see them. That is handy for secrets, but it means a class with private state needs a `toJSON` method if the value should be serialised.",
+      "tags": ["syntax", "classes"],
+      "level": 1,
+      "asked": "Private fields are now common; knowing they vanish from JSON avoids a confusing API bug."
+    },
+    {
+      "id": "jsm-082",
+      "q": "In Node 24, what does this print?",
+      "code": "const m = new Map([['a', 1]]);\nconsole.log(Object.entries(m), Object.fromEntries(m));",
+      "lang": "js",
+      "choices": ["[] {}", "[ [ 'a', 1 ] ] {}", "[ [ 'a', 1 ] ] { a: 1 }", "[] { a: 1 }"],
+      "answer": 3,
+      "why": "Map entries are not object properties, so `Object.entries` sees nothing; use `[...m]` or `m.entries()`. `Object.fromEntries` accepts any iterable of pairs, including a Map, which is the usual way to turn one into JSON-friendly data.",
+      "tags": ["builtins"],
+      "level": 1,
+      "asked": "Mixing up Map and object APIs is a common source of empty API responses."
+    },
+    {
+      "id": "jsm-083",
+      "q": "Which loop gives you both the index and the value, without a manual counter?",
+      "choices": [
+        "`for (const i, v of rows)`",
+        "`for (const { i, v } of rows)`",
+        "`for (const [i, v] of rows.entries())`",
+        "`for (const [i, v] in rows)`"
+      ],
+      "answer": 2,
+      "why": "`Array.prototype.entries()` yields `[index, value]` pairs that destructure neatly in `for...of`. `for...in` walks string keys, and destructuring objects from rows would look for properties called `i` and `v`.",
+      "tags": ["iterators", "arrays"],
+      "level": 1,
+      "asked": "A small idiom that shows fluency with iterators."
+    },
+    {
+      "id": "jsm-084",
+      "q": "A table is sorted by name, and the user then sorts by status. In Node 24, what does this print?",
+      "code": "const rows = [{ n: 'Al', s: 'b' }, { n: 'Bo', s: 'a' }, { n: 'Cy', s: 'b' }, { n: 'Di', s: 'a' }];\nconsole.log(rows.toSorted((x, y) => x.s.localeCompare(y.s)).map((r) => r.n).join(','));",
+      "lang": "js",
+      "choices": [
+        "The order within a status is random",
+        "Bo,Di,Al,Cy",
+        "Di,Bo,Cy,Al",
+        "Bo,Di,Cy,Al"
+      ],
+      "answer": 1,
+      "why": "Since ES2019, `sort` (and `toSorted`) must be stable: rows that compare equal keep their previous order, so names stay alphabetical within each status. That is what makes \"sort by one column, then another\" work.",
+      "tags": ["arrays", "builtins"],
+      "level": 2,
+      "asked": "Stable sorting is what multi-column table sorting relies on; older engines did not guarantee it."
+    },
+    {
+      "id": "jsm-085",
+      "q": "When does a class `static { ... }` block run?",
+      "code": "class Config {\n  static defaults;\n  static { Config.defaults = loadDefaults(); }\n}",
+      "lang": "js",
+      "choices": [
+        "Once, when the class definition is evaluated",
+        "The first time `Config.defaults` is read",
+        "After every module that imports Config has loaded",
+        "Every time `new Config()` is called"
+      ],
+      "answer": 0,
+      "why": "A static initialisation block (ES2022) runs once as part of evaluating the class, like the static field initialisers, and has access to private names. It replaces code that set statics after the class body.",
+      "tags": ["syntax", "classes"],
+      "level": 2,
+      "asked": "Rare in app code but common in libraries; knowing when it runs is the whole question."
+    },
+    {
+      "id": "jsm-086",
+      "q": "A report streams rows from a generator. Page size is 10. In Node 24, which rows does this return?",
+      "code": "const all = Array.from({ length: 45 }, (_, i) => i + 1);\nconst page = all.values().drop(20).take(10).toArray();\nconsole.log(page[0], page.at(-1));",
+      "lang": "js",
+      "choices": ["11 20", "21 45", "20 29", "21 30"],
+      "answer": 3,
+      "why": "`drop(20)` skips the first two pages and `take(10)` stops after ten more, so this is page 3, rows 21 to 30. On an iterator or generator the skipped values are pulled and discarded lazily, so nothing past row 30 is ever produced.",
+      "tags": ["iterators"],
+      "level": 1,
+      "asked": "Iterator helpers map directly onto offset pagination, which makes them easy to explain in an interview."
+    },
+    {
+      "id": "jsm-087",
+      "q": "In Node 24, what does this print?",
+      "code": "function open(n) {\n  console.log('open', n);\n  return { [Symbol.dispose]() { console.log('close', n); } };\n}\nfunction run() { using a = open('a'); using b = open('b'); throw new Error('fail'); }\ntry { run(); } catch (e) { console.log('caught'); }",
+      "lang": "js",
+      "choices": [
+        "open a, open b, caught, close b, close a",
+        "open a, open b, caught",
+        "open a, open b, close b, close a, caught",
+        "open a, open b, close a, close b, caught"
+      ],
+      "answer": 2,
+      "why": "`using` (explicit resource management, in Node 24 without flags) calls `[Symbol.dispose]` when the block exits, even on a throw, in reverse order of declaration, before the error reaches the caller. It is `try/finally` cleanup without the nesting.",
+      "tags": ["syntax", "resource-management"],
+      "level": 2,
+      "asked": "A new feature with a clear use case (connections, locks, temp files); disposal order is the detail."
+    },
+    {
+      "id": "jsm-088",
+      "q": "A handler checks out a pooled database connection whose release is async. Which declaration returns it to the pool when the function exits?",
+      "choices": [
+        "`const conn = await pool.connect();` and nothing else",
+        "`await using conn = await pool.connect();`",
+        "`using conn = pool.connect();`",
+        "`let conn = await pool.connect(); delete conn;`"
+      ],
+      "answer": 1,
+      "why": "`await using` awaits the object's `[Symbol.asyncDispose]()` on every exit path, returns and throws alike. Plain `using` only calls the sync `[Symbol.dispose]`, and a plain `const` leaks the connection whenever someone forgets the `finally`.",
+      "tags": ["syntax", "resource-management", "async-await"],
+      "level": 2,
+      "asked": "Connection leaks exhaust pools; this is the modern alternative to try/finally around every query."
+    },
+    {
+      "id": "jsm-089",
+      "q": "In Node 24, an Error created in another realm (an iframe, or `vm` in Node) reaches your code. What does this print?",
+      "code": "import vm from 'node:vm';\nconst e = vm.runInNewContext('new Error(\"x\")');\nconsole.log(e instanceof Error, Error.isError(e));",
+      "lang": "js",
+      "choices": ["false true", "false false", "true false", "true true"],
+      "answer": 0,
+      "why": "Each realm has its own `Error` constructor, so `instanceof` fails across realms. `Error.isError` (ES2026, already in Node 24) checks the internal error brand instead, and it also refuses plain objects that merely look like errors.",
+      "tags": ["builtins", "errors"],
+      "level": 3,
+      "asked": "A newer API; the realm explanation shows a deeper understanding of instanceof."
+    },
+    {
+      "id": "jsm-090",
+      "q": "A text field was cut by a naive `slice`, leaving half an emoji. In Node 24, what does this print?",
+      "code": "const text = 'ab\\uD800';\nconsole.log(text.isWellFormed());\ntry { encodeURIComponent(text); } catch (e) { console.log(e.name); }",
+      "lang": "js",
+      "choices": [
+        "false, and it encodes fine",
+        "true, then URIError",
+        "true, and it encodes fine",
+        "false, then URIError"
+      ],
+      "answer": 3,
+      "why": "A lone surrogate is not valid Unicode, so `encodeURIComponent` throws a URIError. `isWellFormed()` and `toWellFormed()` (ES2024) let you check or repair the string before building a URL or sending it to an API.",
+      "tags": ["strings", "builtins"],
+      "level": 3,
+      "asked": "Rare, but it explains a crash that only happens with some users’ names or messages."
+    },
+    {
+      "id": "jsm-091",
+      "q": "An API must send a 64-bit order id held as a BigInt, and JSON.stringify throws on BigInt. In Node 24, what does this print?",
+      "code": "const id = 12345678901234567890n;\nconsole.log(JSON.stringify({ id: JSON.rawJSON(id.toString()) }));",
+      "lang": "js",
+      "choices": [
+        "A TypeError: rawJSON needs a number",
+        "{\"id\":\"12345678901234567890\"}",
+        "{\"id\":12345678901234567890}",
+        "{\"id\":12345678901234567000}"
+      ],
+      "answer": 2,
+      "why": "`JSON.rawJSON` (ES2026, in Node 24) inserts pre-serialised JSON text verbatim, so the id goes out as an exact number literal rather than a string or a rounded double. Many teams still send large ids as strings, because JavaScript clients parse numbers into doubles.",
+      "tags": ["builtins", "numbers"],
+      "level": 3,
+      "asked": "Large ids through JSON are a real integration issue; knowing both options, and the client side, is the strong answer."
+    },
+    {
+      "id": "jsm-092",
+      "q": "A partner API sends `{\"id\":12345678901234567890}`. In Node 24, how can you parse the id without losing digits?",
+      "choices": [
+        "`JSON.parse(text).id`, which keeps big integers exact",
+        "`JSON.parse(text, (k, v, ctx) => k === \"id\" ? BigInt(ctx.source) : v)`",
+        "`BigInt(JSON.parse(text).id)`, converting after parsing",
+        "`JSON.parse(text, { bigint: true })`"
+      ],
+      "answer": 1,
+      "why": "The reviver's third argument (ES2026, in Node 24) exposes the original source text of each primitive, so you can build an exact BigInt. Converting after `JSON.parse` is too late, because the value was already rounded to 12345678901234567000.",
+      "tags": ["builtins", "numbers"],
+      "level": 3,
+      "asked": "The parsing half of the big-id problem; the \"too late\" point is what interviewers look for."
+    },
+    {
+      "id": "jsm-093",
+      "q": "What does `WeakRef` let you do, and why should application code rarely rely on it?",
+      "choices": [
+        "Hold an object without keeping it alive",
+        "Make an object read-only for other modules",
+        "Share an object with workers without copying",
+        "Keep an object alive until you delete it"
+      ],
+      "answer": 0,
+      "why": "`ref.deref()` returns the object or undefined once it has been collected, and when that happens is up to the engine. It suits caches of expensive but recreatable objects, never correctness; for per-object metadata, a WeakMap is usually what you want.",
+      "tags": ["builtins"],
+      "level": 3,
+      "asked": "Tests restraint: knowing a feature exists and when not to use it."
+    },
+    {
+      "id": "jsm-094",
+      "q": "What does a `try { ... } catch { ... }` with no `(e)` after `catch` do?",
+      "choices": [
+        "It only catches errors of type Error, not thrown strings",
+        "It rethrows the error after the catch block finishes",
+        "It is a SyntaxError in modern JavaScript",
+        "It catches the error without binding it to a variable"
+      ],
+      "answer": 3,
+      "why": "Optional catch binding (ES2019) is for cases where the error details do not matter, such as falling back to a default when `JSON.parse` fails. If you are going to log or rethrow, keep the binding.",
+      "tags": ["syntax", "errors"],
+      "level": 1,
+      "asked": "A small syntax check, often seen in code reviews."
+    },
+    {
+      "id": "jsm-095",
+      "q": "In Node 24, how do you apply a 20% increase to every price in this object?",
+      "code": "const prices = { tea: 2, cake: 3.5 };",
+      "lang": "js",
+      "choices": [
+        "`Object.assign({}, prices, { \"*\": 1.2 })`",
+        "`prices.map(([k, v]) => [k, v * 1.2])` on the object itself",
+        "`Object.fromEntries(Object.entries(prices).map(([k, v]) => [k, v * 1.2]))`",
+        "`Object.values(prices).map((v) => v * 1.2)`, keeping keys"
+      ],
+      "answer": 2,
+      "why": "Objects have no `map`, so convert to entries, map the pairs, and rebuild with `Object.fromEntries` (ES2019). `Object.values` would lose the keys.",
+      "tags": ["builtins"],
+      "level": 1,
+      "asked": "The standard idiom for transforming an object; interviewers expect it without looking it up."
+    },
+    {
+      "id": "jsm-096",
+      "q": "A CLI script starts with `#!/usr/bin/env node`. What does Node 24 do with that first line?",
+      "choices": [
+        "It throws a SyntaxError unless the file is CommonJS",
+        "It ignores it, since hashbang comments are valid JavaScript",
+        "It runs the rest of the file with a new Node process",
+        "It only accepts it when the file ends in .sh"
+      ],
+      "answer": 1,
+      "why": "Hashbang grammar (ES2023) makes a leading `#!` line a comment in scripts and modules, so the same file runs with `node cli.mjs` and as an executable on Unix. It must be the very first line.",
+      "tags": ["syntax"],
+      "level": 1,
+      "asked": "Relevant when you write CLI tools or npm bin scripts."
+    },
+    {
+      "id": "jsm-097",
+      "q": "An order may have no `lines` array. Which expression safely reads the first line's SKU?",
+      "choices": [
+        "`order.lines?.[0]?.sku`",
+        "`order?.lines[0].sku`",
+        "`order.lines[0]?.sku`",
+        "`order.lines?[0]?.sku`"
+      ],
+      "answer": 0,
+      "why": "Optional chaining on a computed key or call needs the dot: `?.[i]` and `?.()`. `?[` does not parse as optional chaining, and putting `?.` in the wrong place still throws when `lines` is undefined.",
+      "tags": ["syntax"],
+      "level": 1,
+      "asked": "The bracket form trips people up in code reviews and live coding."
+    },
+    {
+      "id": "jsm-098",
+      "q": "Which Temporal type fits a `created_at` audit timestamp that must identify one exact moment worldwide?",
+      "choices": [
+        "`Temporal.PlainDate`",
+        "`Temporal.PlainTime`",
+        "`Temporal.PlainDateTime`",
+        "`Temporal.Instant`"
+      ],
+      "answer": 3,
+      "why": "An Instant is an exact point on the timeline (nanoseconds since the epoch, shown in UTC), which is what you store for events that already happened. A PlainDateTime has no zone, so the same value means different moments in different places.",
+      "tags": ["temporal", "dates"],
+      "level": 1,
+      "asked": "Choosing the right date type per column is the practical core of Temporal."
+    },
+    {
+      "id": "jsm-099",
+      "q": "A shop opens at 09:00 every day, in whatever zone the shop is in. Which Temporal type models the opening time itself?",
+      "choices": [
+        "`Temporal.Instant`",
+        "`Temporal.ZonedDateTime`",
+        "`Temporal.PlainTime`",
+        "`Temporal.Duration`"
+      ],
+      "answer": 2,
+      "why": "A PlainTime is a wall-clock time with no date and no zone, exactly what a recurring opening time is. Combine it with a date and the shop's zone (`toZonedDateTime`) when you need the actual moment on a given day.",
+      "tags": ["temporal", "dates"],
+      "level": 1,
+      "asked": "Tests whether you can separate \"a time of day\" from \"a moment in time\"."
+    },
+    {
+      "id": "jsm-100",
+      "q": "In Node 24, what does this print?",
+      "code": "const f = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });\nconsole.log(f.format(1234.5));",
+      "lang": "js",
+      "choices": ["€1,234.50", "1.234,50 €", "€ 1.234,5", "1,234.50 EUR"],
+      "answer": 1,
+      "why": "German uses a dot for grouping, a comma for decimals and puts the symbol after the number, and currency style adds the currency's two decimal places. The locale decides the layout, while the currency code decides the symbol and decimals.",
+      "tags": ["intl", "numbers"],
+      "level": 1,
+      "asked": "Shows you know locale and currency are separate settings."
+    },
+    {
+      "id": "jsm-101",
+      "q": "`chart.mjs` has only `export default function chart() {}`. In Node 24, what happens?",
+      "code": "import { chart } from './chart.mjs';",
+      "lang": "js",
+      "choices": [
+        "A SyntaxError: the module doesn't provide an export named 'chart'",
+        "`chart` is imported as undefined, without an error",
+        "It works, but only when the file is in the same folder",
+        "It works: named imports fall back to the default export"
+      ],
+      "answer": 0,
+      "why": "A default export is exported under the name `default`, so the braces form asks for an export called `chart` that does not exist, and linking fails before any code runs. Use `import chart from` or `import { default as chart } from`.",
+      "tags": ["modules", "esm"],
+      "level": 1,
+      "asked": "The most common import error in any codebase that mixes default and named exports."
+    },
+    {
+      "id": "jsm-102",
+      "q": "In Node 24, what does this print?",
+      "code": "const users = new Map([[1, { admin: false }], [2, { admin: true }]]);\nconsole.log(users.values().some((u) => u.admin));",
+      "lang": "js",
+      "choices": ["false", "undefined", "TypeError: some is not a function", "true"],
+      "answer": 3,
+      "why": "Iterator helpers include `some`, `every`, `find`, `reduce` and `forEach`, which consume the iterator and return a plain value. You no longer need to spread a Map into an array just to ask a yes-or-no question about it.",
+      "tags": ["iterators"],
+      "level": 1,
+      "asked": "A quick check that you know the new helpers exist beyond map and filter."
+    },
+    {
+      "id": "jsm-103",
+      "q": "An API response includes a `Temporal.PlainDate` due date. What does the client receive, and what must it do?",
+      "code": "res.json({ due: Temporal.PlainDate.from('2026-03-01') });",
+      "lang": "js",
+      "choices": [
+        "An empty object `{}`, because Temporal has no JSON form",
+        "An object `{ year, month, day }` it can use directly",
+        "The string '2026-03-01', which it must parse back with `from()`",
+        "A Temporal object, since JSON supports Temporal types"
+      ],
+      "answer": 2,
+      "why": "Temporal types have a `toJSON` that returns the ISO string, so JSON carries plain strings and `JSON.parse` gives you strings back. Convert at the boundary with `Temporal.PlainDate.from(body.due)`, just as with Date.",
+      "tags": ["temporal", "dates"],
+      "level": 1,
+      "asked": "Serialisation at API boundaries is where date bugs happen, whichever library you use."
+    },
+    {
+      "id": "jsm-104",
+      "q": "In Node 24, what does this print?",
+      "code": "function* steps() {\n  yield 'cart';\n  yield* ['address', 'pay'];\n}\nconsole.log([...steps()]);",
+      "lang": "js",
+      "choices": [
+        "[ 'cart', [ 'address', 'pay' ] ]",
+        "[ 'cart', 'address', 'pay' ]",
+        "[ 'cart' ]",
+        "[ 'cart', 'address' ]"
+      ],
+      "answer": 1,
+      "why": "`yield*` delegates to another iterable and yields each of its values in turn, whereas `yield [..]` would yield the array as one value. It is how you compose generators, for example flattening pages into rows.",
+      "tags": ["generators"],
+      "level": 1,
+      "asked": "Basic generator composition, often a warm-up before an async-generator pagination question."
+    },
+    {
+      "id": "jsm-105",
+      "q": "In Node 24, what does this print?",
+      "code": "const d = new Date(Date.UTC(2026, 0, 15));\nconsole.log(d.toLocaleString('en-GB', { month: 'long', timeZone: 'UTC' }));",
+      "lang": "js",
+      "choices": ["January", "Jan, the short name", "01, the numeric month", "0, the month index"],
+      "answer": 0,
+      "why": "Asking for only `month: 'long'` returns just the localised month name, so there is no need for a hard-coded array of names. Passing `timeZone` keeps a date near midnight from shifting into another month on a server in a different zone.",
+      "tags": ["intl", "dates"],
+      "level": 1,
+      "asked": "Shows you reach for Intl before writing a lookup table of month names."
+    },
+    {
+      "id": "jsm-106",
+      "q": "In Node 24, what does this print?",
+      "code": "console.log(new Intl.NumberFormat('en-IN').format(12345678));",
+      "lang": "js",
+      "choices": ["12.345.678", "1,2345,678", "12,345,678", "1,23,45,678"],
+      "answer": 3,
+      "why": "Indian English groups the first three digits and then every two (lakh and crore). Formatting with a regex that inserts a comma every three digits is wrong for these users, which is why grouping belongs to Intl.",
+      "tags": ["intl", "numbers"],
+      "level": 2,
+      "asked": "A concrete example of why hand-rolled number formatting fails internationally."
+    },
+    {
+      "id": "jsm-107",
+      "q": "You write `import * as utils from \"./utils.js\"` and use only `utils.slugify`. Can a bundler such as Rollup or Vite still tree-shake the rest?",
+      "choices": [
+        "No, unless you also add `/* @__PURE__ */` to the import",
+        "No: a namespace import always includes every export",
+        "Yes, as long as you only use static property access such as `utils.slugify`",
+        "Only if every function in utils.js is an arrow function"
+      ],
+      "answer": 2,
+      "why": "Bundlers can see which members of a namespace you read when the access is static. Passing `utils` around or reading `utils[name]` defeats that, and then everything is kept.",
+      "tags": ["modules", "tooling", "performance"],
+      "level": 2,
+      "asked": "Checks that you know tree-shaking is a static analysis, and what defeats it."
+    },
+    {
+      "id": "jsm-108",
+      "q": "A Vite app loads translations with `await import(path)`, where `path` comes from a settings API. Why does it fail in production but not in dev?",
+      "choices": [
+        "Dynamic import is not supported in production builds",
+        "The bundler cannot see which files the path needs",
+        "Production builds forbid `await` at the top of a function",
+        "The path must be absolute in production builds"
+      ],
+      "answer": 1,
+      "why": "The build only emits chunks it can find statically. A template like `import(`./locales/${lang}.js`)` (or Vite's `import.meta.glob`) gives it a pattern to include; an arbitrary runtime string does not, even though the dev server can serve any file.",
+      "tags": ["modules", "tooling"],
+      "level": 2,
+      "asked": "Code splitting by locale or route is common, and this is the usual first bug."
+    },
+    {
+      "id": "jsm-109",
+      "q": "In Node 24, what does this print?",
+      "code": "class Cart {\n  #items = ['tea', 'cake'];\n  *[Symbol.iterator]() { yield* this.#items; }\n}\nconsole.log([...new Cart()]);",
+      "lang": "js",
+      "choices": [
+        "[ 'tea', 'cake' ]",
+        "[]",
+        "TypeError: Cart is not iterable",
+        "[ [ 'tea', 'cake' ] ]"
+      ],
+      "answer": 0,
+      "why": "A generator method under `Symbol.iterator` makes instances work with spread, `for...of` and destructuring, while the array itself stays private. It is a tidy way to expose a collection without handing out the mutable array.",
+      "tags": ["iterators", "classes"],
+      "level": 2,
+      "asked": "Tests whether you can make your own types iterable, not just use built-in ones."
+    },
+    {
+      "id": "jsm-110",
+      "q": "In Node 24, what does this print?",
+      "code": "const orders = [{ lines: ['a', 'b'] }, { lines: ['c'] }];\nconsole.log(orders.values().flatMap((o) => o.lines).toArray());",
+      "lang": "js",
+      "choices": [
+        "[ 'a', 'c' ]",
+        "TypeError: flatMap expects an array",
+        "[ [ 'a', 'b' ], [ 'c' ] ]",
+        "[ 'a', 'b', 'c' ]"
+      ],
+      "answer": 3,
+      "why": "The iterator `flatMap` flattens one level of whatever iterable the callback returns, lazily. Unlike `Array.prototype.flatMap`, it requires the callback to return an iterable (or iterator), not a plain value.",
+      "tags": ["iterators"],
+      "level": 2,
+      "asked": "Flattening order lines or pages is routine; doing it lazily is the modern twist."
+    },
+    {
+      "id": "jsm-111",
+      "q": "A name field must accept letters in any language. In Node 24, what does this print?",
+      "code": "const letters = /^\\p{L}+$/u;\nconsole.log(letters.test('José'), /^[a-zA-Z]+$/.test('José'), letters.test('Zoë-Ann'));",
+      "lang": "js",
+      "choices": ["false false false", "true true true", "true false false", "true false true"],
+      "answer": 2,
+      "why": "`\\p{L}` with the `u` (or `v`) flag matches any Unicode letter, so 'José' passes where `[a-zA-Z]` rejects it. The hyphen is not a letter, which is a reminder that real names need a looser rule than 'letters only'.",
+      "tags": ["strings", "regex"],
+      "level": 2,
+      "asked": "Name validation that rejects real names is a common and embarrassing bug."
+    },
+    {
+      "id": "jsm-112",
+      "q": "A search highlighter builds a regex from what the user typed, such as `c++ (beta)`. Which Node 24 built-in makes that safe?",
+      "choices": [
+        "`new RegExp(encodeURIComponent(q), 'gi')`",
+        "`new RegExp(RegExp.escape(q), 'gi')`",
+        "`new RegExp(JSON.stringify(q), 'gi')`",
+        "`new RegExp(q, 'giv')`, since the v flag escapes input"
+      ],
+      "answer": 1,
+      "why": "`RegExp.escape` (ES2025) escapes every character with special meaning, so `+`, `(` and `.` match literally. URI or JSON encoding changes the text instead of escaping it, and the `v` flag adds features rather than escaping anything.",
+      "tags": ["regex", "strings", "security"],
+      "level": 2,
+      "asked": "User input in a regex is a crash (or ReDoS) waiting to happen; the new built-in replaces a copied helper."
+    },
+    {
+      "id": "jsm-113",
+      "q": "In Node 24, what does this print?",
+      "code": "console.log('Total £42, tax £8'.match(/(?<=£)\\d+/g));",
+      "lang": "js",
+      "choices": ["[ '42', '8' ]", "[ '42' ] (first only)", "null (no match)", "[ '£42', '£8' ]"],
+      "answer": 0,
+      "why": "A lookbehind `(?<=...)` requires the text before the match without including it, so you get just the digits. Lookbehind has been supported in all major engines since Safari 16.4 added it in 2023.",
+      "tags": ["regex", "strings"],
+      "level": 2,
+      "asked": "A practical regex feature for extracting values without post-processing."
+    },
+    {
+      "id": "jsm-114",
+      "q": "Using Temporal (Node 24 with `--harmony-temporal`), what does this print?",
+      "code": "const d = Temporal.Duration.from({ minutes: 90 });\nconsole.log(d.total('hours'), d.round({ largestUnit: 'hours' }).toString());",
+      "lang": "js",
+      "choices": ["1.5 PT90M", "90 PT1H30M", "1 PT90M", "1.5 PT1H30M"],
+      "answer": 3,
+      "why": "`total(unit)` converts the whole duration to one unit as a number, handy for billing by the hour; `round` with `largestUnit` rebalances it into hours and minutes. A Duration keeps the units you gave it until you ask it to balance.",
+      "tags": ["temporal", "dates"],
+      "level": 2,
+      "asked": "Time-tracking and billing features need exactly this conversion."
+    },
+    {
+      "id": "jsm-115",
+      "q": "Your database driver still returns `Date` objects. With Temporal available, how do you get an Instant from one?",
+      "choices": [
+        "`Temporal.PlainDate.from(date).toInstant()`",
+        "`Temporal.Instant.from(date)` directly",
+        "`date.toTemporalInstant()`",
+        "`new Temporal.Instant(date.toString())`"
+      ],
+      "answer": 2,
+      "why": "Temporal adds `Date.prototype.toTemporalInstant()`, and an Instant can be built from epoch milliseconds. Going through the Date string or a PlainDate either loses precision or throws away the time and zone.",
+      "tags": ["temporal", "dates"],
+      "level": 2,
+      "asked": "Real migrations are gradual, so interop with Date matters more than the new API alone."
+    },
+    {
+      "id": "jsm-116",
+      "q": "A 09:00 London meeting is shown to a colleague in New York. Using Temporal (Node 24 with `--harmony-temporal`), what does this print for 10 June 2026?",
+      "code": "const z = Temporal.ZonedDateTime.from('2026-06-10T09:00[Europe/London]');\nconsole.log(z.withTimeZone('America/New_York').toPlainTime().toString());",
+      "lang": "js",
+      "choices": ["09:00:00", "04:00:00", "05:00:00", "14:00:00"],
+      "answer": 1,
+      "why": "`withTimeZone` keeps the same instant and changes only how it is displayed. In June London is UTC+1 and New York UTC-4, so 09:00 there is 04:00 here; the gap changes for a few weeks a year when their daylight-saving dates differ.",
+      "tags": ["temporal", "time-zones"],
+      "level": 2,
+      "asked": "Showing one meeting in each attendee's zone is a standard scheduling feature."
+    },
+    {
+      "id": "jsm-117",
+      "q": "A table formats 10,000 prices by calling `new Intl.NumberFormat(locale, opts).format(p)` for each row. What is the problem?",
+      "choices": [
+        "Constructing a formatter is costly; create it once and reuse `format`",
+        "Each formatter leaks memory until the page reloads",
+        "Intl caps each page at 1,000 formatters",
+        "Intl formatters can only be used once, so this is correct"
+      ],
+      "answer": 0,
+      "why": "Creating a formatter resolves the locale and loads its data, which is much slower than formatting one number. Create it once per locale and options (outside the loop, or memoised) and call `format` per row. `toLocaleString` with options has the same cost on every call.",
+      "tags": ["intl", "performance"],
+      "level": 2,
+      "asked": "A real performance fix in large tables; interviewers like candidates who know where the cost is."
+    },
+    {
+      "id": "jsm-118",
+      "q": "A search result must highlight exactly where the match is. In Node 24, what does this print?",
+      "code": "const m = /(?<term>ab)/d.exec('xxab');\nconsole.log(m.indices.groups.term);",
+      "lang": "js",
+      "choices": ["'ab', the matched text", "2, the start only", "[ 2, 3 ]", "[ 2, 4 ]"],
+      "answer": 3,
+      "why": "The `d` flag (ES2022) adds `indices` with a `[start, end)` pair for the whole match and each group, so you can wrap the matched range in a `<mark>` without searching again. The end index is exclusive, like `slice`.",
+      "tags": ["regex", "strings"],
+      "level": 3,
+      "asked": "A lesser-known flag with a clear UI use case."
+    },
+    {
+      "id": "jsm-119",
+      "q": "Using Temporal (Node 24 with `--harmony-temporal`), what happens?",
+      "code": "console.log(Temporal.PlainDate.from({ year: 2026, month: 2, day: 30 }).toString());\nconsole.log(Temporal.PlainDate.from('2026-02-30').toString());",
+      "lang": "js",
+      "choices": [
+        "A RangeError on the very first line",
+        "2026-02-28, then 2026-02-28 again",
+        "2026-02-28, then a RangeError",
+        "2026-03-02, then 2026-03-02 again"
+      ],
+      "answer": 2,
+      "why": "A property bag is clamped by default (`overflow: 'constrain'`), but an ISO string must be a valid date and is always rejected. So parse API input from strings and it fails loudly, while form fields built from separate numbers need `{ overflow: 'reject' }` to do the same.",
+      "tags": ["temporal", "dates", "validation"],
+      "level": 3,
+      "asked": "Validation of incoming dates is where silent clamping could hide bad data."
+    },
+    {
+      "id": "jsm-120",
+      "q": "An invoice system must round half to even (banker's rounding). In Node 24, what does this print?",
+      "code": "const f = (mode) => new Intl.NumberFormat('en', { maximumFractionDigits: 0, roundingMode: mode });\nconsole.log(f('halfEven').format(2.5), f('halfEven').format(3.5), f('halfExpand').format(2.5));",
+      "lang": "js",
+      "choices": ["3 4 3", "2 4 3", "2 3 2", "2 4 2"],
+      "answer": 1,
+      "why": "`roundingMode` (ES2023) lets display rounding match the accounting rule: 'halfEven' sends ties to the even neighbour, while the default 'halfExpand' rounds them away from zero. Your calculations must use the same rule, or totals and displayed lines disagree.",
+      "tags": ["intl", "numbers"],
+      "level": 3,
+      "asked": "Finance features care about rounding rules; knowing Intl can apply them is a strong detail."
     }
   ]
 }

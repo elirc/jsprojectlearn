@@ -423,6 +423,1686 @@
       "tags": ["reliability", "security"],
       "level": 2,
       "asked": "A placement question; the strong answer layers edge limits with app-level per-user limits."
+    },
+    {
+      "id": "sd-029",
+      "q": "What does a cache's hit ratio tell you?",
+      "choices": [
+        "How many keys the cache can hold before it starts evicting the oldest ones",
+        "What share of lookups were served from the cache instead of the source",
+        "How long, on average, each entry survives before its TTL expires",
+        "How much faster a cached read is than the equivalent database query"
+      ],
+      "answer": 1,
+      "why": "Hit ratio is hits divided by total lookups. A cache with a 20% hit ratio adds a network hop to 80% of requests and saves little, so it is the first number to check. Capacity, TTL and speed-up are separate measures that influence the ratio but are not it.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Checks you judge a cache by evidence rather than assuming it helps; strong answers say what ratio would make them remove it."
+    },
+    {
+      "id": "sd-030",
+      "q": "`GET /api/products?category=shoes&sort=price&page=2` is cached in Redis. Which cache key is correct?",
+      "choices": [
+        "`products` alone, since every page reads the same product table underneath",
+        "`products:page:2`, since the page number is what changes between requests",
+        "`products:shoes`, since the category is the only filter that narrows the rows",
+        "`products:shoes:price:2`, built from every parameter that changes the result"
+      ],
+      "answer": 3,
+      "why": "The key must include every input that changes the response, otherwise two different queries share one entry and users see the wrong list. Keying on the page or category alone serves page 2 of a price sort to someone asking for page 2 sorted by name.",
+      "tags": ["caching"],
+      "level": 2,
+      "asked": "Wrong keys are the most common real caching bug, and they only show up once two users ask slightly different questions."
+    },
+    {
+      "id": "sd-031",
+      "q": "After updating a product in the database, why do teams usually delete its cache key rather than write the new value into the cache?",
+      "choices": [
+        "Deleting is faster in Redis than overwriting a key with a new serialised value",
+        "Two concurrent writers can set the cache out of order, leaving an old value in place",
+        "Writing to the cache would require a distributed transaction with the database",
+        "A deleted key is repopulated with a fresh TTL, which a written value would not get"
+      ],
+      "answer": 1,
+      "why": "If writer A and writer B both update the row and then set the cache, A's set can land after B's and leave A's older value cached indefinitely. Deleting lets the next read fetch whatever the database holds now. Speed is not the reason, and a set can carry a TTL just as easily.",
+      "tags": ["caching", "consistency"],
+      "level": 2,
+      "asked": "Interviewers want the race described, not just the rule; it shows you think about concurrent requests."
+    },
+    {
+      "id": "sd-032",
+      "q": "With cache-aside, a reader misses, loads the old row, and is paused; meanwhile a writer updates the row and deletes the key; then the reader stores the old row. What bounds how long this stale entry lives?",
+      "choices": [
+        "The TTL on the entry, which is why cache-aside entries should always have one",
+        "Nothing, because the writer's delete already ran and will not run again",
+        "Redis detects that the key was deleted recently and rejects the late write",
+        "The database transaction isolation level, which prevents the reader from seeing old data"
+      ],
+      "answer": 0,
+      "why": "This interleaving is rare but real, and the writer's delete has already happened, so only expiry will clear it. That is why every cache-aside entry gets a TTL even when you also invalidate on write. Redis does not remember deletions, and isolation levels govern the database read, not what the reader later puts in the cache.",
+      "tags": ["caching", "consistency"],
+      "level": 3,
+      "asked": "Separates people who have read about invalidation from people who have debugged it; the TTL-as-safety-net answer is what they want."
+    },
+    {
+      "id": "sd-033",
+      "q": "Your API runs as three instances, each with an in-process memory cache of product data. An admin edits a product. What happens?",
+      "choices": [
+        "All three caches update, because they share the process's configuration",
+        "Only the instance that handled the edit can invalidate its own copy",
+        "The load balancer forwards the invalidation to the other two instances",
+        "The edit fails until all three instances acknowledge the new value"
+      ],
+      "answer": 1,
+      "why": "An in-process cache lives in one process's memory, so the other two keep serving the old value until their TTL expires. That is the usual reason to move to a shared cache such as Redis, or to broadcast invalidations over pub/sub. Load balancers route requests; they know nothing about your cache.",
+      "tags": ["caching", "scaling"],
+      "level": 1,
+      "asked": "A classic scaling-out surprise; the good answer names both fixes: a shared cache or a short TTL you can live with."
+    },
+    {
+      "id": "sd-034",
+      "q": "Bots request `/api/users/<random-id>` for IDs that do not exist, and every request reaches the database. Which caching technique helps?",
+      "choices": [
+        "Caching the 404 result for those IDs for a short time",
+        "Raising the TTL on the entries for users that do exist",
+        "Warming the cache with every user ID on application start",
+        "Switching from cache-aside to write-through for the users"
+      ],
+      "answer": 0,
+      "why": "Negative caching stores \"not found\" with a short TTL, so repeated misses for the same ID stop reaching the database. Longer TTLs and write-through only help keys that exist. Preloading every user wastes memory and still misses the random IDs; rate limiting is the other half of the answer.",
+      "tags": ["caching", "security"],
+      "level": 2,
+      "asked": "Shows you know caches can protect the database from misses, not only speed up hits."
+    },
+    {
+      "id": "sd-035",
+      "q": "Why add random jitter to cache TTLs, for example 600 seconds plus or minus 60?",
+      "choices": [
+        "So that keys written together do not all expire at the same moment",
+        "So that Redis spreads the keys more evenly across its memory pages",
+        "So that attackers cannot predict when a sensitive entry will change",
+        "So that each application instance ends up with a slightly different copy"
+      ],
+      "answer": 0,
+      "why": "A cache warmed in one burst, such as after a deploy, would otherwise expire in one burst and send every key's miss to the database at once. Jitter smears those expiries out. It has nothing to do with Redis memory layout or with security.",
+      "tags": ["caching", "reliability"],
+      "level": 2,
+      "asked": "A small detail that signals you have seen a cache cause an outage rather than prevent one."
+    },
+    {
+      "id": "sd-036",
+      "q": "What does `Cache-Control: max-age=60, stale-while-revalidate=300` allow a CDN or browser to do?",
+      "choices": [
+        "Revalidate with the origin on every request but skip the body if unchanged",
+        "Serve the cached copy for 60 s, then serve it stale while refetching in the background",
+        "Keep the response for 360 s and then discard it without contacting the origin",
+        "Cache the response only when the origin sent it within the last 300 seconds"
+      ],
+      "answer": 1,
+      "why": "For 60 seconds the copy is fresh. For the next 300 it may be served immediately while a background request fetches a new one, so users never wait on the origin. Revalidating on every request is `no-cache`, which is the usual confusion.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "A good answer mentions that this hides origin latency from users while keeping content only slightly behind."
+    },
+    {
+      "id": "sd-037",
+      "q": "Each user's permissions are cached for 15 minutes. An admin removes someone's access. What is the right way to make that take effect quickly?",
+      "choices": [
+        "Lower the TTL for every user's permissions to a few seconds",
+        "Flush the entire cache whenever any role assignment changes",
+        "Delete that user's permission key in the code that changes roles",
+        "Ask the user to sign out and back in so their cache is rebuilt"
+      ],
+      "answer": 2,
+      "why": "Invalidate the specific key at the point of change, and keep the TTL as a backstop. A tiny TTL for everyone throws away most of the cache's value; flushing everything causes a stampede; relying on the user to sign out means a removed employee keeps access.",
+      "tags": ["caching", "security"],
+      "level": 2,
+      "asked": "Permission caches are where stale data becomes a security issue; interviewers look for targeted invalidation."
+    },
+    {
+      "id": "sd-038",
+      "q": "Your Redis cache becomes unreachable. How should a well-built CRUD API behave?",
+      "choices": [
+        "Return 503 until Redis is back, since serving uncached data is inconsistent",
+        "Restart the application instances so they reconnect to Redis on startup",
+        "Queue incoming reads until Redis responds, then serve them in order",
+        "Fall back to the database with a short cache timeout and log the failure"
+      ],
+      "answer": 3,
+      "why": "A cache is an optimisation, so losing it should make the app slower, not broken. A short timeout on cache calls stops every request hanging on a dead Redis. Failing requests or queueing reads turns an optional component into a single point of failure, and restarts do not fix an unreachable server.",
+      "tags": ["caching", "reliability"],
+      "level": 3,
+      "asked": "Interviewers probe whether you treat the cache as optional; the follow-up is usually whether the database can survive the extra load."
+    },
+    {
+      "id": "sd-039",
+      "q": "What is a read replica in a relational database setup?",
+      "choices": [
+        "A copy kept in sync from the primary that serves read-only queries",
+        "A second primary that accepts writes and merges them with the first",
+        "A nightly backup restored onto another server for reporting jobs",
+        "A cache layer in front of the database that stores recent query results"
+      ],
+      "answer": 0,
+      "why": "A replica receives the primary's changes, usually asynchronously, and can answer reads so the primary handles fewer queries. It does not accept writes; multi-primary replication is a different, harder setup. A nightly restore is a snapshot, not a replica.",
+      "tags": ["database", "scaling"],
+      "level": 1,
+      "asked": "Vocabulary for the scaling part of the design round; the good answer mentions replication lag in the same breath."
+    },
+    {
+      "id": "sd-040",
+      "q": "Reads go to an asynchronous replica, and users complain that their own edits vanish after saving. Which fix keeps most reads on the replica?",
+      "choices": [
+        "Switch the replica to synchronous replication so it is never behind",
+        "Send all reads back to the primary and remove the replica entirely",
+        "Route a user's reads to the primary for a few seconds after they write",
+        "Add a one-second delay after every save before returning the response"
+      ],
+      "answer": 2,
+      "why": "Read-your-writes only matters for the user who just wrote, so pinning that user to the primary briefly fixes it and leaves other reads on the replica. Synchronous replication slows every write, dropping the replica removes the benefit, and a fixed delay guesses at the lag.",
+      "tags": ["database", "consistency"],
+      "level": 2,
+      "asked": "The follow-up to 'why is it stale'; interviewers want a targeted fix rather than abandoning the replica."
+    },
+    {
+      "id": "sd-041",
+      "q": "Why is adding more API instances usually easier than adding more database servers?",
+      "choices": [
+        "Stateless API servers are interchangeable, but the database holds state that must stay consistent",
+        "Databases are licensed per server, so extra database servers are always too expensive",
+        "API servers run in containers, and databases cannot be run in containers at all",
+        "Load balancers can only distribute traffic to API servers, never to a database"
+      ],
+      "answer": 1,
+      "why": "Any API instance can serve any request because the state lives elsewhere, so scaling out is a matter of starting more. Spreading a database means replication lag, failover or sharding, because every copy must agree on the data. Licensing and containers are incidental, and databases can sit behind proxies.",
+      "tags": ["scaling"],
+      "level": 1,
+      "asked": "A warm-up; a strong answer adds that scaling up is simpler and often the right first move."
+    },
+    {
+      "id": "sd-042",
+      "q": "Why are sticky sessions (the load balancer pinning each user to one server) usually a stopgap rather than a design?",
+      "choices": [
+        "They force every request through TLS twice, which doubles CPU use",
+        "They stop the browser from caching static files between page loads",
+        "A server restart logs out its users and the load spreads unevenly",
+        "They require every server to share a single database connection"
+      ],
+      "answer": 2,
+      "why": "Sticky sessions keep state on one server, so a deploy or crash loses those sessions and busy users pile onto whichever server they landed on. Moving session state to Redis, the database or a signed cookie removes the need. TLS, browser caching and connection sharing are unrelated.",
+      "tags": ["scaling"],
+      "level": 2,
+      "asked": "Tests whether you understand statelessness as the thing that makes scaling out easy."
+    },
+    {
+      "id": "sd-043",
+      "q": "You are moving from one server to several behind a load balancer. Where should login sessions live?",
+      "choices": [
+        "In each server's memory, with the load balancer copying them across",
+        "In a shared store such as Redis or the database, or a signed cookie",
+        "In a file on the first server, which the other servers read over the network",
+        "In the browser's localStorage, which the server reads on each request"
+      ],
+      "answer": 1,
+      "why": "Any server must be able to recognise any user, so session state goes in a shared store, or in a signed or encrypted cookie the client sends every time. Load balancers do not copy memory, a file on one server is a single point of failure, and the server cannot read localStorage at all.",
+      "tags": ["scaling", "security"],
+      "level": 1,
+      "asked": "The first practical consequence of 'make it stateless', asked in almost every scaling discussion."
+    },
+    {
+      "id": "sd-044",
+      "q": "`GET /api/customers/42/orders` takes 900 ms and the database is the bottleneck. What should you do before adding a cache?",
+      "choices": [
+        "Move the orders table to its own database server",
+        "Add Redis in front of the query with a one-hour TTL",
+        "Read the query plan and add an index on `customer_id`",
+        "Rewrite the endpoint to load all orders and filter in memory"
+      ],
+      "answer": 2,
+      "why": "A slow single-table lookup is usually a missing index, and fixing it makes every caller fast with no invalidation to manage. A cache hides the problem and serves stale orders; a new server is expensive; filtering in memory reads more data, not less.",
+      "tags": ["database", "scaling"],
+      "level": 2,
+      "asked": "Interviewers use this to see whether you reach for infrastructure before measuring."
+    },
+    {
+      "id": "sd-045",
+      "q": "Monthly finance reports run heavy aggregate queries against the production database and slow down checkout while they run. What is the usual fix?",
+      "choices": [
+        "Run the reports against a read replica or precomputed summary tables",
+        "Increase the command timeout so checkout queries wait for the reports",
+        "Rewrite the report queries using an ORM so they generate simpler SQL",
+        "Add indexes on every column the reports filter or group by"
+      ],
+      "answer": 0,
+      "why": "Separate analytical load from transactional load: a replica takes the reads off the primary, and summary tables built incrementally avoid rescanning history. Longer timeouts make checkout slower, not faster. Indexing every column slows writes and rarely helps full-table aggregates much.",
+      "tags": ["database", "scaling"],
+      "level": 3,
+      "asked": "A realistic mid-level problem; strong candidates mention replication lag being acceptable for reports."
+    },
+    {
+      "id": "sd-046",
+      "q": "Your build outputs `app.3f9a1c.js` with a content hash in the name. What caching header suits it best?",
+      "choices": [
+        "`Cache-Control: no-store`, so users always get the newest bundle",
+        "`Cache-Control: no-cache`, so the CDN checks with the origin each time",
+        "`Cache-Control: public, max-age=31536000, immutable`",
+        "`Cache-Control: private, max-age=300`, refreshed every five minutes"
+      ],
+      "answer": 2,
+      "why": "A hashed filename changes whenever the content changes, so the file at that URL never changes and can be cached for a year. New deploys reference new names. `no-store` and `no-cache` throw that away, and `private` stops the CDN from caching it at all.",
+      "tags": ["caching", "scaling"],
+      "level": 2,
+      "asked": "Checks that you connect build output naming to HTTP caching, which is how static assets get to near-zero cost."
+    },
+    {
+      "id": "sd-047",
+      "q": "Why run at least two instances of the API even when one can handle all the traffic?",
+      "choices": [
+        "Two instances halve the database load compared with one instance",
+        "Deploys and crashes then happen without the whole API going down",
+        "Load balancers refuse to start with fewer than two healthy targets",
+        "Each instance can then cache a different half of the product data"
+      ],
+      "answer": 2,
+      "why": "With one instance, every deploy, crash or host maintenance is an outage; with two, the load balancer sends traffic to the survivor. Database load depends on requests, not instance count. Load balancers work with one target, and splitting a cache by instance is not the goal.",
+      "tags": ["scaling", "reliability"],
+      "level": 1,
+      "asked": "A basic piece of the scaling picture; the good answer says what the endpoint should and should not check."
+    },
+    {
+      "id": "sd-048",
+      "q": "In a back-of-envelope estimate, 1 million daily users make 10 requests each. Roughly what is the average request rate?",
+      "choices": [
+        "About 12 requests per second",
+        "About 115 requests per second",
+        "About 1,150 requests per second",
+        "About 11,500 requests per second"
+      ],
+      "answer": 1,
+      "why": "10 million requests over 86,400 seconds is about 116 per second. Rounding a day to 100,000 seconds is the usual shortcut. Peaks are several times the average, but even 500 per second is well within one database and a few app servers, which is the point of doing the sum.",
+      "tags": ["scaling"],
+      "level": 2,
+      "asked": "Interviewers want the arithmetic done out loud, and then the conclusion that this does not need exotic infrastructure."
+    },
+    {
+      "id": "sd-049",
+      "q": "An app records 1 million orders a day at about 1 KB per row. Roughly how much raw table data does a year produce?",
+      "choices": [
+        "About 36 GB",
+        "About 365 GB",
+        "About 3.6 TB",
+        "About 36 TB"
+      ],
+      "answer": 1,
+      "why": "A million rows at 1 KB is 1 GB a day, so about 365 GB a year before indexes. That fits comfortably on one Postgres or SQL Server instance. The distractors are the same digits off by a factor of ten, which is the mistake people make when they skip writing the units down.",
+      "tags": ["scaling", "database"],
+      "level": 2,
+      "asked": "Storage sums decide whether you need partitioning or archiving; showing the units is what earns the credit."
+    },
+    {
+      "id": "sd-050",
+      "q": "In a booking system, what stops two customers from booking the same hairdresser for the same 30-minute slot?",
+      "choices": [
+        "Checking availability in the API before inserting the booking row",
+        "A unique constraint on the stylist and slot start time",
+        "Disabling the slot in the UI as soon as someone selects it",
+        "Refreshing the calendar every few seconds for every open browser"
+      ],
+      "answer": 1,
+      "why": "Two requests can both pass an availability check before either inserts, so only the database can make the rule hold. A unique index on (stylist_id, slot_start) turns the second insert into an error you map to 409. UI tricks and polling narrow the window but never close it.",
+      "tags": ["booking", "consistency"],
+      "level": 1,
+      "asked": "The first question in any booking design; the good answer names the race and puts the rule in the database."
+    },
+    {
+      "id": "sd-051",
+      "q": "Bookings can start and end at any minute, so a slot constraint no longer works. How can Postgres reject overlapping bookings for the same room?",
+      "choices": [
+        "A unique index on `(room_id, starts_at, ends_at)`",
+        "A check constraint that `ends_at` is after `starts_at`",
+        "An exclusion constraint on room and time range using `&&`",
+        "A trigger that sleeps briefly before inserting each booking"
+      ],
+      "answer": 2,
+      "why": "`EXCLUDE USING gist (room_id WITH =, during WITH &&)` over a `tstzrange` rejects any two rows whose ranges overlap for the same room; the `btree_gist` extension allows the equality part. A unique index only catches identical ranges, and a check constraint looks at one row at a time.",
+      "tags": ["booking", "database"],
+      "level": 3,
+      "asked": "Rarely known by juniors; mentioning it, or the SQL Server alternative of a serialisable transaction, stands out."
+    },
+    {
+      "id": "sd-052",
+      "q": "Customers pick a concert seat and then have 10 minutes to pay. How should the temporary hold be modelled?",
+      "choices": [
+        "A hold row with an `expires_at`, ignored by availability queries once it has passed",
+        "A timer in the web server's memory that frees the seat after ten minutes",
+        "A flag on the seat row that a cron job clears every hour for abandoned carts",
+        "A browser `setTimeout` that calls a release endpoint when the time runs out"
+      ],
+      "answer": 0,
+      "why": "If availability treats expired holds as free, correctness does not depend on any cleanup running on time; a job can delete old rows later. Server timers vanish on restart, an hourly job leaves seats blocked for up to an hour, and a browser timer never fires if the tab closes.",
+      "tags": ["booking"],
+      "level": 2,
+      "asked": "Holds appear in booking, ticketing and checkout designs; interviewers like answers where expiry is data, not a timer."
+    },
+    {
+      "id": "sd-053",
+      "q": "A gym runs a class every Tuesday at 18:00 London time, all year. What should you store for the recurrence?",
+      "choices": [
+        "The UTC time of the first class, adding seven days for each week",
+        "The local time 18:00 plus the IANA zone `Europe/London`",
+        "The local time 18:00 with a fixed offset of `+01:00`",
+        "The server's local time, since the server is in London"
+      ],
+      "answer": 1,
+      "why": "18:00 in London is 17:00 UTC in summer and 18:00 UTC in winter, so a UTC start plus seven days drifts by an hour at each clock change, and a fixed offset is wrong for half the year. Store the wall-clock time and the zone and convert each occurrence. The server's zone is an accident of hosting.",
+      "tags": ["booking"],
+      "level": 3,
+      "asked": "Time zones are where booking systems break; the strong answer distinguishes instants (UTC) from future local times."
+    },
+    {
+      "id": "sd-054",
+      "q": "Two shoppers try to buy the last unit of a product at the same moment. Which statement prevents overselling?",
+      "choices": [
+        "`SELECT stock` first, then `UPDATE` to `stock - 1` if it was positive",
+        "`UPDATE ... SET stock = stock - 1 WHERE id = @id AND stock >= 1`",
+        "`UPDATE ... SET stock = @newStock` using the value the page displayed",
+        "`INSERT` a sale row and let a nightly job subtract sales from stock"
+      ],
+      "answer": 1,
+      "why": "The condition and the decrement happen atomically in one statement, so only one of the two updates affects a row; the other sees zero rows affected and fails the purchase. Read-then-write lets both reads see 1. Writing an absolute value from the page overwrites other sales, and a nightly job sells stock you do not have.",
+      "tags": ["checkout", "consistency"],
+      "level": 2,
+      "asked": "The most common checkout race; interviewers want the atomic conditional update and the 'check rows affected' step."
+    },
+    {
+      "id": "sd-055",
+      "q": "A customer double-clicks \"Place order\" and two identical `POST /orders` requests arrive. What is the standard server-side protection?",
+      "choices": [
+        "Reject any second order from the same customer within one minute",
+        "Disable the button after the first click and rely on the client",
+        "Deduplicate orders by comparing basket contents in a nightly job",
+        "Accept an `Idempotency-Key` header and replay the first response"
+      ],
+      "answer": 3,
+      "why": "The client generates a key per checkout attempt; the server stores it with the result and returns the stored result for any repeat. Disabling the button helps but retries and network replays bypass it. A time-window rule blocks legitimate second orders, and a nightly clean-up comes after the card was charged twice.",
+      "tags": ["checkout", "reliability"],
+      "level": 2,
+      "asked": "Idempotency keys come up in payments, webhooks and retries; knowing where the key comes from is the detail they check."
+    },
+    {
+      "id": "sd-056",
+      "q": "The payment provider charged the card, but your server crashed before marking the order paid. How does a well-designed checkout recover?",
+      "choices": [
+        "The customer contacts support, who marks the order paid by hand",
+        "The frontend retries the whole checkout, charging the card again",
+        "The order stays pending until the provider's webhook or a reconciliation job confirms it",
+        "The server marks orders paid before calling the provider, so this cannot happen"
+      ],
+      "answer": 2,
+      "why": "Treat the order as `pending_payment` and let the provider's signed webhook, backed by a periodic job that asks the provider about stuck payments, move it to paid. Retrying the checkout risks a double charge, marking paid first ships unpaid orders, and manual fixes do not scale.",
+      "tags": ["checkout", "reliability"],
+      "level": 3,
+      "asked": "Tests whether you design for partial failure across two systems, which is the heart of any payments question."
+    },
+    {
+      "id": "sd-057",
+      "q": "An order has `isPaid`, `isShipped` and `isCancelled` booleans, and bugs keep producing orders that are both shipped and cancelled. What design fixes this?",
+      "choices": [
+        "A single status with an explicit list of allowed transitions",
+        "A database trigger that logs whenever two flags are both true",
+        "More unit tests around each place that sets one of the flags",
+        "Separate tables for paid, shipped and cancelled orders"
+      ],
+      "answer": 0,
+      "why": "Three booleans allow eight combinations, most of them nonsense. One status field plus a transition table (pending to paid, paid to shipped, pending to cancelled) makes invalid states unrepresentable and gives you one place to enforce the rules. Logging and tests detect the bug; they do not prevent it.",
+      "tags": ["checkout"],
+      "level": 2,
+      "asked": "State machines are the mid-level answer to 'how would you model an order'; the transition list is what they want to hear."
+    },
+    {
+      "id": "sd-058",
+      "q": "Where does a guest shopper's cart usually live in an e-commerce app?",
+      "choices": [
+        "Only in React state, and it is lost on refresh by design",
+        "In a server-side cart keyed by an ID in a cookie, merged at login",
+        "In the order table, as an order with status `draft` and no customer",
+        "In the CDN cache, keyed by the visitor's IP address"
+      ],
+      "answer": 1,
+      "why": "A cart row identified by an anonymous cookie survives refreshes and devices sharing the cookie, and can be merged into the customer's cart when they sign in. React state loses it. Draft orders mix carts into order reporting, and IP addresses are shared by many people behind one router.",
+      "tags": ["checkout"],
+      "level": 1,
+      "asked": "A practical modelling question; strong answers mention merging and expiring abandoned carts."
+    },
+    {
+      "id": "sd-059",
+      "q": "Two admins open the same product, both edit it, and the second save silently overwrites the first. Which design surfaces the conflict?",
+      "choices": [
+        "Lock the product row for as long as either admin has the form open",
+        "Save each field separately so the two edits rarely touch the same column",
+        "Include a version number in the form and reject saves whose version is stale",
+        "Let the last save win and email both admins a copy of the final product"
+      ],
+      "answer": 2,
+      "why": "Optimistic concurrency sends the version the user loaded; the update includes `WHERE version = @v`, and zero affected rows means someone else saved first, so you return 409 and show the latest data. Holding a lock while a form is open blocks others for minutes, and field-level saves still lose data on the same field.",
+      "tags": ["consistency"],
+      "level": 2,
+      "asked": "The lost-update problem appears in every admin screen; the ETag or row-version answer is the expected one."
+    },
+    {
+      "id": "sd-060",
+      "q": "Why should every outbound HTTP call from your API have an explicit timeout?",
+      "choices": [
+        "A hung dependency would otherwise hold threads and connections indefinitely",
+        "HTTP clients refuse to send requests at all when no timeout is configured",
+        "Timeouts make the remote server process the request with higher priority",
+        "Without one, the response body is not decompressed before it is returned"
+      ],
+      "answer": 0,
+      "why": "Many clients default to very long or infinite waits, so one stuck provider slowly ties up every request that calls it, and your whole API stops. A timeout turns that into a fast, handleable error. It does not change how the remote side prioritises anything.",
+      "tags": ["reliability"],
+      "level": 1,
+      "asked": "The simplest reliability habit and one many juniors skip; interviewers like hearing a concrete number chosen from the provider's latency."
+    },
+    {
+      "id": "sd-061",
+      "q": "Why add random jitter to exponential-backoff retries?",
+      "choices": [
+        "It keeps the total retry time under the client's overall timeout",
+        "It lets the server tell retries apart from brand-new requests",
+        "It stops many clients that failed together from retrying in lockstep",
+        "It shortens the average wait so users get their responses sooner"
+      ],
+      "answer": 2,
+      "why": "If a dependency blips and a thousand clients all back off 1, 2, 4 seconds exactly, they hit it again in synchronised waves. Randomising each delay spreads the retries out so the dependency can recover. Jitter does not bound total time or mark requests as retries.",
+      "tags": ["reliability"],
+      "level": 2,
+      "asked": "A detail that shows you have thought about many clients at once, not one client in isolation."
+    },
+    {
+      "id": "sd-062",
+      "q": "The recommendations service is down. What should the product page do?",
+      "choices": [
+        "Return 503 so the user knows the site is having problems",
+        "Render without the recommendations section and log the failure",
+        "Retry the recommendations call until it succeeds, then render",
+        "Redirect the user to the home page, which does not need recommendations"
+      ],
+      "answer": 1,
+      "why": "Graceful degradation means a non-essential dependency failing removes its feature, not the page. Failing the whole page or retrying indefinitely lets an optional service take down a core one. Redirecting is still a broken experience.",
+      "tags": ["reliability"],
+      "level": 2,
+      "asked": "Interviewers ask which dependencies are essential; the good answer classifies them before choosing behaviour."
+    },
+    {
+      "id": "sd-063",
+      "q": "One slow downstream API ties up every worker thread in your service, so requests that never call it also time out. Which pattern contains this?",
+      "choices": [
+        "A read replica, so slow calls go to a different database",
+        "A bulkhead: a separate, capped pool for calls to that API",
+        "A larger global thread pool, so there are spare threads",
+        "Sticky sessions, so slow users stay on one server only"
+      ],
+      "answer": 1,
+      "why": "A bulkhead limits how many concurrent calls may go to one dependency, so when it slows down only that feature queues or fails and the rest of the service keeps its capacity. A bigger pool fills up too, just later. Replicas and sticky sessions do not touch outbound calls.",
+      "tags": ["reliability"],
+      "level": 3,
+      "asked": "A deeper resilience pattern; naming it alongside timeouts and circuit breakers shows you know how they fit together."
+    },
+    {
+      "id": "sd-064",
+      "q": "What is the difference between a liveness probe and a readiness probe?",
+      "choices": [
+        "Liveness checks the database; readiness checks the web server's port",
+        "Liveness runs at startup only; readiness runs on every request",
+        "Liveness asks if the process should be restarted; readiness asks if it should get traffic",
+        "Liveness is for the load balancer; readiness is for the monitoring dashboard"
+      ],
+      "answer": 2,
+      "why": "A failed liveness probe tells the orchestrator to restart the container; a failed readiness probe only removes it from the load balancer until it recovers. Putting a database check in liveness means a database blip restarts every instance at once, which is the mistake this distinction prevents.",
+      "tags": ["reliability", "scaling"],
+      "level": 2,
+      "asked": "Common in container-hosted shops; the database-in-liveness trap is the follow-up."
+    },
+    {
+      "id": "sd-065",
+      "q": "What is the difference between a work queue and a publish/subscribe topic?",
+      "choices": [
+        "A queue keeps messages forever; a topic deletes them after an hour",
+        "A queue hands each message to one consumer; a topic gives every subscriber a copy",
+        "A queue is for events; a topic is for commands aimed at one service",
+        "A queue needs a database underneath; a topic runs purely in memory"
+      ],
+      "answer": 1,
+      "why": "Competing consumers on a queue share the work, so each job runs once. A topic fans out: the email service, the analytics service and the search indexer each get their own copy of `OrderPlaced`. Retention and storage vary by product and are not the distinction.",
+      "tags": ["queues"],
+      "level": 1,
+      "asked": "Basic vocabulary for event-driven designs; the good answer gives one example of each."
+    },
+    {
+      "id": "sd-066",
+      "q": "Which message name is an event rather than a command?",
+      "choices": [
+        "`OrderPlaced`",
+        "`ReserveStock`",
+        "`SendInvoiceEmail`",
+        "`ChargeCard`"
+      ],
+      "answer": 0,
+      "why": "An event is a past-tense fact that any number of services may react to, and the publisher does not care who listens. The others are imperative commands addressed to one handler that is expected to do the work. Mixing the two up leads to publishers that secretly depend on a particular consumer.",
+      "tags": ["queues"],
+      "level": 1,
+      "asked": "Naming reveals design intent; interviewers use it to check you know who owns the decision in each case."
+    },
+    {
+      "id": "sd-067",
+      "q": "When should a queue consumer acknowledge (delete) a message so that no work is lost?",
+      "choices": [
+        "As soon as it receives the message, before starting the work",
+        "After the work and its database changes have been committed",
+        "Halfway through, once the message has been parsed and validated",
+        "Never; the broker deletes it automatically after the first delivery"
+      ],
+      "answer": 1,
+      "why": "If the consumer crashes before acknowledging, the broker redelivers and the work is retried; acknowledging first means a crash loses the job. The cost of acknowledging last is occasional duplicates, which is why consumers must be idempotent.",
+      "tags": ["queues", "reliability"],
+      "level": 2,
+      "asked": "Tests whether you understand where at-least-once delivery comes from, not just the phrase."
+    },
+    {
+      "id": "sd-068",
+      "q": "`OrderPlaced` events carry only the order ID, and every consumer calls the orders API for the details. What is the main downside?",
+      "choices": [
+        "The broker cannot deliver messages smaller than a few kilobytes",
+        "Consumers see the order as it is now, not as it was, and add load to the API",
+        "The event can no longer be retried if the consumer fails the first time",
+        "Every consumer must share the orders service's database credentials"
+      ],
+      "answer": 1,
+      "why": "A thin event forces a callback, so a burst of events becomes a burst of API calls, and a consumer processing late may see a cancelled order instead of the placed one. Fat events carry the facts at the time, at the cost of larger messages and a contract to version. Retries and credentials are unaffected.",
+      "tags": ["queues"],
+      "level": 3,
+      "asked": "A real design trade-off; strong candidates say when each shape is right rather than declaring one correct."
+    },
+    {
+      "id": "sd-069",
+      "q": "Which queue metric best tells you that users are waiting too long for background work?",
+      "choices": [
+        "The total number of messages published to the queue since midnight",
+        "The number of consumer instances currently connected",
+        "The average size in bytes of messages in the queue",
+        "The age of the oldest message still waiting in the queue"
+      ],
+      "answer": 3,
+      "why": "Oldest-message age measures delay directly: a queue of 10,000 tiny jobs cleared in seconds is fine, while 50 jobs stuck for an hour is not. Throughput, consumer count and message size explain a problem once you have one but do not tell you users are waiting.",
+      "tags": ["queues", "reliability"],
+      "level": 2,
+      "asked": "Alerting on queue length alone is a common mistake; age is the answer that shows production experience."
+    },
+    {
+      "id": "sd-070",
+      "q": "In SQS, a message's visibility timeout is 30 seconds, but processing sometimes takes 45. What happens?",
+      "choices": [
+        "The broker cancels the consumer's work after 30 seconds",
+        "The message becomes visible again and a second consumer processes it too",
+        "The message moves straight to the dead-letter queue as a failure",
+        "Nothing, because the timeout only applies before the first delivery"
+      ],
+      "answer": 1,
+      "why": "While a consumer works, the message is hidden; if it is not deleted before the timeout, the broker assumes the consumer died and delivers it again. The fix is a longer timeout or extending it while working, plus idempotency. The broker cannot stop your code, and a single timeout does not dead-letter.",
+      "tags": ["queues", "reliability"],
+      "level": 2,
+      "asked": "A concrete way duplicates appear even with healthy consumers; it shows hands-on queue experience."
+    },
+    {
+      "id": "sd-071",
+      "q": "The outbox relay publishes a row's event and then crashes before marking the row as sent. Why must consumers still be idempotent?",
+      "choices": [
+        "Because the relay will publish that same event again when it restarts",
+        "Because the outbox table may drop the row during the crash",
+        "Because the broker reorders messages after any publisher crash",
+        "Because the consumer's own database commit could be rolled back"
+      ],
+      "answer": 0,
+      "why": "The outbox guarantees the event is published at least once, not exactly once: the relay cannot atomically publish and update its own table, so a crash in between means a resend. Committed outbox rows do not disappear, and ordering is a separate concern.",
+      "tags": ["queues", "consistency"],
+      "level": 3,
+      "asked": "Candidates who think the outbox gives exactly-once are caught here; the good answer pairs it with a deduplicating consumer."
+    },
+    {
+      "id": "sd-072",
+      "q": "Why do most teams use a transactional outbox rather than a distributed transaction across the database and the message broker?",
+      "choices": [
+        "Most brokers do not support two-phase commit, and it couples the two systems",
+        "The outbox publishes faster because it skips the database entirely",
+        "Distributed transactions are forbidden under most data-protection regulations",
+        "An outbox guarantees each consumer processes the message exactly once"
+      ],
+      "answer": 0,
+      "why": "Two-phase commit needs both sides to take part, and most brokers and cloud queues do not, while those that do make every write wait on both systems. The outbox needs only a local transaction plus a relay. It still writes to the database, and it still delivers at least once.",
+      "tags": ["queues", "consistency"],
+      "level": 2,
+      "asked": "Shows you know why the pattern exists rather than reciting it."
+    },
+    {
+      "id": "sd-073",
+      "q": "A consumer records each processed message ID in a table, in the same transaction as the work it does. What does this give it?",
+      "choices": [
+        "Faster processing, because the table acts as a cache of results",
+        "Ordering, because IDs are processed in the order they were inserted",
+        "Backpressure, because the table rejects inserts when it is full",
+        "Safe redelivery, because a repeated ID is detected and skipped"
+      ],
+      "answer": 3,
+      "why": "This is the inbox or idempotent-receiver pattern: if the message comes back, the insert of its ID conflicts and the consumer skips it, and because the ID and the effect commit together there is no gap. It does not order messages or speed anything up.",
+      "tags": ["queues", "consistency"],
+      "level": 2,
+      "asked": "The practical answer to 'how do you make a consumer idempotent' when the work itself is not naturally idempotent."
+    },
+    {
+      "id": "sd-074",
+      "q": "A nightly clean-up job is scheduled inside the API with a timer, and the API now runs as three instances. What goes wrong?",
+      "choices": [
+        "The job runs three times each night unless one instance is chosen to run it",
+        "The job never runs, because timers are disabled behind a load balancer",
+        "The job runs once, but on a random instance that may have no database access",
+        "The job runs once per request, because each request restarts the timer"
+      ],
+      "answer": 0,
+      "why": "Each instance has its own timer, so each runs the job. Use a single scheduler (a cron job or hosted scheduler), a distributed lock, or a job library that coordinates through the database. Load balancers do not affect in-process timers.",
+      "tags": ["queues", "scaling"],
+      "level": 1,
+      "asked": "The first surprise when an app scales out; interviewers look for one concrete coordination mechanism."
+    },
+    {
+      "id": "sd-075",
+      "q": "What is a presigned URL in object storage such as S3 or Azure Blob Storage?",
+      "choices": [
+        "A permanent public link to a file, signed once when it is uploaded",
+        "A URL signed by a certificate authority so browsers trust the storage host",
+        "A URL that routes each upload through your API so the file can be validated first",
+        "A time-limited URL that allows one operation on one object without credentials"
+      ],
+      "answer": 3,
+      "why": "Your API signs a URL with its own credentials that allows, say, a PUT to one key for 10 minutes; the browser uses it directly. It expires, it is scoped to one object and operation, and the upload bypasses your API rather than passing through it.",
+      "tags": ["files"],
+      "level": 1,
+      "asked": "The building block for every upload and private-download design; a good answer includes the expiry."
+    },
+    {
+      "id": "sd-076",
+      "q": "Users upload profile photos. Why check the file's actual bytes on the server rather than trusting its extension or `Content-Type`?",
+      "choices": [
+        "Because the client controls both and can label any file as `.jpg`",
+        "Because browsers strip the extension from files before upload",
+        "Because object storage rejects files whose extension is wrong",
+        "Because `Content-Type` is only sent by browsers for files larger than 1 MB"
+      ],
+      "answer": 0,
+      "why": "The filename and header are whatever the client says, so an HTML or script file can arrive labelled `image/jpeg`. Checking the magic bytes, or better re-encoding the image, confirms what it really is. Browsers do send the name and a type, and storage accepts any bytes.",
+      "tags": ["files", "security"],
+      "level": 1,
+      "asked": "Upload validation is a common security probe; re-encoding images is the answer that impresses."
+    },
+    {
+      "id": "sd-077",
+      "q": "Why should user-uploaded files be served from a separate domain, such as `usercontent.example.net`, rather than your app's domain?",
+      "choices": [
+        "Browsers download files faster from a domain with no cookies set",
+        "Search engines penalise sites that host user-uploaded files on their main domain",
+        "Object storage buckets can only be reached through their own domain names",
+        "An uploaded HTML or SVG file cannot then run script with your app's cookies"
+      ],
+      "answer": 3,
+      "why": "If a malicious SVG with a script is served from your origin, it runs with access to your cookies and APIs: stored XSS. A separate registrable domain puts it in a different origin. Sending `Content-Disposition: attachment` and a strict content type are the other layers.",
+      "tags": ["files", "security"],
+      "level": 2,
+      "asked": "A detail many teams learn after an incident; mentioning it shows security thinking beyond the API."
+    },
+    {
+      "id": "sd-078",
+      "q": "The browser uploads directly to object storage with a presigned URL. How does your app reliably learn the upload finished?",
+      "choices": [
+        "The client calls a confirm endpoint and the server checks the object exists",
+        "It polls the bucket every minute, listing all objects to find any new ones",
+        "It assumes success once the presigned URL has been issued",
+        "The storage service writes the new row into your database directly"
+      ],
+      "answer": 0,
+      "why": "Issuing a URL proves nothing was uploaded. The usual flow is a confirm call (or a storage event notification) after which the server checks the object's existence and size before marking the record ready. Listing a whole bucket does not scale, and storage cannot write to your database.",
+      "tags": ["files"],
+      "level": 2,
+      "asked": "Tests whether you have followed a direct upload through to the database, not just drawn the arrow."
+    },
+    {
+      "id": "sd-079",
+      "q": "Uploads go to storage first and are confirmed later, and some users abandon them. How do you stop orphaned files piling up?",
+      "choices": [
+        "Run a monthly job that deletes any object older than thirty days",
+        "Delete the file whenever the browser tab closes during the upload",
+        "Give every object a public URL so that users can clean up their own abandoned files",
+        "Write uploads under a `pending/` prefix and let a lifecycle rule expire them"
+      ],
+      "answer": 3,
+      "why": "Unconfirmed uploads land under a temporary prefix; confirming copies or moves them to their final key, and a bucket lifecycle rule deletes anything left in `pending/` after a day. Browsers cannot be relied on to report closing, and an age-based sweep of everything would delete real files.",
+      "tags": ["files"],
+      "level": 3,
+      "asked": "Orphan clean-up is where upload designs quietly cost money; this answer shows you thought past the happy path."
+    },
+    {
+      "id": "sd-080",
+      "q": "Invoices are PDFs in a private bucket. How should a signed-in customer download their own invoice?",
+      "choices": [
+        "Make the bucket public and keep the invoice URLs hard to guess",
+        "Check ownership in the API, then redirect to a short-lived presigned GET URL",
+        "Email every invoice as an attachment instead of offering downloads",
+        "Proxy every byte through the API so the bucket never needs a URL"
+      ],
+      "answer": 1,
+      "why": "The API makes the authorisation decision, and the storage service does the heavy transfer, with a URL that expires in minutes. Unguessable public URLs leak through logs and forwarding. Proxying works but puts every download on your servers, and email is not access control.",
+      "tags": ["files", "security"],
+      "level": 1,
+      "asked": "The download half of the presigned-URL pattern; interviewers check the auth check comes first."
+    },
+    {
+      "id": "sd-081",
+      "q": "With direct-to-storage uploads, how do you stop someone uploading a 50 GB file to a URL meant for a profile photo?",
+      "choices": [
+        "Rely on the browser's file input `accept` attribute to limit it",
+        "Sign an upload policy with a maximum size, and recheck the size on confirm",
+        "Scan the bucket nightly and delete any file larger than 5 MB",
+        "Set a very short URL expiry so that a large upload cannot possibly finish in time"
+      ],
+      "answer": 1,
+      "why": "An S3 presigned POST can carry a `content-length-range` condition, and Azure SAS uploads can be checked the same way at confirmation, so oversized uploads are rejected or discarded before they are used. `accept` is a client hint, a nightly scan pays for the storage first, and expiry applies to starting the request.",
+      "tags": ["files", "security"],
+      "level": 2,
+      "asked": "The follow-up once you propose presigned uploads; it checks you know you gave up the API as a gatekeeper."
+    },
+    {
+      "id": "sd-082",
+      "q": "Why is `WHERE name LIKE '%phone%'` slow on a large table even with an index on `name`?",
+      "choices": [
+        "A leading wildcard means a B-tree index cannot narrow where to start",
+        "`LIKE` is always evaluated in the application, not the database",
+        "The index is ignored because `name` is a text column, not a number",
+        "Wildcard queries take a table lock that blocks other readers while they scan it"
+      ],
+      "answer": 0,
+      "why": "A B-tree is sorted by the value's prefix, so `LIKE 'phone%'` can seek but `'%phone%'` must scan every row. Trigram indexes or full-text search are the fixes. Text columns index fine, and a read does not lock the table.",
+      "tags": ["search", "database"],
+      "level": 1,
+      "asked": "The usual starting point of a search discussion; the good answer immediately names an alternative."
+    },
+    {
+      "id": "sd-083",
+      "q": "In Postgres, what does full-text search with a `tsvector` column and a GIN index give you over `ILIKE`?",
+      "choices": [
+        "Matching word forms such as `running` for `run`, with ranking",
+        "Fuzzy matching of typos such as `phnoe` to `phone`",
+        "Exact substring matches that are case-sensitive",
+        "Search across every table in the database without naming columns"
+      ],
+      "answer": 0,
+      "why": "Full-text search tokenises and stems text in a language configuration, so words match by root, and `ts_rank` orders results; the GIN index makes it fast. It does not tolerate typos, which is what the `pg_trgm` extension is for, and it only searches the columns you build the vector from.",
+      "tags": ["search", "database"],
+      "level": 2,
+      "asked": "Knowing what built-in search can do stops you proposing Elasticsearch for a 50,000-row table."
+    },
+    {
+      "id": "sd-084",
+      "q": "Users misspell product names in a Postgres-backed app with 200,000 products. What adds typo tolerance without a separate search service?",
+      "choices": [
+        "A `pg_trgm` GIN index with `similarity()` or the `%` operator",
+        "A B-tree index on `lower(name)` with an equality comparison",
+        "A materialised view that stores every name in upper case",
+        "A `tsvector` column using the `simple` text search configuration"
+      ],
+      "answer": 0,
+      "why": "Trigram similarity compares overlapping three-character chunks, so `iphnoe` still scores close to `iphone`, and the GIN index keeps it fast; it also accelerates `ILIKE '%x%'`. Case-folding and `simple` full-text configurations only match exact words.",
+      "tags": ["search", "database"],
+      "level": 2,
+      "asked": "A practical 'small-scale search' answer that shows you know the database's own tools."
+    },
+    {
+      "id": "sd-085",
+      "q": "You add OpenSearch for product search. How is its index usually kept up to date with the database?",
+      "choices": [
+        "The API writes to OpenSearch and the database in one transaction",
+        "OpenSearch reads the database tables directly over a connector on every search query",
+        "A developer rebuilds the index by hand after each product change",
+        "Change events feed an indexer that updates documents, accepting a short lag"
+      ],
+      "answer": 3,
+      "why": "The database stays the source of truth; an outbox event or change-data-capture stream drives an indexer, so search is eventually consistent, and a full reindex job covers drift. There is no shared transaction between the two, and OpenSearch does not query your database.",
+      "tags": ["search", "queues"],
+      "level": 3,
+      "asked": "Interviewers want the sync mechanism and the admission that search can be seconds behind."
+    },
+    {
+      "id": "sd-086",
+      "q": "In a multi-tenant app using a search engine, how do you stop one tenant's documents appearing in another's search results?",
+      "choices": [
+        "Rely on each tenant using different words in their documents",
+        "Give each tenant a different ranking formula for results",
+        "Hide the results in the frontend whenever their tenant does not match the user",
+        "Store `tenant_id` on every document and filter on it in every query"
+      ],
+      "answer": 3,
+      "why": "Search indexes do not inherit your database's row-level rules, so tenancy must be indexed and enforced as a filter on every query, ideally in one shared query builder. Filtering in the frontend still sends the data to the browser.",
+      "tags": ["search", "multi-tenancy"],
+      "level": 2,
+      "asked": "A common leak when search is bolted on late; it checks you carry isolation into every data store."
+    },
+    {
+      "id": "sd-087",
+      "q": "What are SPF, DKIM and DMARC for?",
+      "choices": [
+        "Encrypting email in transit between mail servers",
+        "Proving your domain authorised the mail, so it avoids spam folders",
+        "Tracking whether a recipient opened or clicked the email",
+        "Compressing attachments so they fit provider size limits"
+      ],
+      "answer": 1,
+      "why": "SPF lists which servers may send for your domain, DKIM signs messages, and DMARC tells receivers what to do when those checks fail. Without them, transactional email lands in spam or is rejected. Transport encryption is TLS, and open tracking is a pixel.",
+      "tags": ["email"],
+      "level": 1,
+      "asked": "Every app sends email; knowing why it goes to spam is a sign you have set one up."
+    },
+    {
+      "id": "sd-088",
+      "q": "Why do teams send marketing email from a different subdomain or stream than password resets and receipts?",
+      "choices": [
+        "Marketing email needs a different template language",
+        "Receipts must legally be sent from the company's primary registered domain",
+        "So marketing can be sent without SPF and DKIM records",
+        "So spam complaints about marketing do not hurt transactional delivery"
+      ],
+      "answer": 3,
+      "why": "Mailbox providers track reputation per sending domain and IP. Marketing draws unsubscribes and complaints; if it shares a reputation with password resets, those start landing in spam. Both streams still need authentication.",
+      "tags": ["email"],
+      "level": 2,
+      "asked": "A production detail that shows you think of email as infrastructure rather than a function call."
+    },
+    {
+      "id": "sd-089",
+      "q": "A user turns off comment notification emails while 200 are already queued for them. Where should the preference be checked?",
+      "choices": [
+        "When the comment is created, before the job is queued",
+        "In the email template, by hiding the body text",
+        "In the email provider's dashboard, by the support team",
+        "When each job runs, just before the email is sent"
+      ],
+      "answer": 3,
+      "why": "Checking at send time respects a change made after the job was queued; checking only at enqueue sends 200 emails the user just refused. Checking at both points is fine, but the send-time check is the one that makes the setting trustworthy.",
+      "tags": ["notifications"],
+      "level": 2,
+      "asked": "Timing bugs like this generate complaints and unsubscribes; interviewers like the send-time answer."
+    },
+    {
+      "id": "sd-090",
+      "q": "An in-app notifications table has `user_id` and a nullable `read_at`. Which index best supports the unread badge count in Postgres?",
+      "choices": [
+        "A single-column index on `read_at` alone",
+        "A composite index on `(created_at, user_id)`",
+        "A partial index on `(user_id)` where `read_at IS NULL`",
+        "A unique index on `(user_id, read_at)` pair"
+      ],
+      "answer": 2,
+      "why": "The badge query is `WHERE user_id = $1 AND read_at IS NULL`; a partial index contains only unread rows, so it stays small as history grows. An index on `read_at` does not narrow by user, `created_at` first cannot seek on user, and a unique constraint would forbid two unread notifications.",
+      "tags": ["notifications", "database"],
+      "level": 3,
+      "asked": "Unread counts run on every page load; a targeted index is the difference between cheap and painful."
+    },
+    {
+      "id": "sd-091",
+      "q": "Why batch frequent notifications, such as comments on a busy thread, into a periodic digest email?",
+      "choices": [
+        "One email an hour beats forty, and cuts unsubscribes and sending cost",
+        "Digests bypass spam filters that block individual messages",
+        "Email providers refuse to deliver more than one message per recipient per hour",
+        "Digests let you skip storing the individual notifications"
+      ],
+      "answer": 0,
+      "why": "Forty separate emails trains users to unsubscribe or mark you as spam, which damages delivery for everyone. A digest collects pending items and sends a summary on a schedule. It still needs the stored notifications to build from, and providers do not impose that limit.",
+      "tags": ["notifications", "email"],
+      "level": 2,
+      "asked": "Shows product sense in a system design answer, which interviewers value at mid-level."
+    },
+    {
+      "id": "sd-092",
+      "q": "The email provider reports a hard bounce for a customer's address. What should the app do?",
+      "choices": [
+        "Retry the same email every hour until it is delivered",
+        "Add the address to a suppression list and stop sending to it",
+        "Delete the customer's account because the email is invalid",
+        "Switch to sending from a different email provider for that user"
+      ],
+      "answer": 1,
+      "why": "A hard bounce means the address does not exist, and continuing to send to it damages your sender reputation. Suppress it and prompt the user to update their address in the app. Retrying makes it worse, and deleting the account is out of proportion.",
+      "tags": ["email"],
+      "level": 1,
+      "asked": "A small operational question that separates people who have run email in production."
+    },
+    {
+      "id": "sd-093",
+      "q": "Users should see new notifications in an open tab without refreshing, and the browser never sends anything back on that channel. What fits best?",
+      "choices": [
+        "An email with a link that reloads the notifications page",
+        "Long polling every 100 milliseconds from each open tab",
+        "A WebSocket, because it is the only mechanism that lets a server push to a tab",
+        "Server-Sent Events from an endpoint that streams notifications"
+      ],
+      "answer": 3,
+      "why": "Server-Sent Events are a one-way stream over ordinary HTTP with automatic reconnection, which matches a notification feed. WebSockets also work but are two-way, which you do not need, and are not the only option. Polling ten times a second is wasteful.",
+      "tags": ["notifications"],
+      "level": 2,
+      "asked": "Checks you pick the simplest transport that fits rather than defaulting to WebSockets."
+    },
+    {
+      "id": "sd-094",
+      "q": "Why do webhook signature schemes include a timestamp in the signed payload?",
+      "choices": [
+        "So the receiver can sort webhooks into the order they were sent",
+        "So a captured request cannot be replayed later and still verify",
+        "So the receiver knows which secret to use during key rotation",
+        "So the sender can measure how long the receiver took to respond"
+      ],
+      "answer": 1,
+      "why": "An HMAC alone proves the payload came from the sender but not when; an attacker who captures one request could resend it forever. Including the timestamp in the signature and rejecting anything older than a few minutes closes that. Ordering and key rotation are handled separately.",
+      "tags": ["webhooks", "security"],
+      "level": 2,
+      "asked": "A follow-up to 'how do you verify a webhook'; it checks you understand what a signature does not prove."
+    },
+    {
+      "id": "sd-095",
+      "q": "What should an endpoint that receives payment webhooks do before returning its response?",
+      "choices": [
+        "Fulfil the whole order, including emails, so nothing is missed",
+        "Verify the signature, store the event, and return 2xx quickly",
+        "Call the provider's API three times to confirm the event is real",
+        "Return 202 without checking anything, then validate it later"
+      ],
+      "answer": 1,
+      "why": "Providers time out slow receivers and retry, so the endpoint verifies, records the event (deduplicated by its ID) and hands the work to a background job. Doing all the work inline invites timeouts and duplicate fulfilment; skipping verification means storing forged events.",
+      "tags": ["webhooks"],
+      "level": 1,
+      "asked": "The standard receive-side shape; a good answer mentions deduplication by event ID."
+    },
+    {
+      "id": "sd-096",
+      "q": "In a multi-tenant API, where should the current tenant ID come from?",
+      "choices": [
+        "An `X-Tenant-Id` header the frontend sends with each request",
+        "The authenticated user's token or session, checked on the server",
+        "A query-string parameter, so links can be shared between tenants",
+        "The `tenant_id` field in the JSON body of each write request"
+      ],
+      "answer": 1,
+      "why": "Anything the client sends can be changed, so a header, parameter or body field lets a user read another tenant's data by editing one value. The tenant comes from the identity the server authenticated, or from a subdomain that is then checked against that identity.",
+      "tags": ["multi-tenancy", "security"],
+      "level": 2,
+      "asked": "The most basic multi-tenant security check; getting it wrong is a whole class of breach."
+    },
+    {
+      "id": "sd-097",
+      "q": "Postgres row-level security reads the tenant from a session variable, and connections are pooled. How should the variable be set?",
+      "choices": [
+        "With `SET LOCAL app.tenant_id` inside each request's transaction",
+        "With `SET app.tenant_id` once when the pool opens each connection",
+        "In the connection string, with one pool shared by all tenants",
+        "In a column default, so each insert picks up the right tenant"
+      ],
+      "answer": 0,
+      "why": "`SET LOCAL` lasts only until the transaction ends, so a pooled connection cannot carry one request's tenant into the next. A plain `SET` persists on the connection, which is exactly how tenant data leaks under pooling. A shared connection string cannot hold per-request values.",
+      "tags": ["multi-tenancy", "database"],
+      "level": 3,
+      "asked": "RLS is a strong answer only if you know this pitfall; interviewers who use it will ask."
+    },
+    {
+      "id": "sd-098",
+      "q": "In a shared-schema multi-tenant app, each tenant's users need unique email addresses. Which constraint is right?",
+      "choices": [
+        "`UNIQUE (email)` across the whole users table",
+        "`UNIQUE (tenant_id, email)` on the users table",
+        "`UNIQUE (tenant_id)` on the users table",
+        "No constraint; check for duplicates in the API"
+      ],
+      "answer": 1,
+      "why": "The same person may belong to two customer organisations, so email is unique within a tenant, not globally. A global constraint blocks that; unique `tenant_id` allows one user per tenant; an API check alone loses to concurrent inserts.",
+      "tags": ["multi-tenancy", "database"],
+      "level": 1,
+      "asked": "Small, but it shows you carry tenancy into constraints and indexes, not just queries."
+    },
+    {
+      "id": "sd-099",
+      "q": "What keeps a modular monolith modular as it grows?",
+      "choices": [
+        "Deploying each module as its own separate container behind the same public domain",
+        "All modules share one large `Services` folder so code is easy to find",
+        "Every module uses a different programming language and framework",
+        "Modules call each other only through public interfaces, never each other's tables"
+      ],
+      "answer": 3,
+      "why": "The boundary is the rule that module A never reaches into module B's data or internals; enforce it with project references, internal visibility or architecture tests. Separate containers make it a distributed system. Language choice is irrelevant, and one shared folder is how boundaries disappear.",
+      "tags": ["scaling"],
+      "level": 2,
+      "asked": "Everyone says 'modular monolith'; interviewers want to hear how the modularity is enforced."
+    },
+    {
+      "id": "sd-100",
+      "q": "Image processing in your monolith is CPU-heavy and slows web requests during busy periods. What is the usual first step?",
+      "choices": [
+        "Run the same codebase as a separate worker process that consumes a queue",
+        "Extract image processing into a microservice with its own database",
+        "Buy a larger server so the web requests have more CPU to share with the image work",
+        "Move image processing into the browser using WebAssembly"
+      ],
+      "answer": 0,
+      "why": "The same code deployed in a worker role, scaled separately and fed by a queue, isolates the CPU load without a new service boundary, a new database or network contracts. A bigger server postpones the problem. A microservice is a much larger change for the same isolation.",
+      "tags": ["scaling", "queues"],
+      "level": 3,
+      "asked": "The 'scale the monolith before splitting it' answer that interviewers want to hear before microservices come up."
+    },
+    {
+      "id": "sd-101",
+      "q": "Your app soft-deletes users with a `deleted_at` column. A user makes a GDPR erasure request. What is needed?",
+      "choices": [
+        "Nothing more, because soft-deleted rows are hidden from queries",
+        "Setting `deleted_at` again, with a note of the request date",
+        "Actually deleting or anonymising their personal data, including backups over time",
+        "Moving their row to an archive table that only admins can read"
+      ],
+      "answer": 2,
+      "why": "Soft delete hides data; it does not erase it. Erasure means removing or irreversibly anonymising the personal fields, cascading to related tables and ageing out of backups by your retention policy. An archive table still holds the data.",
+      "tags": ["database", "security"],
+      "level": 2,
+      "asked": "Soft delete is common, and interviewers use this to check you know its limits."
+    },
+    {
+      "id": "sd-102",
+      "q": "An auditor asks who changed a product's price last March and what it was before. Which design can answer?",
+      "choices": [
+        "An `updated_at` column on the products table",
+        "Application logs kept for the default seven days",
+        "An append-only audit table written in the same transaction as the change",
+        "A nightly backup of the products table kept for a month"
+      ],
+      "answer": 2,
+      "why": "An audit row per change records who, when, and the old and new values, and writing it in the same transaction means it cannot be skipped. `updated_at` keeps only the latest time, logs expire and are not structured for this, and a month of backups cannot reach last March.",
+      "tags": ["database"],
+      "level": 1,
+      "asked": "Audit trails appear in most business CRUD systems; the same-transaction detail is the mark of a good answer."
+    },
+    {
+      "id": "sd-103",
+      "q": "In a system design interview, what should you do in the first five minutes?",
+      "choices": [
+        "Draw the full architecture so the interviewer sees your plan early",
+        "Pick the database and justify it before discussing anything else",
+        "List the microservices you would build and how they communicate",
+        "Clarify the core features, users and rough scale before drawing"
+      ],
+      "answer": 3,
+      "why": "The design depends on what the system must do and how big it is: 500 users and 5 million users lead to different answers. Drawing or choosing technology first means designing for a problem you have not confirmed, which interviewers mark down even if the diagram is good.",
+      "tags": ["design-process"],
+      "level": 1,
+      "asked": "Interviewers score the requirements step explicitly; skipping it is the most common way to fail the round."
+    },
+    {
+      "id": "sd-104",
+      "q": "For a booking system, which of these is a non-functional requirement?",
+      "choices": [
+        "Customers can cancel any booking free of charge up to 24 hours before it starts",
+        "Staff can see every booking for their location on one screen",
+        "Availability searches return within 300 ms at the 95th percentile",
+        "Customers receive a confirmation email after each booking"
+      ],
+      "answer": 2,
+      "why": "Non-functional requirements describe qualities such as latency, availability and security rather than features. Cancellation, a staff view and confirmation emails are all things the system does, so they are functional requirements.",
+      "tags": ["design-process"],
+      "level": 1,
+      "asked": "A vocabulary check at the start of the design round; strong answers volunteer two or three NFRs unprompted."
+    },
+    {
+      "id": "sd-105",
+      "q": "Roughly how much downtime per month does a 99.9% availability target allow?",
+      "choices": [
+        "About 4.3 minutes",
+        "About 43 minutes",
+        "About 7 hours",
+        "About 3 days"
+      ],
+      "answer": 1,
+      "why": "0.1% of a 30-day month (43,200 minutes) is about 43 minutes. 99.99% allows about 4 minutes, and 99% about 7 hours. Knowing these tells you whether a manual deploy with a few minutes of downtime is compatible with the target.",
+      "tags": ["reliability"],
+      "level": 1,
+      "asked": "Availability numbers anchor the reliability part of a design discussion; interviewers like the conversion done quickly."
+    },
+    {
+      "id": "sd-106",
+      "q": "What does a recovery point objective (RPO) of one hour mean?",
+      "choices": [
+        "The system must be back online within one hour of an outage",
+        "Backups must be restored and tested at least once an hour",
+        "Losing up to one hour of data in a disaster is acceptable",
+        "Monitoring must detect any outage within one hour"
+      ],
+      "answer": 2,
+      "why": "RPO is how much recent data you can afford to lose, which sets how often you back up or replicate. How quickly you must be running again is the recovery time objective (RTO), the usual mix-up.",
+      "tags": ["reliability", "database"],
+      "level": 1,
+      "asked": "RPO and RTO come up when backups are discussed; defining both correctly is enough at mid-level."
+    },
+    {
+      "id": "sd-107",
+      "q": "Nightly database backups have run for a year but have never been restored. What is the risk?",
+      "choices": [
+        "The backups use more storage each night than the database itself",
+        "Nobody knows whether they restore, or how long a restore takes",
+        "Old backups expire automatically after 90 days on most providers",
+        "Backups taken at night miss data written in the daytime"
+      ],
+      "answer": 1,
+      "why": "A backup is only proven by a restore: files can be corrupt, incomplete or missing permissions, and nobody has measured the recovery time. A scheduled test restore into a scratch environment turns an assumption into evidence. Retention and timing are separate settings.",
+      "tags": ["reliability", "database"],
+      "level": 1,
+      "asked": "A reliability habit interviewers like to hear, because many teams discover the problem during a real outage."
+    },
+    {
+      "id": "sd-108",
+      "q": "Why should a checkout store money as `decimal(12,2)` or integer pence rather than a floating-point type?",
+      "choices": [
+        "Floating-point types cannot store negative numbers such as refunds",
+        "Decimal columns use less disk space than floating-point columns",
+        "Binary floating point cannot represent values like 0.10 exactly",
+        "Floating-point columns cannot be indexed in most databases"
+      ],
+      "answer": 2,
+      "why": "0.1 has no exact binary representation, so sums of prices drift by fractions of a penny and totals fail to reconcile. Decimal and integer minor units are exact. Floats can be negative and can be indexed, and size is not the reason.",
+      "tags": ["checkout", "database"],
+      "level": 1,
+      "asked": "A classic data-modelling check for anything involving payments."
+    },
+    {
+      "id": "sd-109",
+      "q": "Why does an order line store the unit price at the time of purchase instead of joining to the product's current price?",
+      "choices": [
+        "Joins between orders and products are too slow to run on every order page",
+        "Storing it again lets the customer edit the price during checkout",
+        "Prices are stored in a different database from orders for security",
+        "The product's price will change, but what the customer paid must not"
+      ],
+      "answer": 3,
+      "why": "An order is a historical record: invoices, refunds and reports must reflect what was charged, not today's price. The same applies to product names and tax rates. Join cost is not the reason, and the customer never sets the price.",
+      "tags": ["checkout", "database"],
+      "level": 1,
+      "asked": "A small modelling question that shows whether you think about data over time."
+    },
+    {
+      "id": "sd-110",
+      "q": "After each deploy the in-memory caches start empty and the database spikes for a few minutes. What does cache warming do?",
+      "choices": [
+        "Raises every entry's TTL so the caches empty less often during the day",
+        "Preloads the hottest keys before an instance starts taking traffic",
+        "Moves the cache into the database so it survives deploys automatically",
+        "Sends every request to the old version until its cache has expired"
+      ],
+      "answer": 0,
+      "why": "A warm-up step loads known-hot keys (top products, reference data) before the instance reports ready, so the first real requests hit the cache. Longer TTLs do nothing for an empty cache, putting the cache in the database defeats it, and routing to the old version is a blue-green concern.",
+      "tags": ["caching", "scaling"],
+      "level": 1,
+      "asked": "Basic infrastructure vocabulary; a good answer mentions which responses must never be cached there."
+    },
+    {
+      "id": "sd-111",
+      "q": "You replace `/images/logo.png` (no hash in the name) and users still see the old logo from the CDN. What fixes it now and in future?",
+      "choices": [
+        "Restart the origin server so that the CDN notices the change",
+        "Delete the file and upload it again under the same name",
+        "Purge that path now, and use hashed filenames from now on",
+        "Ask users to clear their browser caches and reload"
+      ],
+      "answer": 2,
+      "why": "A purge tells the CDN to drop its cached copy immediately; content-hashed names mean future changes get a new URL and never need a purge. The CDN does not watch your origin, reuploading changes nothing it has cached, and browser clearing cannot be relied on.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Checks you know the two tools for stale CDN content and prefer the one that needs no manual step."
+    },
+    {
+      "id": "sd-112",
+      "q": "What does \"single point of failure\" mean when reviewing a design diagram?",
+      "choices": [
+        "A component with no redundancy whose failure takes the system down",
+        "The component that fails most often according to the monitoring dashboards",
+        "A service that is shared by more than one team in the company",
+        "The first component a request passes through, usually the DNS"
+      ],
+      "answer": 0,
+      "why": "If one box on the diagram fails and everything stops, and there is no second one to take over, it is a single point of failure. The usual fixes are a second instance, a managed service with failover, or accepting the risk explicitly. How often it fails or who owns it is a separate question.",
+      "tags": ["reliability"],
+      "level": 1,
+      "asked": "Interviewers often ask 'what are the single points of failure here?' of your own diagram."
+    },
+    {
+      "id": "sd-113",
+      "q": "What is sharding a database?",
+      "choices": [
+        "Copying the whole database to several read replicas",
+        "Compressing large columns so the table fits in memory",
+        "Moving old rows from a large table into a cheaper archive table on a schedule",
+        "Splitting rows across several databases by a key such as tenant ID"
+      ],
+      "answer": 3,
+      "why": "Each shard holds a subset of the rows and the app, or a router, picks the shard from the key. It spreads writes as well as reads, at the cost of cross-shard queries and rebalancing. Replicas copy everything, and archiving and compression do not distribute load.",
+      "tags": ["database", "scaling"],
+      "level": 1,
+      "asked": "Expected vocabulary; the strong answer adds that most CRUD apps never need it."
+    },
+    {
+      "id": "sd-114",
+      "q": "On a flash-sale day, orders spike to ten times normal for an hour. How does sending confirmation emails through a queue help?",
+      "choices": [
+        "The queue absorbs the spike and workers drain it at a steady rate",
+        "The queue sends the emails faster than the provider normally allows",
+        "The queue stops customers placing orders once it gets too long",
+        "The queue merges duplicate emails into one per customer"
+      ],
+      "answer": 0,
+      "why": "A queue decouples the rate work arrives from the rate it is done: checkout stays fast and emails go out a few minutes later as workers catch up. It does not make the email provider faster, throttle checkout, or deduplicate by itself.",
+      "tags": ["queues", "scaling"],
+      "level": 1,
+      "asked": "The 'why a queue' answer in plain terms; interviewers want load levelling, not buzzwords."
+    },
+    {
+      "id": "sd-115",
+      "q": "Why do web apps use a database connection pool?",
+      "choices": [
+        "Opening a new connection per query costs time, and databases limit connections",
+        "The pool caches query results so repeated queries skip the database",
+        "The pool splits each query across several connections so its parts run in parallel",
+        "Databases reject queries sent on connections that are not pooled"
+      ],
+      "answer": 0,
+      "why": "Connecting involves a network handshake, authentication and server-side setup, and each connection costs the server memory, so apps reuse a small set. The pool does not cache results or parallelise a single query.",
+      "tags": ["database", "scaling"],
+      "level": 1,
+      "asked": "A foundation for the 'we scaled out and the database refused connections' question."
+    },
+    {
+      "id": "sd-116",
+      "q": "What does it mean that search results are eventually consistent with the database?",
+      "choices": [
+        "Search results are sometimes wrong and never corrected",
+        "The database waits for the search index before committing",
+        "Search only returns new results after the nightly index rebuild has run",
+        "A change appears in search after a short delay, not instantly"
+      ],
+      "answer": 3,
+      "why": "Eventual consistency means that without new writes the copies converge; for a moment after saving, search may show the old version. The database does not wait for the index, and a correct pipeline converges in seconds, not overnight.",
+      "tags": ["search", "consistency"],
+      "level": 1,
+      "asked": "The term comes up with replicas, caches and search; interviewers want a plain-English definition."
+    },
+    {
+      "id": "sd-117",
+      "q": "A user edits a document's title and the list page, served from an eventually consistent search index, still shows the old title. What is the usual UI approach?",
+      "choices": [
+        "Update the item in the UI from the save response, not the index",
+        "Block the save request until the search index confirms the update",
+        "Reload the list page every second until the new title appears",
+        "Tell users that edits take up to a day to show in lists"
+      ],
+      "answer": 0,
+      "why": "The write response already contains the new state, so the client updates its cache or list from that, and the index catches up in the background. Blocking couples the save to the index, and polling or warnings make a short lag feel like a bug.",
+      "tags": ["consistency", "search"],
+      "level": 2,
+      "asked": "Tests whether you connect backend consistency choices to what the user sees."
+    },
+    {
+      "id": "sd-118",
+      "q": "A post shows `comment_count`, and counting comments on every page view is slow. What is the usual design?",
+      "choices": [
+        "Cache the whole page for a day so that the expensive count query rarely runs at all",
+        "Estimate the count from the table's total row statistics",
+        "Count comments in the browser after loading them all",
+        "Store a counter on the post, updated in the same transaction as each comment"
+      ],
+      "answer": 3,
+      "why": "A denormalised counter updated atomically (`SET comment_count = comment_count + 1`) with the insert is cheap to read and stays correct. A day-long cache shows stale counts, loading every comment is the slow part you wanted to avoid, and table statistics are not per post.",
+      "tags": ["database", "scaling"],
+      "level": 2,
+      "asked": "Denormalisation with a clear consistency rule is a common mid-level design move."
+    },
+    {
+      "id": "sd-119",
+      "q": "An `events` table grows by 50 million rows a month, and queries only touch the last 90 days. What helps most long-term?",
+      "choices": [
+        "Add a second index on every column that appears in any of the queries' `WHERE` clauses",
+        "Increase the database server's RAM each time queries slow down",
+        "Move older rows to an archive table or cold storage on a schedule",
+        "Switch the table's primary key from integers to UUIDs"
+      ],
+      "answer": 2,
+      "why": "Archiving keeps the hot table small, so its indexes fit in memory and maintenance stays fast, while old data remains available elsewhere. More indexes slow the heavy insert load, RAM only postpones the problem, and key type does not change table size meaningfully.",
+      "tags": ["database", "scaling"],
+      "level": 2,
+      "asked": "Data growth is where CRUD systems actually slow down; this checks you plan for it."
+    },
+    {
+      "id": "sd-120",
+      "q": "A sold-out class keeps a waitlist. When a place frees up, what is the fair and robust design?",
+      "choices": [
+        "Email everyone on the waitlist at once and let whoever clicks first take the free place",
+        "Offer the place to the next person with a timed hold, then move on if unclaimed",
+        "Add the next person automatically and charge their saved card",
+        "Leave the place empty until staff review the waitlist manually"
+      ],
+      "answer": 1,
+      "why": "A hold for the next person in line, with an expiry, respects order and does not charge anyone without consent; when it expires the offer moves down the list. Emailing everyone creates a race and disappointment, auto-charging surprises people, and manual review leaves places unfilled.",
+      "tags": ["booking"],
+      "level": 2,
+      "asked": "A realistic booking twist that tests whether you reuse the hold pattern."
+    },
+    {
+      "id": "sd-121",
+      "q": "A discount code may be used at most 100 times, and many shoppers apply it at once. Which update enforces the limit?",
+      "choices": [
+        "Read `used` in the API, and if it is under 100, write `used + 1`",
+        "Store the count in Redis without expiry and check it before checkout",
+        "Count redemptions in a nightly job and disable the code if it passed 100",
+        "`UPDATE coupons SET used = used + 1 WHERE code = @c AND used < 100`"
+      ],
+      "answer": 3,
+      "why": "The check and increment happen in one atomic statement, so the 101st update affects zero rows and that checkout is refused. Read-then-write lets several requests see 99 at once. A nightly job allows unlimited overuse in the meantime, and a separate Redis check still races with the write.",
+      "tags": ["checkout", "consistency"],
+      "level": 2,
+      "asked": "The same atomic-conditional-update idea as stock, in a different costume; interviewers check you recognise it."
+    },
+    {
+      "id": "sd-122",
+      "q": "A product's price rises while it sits in a customer's cart. What should checkout do?",
+      "choices": [
+        "Charge the old price, because the customer added the item to the cart at that price",
+        "Charge the new price silently, because it is the current price",
+        "Reprice at checkout and show the customer the change before paying",
+        "Remove the item from the cart and ask them to add it again"
+      ],
+      "answer": 2,
+      "why": "The server is the source of truth for prices at the moment of purchase, and the customer must see what they will pay before paying. Honouring stale prices is a business decision, not a default. Silent changes cause chargebacks, and removing the item is needlessly hostile.",
+      "tags": ["checkout"],
+      "level": 2,
+      "asked": "Shows you think about the cart as a snapshot that must be revalidated."
+    },
+    {
+      "id": "sd-123",
+      "q": "An email job may be retried after a crash. How do you avoid sending the same order confirmation twice?",
+      "choices": [
+        "Send the email first, and record `confirmation_sent_at` on the order only if the send throws an error",
+        "Check and set `confirmation_sent_at` on the order, and pass the provider an idempotency key",
+        "Retry the job only once, so a second email is at worst sent one time",
+        "Ask the email provider to discard any message with an identical subject"
+      ],
+      "answer": 1,
+      "why": "Record that the send happened and check it before sending, and where the provider supports an idempotency key, use one so a crash between sending and recording does not double-send. Limiting retries still duplicates, and subject-based deduplication would drop legitimate emails.",
+      "tags": ["email", "queues"],
+      "level": 2,
+      "asked": "Every at-least-once consumer needs this; interviewers look for the crash-between-steps reasoning."
+    },
+    {
+      "id": "sd-124",
+      "q": "Why do public APIs rate-limit per client key rather than with one global limit?",
+      "choices": [
+        "One misbehaving client should not use up capacity everyone else needs",
+        "A single global limit is impossible to implement correctly across several servers",
+        "Per-key limits let clients see each other's usage in the headers",
+        "A global limit would block health checks from the load balancer"
+      ],
+      "answer": 0,
+      "why": "Per-key limits isolate clients: a runaway script gets 429 responses while everyone else is unaffected. A global limit punishes all users for one client's behaviour. Distributed global limits are possible with a shared store, and usage headers only show your own quota.",
+      "tags": ["reliability", "security"],
+      "level": 2,
+      "asked": "Fairness is the point interviewers want; the follow-up is where the counters live."
+    },
+    {
+      "id": "sd-125",
+      "q": "Users can request page 5,000 of search results, and deep pages are slow. What do most products do?",
+      "choices": [
+        "Precompute every page of results and store them in the cache",
+        "Rebuild the search index nightly so that deep pages are faster",
+        "Return every matching result on one page and let the browser paginate",
+        "Cap how deep users can page and push them to refine the search"
+      ],
+      "answer": 3,
+      "why": "Deep offset pagination makes the engine collect and discard thousands of results, and nobody reads page 5,000. Capping depth (most search engines have a limit) and offering filters is the practical answer. Precomputing every page and returning everything both scale with the result count.",
+      "tags": ["search"],
+      "level": 2,
+      "asked": "A product-minded answer to a performance question, which is what interviewers want from mid-level."
+    },
+    {
+      "id": "sd-126",
+      "q": "Uploaded photos need three sizes of thumbnail. Why generate them in a background job at upload time rather than on the first request for each size?",
+      "choices": [
+        "Browsers cannot display images that were generated on demand by an image service",
+        "Object storage cannot store more than one version of a file",
+        "The first viewer would wait for resizing, and bursts would pile up CPU on the web tier",
+        "Generating on request would require the original uploads to be publicly readable by anyone"
+      ],
+      "answer": 2,
+      "why": "On-demand generation puts slow CPU work in the request path, and a popular new upload triggers many simultaneous resizes. A job after upload keeps requests fast. On-demand resizing through an image CDN is also valid, but it moves the work off your servers rather than onto them.",
+      "tags": ["files", "queues"],
+      "level": 2,
+      "asked": "Tests whether you keep CPU-heavy work out of requests by default."
+    },
+    {
+      "id": "sd-127",
+      "q": "What is an error budget, given an SLO of 99.9% successful requests?",
+      "choices": [
+        "The 0.1% of requests that may fail before reliability work takes priority",
+        "The money set aside each quarter for refunding or crediting customers after outages",
+        "The number of bugs a team may leave open before a release is blocked",
+        "The retry allowance each client gets before its requests are rejected"
+      ],
+      "answer": 0,
+      "why": "The error budget is the failure the SLO allows. While it remains, the team can ship quickly; once it is spent, work shifts to reliability. It is not a finance, bug-count or rate-limiting concept.",
+      "tags": ["reliability"],
+      "level": 2,
+      "asked": "SLO vocabulary shows up in teams with an on-call rota; a crisp definition is enough."
+    },
+    {
+      "id": "sd-128",
+      "q": "You need to rename the `customers.fullname` column to `display_name` while old and new app versions run side by side during a rolling deploy. What is the safe sequence?",
+      "choices": [
+        "Rename the column in one migration, then deploy the new app version",
+        "Deploy the new app version first, then rename the column once all traffic has moved to it",
+        "Take the site offline for five minutes and do both changes together",
+        "Add the new column, write both, backfill, switch reads, then drop the old one"
+      ],
+      "answer": 3,
+      "why": "Expand and contract keeps the schema compatible with both app versions at every step. Renaming first breaks the old instances still reading `fullname`; deploying first breaks the new ones. Downtime works but is what zero-downtime deploys exist to avoid.",
+      "tags": ["database", "reliability"],
+      "level": 3,
+      "asked": "Schema changes during rolling deploys are a mid-to-senior filter; naming expand-and-contract is the key."
+    },
+    {
+      "id": "sd-129",
+      "q": "A trip booking reserves a flight, then a hotel, through two different providers, and the hotel fails. There is no shared transaction. What is the usual pattern?",
+      "choices": [
+        "Retry the hotel forever, since the flight is already booked",
+        "Leave the flight booked and email the customer to find a hotel",
+        "Wrap both calls in a database transaction and roll it back",
+        "Run a compensating action that cancels the flight booking"
+      ],
+      "answer": 3,
+      "why": "A saga is a sequence of local steps, each with a compensating action that undoes it when a later step fails. A database transaction cannot roll back an external provider's booking. Retrying forever never finishes, and leaving half a trip booked hands the failure to the customer.",
+      "tags": ["consistency", "booking"],
+      "level": 3,
+      "asked": "Sagas come up whenever two external systems must change together; interviewers want 'compensate', not 'rollback'."
+    },
+    {
+      "id": "sd-130",
+      "q": "In a social feature, one account has 2 million followers. Why do many designs build that account's posts into feeds at read time rather than writing into every follower's feed?",
+      "choices": [
+        "Reading at request time is always faster than a precomputed feed",
+        "Precomputed feeds cannot be paginated beyond the first page",
+        "Accounts with many followers cannot be stored in a relational database",
+        "Writing one post into 2 million feeds is a huge, slow burst of writes"
+      ],
+      "answer": 3,
+      "why": "Fan-out on write suits normal accounts because reads become a cheap lookup, but a celebrity post multiplies into millions of writes. The hybrid merges those few accounts' posts in at read time. Neither approach is always faster, and both can be stored and paginated normally.",
+      "tags": ["scaling", "notifications"],
+      "level": 3,
+      "asked": "The classic feed trade-off; mid-level candidates who explain the hybrid stand out."
+    },
+    {
+      "id": "sd-131",
+      "q": "A Postgres `events` table is partitioned by month. What does that make cheap that a single table does not?",
+      "choices": [
+        "Dropping a whole old month with one quick detach or drop",
+        "Updating rows across every month in a single statement",
+        "Joining events to users without using any index",
+        "Enforcing a unique constraint across all months without the partition key"
+      ],
+      "answer": 0,
+      "why": "Removing an old partition is a metadata operation, while deleting 50 million rows from one table is slow, bloats it and needs vacuuming. Queries filtered by date also skip irrelevant partitions. Cross-partition updates are not cheaper, and unique constraints must include the partition key.",
+      "tags": ["database", "scaling"],
+      "level": 3,
+      "asked": "A deeper database question for designs with high-volume append-only data."
+    },
+    {
+      "id": "sd-132",
+      "q": "Each enterprise tenant has its own database, 300 in total. What becomes the hardest part of shipping a schema change?",
+      "choices": [
+        "Writing the migration SQL, which must differ for each tenant",
+        "Paying for extra licences because each migration counts as a new database",
+        "Getting written approval from every tenant's administrator before their database can change",
+        "Running it across every database, tracking failures, and supporting mixed versions meanwhile"
+      ],
+      "answer": 3,
+      "why": "The same migration must run 300 times; some will fail or lag, so you need tooling to track per-database versions and retry, and the app must work against both old and new schemas until all are done. The SQL is the same everywhere, and licences are not tied to migrations.",
+      "tags": ["multi-tenancy", "database"],
+      "level": 3,
+      "asked": "The operational cost of database-per-tenant, which interviewers want named before you propose it."
+    },
+    {
+      "id": "sd-133",
+      "q": "An API supports `ETag` and `If-None-Match`, and a client's cached copy is still current. What does the conditional request save?",
+      "choices": [
+        "All server work, because the server skips the handler entirely",
+        "The TLS handshake, because the connection is reused automatically",
+        "Transferring the body, although the server may still build the response",
+        "Nothing, because HTTP clients must always download the full body on every request"
+      ],
+      "answer": 2,
+      "why": "A 304 carries no body, which saves bandwidth and client parsing. Unless the ETag can be checked cheaply, for example from a version column, the server still loads the data and hashes the response to compare. Connection reuse is unrelated.",
+      "tags": ["caching"],
+      "level": 3,
+      "asked": "Distinguishes people who know what conditional requests actually optimise; the version-column trick is a strong follow-up."
+    },
+    {
+      "id": "sd-134",
+      "q": "Two identical `POST /orders` requests with the same idempotency key arrive 50 ms apart, while the first is still processing. What should the server do with the second?",
+      "choices": [
+        "Return 409 or wait, because a request with that key is in progress",
+        "Process it too, since the first has not stored a response yet",
+        "Return the 201 response of the first request, which has not finished",
+        "Silently drop it, returning no response so the client times out"
+      ],
+      "answer": 0,
+      "why": "The server should claim the key atomically, for example with a unique insert, before doing the work; a concurrent duplicate sees the key in progress and gets 409 (or waits for the stored result). Processing it charges twice, there is no response to replay yet, and dropping it leaves the client guessing.",
+      "tags": ["checkout", "reliability"],
+      "level": 3,
+      "asked": "The concurrency edge of idempotency keys, which separates people who have implemented them."
+    },
+    {
+      "id": "sd-135",
+      "q": "When sketching a CRUD system's data model in the design round, what should you do first?",
+      "choices": [
+        "Write the full SQL schema with every column and type",
+        "Name the main entities, their relationships, and the hot queries",
+        "Choose between SQL and NoSQL databases before thinking about any of the entities",
+        "Design the caching layer so the model fits the cache"
+      ],
+      "answer": 1,
+      "why": "Entities, relationships and the queries that run most often drive tables, keys and indexes; that is enough detail for the round. Full DDL wastes time, the database choice follows from the data, and caching comes after you know what is slow.",
+      "tags": ["design-process"],
+      "level": 1,
+      "asked": "Interviewers want the model at the right level of detail; over-specifying is a common time sink."
+    },
+    {
+      "id": "sd-136",
+      "q": "Your design has one API, one Postgres primary and one Redis. The interviewer asks how it survives the primary failing. What is a reasonable mid-level answer?",
+      "choices": [
+        "A managed database with a standby that fails over automatically",
+        "Redis takes over as the primary database until Postgres returns",
+        "The API buffers writes in memory until the primary comes back",
+        "Nothing is needed, because relational databases do not fail"
+      ],
+      "answer": 0,
+      "why": "Managed Postgres and SQL Server offerings keep a synchronous or near-synchronous standby and promote it in a minute or two, which is the standard answer. Redis is not a substitute primary, in-memory buffering loses writes on restart, and databases certainly fail.",
+      "tags": ["reliability", "database"],
+      "level": 2,
+      "asked": "Checks you can close a single-point-of-failure gap without over-engineering."
+    },
+    {
+      "id": "sd-137",
+      "q": "What is a reasonable first design for a CRUD app expected to serve 50,000 users in its first year?",
+      "choices": [
+        "One API behind a load balancer, one managed relational database, and a queue for background jobs",
+        "Separate microservices for users, orders and billing, each with its own database and deploy pipeline",
+        "A globally distributed database with active-active writes across three regions",
+        "A serverless function for every endpoint, sharing a document database"
+      ],
+      "answer": 0,
+      "why": "At this scale a stateless API with two or more instances, a managed database with a standby, and a job queue covers load and reliability with the least operational work. Microservices, multi-region writes and per-endpoint functions add cost and failure modes the numbers do not justify.",
+      "tags": ["design-process", "scaling"],
+      "level": 1,
+      "asked": "Interviewers reward matching the design to the stated scale rather than to famous companies."
+    },
+    {
+      "id": "sd-138",
+      "q": "A partner integration sends updates by polling your API every 5 seconds for 20,000 records. What design change removes most of that load?",
+      "choices": [
+        "Add a larger page size so that the partner needs fewer requests for each poll cycle",
+        "Ask the partner to poll every second so each response is smaller",
+        "Cache the full response for 5 seconds so each poll is served from Redis",
+        "Let the partner fetch only records changed since a cursor, or push webhooks"
+      ],
+      "answer": 3,
+      "why": "Incremental sync (`?updatedSince=` or a change cursor) returns only what changed, and webhooks remove polling entirely. Bigger pages and caching still ship 20,000 records every few seconds, and more frequent polling adds requests.",
+      "tags": ["scaling", "webhooks"],
+      "level": 2,
+      "asked": "A common integration design problem; the change-cursor answer shows you think about data volume, not just request count."
+    },
+    {
+      "id": "sd-139",
+      "q": "A booking confirmation is viewed by a traveller whose laptop is set to a different time zone from the hotel. Which time zone should check-in be shown in?",
+      "choices": [
+        "The traveller's browser zone, converted automatically",
+        "UTC, so that every reader sees the identical value",
+        "The hotel's zone, labelled, since that is where it happens",
+        "The server's zone, since the booking was made there"
+      ],
+      "answer": 2,
+      "why": "A check-in time is a local event at the hotel, so show it in the hotel's zone and say which zone it is. Converting to the viewer's zone produces times that are wrong on arrival, UTC is meaningless to most guests, and the server's zone is an accident of hosting.",
+      "tags": ["booking"],
+      "level": 2,
+      "asked": "Time-zone display is a frequent real bug in booking products; interviewers like the 'where does the event happen' rule."
+    },
+    {
+      "id": "sd-140",
+      "q": "Why does a webhook-events table usually have a unique constraint on `(provider, event_id)`?",
+      "choices": [
+        "So the provider can look up which events you have processed",
+        "So events are always processed in the order they were created",
+        "So events from different providers are stored in separate tables",
+        "So a retried delivery of the same event is rejected as a duplicate"
+      ],
+      "answer": 3,
+      "why": "Providers retry webhooks when they do not get a timely 2xx, so the same event can arrive several times; inserting it under a unique key makes the second insert fail and the handler skip it. The constraint does not order events or split tables, and the provider cannot see your database.",
+      "tags": ["webhooks", "consistency"],
+      "level": 2,
+      "asked": "The concrete mechanism behind 'de-duplicate webhooks', which interviewers ask for after you say the phrase."
     }
   ]
 }

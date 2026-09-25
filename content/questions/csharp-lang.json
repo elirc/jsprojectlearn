@@ -467,6 +467,1898 @@
       "tags": ["oop"],
       "level": 3,
       "asked": "Rarely used, often confused; it tests precise knowledge of the access-modifier rules."
+    },
+    {
+      "id": "cs-031",
+      "q": "What does this print?",
+      "code": "struct Point { public int X; }\n\nstatic void Move(Point p) => p.X = 10;\n\nvar pt = new Point { X = 1 };\nMove(pt);\nConsole.WriteLine(pt.X);",
+      "lang": "cs",
+      "choices": [
+        "10, because structs are passed to methods by reference",
+        "1, because the method received its own copy of the struct",
+        "0, because the struct is reset when the method returns",
+        "A compile error, because a struct field cannot be assigned"
+      ],
+      "answer": 1,
+      "why": "A struct argument is copied into the parameter, so `Move` changes its private copy and `pt` keeps X = 1. Passing by reference needs the `ref` keyword at both the declaration and the call site. If `Point` were a class, the method would mutate the shared object and print 10.",
+      "tags": ["types", "value-types"],
+      "level": 1,
+      "asked": "Checks that you can predict copy semantics before they cause a lost-update bug in real code."
+    },
+    {
+      "id": "cs-032",
+      "q": "Why does the second line fail to compile?",
+      "code": "var points = new List<Point> { new Point() };\npoints[0].X = 5;\n\nstruct Point { public int X; }",
+      "lang": "cs",
+      "choices": [
+        "The list indexer returns a copy of the struct, so assigning to its field would be lost",
+        "List<T> is read-only for value types, so no element can be changed after it is added",
+        "Struct fields are implicitly readonly, so X can only be set inside a constructor",
+        "The indexer returns a nullable Point?, so X must be reached through the ?. operator"
+      ],
+      "answer": 0,
+      "why": "`List<T>`'s indexer is a method that returns the element by value, so `points[0]` is a temporary copy; the compiler rejects the assignment (CS1612) because it would silently vanish. With an array, `arr[0].X = 5` works because array elements are variables. The fix is to copy out, modify, and write back, or to use a class.",
+      "tags": ["types", "value-types", "collections"],
+      "level": 2,
+      "asked": "A real compile error people hit when they use mutable structs as DTOs, and it shows whether you understand that indexers are methods."
+    },
+    {
+      "id": "cs-033",
+      "q": "What is the difference between `ref` and `out` parameters?",
+      "choices": [
+        "`ref` passes a copy of the variable, while `out` passes the variable itself to the method",
+        "`ref` works only with value types, while `out` works only with reference types",
+        "`ref` needs the caller to initialise the variable; `out` needs the method to assign it",
+        "`ref` lets the method read the argument, while `out` makes it read-only for the method"
+      ],
+      "answer": 2,
+      "why": "Both pass the caller's variable by reference. `ref` requires definite assignment before the call, so the method may read it; `out` does not, but the method must assign it before returning, which is why it suits `TryParse`-style APIs. Both work with any type.",
+      "tags": ["types", "parameters"],
+      "level": 1,
+      "asked": "Comes up whenever you explain the Try pattern; a strong answer mentions `int.TryParse(s, out var n)`."
+    },
+    {
+      "id": "cs-034",
+      "q": "What does this print?",
+      "code": "string name = \"ann\";\nname.ToUpper();\nConsole.WriteLine(name);",
+      "lang": "cs",
+      "choices": [
+        "ANN, because ToUpper converts the string in place",
+        "ann, because ToUpper returns a new string and the result is discarded",
+        "A compile error, because the return value of ToUpper must be used",
+        "Ann, because ToUpper only capitalises the first character"
+      ],
+      "answer": 1,
+      "why": "Strings are immutable; every method that looks like it edits one returns a new string. Here the result is thrown away, so `name` is unchanged. You need `name = name.ToUpper();`. Ignoring the return value is legal C#, though analysers can warn about it.",
+      "tags": ["strings", "immutability"],
+      "level": 1,
+      "asked": "A quick check that a JavaScript developer's string intuition carries across, and a lead-in to StringBuilder."
+    },
+    {
+      "id": "cs-035",
+      "q": "In C#, what does `==` compare when both operands are of type `string`?",
+      "choices": [
+        "The references, so two equal strings built at runtime compare as false",
+        "The hash codes, so strings with colliding hashes can compare as true",
+        "The characters, case-insensitively, using the current culture's rules",
+        "The characters, ordinally, because string overloads the == operator"
+      ],
+      "answer": 3,
+      "why": "`string` overloads `==` to call `string.Equals`, an ordinal, case-sensitive comparison of the characters, so two separately built strings with the same text are equal. Reference comparison only happens if the static types are `object`. Case-insensitive comparison needs `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)`.",
+      "tags": ["strings", "equality"],
+      "level": 1,
+      "asked": "Java developers expect reference comparison here; interviewers use it to see whether you know C# strings behave like values."
+    },
+    {
+      "id": "cs-036",
+      "q": "What is `var` in C#?",
+      "choices": [
+        "A dynamically typed variable whose type can change on each assignment",
+        "An implicitly typed local whose static type the compiler infers once",
+        "A variable of type object that is cast back automatically when read",
+        "A function-scoped variable, the way `var` works in JavaScript"
+      ],
+      "answer": 1,
+      "why": "`var` is compile-time inference: `var n = 5;` makes `n` an `int` forever and `n = \"x\"` fails to compile. It is only allowed for locals with an initialiser. Runtime typing is `dynamic`, which is a different feature; C# locals are always block-scoped.",
+      "tags": ["types", "syntax"],
+      "level": 1,
+      "asked": "JavaScript developers often assume `var` is loose; saying \"static type, inferred\" is the whole answer."
+    },
+    {
+      "id": "cs-037",
+      "q": "What is the difference between `var` and `dynamic`?",
+      "choices": [
+        "`var` is resolved by the compiler; `dynamic` defers member lookup to runtime",
+        "`var` can hold any type; `dynamic` only holds types deriving from object",
+        "`var` is inferred at runtime; `dynamic` is inferred by the compiler",
+        "`var` boxes value types; `dynamic` keeps them unboxed on the stack"
+      ],
+      "answer": 0,
+      "why": "`var` produces an ordinary statically typed local. `dynamic` switches off compile-time checking: member access is bound at runtime, so a typo becomes a `RuntimeBinderException` instead of a compile error. It is rare in application code, mostly for COM interop or ad-hoc JSON.",
+      "tags": ["types", "syntax"],
+      "level": 2,
+      "asked": "Tests whether you understand what the compiler is protecting you from; strong answers say they almost never use dynamic."
+    },
+    {
+      "id": "cs-038",
+      "q": "What is the difference between `const` and `readonly` fields?",
+      "choices": [
+        "`const` can be set in a constructor; `readonly` must be set where it is declared",
+        "`const` is a compile-time literal baked into callers; `readonly` is set at runtime",
+        "`const` applies only to strings; `readonly` applies to every type",
+        "`const` is per-instance; `readonly` is always static and shared"
+      ],
+      "answer": 1,
+      "why": "A `const` must be a compile-time constant (numbers, strings, bools, null) and is implicitly static; the compiler copies its value into every place that uses it. A `readonly` field is assigned at runtime, in its initialiser or a constructor, and can hold any type, such as a `TimeSpan` or a list.",
+      "tags": ["types", "immutability"],
+      "level": 1,
+      "asked": "A basics question; the follow-up is why a public const can bite you across assemblies."
+    },
+    {
+      "id": "cs-039",
+      "q": "Library A exposes `public const int MaxItems = 50;`. App B uses it. You change A to 100 and redeploy only A's DLL. What does B use?",
+      "choices": [
+        "100, because B reads the constant from A's assembly every time it runs",
+        "100 after the first restart, once B's JIT cache has been cleared",
+        "A MissingFieldException, because the constant's value no longer matches",
+        "50, because the compiler copied the literal into B when B was built"
+      ],
+      "answer": 3,
+      "why": "Constants are inlined at compile time, so B's IL contains the literal 50 until B is recompiled. A `public static readonly` field is read from A at runtime and would pick up 100. That is why values that might change belong in `static readonly` or configuration, not `const`.",
+      "tags": ["types", "versioning"],
+      "level": 3,
+      "asked": "Separates people who know what const compiles to from those who treat it as a fancier readonly."
+    },
+    {
+      "id": "cs-040",
+      "q": "What does `Console.WriteLine(7 / 2);` print?",
+      "choices": [
+        "3.5",
+        "4",
+        "3",
+        "3.0"
+      ],
+      "answer": 2,
+      "why": "Both operands are `int`, so C# performs integer division and truncates toward zero, giving 3. Unlike JavaScript there is no single number type. Make one operand floating point, `7 / 2.0` or `7m / 2`, to get 3.5.",
+      "tags": ["numbers"],
+      "level": 1,
+      "asked": "Catches JavaScript habits early; the same bug appears in average and percentage calculations."
+    },
+    {
+      "id": "cs-041",
+      "q": "Why do you use `decimal` rather than `double` for money in C#?",
+      "choices": [
+        "decimal is a base-10 type, so values like 0.10 are stored exactly",
+        "decimal has a much larger range, so totals never overflow",
+        "decimal arithmetic is faster because it runs on dedicated hardware",
+        "decimal rounds every result to two places, which suits currency"
+      ],
+      "answer": 0,
+      "why": "`double` is binary floating point, so 0.1 and 0.2 cannot be represented exactly and sums drift. `decimal` stores a 96-bit integer and a power-of-ten scale, so cents are exact. It is slower than double and has a smaller range, and it does not round to two places for you.",
+      "tags": ["numbers", "types"],
+      "level": 1,
+      "asked": "Every CRUD app with prices or invoices needs this; a strong answer also maps it to `decimal(18,2)` in SQL."
+    },
+    {
+      "id": "cs-042",
+      "q": "What does this print?",
+      "code": "double d = 0.1 + 0.2;\ndecimal m = 0.1m + 0.2m;\nConsole.WriteLine($\"{d == 0.3} {m == 0.3m}\");",
+      "lang": "cs",
+      "choices": [
+        "True True",
+        "False False",
+        "True False",
+        "False True"
+      ],
+      "answer": 3,
+      "why": "In binary floating point 0.1 + 0.2 is 0.30000000000000004, so the double comparison is False. The `m` suffix makes decimal literals, which hold 0.1 and 0.2 exactly, so the decimal sum equals 0.3m. Compare doubles with a tolerance rather than `==`.",
+      "tags": ["numbers"],
+      "level": 2,
+      "asked": "The same floating point trap as JavaScript, used to check you know C# has a decimal escape hatch."
+    },
+    {
+      "id": "cs-043",
+      "q": "What does this print in a default project (no `checked` setting)?",
+      "code": "int big = int.MaxValue;\nbig = big + 1;\nConsole.WriteLine(big);",
+      "lang": "cs",
+      "choices": [
+        "2147483648",
+        "-2147483648",
+        "An OverflowException is thrown",
+        "2147483647, because the value saturates"
+      ],
+      "answer": 1,
+      "why": "Integer arithmetic is unchecked by default, so the value wraps around to `int.MinValue`. Wrap in `checked(...)` or enable `<CheckForOverflowUnderflow>` to get an `OverflowException`. There is no promotion to a wider type and no saturation.",
+      "tags": ["numbers"],
+      "level": 2,
+      "asked": "Silent wraparound corrupts counters and totals; interviewers want to hear about `checked` or using `long`."
+    },
+    {
+      "id": "cs-044",
+      "q": "What does this print?",
+      "code": "int? stock = null;\nConsole.WriteLine(stock.HasValue);\nConsole.WriteLine(stock.GetValueOrDefault());\nConsole.WriteLine(stock.Value);",
+      "lang": "cs",
+      "choices": [
+        "False, 0, then 0 again",
+        "False, then a NullReferenceException",
+        "False, 0, then an InvalidOperationException",
+        "null, 0, then a NullReferenceException"
+      ],
+      "answer": 2,
+      "why": "`int?` is `Nullable<int>`, a struct with a flag and a value. `HasValue` is false and `GetValueOrDefault()` returns 0, but reading `.Value` on an empty nullable throws `InvalidOperationException`, not a NullReferenceException, because there is no reference to dereference.",
+      "tags": ["null", "value-types"],
+      "level": 1,
+      "asked": "Nullable value types show up in every optional database column; knowing which exception you get helps you read logs."
+    },
+    {
+      "id": "cs-045",
+      "q": "What does `settings.Theme ??= \"light\";` do?",
+      "choices": [
+        "Assigns \"light\" to Theme only when Theme is currently null",
+        "Assigns \"light\" to Theme when Theme is null or an empty string",
+        "Compares Theme with \"light\" and returns true when either is null",
+        "Throws when Theme is null, with \"light\" as the exception message"
+      ],
+      "answer": 0,
+      "why": "`??=` is null-coalescing assignment: evaluate the left side and assign the right only if it is null. An empty string is not null, so it is left alone. It is handy for lazy initialisation such as `_cache ??= Load();`.",
+      "tags": ["null", "operators"],
+      "level": 1,
+      "asked": "Short syntax question; mirrors JavaScript's `??=`, which helps if you come from there."
+    },
+    {
+      "id": "cs-046",
+      "q": "Why do style guides prefer `if (order is null)` over `if (order == null)`?",
+      "choices": [
+        "`is null` also returns true for default structs, which `== null` misses",
+        "`is null` cannot be redirected by a user-defined `==` operator on the type",
+        "`is null` checks the database value, while `== null` checks the C# value",
+        "`is null` is evaluated at compile time, so it does not cost anything at runtime"
+      ],
+      "answer": 1,
+      "why": "A class can overload `==` and make `== null` do something odd or throw. The `is null` pattern always compiles to a plain reference check, and `is not null` reads naturally. For ordinary types the result is the same; the pattern form is simply guaranteed.",
+      "tags": ["null", "pattern-matching"],
+      "level": 2,
+      "asked": "Shows you know operator overloading exists and that patterns sidestep it."
+    },
+    {
+      "id": "cs-047",
+      "q": "With nullable reference types enabled, what does the `!` in `user!.Name` do at runtime?",
+      "choices": [
+        "It throws an ArgumentNullException immediately if user is null",
+        "It converts a null user into a default instance before reading Name",
+        "It skips the property access and returns null if user is null",
+        "Nothing: it only silences the compiler's null warning at that spot"
+      ],
+      "answer": 3,
+      "why": "The null-forgiving operator is purely a compile-time annotation; it emits no check. If `user` is null you still get a NullReferenceException on `.Name`. Use it only where you know more than the compiler, and prefer a real check or `ArgumentNullException.ThrowIfNull` otherwise.",
+      "tags": ["null", "nullable-reference-types"],
+      "level": 2,
+      "asked": "People sprinkle `!` to make warnings go away; interviewers want to hear that it hides rather than fixes the problem."
+    },
+    {
+      "id": "cs-048",
+      "q": "A project has `<Nullable>enable</Nullable>`. What happens when you build code that may dereference a null `string?`?",
+      "choices": [
+        "The build fails with an error unless warnings-as-errors is switched off",
+        "The compiler inserts a null check that throws before the dereference",
+        "The build succeeds with a warning, unless warnings are treated as errors",
+        "Nothing at build time; the runtime logs a warning on the first null"
+      ],
+      "answer": 2,
+      "why": "Nullable reference types are a static analysis layer: they produce warnings such as CS8602, not errors, and change nothing at runtime. Teams often add `<WarningsAsErrors>nullable</WarningsAsErrors>` so the warnings actually block a merge.",
+      "tags": ["nullable-reference-types"],
+      "level": 1,
+      "asked": "Tells an interviewer whether you have actually worked in a project with nullability on, and how you enforce it."
+    },
+    {
+      "id": "cs-049",
+      "q": "What does this print?",
+      "code": "enum Status { Active = 1, Suspended = 2 }\n\nvar s = default(Status);\nConsole.WriteLine(s);",
+      "lang": "cs",
+      "choices": [
+        "Active, because the first member is the default",
+        "0, because no member has the value zero",
+        "An empty line, because default gives null",
+        "A compile error, because 0 is not a member"
+      ],
+      "answer": 1,
+      "why": "Every enum's default is the underlying value 0, whether or not a member has that value, and `ToString()` prints the number when no name matches. That is why guidance says to define a zero member such as `None` or `Unknown`, and why an unset enum property in a DTO can slip past validation.",
+      "tags": ["enums", "types"],
+      "level": 2,
+      "asked": "A realistic bug in request models; strong answers mention defining a zero member or validating with `Enum.IsDefined`."
+    },
+    {
+      "id": "cs-050",
+      "q": "A request body sets `\"role\": 99` for an enum `Role { User = 0, Admin = 1 }`, and it binds without error. How do you reject it?",
+      "choices": [
+        "Mark the enum [Flags] so that undefined numeric values fail to bind",
+        "Nothing is needed: casting 99 to Role already throws InvalidCastException",
+        "Switch the property type to `Role?` so that out-of-range values become null",
+        "Check it with `Enum.IsDefined(role)` or a validation attribute such as [EnumDataType]"
+      ],
+      "answer": 3,
+      "why": "C# lets any value of the underlying type be cast to an enum, so 99 is a perfectly valid `Role` at runtime. You have to validate explicitly: `Enum.IsDefined` (generic overload since .NET 5) or `[EnumDataType(typeof(Role))]`. Making it nullable or adding [Flags] does not restrict the range.",
+      "tags": ["enums", "validation"],
+      "level": 2,
+      "asked": "Unvalidated enum values are a classic source of odd data in CRUD apps."
+    },
+    {
+      "id": "cs-051",
+      "q": "What is the `[Flags]` attribute on an enum for?",
+      "choices": [
+        "It stores the enum as a string in the database instead of an integer",
+        "It marks members as powers of two that can be combined with `|`",
+        "It makes the compiler reject any value that is not a named member",
+        "It lets a variable hold only one member at a time, like a radio group"
+      ],
+      "answer": 1,
+      "why": "`[Flags]` documents that the enum is a bit set, e.g. `Read = 1, Write = 2, Delete = 4`, so `Read | Write` is meaningful and `ToString()` prints \"Read, Write\". You still assign the power-of-two values yourself. Test membership with `perms.HasFlag(Permissions.Write)` or a bitwise `&`.",
+      "tags": ["enums"],
+      "level": 2,
+      "asked": "Permissions and feature toggles are often stored this way; you need to read it in existing code."
+    },
+    {
+      "id": "cs-052",
+      "q": "What is the difference between `int.Parse(s)` and `int.TryParse(s, out var n)`?",
+      "choices": [
+        "Parse returns null for bad input; TryParse throws a FormatException",
+        "Parse ignores whitespace; TryParse fails if the string has any spaces",
+        "Parse throws on bad input; TryParse returns false and sets n to 0",
+        "Parse uses the invariant culture; TryParse uses the current culture"
+      ],
+      "answer": 2,
+      "why": "`Parse` throws `FormatException` (or `ArgumentNullException`, `OverflowException`) when the input is not a valid int. `TryParse` never throws for bad input: it returns a bool and puts the result, or 0, in the out variable. Use TryParse for user input where failure is expected. Both use the current culture by default.",
+      "tags": ["parsing", "errors"],
+      "level": 1,
+      "asked": "The Try pattern is idiomatic C#, and it ties into the question of when exceptions are appropriate."
+    },
+    {
+      "id": "cs-053",
+      "q": "What does `Console.WriteLine(Math.Round(2.5));` print by default?",
+      "choices": [
+        "3",
+        "2",
+        "2.5",
+        "3.0"
+      ],
+      "answer": 1,
+      "why": "`Math.Round` defaults to `MidpointRounding.ToEven` (banker's rounding): a midpoint rounds to the nearest even number, so 2.5 gives 2 and 3.5 gives 4. For the school rule, pass `MidpointRounding.AwayFromZero`. This matters when your totals must match an invoice or a spreadsheet.",
+      "tags": ["numbers"],
+      "level": 2,
+      "asked": "A real source of one-cent discrepancies in billing code; knowing the default is the whole point."
+    },
+    {
+      "id": "cs-054",
+      "q": "What is the difference between `(User)obj` and `obj as User`?",
+      "choices": [
+        "The cast returns null on failure; `as` throws an InvalidCastException",
+        "The cast works only on value types; `as` works only on classes",
+        "The cast runs a conversion operator; `as` copies the object's fields",
+        "The cast throws on a type mismatch; `as` yields null instead"
+      ],
+      "answer": 3,
+      "why": "A direct cast throws `InvalidCastException` when `obj` is not a `User`; `as` returns null, so it only works with reference or nullable types. Modern code usually prefers `if (obj is User u)`, which tests and casts in one step and avoids a later null check.",
+      "tags": ["types", "casting"],
+      "level": 1,
+      "asked": "Basic, but a strong answer moves straight to the `is` pattern."
+    },
+    {
+      "id": "cs-055",
+      "q": "Why does `decimal price = 9.99;` fail to compile?",
+      "choices": [
+        "9.99 is a double literal, and double does not convert implicitly to decimal",
+        "decimal variables must be declared with an explicit precision, like SQL",
+        "Literals with more than one decimal place require the `new decimal()` syntax",
+        "decimal is a reference type, so it must be created with the new keyword"
+      ],
+      "answer": 0,
+      "why": "An unsuffixed literal with a decimal point is a `double`. The compiler refuses an implicit double-to-decimal conversion because it could lose information, so you write `9.99m`. Likewise `f` means float and `L` means long.",
+      "tags": ["numbers", "types"],
+      "level": 1,
+      "asked": "Trivial once you know it, and a common first compile error for newcomers writing a price field."
+    },
+    {
+      "id": "cs-056",
+      "q": "What does this print?",
+      "code": "var (id, name) = GetUser();\nConsole.WriteLine($\"{id}:{name}\");\n\nstatic (int Id, string Name) GetUser() => (7, \"Ann\");",
+      "lang": "cs",
+      "choices": [
+        "7:Ann",
+        "(7, Ann):",
+        "Id:Name",
+        "A compile error: tuples cannot be deconstructed"
+      ],
+      "answer": 0,
+      "why": "`(int Id, string Name)` is a named `ValueTuple`. `var (id, name) = ...` deconstructs it by position into two locals. Tuples are handy for returning two related values from a private helper; for public APIs a record is usually clearer.",
+      "tags": ["tuples", "syntax"],
+      "level": 1,
+      "asked": "Tuples replace many out-parameter APIs, and interviewers like to hear when you would pick a record instead."
+    },
+    {
+      "id": "cs-057",
+      "q": "What does this print?",
+      "code": "var a = (1, \"x\");\nvar b = (1, \"x\");\nConsole.WriteLine(a == b);\nConsole.WriteLine(ReferenceEquals(a, b));",
+      "lang": "cs",
+      "choices": [
+        "True, then True",
+        "False, then False",
+        "False, then True",
+        "True, then False"
+      ],
+      "answer": 3,
+      "why": "Tuple `==` (C# 7.3+) compares element by element, so it is True. ValueTuples are structs, so `ReferenceEquals` boxes each one into a separate object and returns False. It is a reminder that reference identity is meaningless for value types.",
+      "tags": ["tuples", "equality"],
+      "level": 2,
+      "asked": "Checks that value equality versus identity is clear in your head, not just memorised for classes."
+    },
+    {
+      "id": "cs-058",
+      "q": "What does this print?",
+      "code": "class Animal { public virtual string Speak() => \"...\"; }\nclass Dog : Animal { public override string Speak() => \"Woof\"; }\nclass Cat : Animal { public new string Speak() => \"Meow\"; }\n\nAnimal d = new Dog(), c = new Cat();\nConsole.WriteLine($\"{d.Speak()} {c.Speak()}\");",
+      "lang": "cs",
+      "choices": [
+        "Woof Meow",
+        "... ...",
+        "... Meow",
+        "Woof ..."
+      ],
+      "answer": 3,
+      "why": "`override` replaces the virtual method, so a Dog seen as an Animal still says Woof. `new` only hides the method for callers who see the variable as `Cat`; through an `Animal` reference the virtual call reaches `Animal.Speak`. Method hiding is almost always a mistake, which is why the compiler warns without `new`.",
+      "tags": ["oop", "inheritance"],
+      "level": 2,
+      "asked": "Distinguishes people who understand virtual dispatch from those who think `new` and `override` are synonyms."
+    },
+    {
+      "id": "cs-059",
+      "q": "In what order do the constructors run for `new Manager()` when `Manager : Employee : Person`?",
+      "choices": [
+        "Manager, then Employee, then Person",
+        "Person, then Employee, then Manager",
+        "Only Manager, unless it calls base() explicitly",
+        "Employee, then Person, then Manager"
+      ],
+      "answer": 1,
+      "why": "Every constructor first calls a base constructor (implicitly `base()` if you do not write one), so the chain runs down to `object` and the bodies execute from the most basic class outwards. Field initialisers are the exception: they run before the base call, in derived-to-base order.",
+      "tags": ["oop", "inheritance"],
+      "level": 2,
+      "asked": "Matters when a base constructor calls a virtual method that relies on derived state that is not set yet."
+    },
+    {
+      "id": "cs-060",
+      "q": "When does a static constructor run?",
+      "choices": [
+        "Every time a new instance of the class is created",
+        "When the application starts, before Main is called",
+        "Only when your code calls it explicitly by name",
+        "Once, just before the type is first used"
+      ],
+      "answer": 3,
+      "why": "The runtime runs a static constructor at most once per type, before the first instance is created or any static member is accessed. You cannot call it or give it parameters. If it throws, the type is unusable for the rest of the process and every access raises `TypeInitializationException`.",
+      "tags": ["oop", "static"],
+      "level": 2,
+      "asked": "A TypeInitializationException in production usually traces back to a static constructor reading bad config."
+    },
+    {
+      "id": "cs-061",
+      "q": "What does this print?",
+      "code": "var o = new Order();\nvar a = o.CreatedA; var b = o.CreatedB;\nThread.Sleep(50);\nConsole.WriteLine($\"{o.CreatedA == a} {o.CreatedB == b}\");\n\nclass Order {\n    public DateTime CreatedA { get; } = DateTime.UtcNow;\n    public DateTime CreatedB => DateTime.UtcNow;\n}",
+      "lang": "cs",
+      "choices": [
+        "True True",
+        "False True",
+        "True False",
+        "False False"
+      ],
+      "answer": 2,
+      "why": "`{ get; } = expr` is an initialiser: it runs once when the object is constructed and the value is stored in a backing field, so CreatedA never changes. `=> expr` is an expression-bodied getter that runs on every read, so CreatedB is 50 ms later the second time. Mixing the two up is a common bug in entities.",
+      "tags": ["properties", "syntax"],
+      "level": 2,
+      "asked": "The two syntaxes differ by one character and behave completely differently; interviewers like it as a code-review question."
+    },
+    {
+      "id": "cs-062",
+      "q": "What does the `init` accessor in `public string Email { get; init; }` allow?",
+      "choices": [
+        "Setting Email in a constructor or object initialiser, but not afterwards",
+        "Setting Email once from anywhere, after which further assignments throw",
+        "Reading Email only after it has been explicitly initialised by a setter",
+        "Setting Email from inside the class, but never from calling code"
+      ],
+      "answer": 0,
+      "why": "An `init` accessor can only be called during object construction: in a constructor, an object initialiser like `new User { Email = \"a@b.c\" }`, or a `with` expression. Any later assignment is a compile error, not a runtime exception. It gives immutable DTOs without long constructors.",
+      "tags": ["properties", "immutability"],
+      "level": 1,
+      "asked": "Common in request/response models; explaining it well shows you understand object initialisers."
+    },
+    {
+      "id": "cs-063",
+      "q": "What is the difference between a constructor and an object initialiser such as `new User { Name = \"Ann\" }`?",
+      "choices": [
+        "An object initialiser replaces the constructor, which is then never called",
+        "An object initialiser runs before the constructor, so the constructor can see the values",
+        "The constructor runs first; the initialiser then sets accessible properties on the result",
+        "They are identical: the compiler turns initialisers into constructor parameters"
+      ],
+      "answer": 2,
+      "why": "`new User { Name = \"Ann\" }` calls the parameterless (or named) constructor and then assigns each listed property, so the constructor cannot see those values. Validation that must see them belongs in a constructor with parameters or uses `required` members.",
+      "tags": ["oop", "syntax"],
+      "level": 1,
+      "asked": "Explains why constructor-time invariants cannot rely on initialised properties."
+    },
+    {
+      "id": "cs-064",
+      "q": "What does `public class Report(ILogger<Report> logger)` (a primary constructor on a class, C# 12) create?",
+      "choices": [
+        "A public read-only property called Logger that holds the injected logger",
+        "A parameter that is in scope throughout the class body, but no property",
+        "A private readonly field called _logger that the compiler names for you",
+        "A record-style class with value equality and a generated Deconstruct method"
+      ],
+      "answer": 1,
+      "why": "On a class, primary constructor parameters are just parameters that the whole class body can see; the compiler captures them into hidden fields only if members use them. Unlike positional records, no public properties or equality are generated, and the captured parameter is not readonly.",
+      "tags": ["oop", "primary-constructors"],
+      "level": 2,
+      "asked": "Primary constructors are now common for DI in services; people wrongly expect record behaviour."
+    },
+    {
+      "id": "cs-065",
+      "q": "What does `required` on `public required string Name { get; init; }` enforce?",
+      "choices": [
+        "A runtime check in the setter that throws if the assigned value is null",
+        "That Name is validated as non-empty by ASP.NET Core model binding",
+        "That the property is always serialised to JSON, even when it is null",
+        "That every object creation site sets Name, or the code will not compile"
+      ],
+      "answer": 3,
+      "why": "`required` (C# 11) is a compile-time rule: `new Person()` without setting Name is an error. It does not check the value, so `Name = null!` or `Name = \"\"` still compiles. A constructor marked `[SetsRequiredMembers]` satisfies it. Serialisers such as System.Text.Json treat it as required on deserialisation.",
+      "tags": ["properties", "nullable-reference-types"],
+      "level": 2,
+      "asked": "Frequently used with nullable reference types to avoid `= null!` on DTO properties."
+    },
+    {
+      "id": "cs-066",
+      "q": "What does the `field` keyword do inside a property accessor in C# 14 (.NET 10)?",
+      "code": "public string Name\n{\n    get;\n    set => field = value.Trim();\n}",
+      "lang": "cs",
+      "choices": [
+        "It refers to the compiler-generated backing field of that property",
+        "It refers to the first field declared in the enclosing class",
+        "It declares a new local variable scoped to the setter only",
+        "It marks the property as a public field for serialisers"
+      ],
+      "answer": 0,
+      "why": "C# 14 lets an accessor refer to the auto-property's hidden backing field with `field`, so you can add logic to one accessor without declaring `private string _name;` by hand. The other accessor can stay auto-implemented, as `get;` does here.",
+      "tags": ["properties", "csharp-14"],
+      "level": 3,
+      "asked": "Tests whether you are current with the language; it removes a lot of boilerplate in validated properties."
+    },
+    {
+      "id": "cs-067",
+      "q": "What is the default access level of a method declared without a modifier inside a class, and of a top-level class declared without a modifier?",
+      "choices": [
+        "public for the method, and public for the class",
+        "private for the method, and internal for the class",
+        "internal for the method, and public for the class",
+        "protected for the method, and internal for the class"
+      ],
+      "answer": 1,
+      "why": "C# defaults to the most restrictive sensible level: members are `private`, and non-nested types are `internal` (visible within the same assembly). This is why a class your test project cannot see is usually missing `public` or `InternalsVisibleTo`.",
+      "tags": ["oop", "access-modifiers"],
+      "level": 1,
+      "asked": "A basics question that explains a very common \"why can't my test see this class\" problem."
+    },
+    {
+      "id": "cs-068",
+      "q": "What does `private protected` allow?",
+      "choices": [
+        "Access from derived classes in any assembly, and from anything in the same assembly",
+        "Access only from the declaring class and its nested types, never from subclasses",
+        "Access from derived classes, but only those in the same assembly",
+        "Access from any class in the same namespace, whatever the assembly"
+      ],
+      "answer": 2,
+      "why": "`private protected` (C# 7.2) is the intersection: the caller must both derive from the type and live in the same assembly. `protected internal` is the union. Namespaces play no part in C# access control.",
+      "tags": ["oop", "access-modifiers"],
+      "level": 3,
+      "asked": "Usually asked right after `protected internal`, to see whether you understand union versus intersection."
+    },
+    {
+      "id": "cs-069",
+      "q": "How is a test project usually allowed to call `internal` classes in the project under test?",
+      "choices": [
+        "By adding `[assembly: InternalsVisibleTo(\"MyApp.Tests\")]` or the MSBuild item",
+        "By putting the tests in the same namespace as the internal classes",
+        "By marking the tests with [Fact(Internal = true)] in xUnit",
+        "By referencing the project with `PrivateAssets=\"all\"` in the csproj"
+      ],
+      "answer": 0,
+      "why": "`InternalsVisibleTo` grants a named friend assembly access to internal types; modern SDK projects can declare it as `<InternalsVisibleTo Include=\"MyApp.Tests\" />`. Namespaces do not affect access, and PrivateAssets is about transitive package flow.",
+      "tags": ["access-modifiers", "testing"],
+      "level": 2,
+      "asked": "Shows you have set up a real test project; interviewers may follow up on whether testing internals is a smell."
+    },
+    {
+      "id": "cs-070",
+      "q": "What is a `static` class in C#?",
+      "choices": [
+        "A class whose instances are shared across all threads automatically",
+        "A class that holds only static members and cannot be instantiated",
+        "A class whose methods are inlined by the JIT for extra speed",
+        "A class that is created once per request by the DI container"
+      ],
+      "answer": 1,
+      "why": "A static class is sealed and abstract under the hood: no instances, only static members. Helper collections such as `Math` and every class that declares extension methods are static. Singleton lifetime in DI is a different idea: that is one instance of a normal class.",
+      "tags": ["oop", "static"],
+      "level": 1,
+      "asked": "Basics; a good follow-up is why static helpers with hidden dependencies make code hard to test."
+    },
+    {
+      "id": "cs-071",
+      "q": "What does `sealed` on a class do?",
+      "choices": [
+        "It makes every field in the class readonly after construction",
+        "It hides the class from other assemblies, like internal",
+        "It stops any other class from inheriting from it",
+        "It prevents the class from being serialised to JSON"
+      ],
+      "answer": 2,
+      "why": "A sealed class cannot be used as a base class. It communicates that the type was not designed for extension and lets the JIT devirtualise calls. On a method, `sealed override` stops further overriding in subclasses.",
+      "tags": ["oop", "inheritance"],
+      "level": 1,
+      "asked": "Asked to see whether you think about designing for inheritance; many teams seal classes by default."
+    },
+    {
+      "id": "cs-072",
+      "q": "What is a `partial` class used for in modern .NET code?",
+      "choices": [
+        "Splitting one class across files, often so a source generator can add members",
+        "Declaring a class that is only partly implemented, like an abstract class",
+        "Letting a class inherit from two base classes, one per partial file",
+        "Loading half of a class lazily the first time one of its members is used"
+      ],
+      "answer": 0,
+      "why": "All `partial` declarations are merged into one type at compile time. Today that mostly serves source generators: `[GeneratedRegex]`, `[LoggerMessage]` and System.Text.Json's `JsonSerializerContext` all need a partial type or method for the generator to fill in. It does not change inheritance rules.",
+      "tags": ["oop", "source-generators"],
+      "level": 2,
+      "asked": "Knowing why generators need partial shows you have used them rather than just heard of them."
+    },
+    {
+      "id": "cs-073",
+      "q": "What is the difference between an optional parameter and a named argument?",
+      "code": "void Send(string to, bool urgent = false, int retries = 3) { }\n\nSend(\"ann@x.io\", retries: 5);",
+      "lang": "cs",
+      "choices": [
+        "Optional parameters must be named at the call site, or the code will not compile",
+        "The declaration gives defaults; the call names the argument, skipping `urgent`",
+        "Named arguments are only allowed when every earlier parameter is also named",
+        "Optional parameters are resolved at runtime, so changing a default needs no rebuild"
+      ],
+      "answer": 1,
+      "why": "`urgent = false` declares a default so callers may omit it; `retries: 5` names the argument so you can skip `urgent` and still set the third one. Like const, default values are baked into the caller at compile time, so changing one in a library needs callers to recompile.",
+      "tags": ["syntax", "parameters"],
+      "level": 1,
+      "asked": "Everyday syntax; the versioning detail about defaults being compiled into callers is what impresses."
+    },
+    {
+      "id": "cs-074",
+      "q": "What does `nameof(order.CustomerId)` evaluate to?",
+      "choices": [
+        "The value of order.CustomerId, converted to a string",
+        "The fully qualified name \"Shop.Order.CustomerId\"",
+        "The string \"CustomerId\", fixed at compile time",
+        "The string \"order.CustomerId\", including the variable"
+      ],
+      "answer": 2,
+      "why": "`nameof` produces the simple name of the symbol as a compile-time constant, so it survives renames. It is standard in `ArgumentException(nameof(x))`, `PropertyChanged` and log messages. It does not evaluate the expression or include the qualifier.",
+      "tags": ["syntax"],
+      "level": 1,
+      "asked": "Small, but it signals you write refactor-safe code."
+    },
+    {
+      "id": "cs-075",
+      "q": "What does a file-scoped namespace, `namespace Shop.Orders;`, change compared with the braced form?",
+      "choices": [
+        "It limits every type in the file to internal visibility",
+        "It creates a namespace that exists only while that file compiles",
+        "It applies the namespace to the whole file without an extra level of indentation",
+        "It lets the file declare types in several namespaces at once"
+      ],
+      "answer": 2,
+      "why": "File-scoped namespaces (C# 10) are pure syntax: everything in the file belongs to that namespace, and you lose one level of nesting. A file can have only one. Accessibility is unchanged.",
+      "tags": ["syntax"],
+      "level": 1,
+      "asked": "Shows familiarity with the modern templates, which all use this form."
+    },
+    {
+      "id": "cs-076",
+      "q": "In a .NET 9 project with `<ImplicitUsings>enable</ImplicitUsings>`, why does `List<T>` work without a `using System.Collections.Generic;` line?",
+      "choices": [
+        "The SDK generates global using directives for common namespaces",
+        "The compiler searches every referenced namespace for unknown types",
+        "List<T> was moved into the System namespace in .NET 6",
+        "Visual Studio adds the usings when it opens the file"
+      ],
+      "answer": 0,
+      "why": "The SDK writes a generated `GlobalUsings.g.cs` with `global using System.Collections.Generic;` and friends, chosen per project type (web projects add ASP.NET Core namespaces). You can add your own `global using` lines or `<Using Include=...>` items.",
+      "tags": ["syntax", "tooling"],
+      "level": 1,
+      "asked": "Newcomers are confused by code that compiles without usings; being able to explain it is basic literacy."
+    },
+    {
+      "id": "cs-077",
+      "q": "In a Program.cs with top-level statements, what does the compiler generate?",
+      "choices": [
+        "A static class named App with an instance Run method",
+        "A Program class with a Main method wrapping those statements",
+        "A script that is interpreted at runtime without compilation",
+        "A Startup class whose Configure method holds the statements"
+      ],
+      "answer": 1,
+      "why": "Top-level statements are sugar for an entry point: the compiler emits a `Program` class with a `Main` (async if you use await) containing your statements. Only one file per project may have them. This is why integration tests can reference `Program` via `public partial class Program { }`.",
+      "tags": ["syntax", "aspnet"],
+      "level": 1,
+      "asked": "Links the minimal hosting template to what actually runs, and to the WebApplicationFactory<Program> trick."
+    },
+    {
+      "id": "cs-078",
+      "q": "What does this print?",
+      "code": "var price = 1234.5m;\nConsole.WriteLine($\"{price:N2}|{price,10:F1}|{42:D5}\");",
+      "lang": "cs",
+      "choices": [
+        "1,234.50|    1234.5|00042 (under en-US)",
+        "1234.50|1234.5    |42000 (under en-US)",
+        "1,234.5|1234.5|42 (under en-US)",
+        "A FormatException, since D only applies to decimal"
+      ],
+      "answer": 0,
+      "why": "`N2` adds group separators and two decimals; `,10` right-aligns in a 10-character field and `F1` gives one decimal; `D5` pads an integer with leading zeros. `D` is for integer types only, so it is fine on 42. Formatting uses the current culture, so the separators vary by locale.",
+      "tags": ["strings", "formatting"],
+      "level": 2,
+      "asked": "Format strings turn up in reports, CSV exports and emails; knowing they are culture-sensitive is the real point."
+    },
+    {
+      "id": "cs-079",
+      "q": "On a server whose current culture is `de-DE`, what does `double.Parse(\"1.5\")` return?",
+      "choices": [
+        "1.5, because parsing always uses the invariant culture",
+        "15, because '.' is the thousands separator in German",
+        "A FormatException, because German expects a comma",
+        "1, because parsing stops at the first unknown character"
+      ],
+      "answer": 1,
+      "why": "`double.Parse` uses the current culture and allows thousands separators, and in de-DE `.` groups digits while `,` is the decimal point, so \"1.5\" silently becomes 15. For machine-readable input pass `CultureInfo.InvariantCulture`. Silent misreads like this are worse than an exception.",
+      "tags": ["strings", "parsing", "globalisation"],
+      "level": 3,
+      "asked": "A real production bug when containers or servers run with a non-English locale; strong answers always parse data with the invariant culture."
+    },
+    {
+      "id": "cs-080",
+      "q": "What does the `@` in `var path = @\"C:\\logs\\new\";` do?",
+      "choices": [
+        "It interpolates variables into the string, like the $ prefix",
+        "It makes the string a UTF-8 byte array instead of UTF-16",
+        "It makes a verbatim string, so backslashes are not escapes",
+        "It interns the string so equal literals share one instance"
+      ],
+      "answer": 2,
+      "why": "A verbatim string treats backslashes literally and can span lines; a double quote is written as `\"\"`. Without `@`, `\\n` in \"new\" would be a newline. It combines with interpolation as `$@\"...\"`. The `u8` suffix is what produces UTF-8 bytes.",
+      "tags": ["strings", "syntax"],
+      "level": 1,
+      "asked": "Basic syntax you meet in file paths and regexes."
+    },
+    {
+      "id": "cs-081",
+      "q": "What is the main advantage of a raw string literal (C# 11), written with three or more double quotes?",
+      "code": "var json = \"\"\"\n    { \"name\": \"Ann\", \"tags\": [\"a\"] }\n    \"\"\";",
+      "lang": "cs",
+      "choices": [
+        "Its content is validated as JSON by the compiler",
+        "It is stored as UTF-8, halving the memory it uses",
+        "Quotes and backslashes need no escaping, and indentation is trimmed",
+        "It is immutable, unlike ordinary string literals"
+      ],
+      "answer": 2,
+      "why": "Raw string literals take their content verbatim: no escaping of quotes or backslashes, and the whitespace to the left of the closing delimiter is removed from every line. That makes embedded JSON, SQL and test fixtures readable. All string literals are immutable and UTF-16.",
+      "tags": ["strings", "syntax"],
+      "level": 2,
+      "asked": "Common in tests with JSON payloads; recognising the syntax avoids confusion in code review."
+    },
+    {
+      "id": "cs-082",
+      "q": "Why prefer `string.Equals(a, b, StringComparison.OrdinalIgnoreCase)` to `a.ToLower() == b.ToLower()`?",
+      "choices": [
+        "ToLower throws on non-ASCII characters, while Equals handles all of Unicode",
+        "The ToLower version is case-sensitive, so it does not actually work",
+        "OrdinalIgnoreCase sorts the strings first, which makes the comparison stable",
+        "It allocates no new strings and avoids culture quirks such as the Turkish i"
+      ],
+      "answer": 3,
+      "why": "`ToLower()` allocates two new strings and uses the current culture: in tr-TR, \"I\".ToLower() is a dotless ı, so \"ID\" and \"id\" stop matching. An ordinal ignore-case comparison needs no allocation and gives the same answer everywhere, which is what identifiers, emails and keys need.",
+      "tags": ["strings", "globalisation"],
+      "level": 2,
+      "asked": "The Turkish-i problem is a classic; interviewers use it to see if you think about culture at all."
+    },
+    {
+      "id": "cs-083",
+      "q": "How do you make a `Dictionary<string, User>` treat \"ANN\" and \"ann\" as the same key?",
+      "choices": [
+        "Override GetHashCode on string in a partial class",
+        "Call ToLower on each key when enumerating the dictionary",
+        "Construct it with `StringComparer.OrdinalIgnoreCase`",
+        "Set the dictionary's `CaseSensitive` property to false"
+      ],
+      "answer": 2,
+      "why": "Dictionaries and HashSets accept an `IEqualityComparer<T>`; `new Dictionary<string, User>(StringComparer.OrdinalIgnoreCase)` hashes and compares keys case-insensitively. There is no CaseSensitive property, and lower-casing only at read time leaves duplicate keys in the store.",
+      "tags": ["collections", "strings"],
+      "level": 2,
+      "asked": "A small but practical question for lookups by username or email."
+    },
+    {
+      "id": "cs-084",
+      "q": "What does this print?",
+      "code": "var parts = \"a,,b,\".Split(',');\nvar clean = \"a,,b,\".Split(',', StringSplitOptions.RemoveEmptyEntries);\nConsole.WriteLine($\"{parts.Length} {clean.Length}\");",
+      "lang": "cs",
+      "choices": [
+        "4 2",
+        "3 2",
+        "2 2",
+        "4 3"
+      ],
+      "answer": 0,
+      "why": "Splitting \"a,,b,\" on commas gives \"a\", \"\", \"b\" and a trailing \"\", four entries. `RemoveEmptyEntries` drops the empty ones, leaving two. Add `TrimEntries` (since .NET 5) to trim whitespace as well, which is common when parsing CSV-ish config values.",
+      "tags": ["strings", "parsing"],
+      "level": 1,
+      "asked": "Parsing comma-separated query strings and config values is everyday work."
+    },
+    {
+      "id": "cs-085",
+      "q": "What does this print?",
+      "code": "var code = \"ORD-2026-0042\";\nConsole.WriteLine(code[^4..]);\nConsole.WriteLine(code[..3]);",
+      "lang": "cs",
+      "choices": [
+        "-004 and ORD-",
+        "0042 and ORD",
+        "0042 and ORD-",
+        "2026 and ORD"
+      ],
+      "answer": 1,
+      "why": "`^4` means four from the end, and a range's end is exclusive, so `[^4..]` is the last four characters and `[..3]` is indices 0 to 2. Ranges on strings call `Substring`, so they allocate; on a span they do not.",
+      "tags": ["strings", "syntax"],
+      "level": 1,
+      "asked": "Ranges and indices are modern syntax that replaces fiddly Substring arithmetic."
+    },
+    {
+      "id": "cs-086",
+      "q": "What does this print?",
+      "code": "string? middle = null;\nConsole.WriteLine(\"Ann \" + middle + \"Lee\");\nConsole.WriteLine($\"Ann {middle}Lee\");\nConsole.WriteLine(middle.Length);",
+      "lang": "cs",
+      "choices": [
+        "Ann nullLee twice, then an exception",
+        "Ann Lee twice, then 0",
+        "An exception on the first line, because middle is null",
+        "Ann Lee twice, then a NullReferenceException"
+      ],
+      "answer": 3,
+      "why": "String concatenation and interpolation both treat null as an empty string, so the first two lines print `Ann Lee`. Calling a member on the null reference is different: `middle.Length` throws NullReferenceException (and the compiler warns with nullability on). JavaScript would print `null` in the first two.",
+      "tags": ["strings", "null"],
+      "level": 2,
+      "asked": "Helps explain why a missing value quietly vanishes from generated text rather than crashing."
+    },
+    {
+      "id": "cs-087",
+      "q": "What does `char c = 'a'; Console.WriteLine(c + 1);` print?",
+      "choices": [
+        "b",
+        "a1",
+        "98",
+        "A compile error: cannot add int to char"
+      ],
+      "answer": 2,
+      "why": "`char` is a 16-bit numeric type; `c + 1` promotes it to `int`, and 'a' is 97, so it prints 98. Cast back with `(char)(c + 1)` to get 'b'. Concatenation only happens when one operand is a string.",
+      "tags": ["types", "strings"],
+      "level": 2,
+      "asked": "Distinguishes char from string, a common confusion coming from JavaScript where both are strings."
+    },
+    {
+      "id": "cs-088",
+      "q": "What is the difference between `string.IsNullOrEmpty` and `string.IsNullOrWhiteSpace`?",
+      "choices": [
+        "IsNullOrEmpty also trims the string before checking its length",
+        "IsNullOrWhiteSpace also returns true for strings made only of spaces, tabs or newlines",
+        "IsNullOrWhiteSpace returns false for null, unlike IsNullOrEmpty",
+        "IsNullOrEmpty is culture-aware, while IsNullOrWhiteSpace is ordinal"
+      ],
+      "answer": 1,
+      "why": "`IsNullOrEmpty` is true for null or \"\". `IsNullOrWhiteSpace` is also true for \"   \" or \"\\t\\n\", which is usually what you want for required text fields. Both handle null safely and neither allocates.",
+      "tags": ["strings", "validation"],
+      "level": 1,
+      "asked": "A validation basic; picking IsNullOrWhiteSpace for user input shows care."
+    },
+    {
+      "id": "cs-089",
+      "q": "Which statement about the C# `switch` statement is correct?",
+      "choices": [
+        "Execution falls through to the next case unless you write break",
+        "Only int and enum values can be used in case labels",
+        "A case with statements must end in break, return, throw or goto",
+        "Each case must declare a new scope with braces, or the code will not compile"
+      ],
+      "answer": 2,
+      "why": "C# forbids implicit fall-through from a case that contains statements (CS0163), which removes a classic C bug; stacked empty labels (`case 1: case 2:`) are still allowed. Switch works on strings, types and patterns, and braces are optional.",
+      "tags": ["syntax", "pattern-matching"],
+      "level": 1,
+      "asked": "JavaScript developers expect fall-through; this checks you know C# is stricter."
+    },
+    {
+      "id": "cs-090",
+      "q": "What does this print?",
+      "code": "static string Tier(decimal total) => total switch\n{\n    < 0 => \"invalid\",\n    >= 0 and < 100 => \"small\",\n    >= 100 and < 1000 => \"medium\",\n    _ => \"large\"\n};\nConsole.WriteLine(Tier(100));",
+      "lang": "cs",
+      "choices": [
+        "small",
+        "medium",
+        "large",
+        "invalid"
+      ],
+      "answer": 1,
+      "why": "Relational patterns with `and` build ranges, and arms are tested top to bottom. 100 fails `< 100` in the second arm and matches `>= 100 and < 1000`. The `_` discard catches everything else, which also keeps the switch expression exhaustive.",
+      "tags": ["pattern-matching"],
+      "level": 1,
+      "asked": "Business rules like pricing tiers are the everyday use of switch expressions."
+    },
+    {
+      "id": "cs-091",
+      "q": "What happens here?",
+      "code": "var stock = new Dictionary<string, int> { [\"apple\"] = 3 };\nConsole.WriteLine(stock[\"pear\"]);",
+      "lang": "cs",
+      "choices": [
+        "It prints 0, the default value for int",
+        "It prints an empty line, because the key is missing",
+        "It throws KeyNotFoundException",
+        "It throws NullReferenceException"
+      ],
+      "answer": 2,
+      "why": "The dictionary indexer throws `KeyNotFoundException` for a missing key, unlike a JavaScript object that returns undefined. Use `TryGetValue(key, out var n)` or `GetValueOrDefault(key)` when absence is normal.",
+      "tags": ["collections"],
+      "level": 1,
+      "asked": "The most common dictionary exception in logs; the follow-up is which API you use instead."
+    },
+    {
+      "id": "cs-092",
+      "q": "What is the difference between `dict.Add(key, value)` and `dict[key] = value` when the key already exists?",
+      "choices": [
+        "Add overwrites silently; the indexer throws an ArgumentException",
+        "Add throws an ArgumentException; the indexer overwrites the value",
+        "Each overwrites the old value, and Add also returns the replaced value",
+        "Each throws an exception, unless the dictionary has a custom comparer"
+      ],
+      "answer": 1,
+      "why": "`Add` refuses duplicates with `ArgumentException` (\"An item with the same key has already been added\"), which is useful when a duplicate means a bug. The indexer setter is an upsert. `TryAdd` returns false instead of throwing.",
+      "tags": ["collections"],
+      "level": 1,
+      "asked": "Picking between Add, TryAdd and the indexer says something about how you think about duplicates."
+    },
+    {
+      "id": "cs-093",
+      "q": "What happens when this runs?",
+      "code": "var ids = new List<int> { 1, 2, 3, 4 };\nforeach (var id in ids)\n    if (id % 2 == 0) ids.Remove(id);",
+      "lang": "cs",
+      "choices": [
+        "It removes 2 and 4, leaving [1, 3]",
+        "It removes only 2, because the loop skips the element after a removal",
+        "It throws InvalidOperationException because the collection was modified",
+        "It does not compile, because foreach variables are read-only"
+      ],
+      "answer": 2,
+      "why": "`List<T>` tracks a version number, and its enumerator throws `InvalidOperationException` on the next `MoveNext` after the list changes. Use `ids.RemoveAll(id => id % 2 == 0)`, loop backwards with a `for`, or iterate over a copy.",
+      "tags": ["collections", "errors"],
+      "level": 1,
+      "asked": "Everyone hits it once; interviewers want the idiomatic fix, `RemoveAll`."
+    },
+    {
+      "id": "cs-094",
+      "q": "Your service method returns a list that callers must not change. Which return type communicates that best?",
+      "choices": [
+        "`List<Order>`, so callers get the fastest concrete type",
+        "`Order[]`, because arrays cannot be modified once returned",
+        "`IEnumerable<Order>`, so the caller can enumerate it more than once cheaply",
+        "`IReadOnlyList<Order>`, which gives Count and indexing but no Add"
+      ],
+      "answer": 3,
+      "why": "`IReadOnlyList<T>` exposes `Count` and an indexer without mutators, and `List<T>` implements it, so there is no copy. Arrays are fixed-size but their elements are still writable. `IEnumerable<T>` hides Count and invites multiple enumeration of something that may be lazy.",
+      "tags": ["collections", "api-design"],
+      "level": 2,
+      "asked": "Return types are part of an API contract; strong answers mention that a cast back to List is still possible, so use ImmutableArray when it truly matters."
+    },
+    {
+      "id": "cs-095",
+      "q": "What does this print?",
+      "code": "var set = new HashSet<Tag> { new Tag(\"c#\"), new Tag(\"c#\") };\nConsole.WriteLine(set.Count);\n\nclass Tag(string name) { public string Name { get; } = name; }",
+      "lang": "cs",
+      "choices": [
+        "1, because HashSet compares the Name property of each tag",
+        "0, because both tags are equal and cancel each other out",
+        "A compile error, because Tag has no GetHashCode override",
+        "2, because a class uses reference equality by default"
+      ],
+      "answer": 3,
+      "why": "HashSet asks `GetHashCode` and `Equals`, and a plain class inherits reference-based versions from `object`, so two separate instances are two items. Declare `record Tag(string Name)`, override both methods, or pass an `IEqualityComparer<Tag>`.",
+      "tags": ["collections", "equality"],
+      "level": 2,
+      "asked": "Shows you understand what hashing collections actually rely on."
+    },
+    {
+      "id": "cs-096",
+      "q": "You override `Equals` on a class but not `GetHashCode`. What goes wrong?",
+      "choices": [
+        "Equal objects can land in different hash buckets, so Dictionary and HashSet miss them",
+        "Nothing at runtime: GetHashCode is only used by the debugger",
+        "Every call to == now throws, because the two methods disagree",
+        "The class can no longer be serialised to JSON"
+      ],
+      "answer": 0,
+      "why": "Hash-based collections find the bucket via `GetHashCode` before calling `Equals`. If equal objects return different hash codes, a lookup searches the wrong bucket and fails. The rule is: equal objects must have equal hash codes; `HashCode.Combine(a, b)` makes that easy. The compiler warns (CS0659) for exactly this reason.",
+      "tags": ["equality", "collections"],
+      "level": 2,
+      "asked": "A standard contract question; the HashCode.Combine detail shows you have done it recently."
+    },
+    {
+      "id": "cs-097",
+      "q": "A `User` object is used as a dictionary key, and its hash code is based on `Email`. What happens after you change the user's Email?",
+      "choices": [
+        "The dictionary re-hashes the entry automatically on the next lookup",
+        "Lookups by that object will usually fail, although it is still in the dictionary",
+        "The dictionary throws InvalidOperationException on the next access",
+        "The entry is removed from the dictionary when the property changes"
+      ],
+      "answer": 1,
+      "why": "The entry was filed under the old hash code. After the change, `ContainsKey(user)` hashes to a different bucket and misses it, yet enumeration still shows it. Keys must be immutable, or at least their hashed fields must be; use an ID or a record with init-only properties.",
+      "tags": ["collections", "equality", "immutability"],
+      "level": 3,
+      "asked": "Explains a baffling bug class; strong answers say \"hash only immutable fields\"."
+    },
+    {
+      "id": "cs-098",
+      "q": "What is iteration order of a `Dictionary<TKey, TValue>` in .NET?",
+      "choices": [
+        "Always insertion order, which the documentation guarantees",
+        "Always sorted by key, because entries are stored in a tree",
+        "Always reversed insertion order, like a stack",
+        "Undefined: it often looks like insertion order but you cannot rely on it"
+      ],
+      "answer": 3,
+      "why": "The implementation happens to return insertion order until you remove items, after which freed slots are reused and the order changes. The docs call the order unspecified. Use `SortedDictionary` for key order or keep a separate list, or `OrderedDictionary<TKey, TValue>` (generic since .NET 9) for guaranteed insertion order.",
+      "tags": ["collections"],
+      "level": 3,
+      "asked": "People ship code that depends on the accidental order; this checks you know it is not a contract."
+    },
+    {
+      "id": "cs-099",
+      "q": "Which collection suits a work queue that must always hand out the job with the lowest priority number first?",
+      "choices": [
+        "`PriorityQueue<TElement, TPriority>`",
+        "`Queue<T>`, sorted after each Enqueue",
+        "`SortedList<TKey, TValue>` keyed by priority",
+        "`Stack<T>` with the lowest items pushed last"
+      ],
+      "answer": 0,
+      "why": "`PriorityQueue<TElement, TPriority>` (.NET 6) is a min-heap: `Enqueue(job, priority)` and `Dequeue()` return the smallest priority in O(log n). A SortedList keyed by priority cannot hold two jobs with the same priority, and re-sorting a Queue is O(n log n) every time.",
+      "tags": ["collections"],
+      "level": 2,
+      "asked": "Picking the right collection is a practical skill; interviewers like hearing the duplicate-key flaw in SortedList."
+    },
+    {
+      "id": "cs-100",
+      "q": "When is `FrozenDictionary<TKey, TValue>` (.NET 8) the right choice?",
+      "choices": [
+        "When many threads write to the dictionary concurrently",
+        "When the data is built once at startup and then only read",
+        "When you need entries kept in insertion order",
+        "When keys expire automatically after a timeout"
+      ],
+      "answer": 1,
+      "why": "`ToFrozenDictionary()` spends extra time at creation to build a lookup structure optimised for reads, and the result can never change. It suits configuration, lookup tables and routing maps. Concurrent writes need `ConcurrentDictionary`; expiry needs a cache such as `IMemoryCache`.",
+      "tags": ["collections", "performance"],
+      "level": 3,
+      "asked": "A modern-.NET awareness question; the trade-off (slow build, fast reads, immutable) is the answer they want."
+    },
+    {
+      "id": "cs-101",
+      "q": "`list.Contains(x)` is in a hot loop over 50,000 items and profiling shows it dominates. What is the usual fix?",
+      "choices": [
+        "Sort the list first, so Contains can stop early",
+        "Replace the List<T> with an array, which has a faster Contains",
+        "Put the items in a HashSet<T> once and call Contains on that",
+        "Call Contains through LINQ, which caches previous results"
+      ],
+      "answer": 2,
+      "why": "`List<T>.Contains` is a linear scan, so 50,000 lookups against 50,000 items is billions of comparisons. Building a `HashSet<T>` once makes each lookup O(1) on average. Sorting does not change List.Contains, and LINQ's Contains on a list just calls the same method.",
+      "tags": ["collections", "performance"],
+      "level": 1,
+      "asked": "The single most common performance fix in business code; interviewers like a quick, confident answer."
+    },
+    {
+      "id": "cs-102",
+      "q": "What is the difference between `Select` and `SelectMany`?",
+      "code": "var orders = new[] { new[] { \"a\", \"b\" }, new[] { \"c\" } };\nvar x = orders.Select(o => o);\nvar y = orders.SelectMany(o => o);",
+      "lang": "cs",
+      "choices": [
+        "x has 3 strings and y has 2 arrays",
+        "x and y both have 3 strings; SelectMany is just faster",
+        "x has 2 arrays and y has 3 strings",
+        "x has 2 arrays and y has 2 flattened arrays"
+      ],
+      "answer": 2,
+      "why": "`Select` maps each element to one result, so x is a sequence of two arrays. `SelectMany` maps each element to a sequence and flattens them, like JavaScript's `flatMap`, so y is \"a\", \"b\", \"c\". It is how you get every order line across a list of orders.",
+      "tags": ["linq"],
+      "level": 1,
+      "asked": "A LINQ basics question; mapping it to flatMap helps JavaScript developers."
+    },
+    {
+      "id": "cs-103",
+      "q": "What does this print?",
+      "code": "var people = new[] { (\"Ann\", 30), (\"Bob\", 25), (\"Cy\", 30) };\nvar r = people.OrderBy(p => p.Item2).OrderBy(p => p.Item1);\nConsole.WriteLine(string.Join(\",\", r.Select(p => p.Item1)));",
+      "lang": "cs",
+      "choices": [
+        "Bob,Ann,Cy",
+        "Ann,Cy,Bob",
+        "Cy,Bob,Ann",
+        "Ann,Bob,Cy"
+      ],
+      "answer": 3,
+      "why": "A second `OrderBy` starts a new primary sort, so the result is simply ordered by name: Ann, Bob, Cy. To sort by age and then by name you need `OrderBy(p => p.Item2).ThenBy(p => p.Item1)`, which would give Bob, Ann, Cy.",
+      "tags": ["linq"],
+      "level": 2,
+      "asked": "A classic sorting bug; `ThenBy` is the expected fix."
+    },
+    {
+      "id": "cs-104",
+      "q": "What does `ToDictionary` do if two elements produce the same key?",
+      "code": "var byEmail = users.ToDictionary(u => u.Email);",
+      "lang": "cs",
+      "choices": [
+        "It keeps the last element with that key",
+        "It throws ArgumentException",
+        "It keeps the first element with that key",
+        "It groups them into a list under the key"
+      ],
+      "answer": 1,
+      "why": "`ToDictionary` calls `Add` for each element, so a duplicate key throws `ArgumentException`. If duplicates are possible, use `ToLookup` or `GroupBy`, or deduplicate first with `DistinctBy`. JavaScript's `Object.fromEntries` silently keeps the last one, which is why this surprises people.",
+      "tags": ["linq", "collections"],
+      "level": 2,
+      "asked": "Real production crashes come from assuming a column is unique; interviewers like the ToLookup alternative."
+    },
+    {
+      "id": "cs-105",
+      "q": "What does this print?",
+      "code": "var sales = new[] { (\"UK\", 10m), (\"FR\", 5m), (\"UK\", 7m) };\nforeach (var g in sales.GroupBy(s => s.Item1))\n    Console.Write($\"{g.Key}={g.Sum(s => s.Item2)} \");",
+      "lang": "cs",
+      "choices": [
+        "UK=17 FR=5",
+        "FR=5 UK=17",
+        "UK=10 FR=5 UK=7",
+        "UK=2 FR=1"
+      ],
+      "answer": 0,
+      "why": "LINQ-to-objects `GroupBy` yields each group in the order its key first appears, and each group is an `IGrouping<TKey, TElement>` you can aggregate. So UK comes first with 10 + 7. Unlike SQL, grouping does not sort.",
+      "tags": ["linq"],
+      "level": 2,
+      "asked": "Grouping and summing is daily reporting work; knowing the order guarantee avoids needless OrderBy."
+    },
+    {
+      "id": "cs-106",
+      "q": "What does this print?",
+      "code": "var a = new[] { new Item(1), new Item(1) }.Distinct().Count();\nvar b = new[] { new Item(1), new Item(1) }.DistinctBy(i => i.Id).Count();\nConsole.WriteLine($\"{a} {b}\");\n\nclass Item(int id) { public int Id { get; } = id; }",
+      "lang": "cs",
+      "choices": [
+        "1 1",
+        "2 2",
+        "2 1",
+        "1 2"
+      ],
+      "answer": 2,
+      "why": "`Distinct` uses the default equality comparer, which for a plain class is reference equality, so two instances survive. `DistinctBy` (.NET 6) compares the selected key, so only one remains. A record, or an `IEqualityComparer<Item>`, would make plain Distinct work.",
+      "tags": ["linq", "equality"],
+      "level": 2,
+      "asked": "Ties LINQ to equality semantics, which interviewers like to probe from different angles."
+    },
+    {
+      "id": "cs-107",
+      "q": "What happens here?",
+      "code": "var empty = new List<decimal>();\nConsole.WriteLine(empty.Sum());\nConsole.WriteLine(empty.Average());",
+      "lang": "cs",
+      "choices": [
+        "0, then 0, because an empty average is defined as zero",
+        "0, then an InvalidOperationException",
+        "An InvalidOperationException on the first line, from Sum",
+        "0, then NaN, because the average divides zero by zero"
+      ],
+      "answer": 1,
+      "why": "`Sum` of an empty sequence is 0, the natural identity. `Average`, `Min` and `Max` have no sensible answer for an empty non-nullable sequence, so they throw \"Sequence contains no elements\". Guard with `Any()`, use `DefaultIfEmpty()`, or project to `decimal?` so they return null.",
+      "tags": ["linq", "errors"],
+      "level": 2,
+      "asked": "Reports with no data yet crash on exactly this; the nullable-projection trick is a strong answer."
+    },
+    {
+      "id": "cs-108",
+      "q": "What does `new List<int>().All(x => x > 100)` return?",
+      "choices": [
+        "true, because no element breaks the rule",
+        "false, because there are no elements to check",
+        "null, because the sequence is empty",
+        "It throws InvalidOperationException"
+      ],
+      "answer": 0,
+      "why": "`All` is vacuously true for an empty sequence: it returns false only when it finds a counterexample. `Any(predicate)` on an empty sequence is false. It matters in checks like \"all line items shipped\" on an order that has no lines.",
+      "tags": ["linq"],
+      "level": 2,
+      "asked": "Logic edge case that causes real bugs in status calculations."
+    },
+    {
+      "id": "cs-109",
+      "q": "What is the difference between `Cast<T>()` and `OfType<T>()` on a mixed `IEnumerable`?",
+      "choices": [
+        "Cast<T> skips elements of the wrong type; OfType<T> throws on them",
+        "Cast<T> converts numbers, e.g. int to long; OfType<T> does not",
+        "Cast<T> throws on an element of the wrong type; OfType<T> skips it",
+        "Cast<T> runs immediately; OfType<T> is deferred until enumeration"
+      ],
+      "answer": 2,
+      "why": "Both are deferred. `Cast<T>` does a reference/unboxing cast per element and throws `InvalidCastException` on a mismatch; `OfType<T>` filters to matching elements. Neither performs numeric conversions, so casting boxed ints to long throws.",
+      "tags": ["linq", "casting"],
+      "level": 2,
+      "asked": "Filtering heterogeneous collections, such as domain events by type, uses OfType."
+    },
+    {
+      "id": "cs-110",
+      "q": "Which call runs the query immediately rather than deferring it?",
+      "choices": [
+        "`orders.Where(o => o.Paid)`",
+        "`orders.Select(o => o.Total)`",
+        "`orders.OrderBy(o => o.Date)`",
+        "`orders.ToLookup(o => o.CustomerId)`"
+      ],
+      "answer": 3,
+      "why": "`ToLookup`, like `ToList`, `ToArray`, `ToDictionary`, `Count` and `First`, enumerates the source straight away and stores the result. `Where`, `Select` and `OrderBy` only build a pipeline that runs when enumerated. `GroupBy` is deferred, but `ToLookup` is its eager twin.",
+      "tags": ["linq", "deferred-execution"],
+      "level": 2,
+      "asked": "Knowing which operators are eager lets you reason about when a database or file is actually hit."
+    },
+    {
+      "id": "cs-111",
+      "q": "Which statement about query syntax (`from o in orders where o.Paid select o`) is true?",
+      "choices": [
+        "It runs faster, because the compiler turns it into a for loop",
+        "It is translated into the same Where/Select method calls by the compiler",
+        "It works only against databases, while method syntax works in memory",
+        "It supports every LINQ operator, including Take and Distinct, as keywords"
+      ],
+      "answer": 1,
+      "why": "Query expressions are syntactic sugar: the compiler rewrites them into calls such as `Where` and `Select`, so performance is identical. Operators with no keyword, like `Take`, `Distinct` or `Count`, need method syntax. Query syntax is mostly preferred for joins and `let`.",
+      "tags": ["linq"],
+      "level": 1,
+      "asked": "Reading older codebases requires both forms; knowing they compile to the same thing is the point."
+    },
+    {
+      "id": "cs-112",
+      "q": "A method takes `IEnumerable<Order> orders` and calls `orders.Count()` and then `foreach (var o in orders)`. Why do analysers warn about this?",
+      "choices": [
+        "Count() on IEnumerable always throws when the source is a List",
+        "foreach cannot be used on a sequence after Count() has been called",
+        "Count() moves the enumerator to the end, so the loop sees no items",
+        "If orders is a lazy query, it is executed twice, repeating any work or I/O"
+      ],
+      "answer": 3,
+      "why": "An `IEnumerable<T>` might be a deferred query or iterator; each enumeration reruns it, which can mean two database queries or a different result the second time. Materialise once with `ToList()`, or accept `IReadOnlyCollection<T>` if you need the count. Each enumeration gets a fresh enumerator, so the loop is not empty.",
+      "tags": ["linq", "deferred-execution"],
+      "level": 2,
+      "asked": "The \"possible multiple enumeration\" warning is everywhere; explaining why it matters shows real understanding."
+    },
+    {
+      "id": "cs-113",
+      "q": "What does `finally` guarantee here?",
+      "code": "static int Read()\n{\n    try { return 1; }\n    finally { Console.WriteLine(\"cleanup\"); }\n}",
+      "lang": "cs",
+      "choices": [
+        "cleanup is never printed, because return exits the method first",
+        "cleanup is printed only if an exception is thrown in the try",
+        "cleanup is printed before the method returns 1 to its caller",
+        "The code does not compile: a try with return cannot have a finally"
+      ],
+      "answer": 2,
+      "why": "A `finally` block runs whenever control leaves the try, whether by falling off the end, `return`, or an exception. The return value is computed first, then finally runs, then the method returns. It does not run if the process is killed.",
+      "tags": ["errors"],
+      "level": 1,
+      "asked": "Basics of cleanup, and the reason `using` works."
+    },
+    {
+      "id": "cs-114",
+      "q": "What does the `when` clause add in this catch?",
+      "code": "try { await client.SendAsync(req); }\ncatch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)\n{\n    return null;\n}",
+      "lang": "cs",
+      "choices": [
+        "It catches the exception and then rethrows it if the condition is false",
+        "It runs the condition after the catch body, to decide whether to log",
+        "It makes the catch apply to every exception type that has a StatusCode",
+        "It catches only when the condition is true; otherwise the exception passes on untouched"
+      ],
+      "answer": 3,
+      "why": "An exception filter is evaluated before the stack unwinds. If it is false, the catch is skipped as though it did not exist, so the original stack trace is intact and outer handlers see it. That is cleaner than catching, testing and `throw;`.",
+      "tags": ["errors"],
+      "level": 2,
+      "asked": "Filters are idiomatic modern C#; a strong answer mentions that the stack is not unwound."
+    },
+    {
+      "id": "cs-115",
+      "q": "Why does this fail to compile?",
+      "code": "try { Save(); }\ncatch (Exception ex) { Log(ex); }\ncatch (IOException ex) { Retry(); }",
+      "lang": "cs",
+      "choices": [
+        "Only one catch block is allowed per try statement",
+        "The IOException catch is unreachable, because Exception already catches it",
+        "IOException must be caught with a `when` filter, not a plain catch",
+        "The variable name ex is declared twice in the same scope"
+      ],
+      "answer": 1,
+      "why": "Catch clauses are tried in order, and a clause for a base type makes a later clause for a derived type unreachable, so the compiler reports CS0160. Order catches from most specific to most general. Each catch has its own scope, so reusing `ex` is fine.",
+      "tags": ["errors"],
+      "level": 1,
+      "asked": "Basic, but tells the interviewer you know the catch order rule."
+    },
+    {
+      "id": "cs-116",
+      "q": "What is the idiomatic guard at the top of a public method in .NET 8+?",
+      "code": "public void Ship(Order order, string carrier)\n{\n    // guard clauses here\n}",
+      "lang": "cs",
+      "choices": [
+        "`if (order == null) return;` at the start of the method, once for every parameter",
+        "`Debug.Assert(order != null);` at the start of the method, once for every parameter",
+        "`ArgumentNullException.ThrowIfNull(order);` then `ArgumentException.ThrowIfNullOrEmpty(carrier);`",
+        "`order ??= new Order();` and `carrier ??= \"\";` so the method always has usable values"
+      ],
+      "answer": 2,
+      "why": "The throw helpers throw the correct exception with the parameter name filled in via `CallerArgumentExpression`, in one line each. Silently returning hides bugs, `Debug.Assert` vanishes in release builds, and inventing a default object corrupts data.",
+      "tags": ["errors", "validation"],
+      "level": 1,
+      "asked": "Shows you write defensive public APIs using the current helpers."
+    },
+    {
+      "id": "cs-117",
+      "q": "What does this print?",
+      "code": "try\n{\n    try { throw new InvalidOperationException(\"first\"); }\n    finally { throw new TimeoutException(\"second\"); }\n}\ncatch (Exception ex) { Console.WriteLine(ex.Message); }",
+      "lang": "cs",
+      "choices": [
+        "first",
+        "second",
+        "first, then second on the next line",
+        "One or more errors occurred. (first) (second)"
+      ],
+      "answer": 1,
+      "why": "When a `finally` block throws while another exception is propagating, the new exception replaces the original, which is lost entirely. That is why cleanup code (including `Dispose`) should not throw, and why a failing Dispose can hide the real error in your logs.",
+      "tags": ["errors", "idisposable"],
+      "level": 3,
+      "asked": "Explains logs that show a cleanup error while the root cause vanished."
+    },
+    {
+      "id": "cs-118",
+      "q": "What does this print?",
+      "code": "var actions = new List<Action>();\nfor (var i = 0; i < 3; i++)\n    actions.Add(() => Console.Write(i));\nforeach (var a in actions) a();",
+      "lang": "cs",
+      "choices": [
+        "012",
+        "333",
+        "000",
+        "222"
+      ],
+      "answer": 1,
+      "why": "A lambda captures the variable, not its value. A `for` loop has one `i` shared by all iterations, so all three closures see its final value, 3. `foreach` gets a fresh variable per iteration (since C# 5), so the same code with foreach prints 012. Copy to a local inside the loop to fix it.",
+      "tags": ["delegates", "closures"],
+      "level": 3,
+      "asked": "Closure capture is identical to JavaScript's `var` in loops; interviewers use it to test understanding of captured variables."
+    },
+    {
+      "id": "cs-119",
+      "q": "What does the `event` keyword add to a delegate field?",
+      "code": "public event EventHandler<OrderPlaced>? Placed;",
+      "lang": "cs",
+      "choices": [
+        "Outside code can only `+=` and `-=`; only the owning class can invoke or reset it",
+        "The handlers are run on a background thread, so raising it never blocks",
+        "Handlers are held with weak references, so subscribers never leak",
+        "Each subscriber receives its own copy of the event arguments"
+      ],
+      "answer": 0,
+      "why": "Without `event`, any caller could do `Placed = null` and wipe other subscribers, or invoke it directly. The keyword restricts outsiders to adding and removing handlers. Handlers still run synchronously on the raising thread, and the publisher holds strong references, which is the classic event memory leak.",
+      "tags": ["delegates", "events"],
+      "level": 2,
+      "asked": "Shows you know what encapsulation events give over a public delegate field, and the leak it does not solve."
+    },
+    {
+      "id": "cs-120",
+      "q": "What does this print?",
+      "code": "Func<int> f = () => 1;\nf += () => 2;\nf += () => 3;\nConsole.WriteLine(f());",
+      "lang": "cs",
+      "choices": [
+        "1",
+        "6",
+        "3",
+        "1, 2 and 3 on separate lines"
+      ],
+      "answer": 2,
+      "why": "Delegates are multicast: `+=` builds an invocation list and calling it runs every target in order. For a delegate with a return value you only get the last target's result; the earlier ones are discarded. That is why event handlers return void and use event args to pass data back.",
+      "tags": ["delegates"],
+      "level": 3,
+      "asked": "Deep delegate knowledge; it explains why returning values from events is an anti-pattern."
+    },
+    {
+      "id": "cs-121",
+      "q": "When does `ArgumentNullException` get thrown here?",
+      "code": "static IEnumerable<string> Upper(IEnumerable<string> src)\n{\n    ArgumentNullException.ThrowIfNull(src);\n    foreach (var s in src) yield return s.ToUpper();\n}\nvar q = Upper(null!);   // line A\nforeach (var x in q) { } // line B",
+      "lang": "cs",
+      "choices": [
+        "At line A, when Upper is called with null",
+        "At line B, when the loop first calls MoveNext",
+        "Never, because iterators ignore null sources",
+        "At compile time, because of the null! literal"
+      ],
+      "answer": 1,
+      "why": "An iterator method's whole body, guard included, runs lazily on the first `MoveNext`, so the error surfaces far from the bad call. The fix is a non-iterator wrapper that validates and then returns a private iterator (or a local function). LINQ's own operators are written that way.",
+      "tags": ["iterators", "errors"],
+      "level": 3,
+      "asked": "Explains confusing stack traces from lazy code and shows you know how LINQ validates eagerly."
+    },
+    {
+      "id": "cs-122",
+      "q": "What is needed for a type to be usable in a `foreach` loop?",
+      "choices": [
+        "It must implement IEnumerable or IEnumerable<T>, with no exceptions",
+        "It must be an array, a List<T> or a type deriving from Collection<T>",
+        "It must expose a public Count property and an int indexer",
+        "It needs an accessible GetEnumerator() returning a type with MoveNext() and Current"
+      ],
+      "answer": 3,
+      "why": "foreach is pattern-based: the compiler looks for a `GetEnumerator()` method (instance or, since C# 9, extension) whose result has `MoveNext()` and `Current`. Implementing IEnumerable<T> is the usual way to provide it, which is how `List<T>` avoids allocating by returning a struct enumerator.",
+      "tags": ["iterators", "collections"],
+      "level": 3,
+      "asked": "Tests whether you know the compiler relies on patterns, which also explains await and using behaviour."
+    },
+    {
+      "id": "cs-123",
+      "q": "In what order are `a` and `b` disposed?",
+      "code": "using var a = new Resource(\"a\");\nusing var b = new Resource(\"b\");\nConsole.WriteLine(\"work\");",
+      "lang": "cs",
+      "choices": [
+        "a then b, in the order they were declared",
+        "b then a, in reverse order of declaration",
+        "In an unspecified order chosen by the garbage collector",
+        "Neither: using declarations dispose only on exceptions"
+      ],
+      "answer": 1,
+      "why": "Using declarations are disposed at the end of the enclosing scope in reverse order, exactly like nested using blocks. That matters when b depends on a, e.g. a command that uses a connection. Disposal is deterministic; the GC is not involved.",
+      "tags": ["idisposable"],
+      "level": 2,
+      "asked": "Resource ordering matters with connections, transactions and streams."
+    },
+    {
+      "id": "cs-124",
+      "q": "A class implements `IAsyncDisposable` because it must flush a buffer over the network. How should a caller use it?",
+      "choices": [
+        "`using var w = new Writer();` which awaits DisposeAsync automatically",
+        "Call `w.DisposeAsync()` from a finalizer so it always runs",
+        "`await using var w = new Writer();` so DisposeAsync is awaited at scope end",
+        "Wrap it in `Task.Run(() => w.Dispose())` to avoid blocking"
+      ],
+      "answer": 2,
+      "why": "`await using` calls and awaits `DisposeAsync()` when the scope ends, so asynchronous cleanup does not block a thread. A plain `using` needs `IDisposable` and would not compile if only `IAsyncDisposable` is implemented. Finalizers cannot await and should never do I/O.",
+      "tags": ["idisposable", "async"],
+      "level": 2,
+      "asked": "Seen with streams, DbContext and HTTP writers; a strong answer mentions DI containers also call DisposeAsync."
+    },
+    {
+      "id": "cs-125",
+      "q": "You forget to call `Dispose()` on a `FileStream`. What happens?",
+      "choices": [
+        "The garbage collector calls Dispose as soon as the variable goes out of scope",
+        "The compiler reports an error for any IDisposable that is never disposed",
+        "The file handle stays open until a finalizer runs at some unknown later time",
+        "The runtime closes the handle when the method returns, just like using"
+      ],
+      "answer": 2,
+      "why": "The GC does not call `Dispose`. FileStream's underlying SafeHandle has a finalizer that eventually releases the OS handle, but only after a garbage collection notices it, which could be much later; meanwhile the file stays locked. Deterministic cleanup is exactly what `using` is for. Analysers such as CA2000 can warn, but the compiler does not.",
+      "tags": ["idisposable", "gc"],
+      "level": 2,
+      "asked": "Explains \"file in use\" errors and why `using` is not optional."
+    },
+    {
+      "id": "cs-126",
+      "q": "What does a .NET garbage collection actually decide?",
+      "choices": [
+        "Which objects are no longer reachable from roots such as statics and stack locals",
+        "Which objects have not been accessed for longer than the idle timeout",
+        "Which objects have a reference count of zero, freeing them immediately",
+        "Which objects implement IDisposable and have not yet been disposed"
+      ],
+      "answer": 0,
+      "why": "The .NET GC is a tracing, generational collector: it marks everything reachable from roots and reclaims the rest, so circular references are not a problem. There is no reference counting and no idle timeout, and disposal is unrelated to collection. Most objects die young in generation 0, which is cheap to collect.",
+      "tags": ["gc", "memory"],
+      "level": 2,
+      "asked": "A fundamentals question; interviewers look for \"reachability from roots\" and \"generations\"."
+    },
+    {
+      "id": "cs-127",
+      "q": "Which of these is a common source of memory leaks in a long-running ASP.NET Core app?",
+      "choices": [
+        "Local variables inside a controller action that holds large lists",
+        "Creating many short-lived strings while building a JSON response",
+        "Objects that are allocated inside a using block and never disposed",
+        "A singleton or static field that subscribes to events or caches objects forever"
+      ],
+      "answer": 3,
+      "why": "A leak in .NET means something stays reachable. Static collections that only grow, and long-lived publishers holding event handlers of shorter-lived subscribers, keep whole object graphs alive for the life of the process. Locals and short-lived strings become unreachable when the request ends.",
+      "tags": ["gc", "memory", "events"],
+      "level": 3,
+      "asked": "Real production issue; strong answers mention dotnet-counters or a memory dump to find the root."
+    },
+    {
+      "id": "cs-128",
+      "q": "What does `static` on the lambda in `items.Select(static x => x * 2)` do?",
+      "choices": [
+        "It makes the lambda a static method on the containing class, visible to other code",
+        "It caches the lambda's results, so equal inputs return the stored output",
+        "It prevents the lambda from capturing locals or `this`, so no closure is allocated",
+        "It runs the lambda once at startup and reuses the resulting value"
+      ],
+      "answer": 2,
+      "why": "A `static` lambda (C# 9) is a compile-time promise that it captures nothing; accidentally referencing a local or instance member becomes an error. That guarantees no closure object allocation, which matters on hot paths. It does not memoise or change visibility.",
+      "tags": ["delegates", "performance"],
+      "level": 3,
+      "asked": "Shows awareness of hidden allocations from closures in hot code."
+    },
+    {
+      "id": "cs-129",
+      "q": "Why might you write a local function rather than assigning a lambda to a local `Func<>`?",
+      "choices": [
+        "Local functions run on a separate thread pool thread, so they never block the calling method",
+        "They can recurse, be called above their declaration, and avoid a delegate allocation",
+        "Local functions can be passed as arguments to other methods, whereas lambdas never can",
+        "Local functions are the only way to use `yield return` from inside a lambda expression body"
+      ],
+      "answer": 1,
+      "why": "A local function is a real method: it can be generic, recursive and called above its definition, and when it is not converted to a delegate its captures can live in a struct rather than a heap closure. Lambdas can be passed around just as well, and neither changes threading.",
+      "tags": ["delegates", "syntax"],
+      "level": 3,
+      "asked": "Comes up when reviewing helpers inside methods; the allocation detail is the deep part."
+    },
+    {
+      "id": "cs-130",
+      "q": "What does this print?",
+      "code": "int? a = null;\nint? b = a + 1;\nConsole.WriteLine(b is null);\nConsole.WriteLine(a > 0 || a <= 0);",
+      "lang": "cs",
+      "choices": [
+        "True, then False",
+        "False, then True",
+        "True, then True",
+        "It throws InvalidOperationException"
+      ],
+      "answer": 0,
+      "why": "Arithmetic operators are lifted over nullable value types: if any operand is null the result is null, so b is null. Comparison operators return false when either side is null, so both `a > 0` and `a <= 0` are false, which breaks the usual law that one of them must hold. SQL NULL behaves in a similar way.",
+      "tags": ["null", "value-types"],
+      "level": 3,
+      "asked": "Nullable columns from a database make this real; it is a good test of careful reasoning."
+    },
+    {
+      "id": "cs-131",
+      "q": "What happens at runtime?",
+      "code": "object[] items = new string[2];\nitems[0] = \"ok\";\nitems[1] = 42;",
+      "lang": "cs",
+      "choices": [
+        "Every assignment succeeds, because the variable is typed object[]",
+        "The first line fails, because string[] cannot be converted to object[]",
+        "The last line throws ArrayTypeMismatchException",
+        "42 is converted to \"42\" before it is stored"
+      ],
+      "answer": 2,
+      "why": "Arrays of reference types are covariant, so a `string[]` can be referenced as `object[]`, but the runtime still knows it is a string array and checks every store. Storing a boxed int throws `ArrayTypeMismatchException`. Generic interfaces like `IEnumerable<out T>` are covariant only for reading, which is why they are safe.",
+      "tags": ["generics", "types"],
+      "level": 3,
+      "asked": "A deep type-system question that leads naturally to why List<T> is invariant."
+    },
+    {
+      "id": "cs-132",
+      "q": "You sort employees by department with `list.Sort(...)` and employees with the same department change relative order. With `OrderBy` they do not. Why?",
+      "choices": [
+        "List.Sort sorts by hash code first, which is effectively random",
+        "List.Sort is an unstable sort; LINQ OrderBy is a stable sort",
+        "OrderBy sorts a copy, and copying preserves the original order",
+        "List.Sort uses the current culture; OrderBy uses ordinal comparison"
+      ],
+      "answer": 1,
+      "why": "`List<T>.Sort` and `Array.Sort` use introsort, which does not preserve the order of equal elements. `Enumerable.OrderBy` is documented as stable. If ties must keep a meaningful order, use OrderBy or add a tiebreaker such as ID with ThenBy.",
+      "tags": ["collections", "linq"],
+      "level": 3,
+      "asked": "Explains flickering row order in paged tables; the tiebreaker advice also applies to SQL ORDER BY."
+    },
+    {
+      "id": "cs-133",
+      "q": "What is explicit interface implementation for?",
+      "code": "class Order : IExportable\n{\n    string IExportable.ToCsv() => $\"{Id},{Total}\";\n}",
+      "lang": "cs",
+      "choices": [
+        "It makes calls to the method faster, because they skip virtual dispatch entirely",
+        "It lets subclasses override the method even though it is not marked virtual",
+        "The method is callable only via an IExportable reference, not on Order itself",
+        "It forces every class that implements the interface to supply its own ToCsv body"
+      ],
+      "answer": 2,
+      "why": "An explicitly implemented member has no access modifier and is not visible on the class: `order.ToCsv()` does not compile, but `((IExportable)order).ToCsv()` does. It resolves clashes between two interfaces with the same member name, and hides members that only matter to one consumer.",
+      "tags": ["oop", "interfaces"],
+      "level": 3,
+      "asked": "Appears in framework code (e.g. collections implementing non-generic interfaces); knowing it helps you read them."
+    },
+    {
+      "id": "cs-134",
+      "q": "What do default interface methods (C# 8) allow?",
+      "choices": [
+        "Adding a member with a body to an interface without breaking existing implementers",
+        "Declaring instance fields in an interface so implementers share state",
+        "Making an interface method optional, so implementers can skip it and callers get null",
+        "Letting an interface inherit from an abstract class and reuse its methods"
+      ],
+      "answer": 0,
+      "why": "A default implementation lets you evolve a published interface: existing classes inherit the body. Interfaces still cannot hold instance fields. The default is only callable through the interface type, not on the class, unless the class implements it itself.",
+      "tags": ["oop", "interfaces"],
+      "level": 3,
+      "asked": "Tells an interviewer whether you know how interfaces differ from abstract classes in modern C#."
+    },
+    {
+      "id": "cs-135",
+      "q": "What must you implement so that `List<Money>.Sort()` works without a comparer?",
+      "choices": [
+        "IEquatable<Money>, so the sort can tell when two items are equal",
+        "IComparable<Money>, whose CompareTo returns negative, zero or positive",
+        "An overloaded < operator on Money, which Sort calls directly",
+        "GetHashCode, which Sort uses to order the elements"
+      ],
+      "answer": 1,
+      "why": "`Sort()` with no arguments uses `Comparer<T>.Default`, which uses `IComparable<T>`. Without it you get `InvalidOperationException` (\"Failed to compare two elements\"). Operators are not used by Sort, and IEquatable is for equality, not ordering.",
+      "tags": ["oop", "interfaces", "collections"],
+      "level": 2,
+      "asked": "Knowing IComparable versus IEquatable versus IComparer is basic framework literacy."
+    },
+    {
+      "id": "cs-136",
+      "q": "Why do you implement `IEquatable<T>` on a struct used as a dictionary key?",
+      "choices": [
+        "Without it, a struct cannot be used as a key at all",
+        "It lets the dictionary sort keys in addition to hashing them",
+        "It makes the struct immutable, which keys must be",
+        "It avoids the reflection-based, boxing Equals that ValueType provides"
+      ],
+      "answer": 3,
+      "why": "`ValueType.Equals(object)` boxes the argument and may use reflection over the fields, which is slow in hot lookups. `EqualityComparer<T>.Default` picks up `IEquatable<T>.Equals(T)` and calls it without boxing. A `record struct` generates this for you.",
+      "tags": ["equality", "value-types", "performance"],
+      "level": 3,
+      "asked": "A performance-aware question; mentioning record struct is a strong finish."
+    },
+    {
+      "id": "cs-137",
+      "q": "What does this print?",
+      "code": "var a = new Money(5m);\nvar b = new Money(5m);\nConsole.WriteLine($\"{a == b} {a.Equals(b)}\");\n\nclass Money(decimal amount) {\n    public decimal Amount { get; } = amount;\n    public override bool Equals(object? o) => o is Money m && m.Amount == Amount;\n    public override int GetHashCode() => Amount.GetHashCode(); }",
+      "lang": "cs",
+      "choices": [
+        "True True",
+        "False False",
+        "True False",
+        "False True"
+      ],
+      "answer": 3,
+      "why": "Overriding `Equals` does not change the `==` operator for a class, which still compares references, so the first line is False and the second True. You must also declare `operator ==` and `operator !=`, or use a record, which generates all of them consistently.",
+      "tags": ["equality", "oop"],
+      "level": 3,
+      "asked": "Highlights why records exist: getting ==, Equals and GetHashCode consistent by hand is fiddly."
+    },
+    {
+      "id": "cs-138",
+      "q": "How does `Lazy<T>` behave by default?",
+      "code": "private static readonly Lazy<Config> _config = new(() => LoadConfig());",
+      "lang": "cs",
+      "choices": [
+        "LoadConfig runs on first access to `.Value`, once, and is thread-safe",
+        "LoadConfig runs immediately, but on a background thread",
+        "LoadConfig runs on every access to `.Value`, returning fresh data",
+        "LoadConfig runs on first access, but may run again if two threads race"
+      ],
+      "answer": 0,
+      "why": "The default mode is `LazyThreadSafetyMode.ExecutionAndPublication`: the factory runs at most once, other threads block until it finishes, and everyone gets the same value. If the factory throws, that exception is cached and rethrown on every access, which is worth knowing for config that can fail transiently.",
+      "tags": ["concurrency", "syntax"],
+      "level": 2,
+      "asked": "Useful for expensive singletons; the cached-exception detail is what interviewers look for."
+    },
+    {
+      "id": "cs-139",
+      "q": "What does C# 14 (.NET 10) add with this syntax?",
+      "code": "public static class StringExtensions\n{\n    extension(string s)\n    {\n        public bool IsBlank => string.IsNullOrWhiteSpace(s);\n    }\n}",
+      "lang": "cs",
+      "choices": [
+        "A way to change the behaviour of string for the whole application",
+        "A new base class for string that other classes can extend",
+        "Extension members, including extension properties like `name.IsBlank`",
+        "A pattern that matches string values inside a switch expression"
+      ],
+      "answer": 2,
+      "why": "C# 14 extension blocks declare a receiver once and allow extension properties and static extension members, not just methods; callers write `name.IsBlank`. Like classic extension methods, they cannot access private state or change the type itself. Old `this`-parameter extension methods keep working.",
+      "tags": ["extension-methods", "csharp-14"],
+      "level": 3,
+      "asked": "A currency check on the newest language version; the answer that they are still sugar over static methods is key."
+    },
+    {
+      "id": "cs-140",
+      "q": "In C# 14, what does `customer?.LastSeen = DateTime.UtcNow;` do when `customer` is null?",
+      "choices": [
+        "It throws a NullReferenceException, as any assignment to null would",
+        "It creates a new customer and assigns LastSeen on it",
+        "It does nothing: the right-hand side is not evaluated and nothing is assigned",
+        "It fails to compile, because ?. is only allowed when reading a value"
+      ],
+      "answer": 2,
+      "why": "C# 14 allows null-conditional member access on the left of an assignment: if customer is null the whole assignment is skipped, including evaluation of the right side. Before C# 14 this was a compile error and you wrote an `if (customer is not null)` block.",
+      "tags": ["null", "csharp-14"],
+      "level": 2,
+      "asked": "Recent-feature awareness; the \"right side is not evaluated\" detail matters when it has side effects."
+    },
+    {
+      "id": "cs-141",
+      "q": "With C# 13, what can a `params` parameter be declared as?",
+      "code": "static int Sum(params ReadOnlySpan<int> values) { /* ... */ return 0; }\nSum(1, 2, 3);",
+      "lang": "cs",
+      "choices": [
+        "Only an array type such as int[], exactly as it has always been in earlier versions",
+        "Any collection-expression target, such as Span<T>, ReadOnlySpan<T> or List<T>",
+        "Only IEnumerable<T>, so that the arguments are evaluated lazily by the method",
+        "Only types that implement ICollection<T> and expose a public Add method"
+      ],
+      "answer": 1,
+      "why": "C# 13 params collections accept spans, `List<T>`, interfaces such as `IEnumerable<T>`, and other collection-expression targets. A `params ReadOnlySpan<int>` lets the compiler pass arguments without allocating an array, which is why many BCL methods gained span overloads.",
+      "tags": ["parameters", "performance"],
+      "level": 3,
+      "asked": "Tests currency with the language and awareness of allocation-free APIs."
+    },
+    {
+      "id": "cs-142",
+      "q": "Why does modern .NET code inject `TimeProvider` instead of calling `DateTime.UtcNow` directly?",
+      "choices": [
+        "TimeProvider is more accurate, because it reads a hardware clock",
+        "DateTime.UtcNow is obsolete in .NET 9 and produces a warning",
+        "Tests can substitute a fake clock and control the current time and timers",
+        "TimeProvider converts every time to the user's local time zone automatically"
+      ],
+      "answer": 2,
+      "why": "`TimeProvider` (.NET 8) abstracts `GetUtcNow()`, timers and delays. Production uses `TimeProvider.System`; tests use `FakeTimeProvider` from Microsoft.Extensions.TimeProvider.Testing to jump time forward, so expiry and scheduling logic can be tested without sleeps.",
+      "tags": ["testing", "dates"],
+      "level": 2,
+      "asked": "Time-dependent logic (tokens, trials, reminders) is hard to test; this is the modern answer."
+    },
+    {
+      "id": "cs-143",
+      "q": "Why might you use `Guid.CreateVersion7()` (.NET 9) rather than `Guid.NewGuid()` for new primary keys?",
+      "choices": [
+        "Version 7 GUIDs are shorter, which halves the index size",
+        "Version 7 GUIDs start with a timestamp, so new keys sort roughly in creation order",
+        "Version 7 GUIDs are cryptographically secure, while NewGuid is predictable",
+        "Version 7 GUIDs can be converted to an int without losing information"
+      ],
+      "answer": 1,
+      "why": "`NewGuid()` creates random version 4 GUIDs, so inserts land all over a B-tree index and cause page splits. UUIDv7 puts a millisecond timestamp first, so keys are nearly sequential. Both are 128 bits. Note SQL Server orders uniqueidentifier bytes differently, so the benefit there needs care.",
+      "tags": ["types", "databases"],
+      "level": 2,
+      "asked": "Key choice affects database performance; a strong answer mentions index fragmentation."
+    },
+    {
+      "id": "cs-144",
+      "q": "Which type represents a date of birth with no time and no time zone?",
+      "choices": [
+        "`DateTime` with the time part set to midnight",
+        "`DateTimeOffset` with an offset of zero",
+        "`TimeSpan` counted from 1 January 0001",
+        "`DateOnly`, added in .NET 6"
+      ],
+      "answer": 3,
+      "why": "`DateOnly` holds just a calendar date, so there is no midnight-in-which-zone ambiguity that can shift a birthday by a day when converted. EF Core and System.Text.Json support it. `TimeOnly` is the matching type for opening hours.",
+      "tags": ["types", "dates"],
+      "level": 1,
+      "asked": "Date handling bugs are common in CRUD apps; picking the precise type shows care."
+    },
+    {
+      "id": "cs-145",
+      "q": "What does `default(Money)` give you for `struct Money { public decimal Amount; public string Currency; }`?",
+      "choices": [
+        "Amount 0 and Currency null, whatever constructors the struct declares",
+        "Amount 0 and Currency \"\", because string fields default to empty",
+        "A compile error, because the struct has no parameterless constructor",
+        "Whatever values the parameterless constructor sets, if one exists"
+      ],
+      "answer": 0,
+      "why": "`default(T)` for a struct is always all-bits-zero: numbers are 0 and references are null, and no constructor runs, even if you declare a parameterless one (C# 10+). Arrays of structs and uninitialised fields get the same zeroed value, which is why struct invariants cannot rely on constructors.",
+      "tags": ["value-types", "types"],
+      "level": 3,
+      "asked": "Explains how invalid structs appear, e.g. in arrays or default parameters."
+    },
+    {
+      "id": "cs-146",
+      "q": "What is the difference between `IEnumerable<T>` and `IEnumerator<T>`?",
+      "choices": [
+        "IEnumerable<T> is lazy, while IEnumerator<T> always holds every element in memory",
+        "IEnumerator<T> is the older non-generic form of IEnumerable<T>",
+        "IEnumerable<T> is a sequence you can iterate; IEnumerator<T> is one cursor moving through it",
+        "IEnumerable<T> is for reading, while IEnumerator<T> also allows adding elements"
+      ],
+      "answer": 2,
+      "why": "`IEnumerable<T>` has one method, `GetEnumerator()`, which hands out a fresh `IEnumerator<T>` with `MoveNext()`, `Current` and `Dispose()`. Two foreach loops over the same enumerable get independent cursors. JavaScript has the same split between iterables and iterators.",
+      "tags": ["iterators", "collections"],
+      "level": 2,
+      "asked": "Foundational for understanding LINQ and yield; the JS iterable analogy helps."
+    },
+    {
+      "id": "cs-147",
+      "q": "What does `Enumerable.Chunk(100)` (.NET 6) return for a list of 250 ids?",
+      "choices": [
+        "Three arrays with 100, 100 and 50 ids",
+        "Two arrays with 100 ids each; the last 50 are dropped",
+        "100 arrays with between 2 and 3 ids each",
+        "Three arrays padded with default values to 100 ids each"
+      ],
+      "answer": 0,
+      "why": "`Chunk(size)` splits a sequence into arrays of at most `size` elements; the last chunk holds whatever is left, with no padding. It is the easy way to batch IDs for `IN (...)` queries or bulk API calls with a request-size limit.",
+      "tags": ["linq"],
+      "level": 1,
+      "asked": "Batching is a routine data-processing need; knowing Chunk saves hand-written loops."
+    },
+    {
+      "id": "cs-148",
+      "q": "What does `orders.CountBy(o => o.Status)` return in .NET 9?",
+      "choices": [
+        "An int with the number of distinct statuses in the sequence",
+        "A Dictionary<Status, List<Order>> built eagerly",
+        "An IEnumerable<KeyValuePair<Status, int>> with a count per status",
+        "An IGrouping<Status, Order> for the most common status"
+      ],
+      "answer": 2,
+      "why": "`CountBy` (.NET 9) is a shortcut for `GroupBy(key).Select(g => new { g.Key, Count = g.Count() })` that does not build the groups: it yields `KeyValuePair<TKey, int>` entries. `AggregateBy` is its general sibling, and `Index()` gives `(int Index, T Item)` pairs.",
+      "tags": ["linq"],
+      "level": 2,
+      "asked": "Keeping up with LINQ additions shows you read release notes; CountBy is common in dashboards."
+    },
+    {
+      "id": "cs-149",
+      "q": "When should a method parameter be `IList<T>` rather than `IEnumerable<T>`?",
+      "choices": [
+        "Always, because IList<T> is faster to enumerate than IEnumerable<T>",
+        "When the method needs indexed access or to modify the list it is given",
+        "Never, because IList<T> cannot accept arrays",
+        "When the caller might pass a lazy LINQ query that should stay lazy"
+      ],
+      "answer": 1,
+      "why": "Accept the least capable type that does the job: `IEnumerable<T>` if you only loop once, `IReadOnlyList<T>` for count and indexing, `IList<T>` if you must add, remove or set items. Arrays implement IList<T> (Add throws, since they are fixed size). A lazy query cannot be passed as IList<T> without materialising it.",
+      "tags": ["collections", "api-design"],
+      "level": 2,
+      "asked": "API design question; the \"least capable type\" principle is what the interviewer wants to hear."
+    },
+    {
+      "id": "cs-150",
+      "q": "What does this loop give you on each iteration?",
+      "code": "var stock = new Dictionary<string, int> { [\"apple\"] = 3, [\"pear\"] = 0 };\nforeach (var (name, qty) in stock)\n    Console.WriteLine($\"{name}: {qty}\");",
+      "lang": "cs",
+      "choices": [
+        "A copy of the dictionary, split into two parallel arrays",
+        "Each key and value, deconstructed from a KeyValuePair",
+        "Only the keys, with qty always set to its default of 0",
+        "A compile error, because a dictionary cannot be deconstructed"
+      ],
+      "answer": 1,
+      "why": "Enumerating a dictionary yields `KeyValuePair<TKey, TValue>`, which has had a `Deconstruct` method since .NET Core 2.0, so `var (name, qty)` unpacks it. It is the same idea as `for (const [k, v] of Object.entries(obj))` in JavaScript.",
+      "tags": ["collections", "tuples"],
+      "level": 1,
+      "asked": "Everyday syntax; mapping it to Object.entries helps JavaScript developers."
     }
   ]
 }

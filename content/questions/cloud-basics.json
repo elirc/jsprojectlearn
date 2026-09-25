@@ -348,6 +348,1386 @@
       "tags": ["compute", "scaling"],
       "level": 2,
       "asked": "Shows you pick the signal that measures the user-facing problem; 'age of the oldest message' is the answer that marks real experience."
+    },
+    {
+      "id": "cb-024",
+      "q": "You want `example.com` (the bare apex domain) to point at a managed load balancer whose IP addresses change. Why can't you use a normal CNAME at the apex?",
+      "choices": [
+        "A CNAME at the apex is allowed, but browsers refuse to follow it over HTTPS connections to the site",
+        "The apex must also hold SOA and NS records, and a CNAME cannot coexist with other records",
+        "CNAME records only work for subdomains that are served over plain HTTP on port 80",
+        "The apex is cached forever by resolvers, so a CNAME there would never be refreshed"
+      ],
+      "answer": 1,
+      "why": "The DNS spec forbids a CNAME alongside any other record at the same name, and the zone apex always has SOA and NS. Providers work around it with ALIAS/ANAME or 'CNAME flattening', which resolve the target server-side and answer with A/AAAA records.",
+      "tags": ["networking"],
+      "level": 2,
+      "asked": "Comes up the first time someone puts a site on a PaaS; knowing ALIAS/flattening shows you have actually done it."
+    },
+    {
+      "id": "cb-025",
+      "q": "You updated a DNS record ten minutes ago. Your laptop sees the new address, but a colleague still gets the old one. What explains it?",
+      "choices": [
+        "DNS changes propagate outward from the registrar in waves that always take a full 48 hours",
+        "The colleague's browser pinned the old certificate, which also pins the old address",
+        "Their resolver cached the old answer and will keep serving it until its TTL runs out",
+        "The authoritative server serves the new answer only to clients in the same region"
+      ],
+      "answer": 2,
+      "why": "Nothing is pushed: each recursive resolver (and OS or browser cache) holds the answer for the TTL it received. 'Propagation' is just caches expiring at different times, which is why you lower TTLs before a change.",
+      "tags": ["networking"],
+      "level": 1,
+      "asked": "Tests whether 'DNS propagation' is understood as cache expiry rather than magic."
+    },
+    {
+      "id": "cb-026",
+      "q": "Which DNS record type would you add to prove domain ownership to an email or certificate provider without affecting web traffic?",
+      "choices": [
+        "An MX record with the verification token set as the mail server's priority value instead",
+        "A CNAME record on the apex that points at the provider's verification host",
+        "An A record for a `verify` subdomain that points at the provider's IP address",
+        "A TXT record holding the token the provider gives you, at the name it specifies"
+      ],
+      "answer": 3,
+      "why": "TXT records carry arbitrary text and are what verification flows, SPF and DMARC use. Adding one changes no routing, whereas an apex CNAME is illegal and an MX would redirect mail.",
+      "tags": ["networking"],
+      "level": 1,
+      "asked": "Everyday task when wiring up email or a SaaS; shows you know which record does what."
+    },
+    {
+      "id": "cb-027",
+      "q": "Your certificate from Let's Encrypt is valid for 90 days. What is the normal way to keep it from expiring?",
+      "choices": [
+        "Automate renewal with an ACME client or the platform, renewing around day 60",
+        "Buy a paid certificate instead, since paid ones never need to be renewed at all",
+        "Set a calendar reminder and upload a freshly issued certificate by hand each time",
+        "Pin the certificate in the load balancer so clients ignore its expiry date"
+      ],
+      "answer": 0,
+      "why": "Short lifetimes are designed for automation: an ACME client (certbot, Caddy, cert-manager, or the cloud's managed certificates) renews well before expiry. Manual renewal is exactly how certificates expire in production; paid certificates expire too, and lifetimes are shrinking industry-wide.",
+      "tags": ["security", "networking"],
+      "level": 1,
+      "asked": "Expired certificates are a classic outage; interviewers want to hear 'automated, and alerted on'."
+    },
+    {
+      "id": "cb-028",
+      "q": "One load balancer IP serves `api.example.com` and `shop.example.com`, each with its own certificate. How does it know which certificate to present during the TLS handshake?",
+      "choices": [
+        "It reads the `Host` header of the first request and then restarts the handshake",
+        "The client sends the hostname in the ClientHello using SNI, before any HTTP is sent",
+        "It presents both certificates at once, and the browser picks the one that matches the URL",
+        "It cannot, so each hostname needs its own dedicated IP address on the balancer"
+      ],
+      "answer": 1,
+      "why": "Server Name Indication puts the requested hostname in the ClientHello, so the server can choose a certificate before encryption starts. The `Host` header only arrives after the handshake, which is why one-IP-per-site used to be necessary before SNI.",
+      "tags": ["networking", "security"],
+      "level": 2,
+      "asked": "Shows you understand the order of TLS and HTTP rather than treating HTTPS as one blob."
+    },
+    {
+      "id": "cb-029",
+      "q": "Your login keeps users on the same backend instance using sticky sessions. What problem does this cause when you scale out or deploy?",
+      "choices": [
+        "Sticky sessions encrypt the cookie, which makes the load balancer slower per request",
+        "New instances receive all traffic first, overloading them until the cookie expires",
+        "Load spreads unevenly, and users on a removed instance lose their in-memory session",
+        "Sticky sessions stop health checks, so a failed instance keeps receiving traffic"
+      ],
+      "answer": 2,
+      "why": "Affinity pins existing users to old instances, so new ones sit idle, and anything held in instance memory vanishes when that instance is drained or crashes. Moving session state to a shared store (Redis, the database) or a signed token makes instances interchangeable.",
+      "tags": ["networking", "scaling"],
+      "level": 2,
+      "asked": "Leads into 'make your app stateless'; the strong answer names where the session should live instead."
+    },
+    {
+      "id": "cb-030",
+      "q": "During a deploy, the load balancer removes an old instance. What does connection draining (deregistration delay) do?",
+      "choices": [
+        "It kills open connections immediately so clients reconnect to a healthy instance",
+        "It copies the old instance's memory to the new one so sessions survive the move",
+        "It pauses the deploy until every user of that instance has logged out of the app",
+        "It stops new requests going to the instance but lets in-flight ones finish first"
+      ],
+      "answer": 3,
+      "why": "Draining takes the target out of rotation for new requests while giving existing requests a grace period to complete, which avoids 502s mid-deploy. Your app should also handle SIGTERM by finishing work rather than exiting at once.",
+      "tags": ["networking", "reliability"],
+      "level": 2,
+      "asked": "Zero-downtime deploys depend on it; strong answers pair it with graceful shutdown in the app."
+    },
+    {
+      "id": "cb-031",
+      "q": "Your API runs behind an L7 load balancer. What should the health check endpoint it calls typically verify?",
+      "choices": [
+        "That the process is up and able to serve, with a cheap check that returns fast",
+        "That every downstream service and third-party API responds within a second",
+        "That the full test suite passes against production data on every single probe",
+        "Nothing at all, because a TCP connection succeeding is a better health signal"
+      ],
+      "answer": 0,
+      "why": "The balancer probes every few seconds, so the check must be cheap and reflect whether this instance can serve. Making it depend on every downstream means one flaky dependency marks all instances unhealthy at once, turning a partial outage into a total one.",
+      "tags": ["networking", "reliability"],
+      "level": 2,
+      "asked": "Probes whether you know deep health checks can cause cascading failure."
+    },
+    {
+      "id": "cb-032",
+      "q": "One L7 load balancer serves your SPA and your API. Which rule sends `/api/*` to the API service and everything else to the static site?",
+      "choices": [
+        "A DNS rule that returns a different IP address for URLs beginning with `/api`",
+        "A path-based listener rule matching `/api/*` that forwards to the API target group",
+        "A TCP port rule, because the browser carries each URL path on a separate port of its own",
+        "A CORS rule on the balancer that allows `/api` requests through to the backend"
+      ],
+      "answer": 1,
+      "why": "Layer 7 balancers see the HTTP request, so they can route by path or host to different target groups. DNS never sees the path, and a TCP (L4) balancer cannot distinguish paths on one port.",
+      "tags": ["networking"],
+      "level": 1,
+      "asked": "Basic architecture for a same-origin SPA plus API, which also sidesteps CORS."
+    },
+    {
+      "id": "cb-033",
+      "q": "You deploy a new SPA build, but users keep getting the old `index.html` from the CDN for an hour. What is the usual fix?",
+      "choices": [
+        "Give `index.html` a hashed filename so the CDN treats every deploy as a new page",
+        "Put the whole site on a one-year cache and ask users to hard-refresh after deploys",
+        "Serve `index.html` with a short or no-cache policy and hashed assets with a long one",
+        "Disable the CDN for the entire site so that every single request goes to the origin server"
+      ],
+      "answer": 2,
+      "why": "The entry HTML must be revalidated so it can point to new bundles, while content-hashed JS/CSS can be cached for a year because their names change on every build. You cannot hash `index.html`'s name, since the URL `/` must stay stable; an invalidation on deploy is the belt-and-braces addition.",
+      "tags": ["networking"],
+      "level": 2,
+      "asked": "Very common production confusion; the strong answer splits caching policy by file type."
+    },
+    {
+      "id": "cb-034",
+      "q": "What does a CDN use to decide whether two requests can be served the same cached response?",
+      "choices": [
+        "The client's IP address, so each user gets their own copy of the cached object",
+        "The response body hash, which the CDN compares after fetching from the origin",
+        "The TLS session ID, which ties each cached response to one encrypted connection",
+        "A cache key, normally the host and path, plus any query or headers you configure"
+      ],
+      "answer": 3,
+      "why": "The cache key decides what counts as 'the same' request. Including too little (ignoring a query parameter that changes the response) serves the wrong content; including too much (every cookie) destroys the hit rate.",
+      "tags": ["networking", "scaling"],
+      "level": 2,
+      "asked": "Leads to real bugs such as one user's personalised page served to everyone."
+    },
+    {
+      "id": "cb-035",
+      "q": "A personalised `/account` page was accidentally cached by the CDN and shown to other users. Which response header prevents that?",
+      "choices": [
+        "`Cache-Control: private, no-store`, so shared caches never store the response",
+        "`Cache-Control: public, max-age=0`, so the CDN revalidates the page every time",
+        "`Vary: Accept-Encoding`, so each user gets a separately compressed copy of it",
+        "`Expires` set to a date in the past, which the CDN reads as 'cache per user'"
+      ],
+      "answer": 0,
+      "why": "`private` forbids shared caches such as CDNs and proxies from storing the response, and `no-store` forbids storing it at all. `public, max-age=0` still permits the CDN to store it, and `Vary: Accept-Encoding` splits by compression, not by user.",
+      "tags": ["networking", "security"],
+      "level": 2,
+      "asked": "A real data-leak incident pattern; interviewers want the exact directive, not 'turn caching off'."
+    },
+    {
+      "id": "cb-036",
+      "q": "Users upload profile photos. What is the common cloud pattern that keeps large files from passing through your API servers?",
+      "choices": [
+        "Base64-encode the image in a JSON body and let the API write it to local disk",
+        "The API issues a short-lived presigned URL and the browser uploads directly to storage",
+        "Make the bucket publicly writable so the browser can upload directly with no credentials at all",
+        "Store the image bytes in a database column and serve it through the API later"
+      ],
+      "answer": 1,
+      "why": "A presigned URL grants one upload to one key for a few minutes, so the browser talks to object storage directly and your API only records the key. A public-write bucket lets anyone fill it, and proxying big files through the API ties up instances and memory.",
+      "tags": ["storage", "security"],
+      "level": 2,
+      "asked": "Standard system-design building block; strong answers mention expiry, size limits and content-type checks."
+    },
+    {
+      "id": "cb-037",
+      "q": "Your app serves private invoices stored in object storage. How should a logged-in user download one?",
+      "choices": [
+        "Make the bucket public but give files long random names that cannot be guessed",
+        "Put the storage account key in the frontend so the browser can fetch any file",
+        "After checking authorisation, redirect to a presigned GET URL that expires soon",
+        "Copy the file to the web server's disk on login so the user can download it"
+      ],
+      "answer": 2,
+      "why": "The API authorises the request, then hands out a URL valid for one object for a few minutes; the bucket stays private. Unguessable names on a public bucket leak through logs, referrers and shared links, and a key in the frontend grants access to everything.",
+      "tags": ["storage", "security"],
+      "level": 2,
+      "asked": "Checks you keep authorisation on the server even when storage serves the bytes."
+    },
+    {
+      "id": "cb-038",
+      "q": "Your bucket fills up with temporary export files that nobody deletes. What is the storage-native fix?",
+      "choices": [
+        "Enable versioning so older copies of each export are cleaned up automatically",
+        "Switch the bucket to a cold storage class so storing the exports costs nothing",
+        "Write a cron job on a VM that lists every object each night and deletes old ones by name",
+        "Add a lifecycle rule that expires objects under the `exports/` prefix after N days"
+      ],
+      "answer": 3,
+      "why": "Lifecycle rules let the storage service delete or transition objects by prefix, tag or age with no code to run. Versioning does the opposite, keeping more copies, and cold tiers are cheaper, not free, with retrieval fees and minimum durations.",
+      "tags": ["storage", "cost"],
+      "level": 1,
+      "asked": "Shows cost awareness and knowledge that storage services manage retention for you."
+    },
+    {
+      "id": "cb-039",
+      "q": "What does enabling versioning on an object storage bucket protect you from?",
+      "choices": [
+        "An overwrite or delete, since earlier versions of the object can be restored",
+        "Someone reading an object without permission, since each version is encrypted",
+        "Running out of storage, since only the most recent version is ever billed",
+        "Region-wide outages, since each version is copied to a different region"
+      ],
+      "answer": 0,
+      "why": "With versioning, an overwrite creates a new version and a delete adds a delete marker, so the previous data can be recovered. It does not control access or replicate across regions, and every retained version is billed, which is why you pair it with lifecycle rules.",
+      "tags": ["storage", "reliability"],
+      "level": 1,
+      "asked": "Pairs with 'how do you protect against accidental deletion', a common reliability question."
+    },
+    {
+      "id": "cb-040",
+      "q": "A serverless function opens a new Postgres connection per invocation. Under a traffic spike the database starts refusing connections. What is the usual fix?",
+      "choices": [
+        "Raise the function's memory setting so each invocation can hold more connections",
+        "Put a connection pooler (PgBouncer or the provider's proxy) between them",
+        "Switch the database to a larger disk, which raises its connection limit in step",
+        "Retry connection errors in a tight loop until the database accepts the request"
+      ],
+      "answer": 1,
+      "why": "Each concurrent function instance holds its own connection, so hundreds of instances exceed `max_connections`. A pooler multiplexes many client connections onto a few server ones; retrying in a loop only adds load, and disk size does not set the connection limit.",
+      "tags": ["database", "compute"],
+      "level": 3,
+      "asked": "A classic serverless-meets-relational-database failure; knowing about poolers signals production experience."
+    },
+    {
+      "id": "cb-041",
+      "q": "Your managed database provider announces a weekly maintenance window. What should you expect and plan for?",
+      "choices": [
+        "Nothing, since managed databases patch themselves live with zero impact on open connections",
+        "A full restore from the previous night's backup, losing that day's writes",
+        "A brief failover or restart, so the app must reconnect and retry transient errors",
+        "Read-only mode for the whole window, so writes must be queued in the frontend"
+      ],
+      "answer": 2,
+      "why": "Minor version patches and host maintenance usually mean a failover or restart lasting seconds to a minute. Apps that retry transient errors and let the pool rebuild connections ride through it; apps that cache one connection forever crash.",
+      "tags": ["database", "reliability"],
+      "level": 2,
+      "asked": "Checks you know 'managed' does not mean 'never restarts', and how to build for it."
+    },
+    {
+      "id": "cb-042",
+      "q": "You write to the primary and immediately read from a read replica, but the new row is missing. Why?",
+      "choices": [
+        "Replicas only receive changes once a night, during the scheduled backup window",
+        "Replicas reject reads for rows written in the last minute to avoid dirty reads",
+        "The write failed silently on the primary and was only recorded in the log",
+        "Replication is asynchronous, so the replica can lag the primary by some time"
+      ],
+      "answer": 3,
+      "why": "Most replicas apply changes asynchronously, typically milliseconds but sometimes seconds under load. Read-your-own-writes paths (showing a user what they just saved) should read from the primary or wait for the replica to catch up.",
+      "tags": ["database", "scaling"],
+      "level": 2,
+      "asked": "Introduces eventual consistency with a concrete bug; strong answers route critical reads to the primary."
+    },
+    {
+      "id": "cb-043",
+      "q": "Why must a web app deployed to a PaaS or container platform avoid writing uploaded files to its local disk?",
+      "choices": [
+        "The local filesystem is ephemeral and per-instance, so files vanish or diverge",
+        "Local disks are read-only on every platform, so the write throws an exception",
+        "Writing to disk is slower than any network call, so it hurts response times",
+        "Local files are publicly served by default, which exposes every user's upload"
+      ],
+      "answer": 0,
+      "why": "Instances are replaced on each deploy, restart or scale event, and each instance has its own disk, so a file written on one is invisible to the others and lost later. Object storage or a shared volume is the durable place.",
+      "tags": ["compute", "storage"],
+      "level": 1,
+      "asked": "The 'stateless app' principle in its most concrete form; a common junior-to-mid filter."
+    },
+    {
+      "id": "cb-044",
+      "q": "A PDF export takes 10 minutes. Why is a serverless HTTP function a poor fit for running it inside the request?",
+      "choices": [
+        "Serverless functions cannot write any files, so a generated PDF could never be saved anywhere",
+        "Functions and gateways have execution and response timeouts, often well under that",
+        "Serverless platforms bill per request, so a long request costs nothing extra",
+        "Functions run on one CPU, which makes PDF generation impossible to finish"
+      ],
+      "answer": 1,
+      "why": "API gateways commonly cap requests at tens of seconds and functions have their own maximum duration. Long work belongs in a queue-triggered job or container task, with the request returning 202 and a status URL.",
+      "tags": ["compute"],
+      "level": 2,
+      "asked": "Leads to the async job pattern; strong answers mention 202 Accepted and polling or a webhook."
+    },
+    {
+      "id": "cb-045",
+      "q": "Your app scales to zero overnight, and the first morning request takes eight seconds. Which change directly removes that delay?",
+      "choices": [
+        "Adding a CDN in front of the API so that the first request is served from cache",
+        "Raising the request timeout so the first request does not fail while it waits",
+        "Setting a minimum instance count of one so a warm instance is always ready",
+        "Moving the database closer to the app so the first query returns more quickly"
+      ],
+      "answer": 2,
+      "why": "The delay is a cold start: pulling the image, booting the runtime and warming up. Keeping one instance warm (min instances, provisioned concurrency) trades a small fixed cost for no cold start; a longer timeout just lets users wait.",
+      "tags": ["compute", "scaling"],
+      "level": 1,
+      "asked": "A cost-versus-latency trade-off question; say what it costs as well as what it fixes."
+    },
+    {
+      "id": "cb-046",
+      "q": "In your deployment manifest, why is referencing an image by digest (`myapi@sha256:...`) safer than by tag (`myapi:latest`)?",
+      "choices": [
+        "Digests are compressed, so the image downloads faster onto every node",
+        "Tags are private to your registry, while digests work across every registry",
+        "Digests force the registry to rebuild the image from source on every pull",
+        "A digest is immutable, while a tag can be moved to a different image later"
+      ],
+      "answer": 3,
+      "why": "Tags are mutable pointers: `latest` or even `1.4` can be re-pushed, so two nodes can run different code under the same name. A digest identifies exact content, making deploys reproducible and rollbacks precise.",
+      "tags": ["containers", "reliability"],
+      "level": 2,
+      "asked": "Reproducible deploys; the strong answer also mentions immutable tags such as the git SHA."
+    },
+    {
+      "id": "cb-047",
+      "q": "Your GitHub Actions workflow deploys to the cloud. What is the modern alternative to storing a long-lived access key as a repository secret?",
+      "choices": [
+        "OIDC federation, where the cloud trusts the workflow's short-lived identity token",
+        "Committing the key to a private branch that only the deploy workflow ever checks out",
+        "Emailing the key to the workflow at runtime so it never touches the repository",
+        "Using the root account key, which is rotated by the provider automatically"
+      ],
+      "answer": 0,
+      "why": "With OIDC the CI job requests a signed token, and a cloud role configured to trust that repository and branch exchanges it for temporary credentials. Nothing long-lived exists to leak, and the trust can be scoped to one repo and environment.",
+      "tags": ["security"],
+      "level": 3,
+      "asked": "Shows you are current on CI security; strong answers mention scoping the trust to branch or environment."
+    },
+    {
+      "id": "cb-048",
+      "q": "What does the principle of least privilege mean for your API's cloud role?",
+      "choices": [
+        "The role gets administrator rights, but only during office hours when staff are on",
+        "Grant only the actions and resources the API actually uses, such as one bucket",
+        "Give every service the same role so permissions stay consistent across the team",
+        "Deny everything by default and let developers approve each call when it happens"
+      ],
+      "answer": 1,
+      "why": "If the API is compromised, the attacker gets exactly what its role can do. Scoping to specific actions on specific resources (read and write on `uploads-prod`, not `s3:*` on `*`) limits the blast radius; a shared role spreads it.",
+      "tags": ["security"],
+      "level": 1,
+      "asked": "Foundational security vocabulary; the strong answer ties it to blast radius."
+    },
+    {
+      "id": "cb-049",
+      "q": "Your API instances in a private subnet need to call a third-party payment API on the internet. What typically provides that outbound access?",
+      "choices": [
+        "An internet gateway attached directly to each instance with a public address",
+        "A CDN, which forwards outbound requests from the API to external services",
+        "A NAT gateway in a public subnet that the private subnet's route table uses",
+        "A read replica in a public subnet that relays the outbound calls for the API"
+      ],
+      "answer": 2,
+      "why": "A NAT gateway lets private instances start outbound connections while nothing on the internet can start one inward. Giving instances public addresses defeats the private subnet; a CDN handles inbound content delivery, not outbound calls.",
+      "tags": ["networking", "security"],
+      "level": 3,
+      "asked": "Tests whether you understand inbound versus outbound in a VPC; strong answers mention NAT data-processing costs."
+    },
+    {
+      "id": "cb-050",
+      "q": "What is the main difference between a security group and a network ACL in a typical cloud VPC?",
+      "choices": [
+        "Security groups apply to the whole VPC, while network ACLs apply to one instance",
+        "Network ACLs inspect HTTP content, while security groups only check the port",
+        "Security groups are only for outbound traffic, and network ACLs for inbound",
+        "Security groups are stateful per resource; network ACLs are stateless per subnet"
+      ],
+      "answer": 3,
+      "why": "A security group attaches to an instance or interface and automatically allows return traffic; a network ACL applies to a whole subnet and needs explicit rules both ways. Neither inspects HTTP content, which is a WAF's job.",
+      "tags": ["networking", "security"],
+      "level": 3,
+      "asked": "A classic AWS-flavoured question; the provider-agnostic idea is instance firewall versus subnet firewall."
+    },
+    {
+      "id": "cb-051",
+      "q": "How should the database's firewall rule be written so only your API instances can reach it on port 5432?",
+      "choices": [
+        "Allow 5432 from the API's security group or subnet, not from `0.0.0.0/0`",
+        "Allow 5432 from everywhere and rely on the database password to keep people out",
+        "Allow all ports from the API's subnet so future services can connect as well",
+        "Block 5432 entirely and have the API connect through the public internet instead"
+      ],
+      "answer": 0,
+      "why": "Referencing the API's security group (or its subnet range) means only those instances can open connections, and the rule follows autoscaling. Relying on a password alone exposes the database to scanning and brute force.",
+      "tags": ["networking", "security"],
+      "level": 1,
+      "asked": "Defence in depth in one rule; interviewers want network restriction and credentials, not either/or."
+    },
+    {
+      "id": "cb-052",
+      "q": "Your monthly bill shows a large 'data transfer out' charge. What usually causes it for a web app?",
+      "choices": [
+        "Uploads from users into your bucket, which are billed per gigabyte received",
+        "Egress: bytes sent to the internet or across regions, such as unCDNed downloads",
+        "Traffic between instances in the same availability zone over their private IP addresses",
+        "Database reads, because every query result is charged as outbound traffic"
+      ],
+      "answer": 1,
+      "why": "Providers usually charge little or nothing for ingress but bill egress to the internet and between regions or zones. Serving large files straight from origin or chatty cross-region calls add up; a CDN, compression and keeping traffic in one region help.",
+      "tags": ["cost", "networking"],
+      "level": 2,
+      "asked": "Cost awareness is increasingly expected of mid-level devs; egress is the surprise line item."
+    },
+    {
+      "id": "cb-053",
+      "q": "Why do teams apply tags such as `env=prod` and `team=billing` to cloud resources?",
+      "choices": [
+        "Tags change how resources are billed, giving tagged resources a lower rate",
+        "Tags control DNS routing, so traffic reaches the tagged environment only",
+        "Tags let you attribute cost, find owners and target policies or automation",
+        "Tags encrypt resources with a key that belongs to the team named in the tag"
+      ],
+      "answer": 2,
+      "why": "Tags are metadata: cost reports group by them, people find who owns an orphaned resource, and policies or scripts can target `env=dev` for nightly shutdown. They do not change pricing, routing or encryption by themselves.",
+      "tags": ["cost"],
+      "level": 1,
+      "asked": "Hygiene question; strong answers mention enforcing tags through policy or IaC."
+    },
+    {
+      "id": "cb-054",
+      "q": "A worker takes a message from a managed queue (SQS, Azure Service Bus, Pub/Sub) and crashes halfway through processing it. What happens to the message?",
+      "choices": [
+        "It is lost, because the queue deletes each message as soon as it has been delivered once",
+        "It reappears for another consumer after the visibility timeout or lock expires",
+        "It is moved straight to the dead-letter queue after the very first failed attempt",
+        "It stays locked to the crashed worker until an operator releases it by hand"
+      ],
+      "answer": 1,
+      "why": "The consumer must explicitly delete or complete the message; until then it is only hidden for the visibility timeout or lock duration, after which it is redelivered. That is what makes delivery at-least-once, and why dead-lettering happens only after a configured number of attempts.",
+      "tags": ["messaging", "reliability"],
+      "level": 1,
+      "asked": "The core mechanic behind every queue question; everything about idempotency follows from it."
+    },
+    {
+      "id": "cb-055",
+      "q": "Your queue consumer sometimes processes the same 'send receipt email' message twice. Given at-least-once delivery, what is the right fix?",
+      "choices": [
+        "Switch to a queue that promises exactly-once delivery for every kind of consumer",
+        "Lower the visibility timeout so a duplicate is delivered before the first finishes",
+        "Make the handler idempotent, for example by recording processed message ids",
+        "Process messages on a single worker thread so that no duplicates can occur at all"
+      ],
+      "answer": 2,
+      "why": "Duplicates are part of the contract: a consumer can finish the work and crash before acknowledging. Recording the message or business id (unique constraint, 'already sent' flag) makes the second run a no-op. A single thread still sees redeliveries, and a shorter timeout causes more duplicates, not fewer.",
+      "tags": ["messaging", "reliability"],
+      "level": 2,
+      "asked": "Idempotency is the most important queue concept at mid-level; interviewers want the mechanism, not a product name."
+    },
+    {
+      "id": "cb-056",
+      "q": "A message fails processing every time because its payload is malformed. What stops it blocking or looping forever?",
+      "choices": [
+        "Setting the message retention period to zero so the queue drops it at once",
+        "Raising the visibility timeout to an hour so it is retried less often by consumers",
+        "Catching the exception and acknowledging it silently so the queue moves on",
+        "A max-receive count that moves it to a dead-letter queue for inspection"
+      ],
+      "answer": 3,
+      "why": "After N failed receives the broker moves the poison message aside, where you can alert on DLQ depth, inspect it and redrive once fixed. Silently acknowledging throws away evidence and data; a longer timeout only slows the loop.",
+      "tags": ["messaging", "reliability"],
+      "level": 2,
+      "asked": "Real teams get paged by DLQ depth; strong answers mention alerting on it and redriving."
+    },
+    {
+      "id": "cb-057",
+      "q": "When an order is placed, three services (email, analytics, stock) must each react. Which messaging shape fits?",
+      "choices": [
+        "Publish one event to a topic, with a separate subscription or queue for each service",
+        "Put one message on a single queue and let the three services compete for it",
+        "Have the order service call each of the three services' HTTP APIs in sequence, one by one",
+        "Write the order to a shared table and have each service poll it every second"
+      ],
+      "answer": 0,
+      "why": "Pub/sub fan-out gives every subscriber its own copy and its own retry and backlog, so a slow analytics consumer does not delay email. On a single queue, consumers compete and each message goes to only one of them.",
+      "tags": ["messaging"],
+      "level": 2,
+      "asked": "Distinguishes queue (work distribution) from topic (fan-out), a common confusion."
+    },
+    {
+      "id": "cb-058",
+      "q": "What are RPO and RTO in a disaster recovery plan?",
+      "choices": [
+        "RPO is the replica count you keep; RTO is how many regions you can fail into",
+        "RPO is how much data you can afford to lose; RTO is how long recovery may take",
+        "RPO is the request rate you promise; RTO is the timeout on each request made",
+        "RPO is the backup retention period; RTO is the time a backup takes to be written"
+      ],
+      "answer": 1,
+      "why": "Recovery Point Objective is measured backwards from the failure (minutes of lost writes you accept), and Recovery Time Objective forwards (how long until service is back). They drive the design: hourly snapshots cannot meet a five-minute RPO.",
+      "tags": ["reliability"],
+      "level": 2,
+      "asked": "Standard vocabulary in design rounds; strong answers connect the numbers to backup and replica choices."
+    },
+    {
+      "id": "cb-059",
+      "q": "Your nightly database backups have run successfully for a year. What is the most important thing still missing from the backup strategy?",
+      "choices": [
+        "Encrypting the backups a second time with a different key held by another team",
+        "Moving every backup to cold storage on the same day so that they cost far less",
+        "Regularly restoring one into a test environment to prove it actually works",
+        "Taking backups hourly as well, even though nobody has asked for a lower RPO"
+      ],
+      "answer": 2,
+      "why": "An untested backup is a hope, not a backup: restores fail on missing permissions, wrong versions or corrupt files, and you also learn how long a restore takes, which is your real RTO. The other options change cost or frequency without proving recoverability.",
+      "tags": ["reliability", "database"],
+      "level": 1,
+      "asked": "Interviewers love this; people who have lived through a failed restore always mention testing."
+    },
+    {
+      "id": "cb-060",
+      "q": "Your app depends on three services, each with a 99.9% availability SLA, and fails if any one is down. Roughly what availability can you expect?",
+      "choices": [
+        "99.9%, since the combined system is only as weak as the weakest single service",
+        "99.99%, since having three services gives you redundancy against any failure",
+        "Exactly 100%, since each SLA refunds you for downtime so it does not count",
+        "About 99.7%, since serial dependencies multiply: 0.999 × 0.999 × 0.999"
+      ],
+      "answer": 3,
+      "why": "When every dependency is required, availabilities multiply, so three nines each gives roughly 99.7%, around 26 hours a year. Redundancy raises availability only when components are alternatives, not links in a chain.",
+      "tags": ["reliability"],
+      "level": 3,
+      "asked": "Tests whether you can reason about SLAs quantitatively instead of quoting one number."
+    },
+    {
+      "id": "cb-061",
+      "q": "What does running your database in a multi-AZ configuration protect you against?",
+      "choices": [
+        "The loss of one data centre, by keeping a synchronous standby in another zone",
+        "An entire cloud region going offline, by keeping a copy on another continent",
+        "Bad data written by the app, since the standby rejects writes that look wrong",
+        "Slow queries, since reads are split evenly between the primary and the standby"
+      ],
+      "answer": 0,
+      "why": "Multi-AZ keeps a standby in another zone of the same region and fails over automatically if a zone fails. It replicates bad writes faithfully, does not survive a region outage, and the standby often serves no reads at all.",
+      "tags": ["reliability", "database"],
+      "level": 2,
+      "asked": "Separates high availability from backups and from multi-region DR, which candidates often conflate."
+    },
+    {
+      "id": "cb-062",
+      "q": "What is envelope encryption, as used by cloud key management services (KMS, Key Vault)?",
+      "choices": [
+        "Encrypting data twice with the same key, so a leaked copy is twice as hard to read",
+        "Data is encrypted with a data key, and that data key is encrypted by a master key",
+        "Putting every secret in a signed JSON 'envelope' that expires after one hour",
+        "Encrypting only the metadata of each file while the contents stay readable"
+      ],
+      "answer": 1,
+      "why": "Bulk data is encrypted locally with a fast per-object data key; only the small data key is sent to KMS to be wrapped by a master key that never leaves the service. Rotating or revoking the master key controls access without re-encrypting terabytes.",
+      "tags": ["security"],
+      "level": 3,
+      "asked": "Shows you understand what 'encrypted at rest with KMS' actually does under the hood."
+    },
+    {
+      "id": "cb-063",
+      "q": "Your API sits on the public internet and gets a flood of requests trying SQL injection strings. Which managed service is designed to filter these at the edge?",
+      "choices": [
+        "A NAT gateway, which blocks inbound requests that contain SQL keywords",
+        "A read replica, which absorbs attack traffic so that the primary stays healthy",
+        "A web application firewall with managed rules in front of the load balancer",
+        "A private DNS zone, which hides the API's address from the attackers entirely"
+      ],
+      "answer": 2,
+      "why": "A WAF inspects HTTP requests and blocks known attack patterns, bad bots and abusive rates before they reach your app. It is a layer on top of, not a replacement for, parameterised queries in the code.",
+      "tags": ["security", "networking"],
+      "level": 1,
+      "asked": "Defence-in-depth question; strong answers stress that the WAF does not excuse unsafe code."
+    },
+    {
+      "id": "cb-064",
+      "q": "An autoscaling group scales on CPU. It keeps adding and removing instances every few minutes. What is this called, and what is the usual fix?",
+      "choices": [
+        "Cold starting, fixed by keeping one warm instance running at all times in the scaling group",
+        "Throttling, fixed by raising the account's API rate limit with the provider",
+        "Draining, fixed by disabling connection draining on the load balancer",
+        "Flapping, fixed with cooldowns and a gap between scale-out and scale-in thresholds"
+      ],
+      "answer": 3,
+      "why": "Scaling out drops average CPU, which triggers scale-in, which raises CPU again. Cooldown periods, a scale-in threshold well below the scale-out one, and scaling in more slowly than out damp the oscillation.",
+      "tags": ["scaling"],
+      "level": 3,
+      "asked": "Shows operational experience with autoscaling rather than just 'it scales automatically'."
+    },
+    {
+      "id": "cb-065",
+      "q": "Why do autoscaling APIs need to be stateless to scale horizontally?",
+      "choices": [
+        "Any instance can serve any request, so instances can be added or killed freely",
+        "Stateless code runs faster on each request, which reduces the CPU per instance",
+        "Load balancers refuse to route traffic to instances that keep data in memory",
+        "Stateless APIs do not need a database, which removes the scaling bottleneck"
+      ],
+      "answer": 0,
+      "why": "If no user data lives only in one instance's memory or disk, the balancer can send requests anywhere and scale-in loses nothing. State still exists; it lives in the database, cache or object storage that all instances share.",
+      "tags": ["scaling", "compute"],
+      "level": 1,
+      "asked": "Foundational; the strong answer says where the state moved to."
+    },
+    {
+      "id": "cb-066",
+      "q": "Batch jobs that can be interrupted and resumed run every night. Which pricing option usually makes them much cheaper?",
+      "choices": [
+        "Reserved capacity for three years, paid up front for the batch fleet",
+        "Spot or preemptible instances, which are discounted but can be reclaimed",
+        "Dedicated hosts, which avoid sharing hardware with other customers",
+        "On-demand instances in the most expensive region, to finish more quickly"
+      ],
+      "answer": 1,
+      "why": "Spot capacity is spare capacity sold at a large discount with short-notice reclamation, which suits restartable, checkpointed work. Reserved capacity pays off for steady always-on load such as the production database, not for a few hours a night.",
+      "tags": ["cost", "compute"],
+      "level": 2,
+      "asked": "Cost-awareness question; strong answers match the pricing model to the workload shape."
+    },
+    {
+      "id": "cb-067",
+      "q": "A developer left a large test database running for three months. What guardrail would have caught it early?",
+      "choices": [
+        "A lifecycle rule on the database that deletes it after thirty days of use",
+        "A read replica, which alerts the team when the primary is idle for a week",
+        "Budget alerts plus cost reports by tag, with owners reviewing anomalies",
+        "Putting the database in a private subnet so that it costs less to run"
+      ],
+      "answer": 2,
+      "why": "Budgets with alert thresholds and anomaly detection flag unexpected spend within days, and tags tell you who to ask. Network placement does not change instance cost, and databases do not have object-storage-style lifecycle rules.",
+      "tags": ["cost"],
+      "level": 1,
+      "asked": "Every team has a story like this; interviewers want to hear a preventive process."
+    },
+    {
+      "id": "cb-068",
+      "q": "Your API reads the database password from a secret manager on startup. The password is rotated. What must the app handle?",
+      "choices": [
+        "Nothing, since the secret manager updates the password inside running processes",
+        "Rotation only happens during deploys, so the next release picks up the new value",
+        "The database keeps accepting the old password for a year after every rotation",
+        "Fetching the new value on auth failure or periodically, without a full redeploy"
+      ],
+      "answer": 3,
+      "why": "A value read once at startup goes stale. Apps either refresh the secret on a schedule, re-read it when authentication fails, or rotation uses a dual-credential scheme so old and new both work during the overlap.",
+      "tags": ["security", "database"],
+      "level": 3,
+      "asked": "Rotation is where 'we use a vault' answers get tested; strong candidates describe the overlap window."
+    },
+    {
+      "id": "cb-069",
+      "q": "What does Terraform's state file record?",
+      "choices": [
+        "The mapping between resources in your code and the real resources it created",
+        "The full history of every change made through the provider's web console",
+        "The compiled binary of each provider plugin, pinned for reproducible runs",
+        "A copy of every secret in the account, so each plan can compare them and report any drift"
+      ],
+      "answer": 0,
+      "why": "State links `aws_s3_bucket.uploads` to the actual bucket id and caches attributes so `plan` can compute a diff. It often contains sensitive values, which is why it is stored in an encrypted remote backend with locking, not committed to git.",
+      "tags": ["iac"],
+      "level": 2,
+      "asked": "The first thing anyone asks about Terraform; strong answers mention remote state and locking."
+    },
+    {
+      "id": "cb-070",
+      "q": "Someone changed a security group rule in the cloud console, and `terraform plan` now wants to revert it. What is this called?",
+      "choices": [
+        "State locking, where the console locks out Terraform until changes are merged",
+        "Drift, where the real infrastructure no longer matches the code",
+        "Tainting, where the resource is marked to be destroyed and recreated",
+        "Refreshing, where Terraform downloads new provider versions automatically"
+      ],
+      "answer": 1,
+      "why": "Drift is manual or out-of-band change diverging from the declared configuration. The fix is to either codify the change or let apply revert it, and to restrict console write access in production so it stops happening.",
+      "tags": ["iac"],
+      "level": 2,
+      "asked": "Shows you understand why teams ban console changes once IaC is adopted."
+    },
+    {
+      "id": "cb-071",
+      "q": "Why do teams run `terraform plan` in the pull request and `apply` only after merge?",
+      "choices": [
+        "Plans are free while applies are billed, so reviewers keep plans to a minimum",
+        "Plan checks code style only, and apply is what actually validates the syntax",
+        "Reviewers see exactly what will be created, changed or destroyed before it happens",
+        "Terraform refuses to apply unless the plan was generated on a different branch from main"
+      ],
+      "answer": 2,
+      "why": "The plan is a readable diff of real infrastructure changes, so a reviewer can spot 'destroy and recreate the database' before merging. Applying from the main branch through CI keeps one audited path to production.",
+      "tags": ["iac"],
+      "level": 1,
+      "asked": "Connects IaC to code review; the strong answer mentions catching destructive replacements."
+    },
+    {
+      "id": "cb-072",
+      "q": "Compared with clicking resources together in a console, what is the main benefit of infrastructure as code?",
+      "choices": [
+        "Resources defined in code are cheaper, because providers discount automation",
+        "It removes the need for any access controls, since the code is the permission",
+        "Infrastructure defined in code cannot fail, because it is validated on commit",
+        "Environments are reproducible, reviewable and versioned like application code"
+      ],
+      "answer": 3,
+      "why": "Code gives you the same staging and production from one definition, pull-request review, history and rollback, and a way to rebuild after disaster. It does not change prices or prevent failed applies.",
+      "tags": ["iac"],
+      "level": 1,
+      "asked": "Entry-level IaC question; strong answers mention reproducible environments and review."
+    },
+    {
+      "id": "cb-073",
+      "q": "Your cloud logging bill has tripled. What is the most common cause in a web app?",
+      "choices": [
+        "Debug-level logging or per-request payload dumps left on in production",
+        "Log retention set to the default, which is always a single day of storage",
+        "Structured JSON logs, which the provider bills at three times the plain rate",
+        "Logging to stdout instead of to a file, which the provider charges extra for"
+      ],
+      "answer": 0,
+      "why": "Managed logging bills by volume ingested and retained. Verbose levels, full request bodies and health-check noise multiply it quickly; sampling, dropping noise and sensible levels fix it. JSON versus plain text makes little difference per byte.",
+      "tags": ["observability", "cost"],
+      "level": 2,
+      "asked": "Observability costs are a real budget item; strong answers mention log levels and filtering at the source."
+    },
+    {
+      "id": "cb-074",
+      "q": "Your metrics bill jumped after someone added a `userId` label to the request-count metric. Why?",
+      "choices": [
+        "Metrics with labels are stored as logs, which are billed at a higher rate",
+        "Each unique label combination is a separate time series, so cardinality exploded",
+        "The provider charges per character in a label, and ids are long strings",
+        "Labels force every metric to be sampled once a second instead of once a minute by default"
+      ],
+      "answer": 1,
+      "why": "Time-series databases store one series per distinct label set, so a label with 100,000 users creates 100,000 series. High-cardinality detail belongs in logs or traces; metrics labels should be bounded, like route and status code.",
+      "tags": ["observability", "cost"],
+      "level": 3,
+      "asked": "Cardinality is the classic metrics mistake; interviewers want the 'where does per-user detail belong' answer."
+    },
+    {
+      "id": "cb-075",
+      "q": "What does a managed container service (ECS, Cloud Run, Azure Container Apps) do that a plain VM running Docker does not?",
+      "choices": [
+        "It builds your image from source code, so you no longer need a Dockerfile",
+        "It gives each container its own dedicated physical server for isolation",
+        "It schedules, restarts, scales and rolls out containers across a fleet for you",
+        "It removes the need for a registry by copying images straight from your laptop"
+      ],
+      "answer": 2,
+      "why": "The platform decides where containers run, replaces failed ones, scales on load and does rolling deploys. On a lone VM you own all of that, plus patching the host.",
+      "tags": ["containers", "compute"],
+      "level": 1,
+      "asked": "Tests whether you know what 'managed' buys you in the container world."
+    },
+    {
+      "id": "cb-076",
+      "q": "Your container needs to read a secret and write to one queue. How do you grant it cloud permissions without baking keys into the image?",
+      "choices": [
+        "Build the keys into the image at a secret layer that is stripped when pushed",
+        "Mount the developer's personal credentials file from their laptop at deploy",
+        "Pass the root account's keys as environment variables in the task definition",
+        "Attach a workload identity or task role scoped to that secret and that queue"
+      ],
+      "answer": 3,
+      "why": "The platform injects short-lived credentials for the role the workload runs as (task role, managed identity, workload identity), and SDKs pick them up automatically. Image layers keep every file ever added, and personal or root keys break least privilege.",
+      "tags": ["containers", "security"],
+      "level": 2,
+      "asked": "Same idea as instance roles, applied to containers; interviewers check you know the SDK finds them itself."
+    },
+    {
+      "id": "cb-077",
+      "q": "Your API reaches managed object storage over the public internet via a NAT gateway, and the NAT bill is large. What is the usual fix?",
+      "choices": [
+        "A private endpoint or gateway endpoint so traffic to the service stays internal",
+        "A CDN in front of the bucket so the API downloads files from the edge instead",
+        "Giving each instance a public IP so it can skip the NAT for every request",
+        "Moving the bucket to another region, where data transfer is billed less"
+      ],
+      "answer": 0,
+      "why": "Service endpoints route traffic to the provider's own services over its private network, skipping NAT processing charges and the public internet. Public IPs on instances undo the private-subnet design, and cross-region traffic costs more, not less.",
+      "tags": ["networking", "cost"],
+      "level": 3,
+      "asked": "A real cost win that shows you know how VPC traffic is billed."
+    },
+    {
+      "id": "cb-078",
+      "q": "What does a managed Redis service (ElastiCache, Azure Cache for Redis, Memorystore) typically NOT give you by default?",
+      "choices": [
+        "A single endpoint the app connects to without knowing which node is primary",
+        "A guarantee that cached data survives every failover and restart intact",
+        "Automatic patching of the Redis engine during a maintenance window",
+        "Metrics on memory use and evictions in the provider's monitoring console"
+      ],
+      "answer": 1,
+      "why": "Replication is asynchronous, and persistence settings vary, so a failover can lose recent writes. Treat Redis as a cache you can refill, not as the system of record, unless you have deliberately configured and tested durability.",
+      "tags": ["storage", "reliability"],
+      "level": 3,
+      "asked": "Checks you do not treat a cache as a database; strong answers mention designing for cold cache."
+    },
+    {
+      "id": "cb-079",
+      "q": "In cloud terms, what is a VPC (or VNet)?",
+      "choices": [
+        "A virtual private computer, meaning one VM that is not shared with anyone",
+        "A VPN client that developers install to reach the provider's web console",
+        "A logically isolated private network, with subnets and routes, for your resources",
+        "A paid support plan that gives you a private chat channel to the provider's own engineers"
+      ],
+      "answer": 2,
+      "why": "A VPC is your own address space in the provider's network, divided into public and private subnets with route tables and firewalls. Everything else (instances, databases, load balancers) is placed inside it.",
+      "tags": ["networking"],
+      "level": 1,
+      "asked": "Baseline vocabulary; interviewers expect you to sketch public and private subnets from it."
+    },
+    {
+      "id": "cb-080",
+      "q": "Why does a cloud provider give each account service quotas (for example, a maximum number of vCPUs per region)?",
+      "choices": [
+        "Quotas are the provider's billing tiers, and raising one moves you to a pricier plan",
+        "Quotas limit how much traffic the load balancer accepts before it starts rejecting",
+        "Quotas are a security feature that blocks access from outside the home region",
+        "Quotas protect shared capacity and you from runaway spend; you request increases"
+      ],
+      "answer": 3,
+      "why": "Quotas cap resources per account and region to protect the platform and stop a bug or compromised key spinning up thousands of machines. They can block a scale-out at the worst moment, so check them before launches.",
+      "tags": ["scaling", "cost"],
+      "level": 2,
+      "asked": "Surfaces operational maturity: hitting a quota during a traffic spike is a known outage cause."
+    },
+    {
+      "id": "cb-081",
+      "q": "You want a staging environment that mirrors production. What is the most reliable way to keep them from drifting apart?",
+      "choices": [
+        "Define both from the same IaC modules, with only sizes and names as variables",
+        "Clone production by hand each quarter using the console's copy feature",
+        "Point staging at the production database so the data never drifts apart",
+        "Deploy to staging only after production, so staging always catches up"
+      ],
+      "answer": 0,
+      "why": "One definition parameterised per environment means differences are explicit and reviewable. Sharing the production database with staging is a data-safety hazard, and manual clones drift from the day after they are made.",
+      "tags": ["iac"],
+      "level": 2,
+      "asked": "'Works in staging, breaks in prod' is usually drift; strong answers make the differences explicit."
+    },
+    {
+      "id": "cb-082",
+      "q": "What does a managed load balancer's access log give you that your app's own logs may not?",
+      "choices": [
+        "The full request and response bodies for every call, for replaying traffic",
+        "Requests that never reached the app, such as those rejected or timed out upstream",
+        "The database queries each request ran, joined to the client's IP address",
+        "A copy of each user's session cookie, so you can impersonate them later for load tests"
+      ],
+      "answer": 1,
+      "why": "Balancer logs show every request at the edge with status, target and timings, including 502s and 504s where the app never logged anything. They do not contain bodies or database activity.",
+      "tags": ["observability", "networking"],
+      "level": 2,
+      "asked": "Debugging 5xx errors that the app never saw is a common scenario; this is where you look."
+    },
+    {
+      "id": "cb-083",
+      "q": "Your team wants to move a static marketing site off a VM. Which cloud setup is simplest and cheapest?",
+      "choices": [
+        "A managed Kubernetes cluster running an nginx container across three zones",
+        "A serverless function that reads each HTML file from disk and returns it",
+        "Object storage or a static hosting service with a CDN and a managed certificate",
+        "A pair of VMs behind a load balancer so one can be patched while the other serves"
+      ],
+      "answer": 2,
+      "why": "Static files need no compute: storage plus CDN (or Netlify, Vercel, Static Web Apps, Cloudflare Pages) gives global caching and TLS for pennies. Clusters and VM pairs add cost and patching for no benefit.",
+      "tags": ["storage", "cost"],
+      "level": 1,
+      "asked": "Right-sizing question; interviewers want the simplest tool that fits."
+    },
+    {
+      "id": "cb-084",
+      "q": "Under the cloud 'shared responsibility model', which of these is YOUR job when you run an API on a managed platform?",
+      "choices": [
+        "Patching the hypervisor and the physical hosts that your instances run on",
+        "Securing your code, its dependencies, your IAM policies and your data access",
+        "Guarding the data centre doors and destroying failed disks from the hardware",
+        "Keeping the provider's global network backbone running between its regions"
+      ],
+      "answer": 1,
+      "why": "The provider secures the cloud itself (hardware, facilities, hypervisors, managed-service internals); you secure what you put in it: code, configuration, identities and data. Most cloud breaches are customer-side misconfiguration, such as public buckets or over-broad roles.",
+      "tags": ["security"],
+      "level": 1,
+      "asked": "Frames every cloud-security discussion; strong answers note that 'managed' shifts the line but never removes it."
+    },
+    {
+      "id": "cb-085",
+      "q": "A partner will only accept webhooks from a fixed list of IP addresses, but your API's instances scale in and out. How do you give outbound traffic a stable IP?",
+      "choices": [
+        "Assign an elastic IP to the load balancer, which also becomes the outbound source",
+        "Ask the partner to allow-list your domain name, since IP lists are deprecated",
+        "Route outbound traffic through a NAT gateway with a static public IP address",
+        "Pin the API to a single instance so its address never changes over time"
+      ],
+      "answer": 2,
+      "why": "All egress from private subnets leaves via the NAT gateway's fixed address, so the partner allow-lists one IP however many instances run. A load balancer's address is for inbound traffic, and pinning to one instance removes scaling and redundancy.",
+      "tags": ["networking"],
+      "level": 3,
+      "asked": "A common integration requirement; knowing the NAT answer shows you understand egress paths."
+    },
+    {
+      "id": "cb-086",
+      "q": "Your browser app uploads directly to an object storage bucket using a presigned URL, and the browser reports a CORS error. Where is the fix?",
+      "choices": [
+        "In your API's CORS middleware, since the API issued the presigned URL",
+        "In the presigned URL itself, by adding a `cors=true` query parameter to it",
+        "In the browser, by setting `mode: 'no-cors'` on the upload request",
+        "In the bucket's CORS configuration, allowing your origin and the PUT method"
+      ],
+      "answer": 3,
+      "why": "The browser is talking to the storage service, so that origin must return the CORS headers; configure the bucket to allow your site's origin, the method and the headers you send. Your API's CORS settings do not apply to another host, and `no-cors` makes the response unreadable.",
+      "tags": ["storage", "networking"],
+      "level": 2,
+      "asked": "Catches people who think CORS is configured 'on the frontend'; it is always the responding server."
+    },
+    {
+      "id": "cb-087",
+      "q": "Premium videos are served through a CDN, and only paying users should be able to play them. What is the usual mechanism?",
+      "choices": [
+        "Signed URLs or signed cookies that the CDN validates, issued by your app after auth",
+        "A secret path segment in the URL that only paying users are told about",
+        "Checking the `Referer` header at the CDN so that only your own pages can embed them",
+        "Disabling caching for premium files so each request reaches your app first"
+      ],
+      "answer": 0,
+      "why": "The app authorises the user and issues a URL or cookie signed with a key the CDN trusts, with an expiry; the edge verifies the signature without calling your origin. Secret paths leak, `Referer` is trivially forged, and disabling caching defeats the CDN.",
+      "tags": ["security", "networking"],
+      "level": 3,
+      "asked": "Extends the presigned-URL idea to the edge; strong answers mention expiry and key rotation."
+    },
+    {
+      "id": "cb-088",
+      "q": "A serverless function in Node creates its database client at module scope, outside the handler. Why is that a common optimisation?",
+      "choices": [
+        "Module-scope code runs at build time, so the connection is baked into the bundle",
+        "Warm invocations reuse the same execution environment, so the client is reused",
+        "Module scope is shared by every instance of the function across the region",
+        "The platform bills module-scope code at a lower rate than handler code"
+      ],
+      "answer": 1,
+      "why": "An execution environment serves many invocations in turn, and module-level state survives between them, so expensive setup happens once per cold start. It is not shared across concurrent instances, so each instance still holds its own connection.",
+      "tags": ["compute", "database"],
+      "level": 2,
+      "asked": "Shows you understand the serverless execution model rather than 'a fresh process per request'."
+    },
+    {
+      "id": "cb-089",
+      "q": "A container platform sends SIGTERM to your API before stopping it during a deploy. What should your API do?",
+      "choices": [
+        "Ignore it, since the platform will wait indefinitely until the process exits",
+        "Exit immediately with exit code 0 so that the new version starts as fast as possible",
+        "Stop accepting new requests, finish in-flight ones, close connections, then exit",
+        "Restart itself in place so the platform thinks the container is still healthy"
+      ],
+      "answer": 2,
+      "why": "Graceful shutdown drains work inside the platform's grace period (often 30 seconds) before SIGKILL arrives. Exiting at once drops in-flight requests as 502s; ignoring it just means being killed mid-request later.",
+      "tags": ["containers", "reliability"],
+      "level": 2,
+      "asked": "Zero-downtime deploys need the app's cooperation; interviewers want the drain sequence."
+    },
+    {
+      "id": "cb-090",
+      "q": "You give a container 256 MB of memory, and it is repeatedly killed with exit code 137 under load. What is happening?",
+      "choices": [
+        "The container is out of disk space, and 137 is the code for a full filesystem",
+        "The health check is failing, and 137 means the load balancer removed it",
+        "The image is built for the wrong CPU architecture and crashes on start",
+        "It exceeds its memory limit and the kernel OOM killer sends SIGKILL"
+      ],
+      "answer": 3,
+      "why": "137 is 128 + 9, meaning the process was killed with SIGKILL, and the platform's events usually say OOMKilled. Raise the limit, reduce memory use, or configure the runtime's heap (Node's `--max-old-space-size`, .NET's GC limits) to fit inside the container.",
+      "tags": ["containers", "compute"],
+      "level": 2,
+      "asked": "A very common container incident; decoding 137 quickly signals hands-on experience."
+    },
+    {
+      "id": "cb-091",
+      "q": "For a CRUD app with users mostly in the EU, which factor most often decides the cloud region?",
+      "choices": [
+        "Latency to users plus data residency rules such as GDPR data-location commitments",
+        "The region with the newest instance types, regardless of where the users actually are",
+        "The region that the developers' office is nearest to, for faster deploys",
+        "The cheapest region worldwide, since latency does not matter for CRUD apps"
+      ],
+      "answer": 0,
+      "why": "Putting compute and data near users cuts round trips, and contracts or regulation may require personal data to stay in a jurisdiction. Price differences between regions exist but rarely outweigh 150 ms added to every request.",
+      "tags": ["reliability", "cost"],
+      "level": 1,
+      "asked": "A practical design question; strong answers mention both latency and compliance."
+    },
+    {
+      "id": "cb-092",
+      "q": "What does an API gateway (API Management, API Gateway, Apigee) typically add in front of your services?",
+      "choices": [
+        "A database connection pool shared by every service behind the gateway",
+        "Cross-cutting concerns such as auth checks, rate limits, routing and API keys",
+        "Automatic generation of your business logic from the OpenAPI description you upload",
+        "A replacement for TLS, since the gateway encrypts the payloads itself"
+      ],
+      "answer": 1,
+      "why": "A gateway centralises edge policies: validating tokens, throttling per client, request routing, versioning and usage analytics. It does not replace business logic or TLS, and it adds a hop and a component to operate.",
+      "tags": ["networking", "security"],
+      "level": 2,
+      "asked": "Common in enterprise stacks; strong answers name a cost as well as the benefits."
+    },
+    {
+      "id": "cb-093",
+      "q": "Which DNS routing policy sends each user to the region with the lowest network latency for them?",
+      "choices": [
+        "Weighted routing, which splits traffic by the percentages you configure",
+        "Failover routing, which sends everyone to a primary until it is unhealthy",
+        "Latency-based routing, which answers with the endpoint measured fastest",
+        "Round-robin A records, which rotate the order on every resolver query"
+      ],
+      "answer": 2,
+      "why": "Latency-based (or performance) routing uses the provider's measurements between resolver networks and regions. Weighted routing is for canaries and gradual migrations, failover for active-passive setups, and round-robin spreads load blindly.",
+      "tags": ["networking"],
+      "level": 2,
+      "asked": "Shows you know DNS can do more than map a name to one IP."
+    },
+    {
+      "id": "cb-094",
+      "q": "You run a primary region and a standby region. How can DNS move traffic automatically if the primary goes down?",
+      "choices": [
+        "Resolvers notice failed connections and pick another A record by themselves",
+        "Set the TTL to a week so resolvers keep a stable answer during the outage",
+        "Registrars move the domain to the standby region's name servers on failure",
+        "Use failover routing tied to a health check, with a short TTL on the record"
+      ],
+      "answer": 3,
+      "why": "The DNS provider probes the primary and answers with the standby's address when checks fail; a short TTL makes clients pick up the change quickly. Long TTLs keep clients pointed at the dead region, and registrars do not react to outages.",
+      "tags": ["networking", "reliability"],
+      "level": 3,
+      "asked": "Active-passive DR in one question; strong answers mention TTL and data replication to the standby."
+    },
+    {
+      "id": "cb-095",
+      "q": "Why should a production database have deletion protection enabled, even when it is managed by Terraform?",
+      "choices": [
+        "A mistaken `destroy` or a rename that forces replacement will be refused",
+        "Deletion protection makes backups run more often, which lowers the RPO",
+        "It encrypts the database so that deleted data cannot be read by the provider",
+        "Terraform cannot manage databases unless deletion protection is switched on"
+      ],
+      "answer": 0,
+      "why": "Some attribute changes make Terraform destroy and recreate a resource; deletion protection (plus `prevent_destroy` in code) turns that into an error instead of data loss. It has no effect on backups or encryption.",
+      "tags": ["iac", "database"],
+      "level": 2,
+      "asked": "A cheap guardrail against the scariest IaC mistake; mentioning it shows care."
+    },
+    {
+      "id": "cb-096",
+      "q": "Two engineers run `terraform apply` against the same environment at the same moment. What prevents them corrupting the state?",
+      "choices": [
+        "Terraform merges both plans automatically and applies them in alphabetical order",
+        "State locking in the remote backend, so the second run waits or fails",
+        "Git, since the state file is committed and conflicts show up at merge time",
+        "The cloud provider rejects any second change to an account within a minute"
+      ],
+      "answer": 1,
+      "why": "Remote backends (S3 with locking, Azure Storage leases, Terraform Cloud) take a lock for the duration of a run. Committing state to git gives no runtime locking and leaks secrets; the better practice is applying only from CI.",
+      "tags": ["iac"],
+      "level": 2,
+      "asked": "Follows naturally from 'what is state'; interviewers want remote backend and locking."
+    },
+    {
+      "id": "cb-097",
+      "q": "What is the main difference between Terraform and a tool such as AWS CDK or Pulumi?",
+      "choices": [
+        "Terraform manages only networking, while CDK and Pulumi manage only compute",
+        "CDK and Pulumi apply changes without a preview, while Terraform always plans first",
+        "CDK and Pulumi let you describe resources in a general-purpose language such as C#",
+        "Terraform is imperative, running steps in order, while CDK and Pulumi are declarative"
+      ],
+      "answer": 2,
+      "why": "All of them end up declarative: you describe desired state and the tool diffs it against reality. Terraform uses HCL; CDK and Pulumi let you build that description with loops, functions and types in TypeScript, C# or Python, and both still preview changes.",
+      "tags": ["iac"],
+      "level": 3,
+      "asked": "Tool-choice question; strong answers note that 'real code' also makes it easier to be too clever."
+    },
+    {
+      "id": "cb-098",
+      "q": "In IaC, what does it mean for an operation to be idempotent?",
+      "choices": [
+        "Every apply destroys and recreates all the resources, so each run starts from a clean slate",
+        "The tool refuses to run twice in one day, to avoid duplicate resources",
+        "The same configuration may produce different results depending on timing",
+        "Applying the same configuration again makes no changes once reality matches it"
+      ],
+      "answer": 3,
+      "why": "Declarative tools compare desired and actual state and only act on the difference, so re-running an apply is safe. A script of imperative 'create' calls, by contrast, fails or duplicates resources when run twice.",
+      "tags": ["iac"],
+      "level": 1,
+      "asked": "Explains why declarative IaC beats a bash script of CLI commands."
+    },
+    {
+      "id": "cb-099",
+      "q": "A new developer asks why your team does not just use one cloud account for dev, staging and production. What is the strongest reason?",
+      "choices": [
+        "Separate accounts isolate permissions, quotas and blast radius per environment",
+        "Providers charge less per resource when the same services are split across accounts",
+        "One account can hold only one database, so each environment needs its own",
+        "Dev resources in a production account are deleted automatically every night"
+      ],
+      "answer": 0,
+      "why": "Account (or subscription/project) boundaries are the hardest isolation the cloud offers: a dev credential cannot touch production, a runaway test cannot exhaust production quotas, and billing splits cleanly. There is no per-account discount or one-database limit.",
+      "tags": ["security", "cost"],
+      "level": 2,
+      "asked": "Shows awareness of environment isolation beyond naming conventions."
+    },
+    {
+      "id": "cb-100",
+      "q": "Your managed Postgres instance hits 100% of its provisioned storage. What typically happens?",
+      "choices": [
+        "The provider silently deletes the oldest rows to make room for new writes",
+        "Writes fail or the instance becomes read-only until storage is increased",
+        "Storage overflows into object storage and queries slow down but keep working",
+        "The instance fails over to its standby, which has twice the storage available"
+      ],
+      "answer": 1,
+      "why": "A full disk stops the database from writing data and WAL, so writes fail and the instance may enter a storage-full state. Enable storage autoscaling where offered and alert well before the limit; the standby has the same size.",
+      "tags": ["database", "storage"],
+      "level": 2,
+      "asked": "A classic avoidable outage; interviewers want alerting and autoscaling in the answer."
+    },
+    {
+      "id": "cb-101",
+      "q": "Your managed database performance drops sharply every afternoon, though CPU and memory look fine. The disk IOPS graph is flat at a ceiling. What does that suggest?",
+      "choices": [
+        "The database has too many indexes, so it should drop all of them at once",
+        "The connection pool is too large, which caps IOPS for each client connection",
+        "You are hitting the storage tier's provisioned IOPS or throughput limit",
+        "The CDN is caching database pages, which throttles the underlying disk"
+      ],
+      "answer": 2,
+      "why": "Cloud disks have IOPS and throughput caps (sometimes burst credits that run out), and a flat line at the cap is the tell. Raise provisioned IOPS, move to a faster tier, or cut I/O with better indexes and less scanning.",
+      "tags": ["database", "storage"],
+      "level": 3,
+      "asked": "Reading a flat-topped graph correctly is a real skill; strong answers mention burst credits."
+    },
+    {
+      "id": "cb-102",
+      "q": "Why is `0.0.0.0/0` on port 22 or 3389 in a security group a red flag?",
+      "choices": [
+        "It blocks all SSH or RDP traffic, locking administrators out of the machine",
+        "It only allows traffic from other instances within the same availability zone",
+        "It routes all internet traffic through the instance, which then acts as a NAT",
+        "It exposes remote login to the whole internet, inviting scanning and brute force"
+      ],
+      "answer": 3,
+      "why": "`0.0.0.0/0` means any IPv4 address. Admin access should go through a bastion, a VPN, session-manager style tooling or at least a narrow source range, and many teams remove SSH entirely in favour of immutable instances.",
+      "tags": ["security", "networking"],
+      "level": 1,
+      "asked": "Classic misconfiguration from security reviews; interviewers want the alternatives."
+    },
+    {
+      "id": "cb-103",
+      "q": "What is the practical difference between a public subnet and a private subnet?",
+      "choices": [
+        "A public subnet routes to an internet gateway; a private one has no direct route in",
+        "A public subnet is shared with other customers, while a private one is dedicated to you",
+        "Public subnets are free to use, while private subnets are billed per hour of use",
+        "Public subnets allow only HTTP traffic, while private ones allow any protocol"
+      ],
+      "answer": 0,
+      "why": "The route table decides it: a subnet whose default route points at an internet gateway is public, so resources with public IPs there are reachable. Load balancers go public; app servers and databases go private.",
+      "tags": ["networking"],
+      "level": 1,
+      "asked": "Foundation for any cloud architecture sketch; strong answers place each component."
+    },
+    {
+      "id": "cb-104",
+      "q": "A CDN sits in front of your API. Which endpoint is a safe candidate for edge caching?",
+      "choices": [
+        "`POST /orders`, since orders are created the same way for every customer",
+        "`GET /products?category=shoes` returning public catalogue data for a few seconds",
+        "`GET /me/orders`, provided the CDN caches by URL alone to save origin load",
+        "`DELETE /cart/items/5`, since repeating a delete is idempotent anyway"
+      ],
+      "answer": 1,
+      "why": "Public, identical-for-everyone GET responses can be cached briefly at the edge, even for a few seconds, which absorbs spikes. Per-user responses cached by URL alone leak between users, and non-GET methods are not cacheable.",
+      "tags": ["networking", "scaling"],
+      "level": 2,
+      "asked": "Tests judgement about what is cacheable; strong answers mention short TTLs and stale-while-revalidate."
+    },
+    {
+      "id": "cb-105",
+      "q": "What is an origin shield (or tiered cache) in a CDN?",
+      "choices": [
+        "A firewall rule that stops attackers from discovering the IP address of your origin server",
+        "A TLS certificate the CDN presents to your origin to prove its identity",
+        "A mid-tier cache that edge locations fetch through, cutting requests to your origin",
+        "A feature that serves a static error page when the origin is unavailable"
+      ],
+      "answer": 2,
+      "why": "Without a shield, every edge location misses and hits your origin separately; with one, they fetch through a single regional cache, so a new object is fetched from origin roughly once. It protects origin capacity on cache misses and purges.",
+      "tags": ["networking", "scaling"],
+      "level": 3,
+      "asked": "Shows deeper CDN knowledge; relevant when a purge causes an origin traffic spike."
+    },
+    {
+      "id": "cb-106",
+      "q": "You purge the whole CDN cache after every deploy. What side effect should you expect?",
+      "choices": [
+        "Users see the old version for a longer time, since purges are queued for a day",
+        "The CDN bills a one-off fee that equals the site's monthly bandwidth charge",
+        "The TLS certificate is revoked and has to be reissued for the domain",
+        "A burst of cache misses hits the origin at once until the cache refills"
+      ],
+      "answer": 3,
+      "why": "A full purge turns every edge into a miss simultaneously, so the origin takes the full load right after a deploy. Content-hashed asset names avoid most purging, and targeted purges or an origin shield soften the rest.",
+      "tags": ["networking", "scaling"],
+      "level": 2,
+      "asked": "Cause-and-effect reasoning about caches; a good follow-up to hashed filenames."
+    },
+    {
+      "id": "cb-107",
+      "q": "In a cloud console, you see an object storage bucket flagged as 'public'. What should you do first?",
+      "choices": [
+        "Confirm whether it is meant to be public, then enable block-public-access if not",
+        "Delete the bucket immediately, since public buckets are always a security breach",
+        "Rename the bucket so that the old public URL no longer resolves to its contents",
+        "Enable versioning, which makes existing objects private again automatically"
+      ],
+      "answer": 0,
+      "why": "Some buckets legitimately serve public assets, so check intent before acting; then block public access at bucket or account level and review what was exposed. Deleting destroys evidence and data, and versioning does not change permissions.",
+      "tags": ["storage", "security"],
+      "level": 1,
+      "asked": "Public buckets are the most famous cloud leak; strong answers mention account-level guardrails."
+    },
+    {
+      "id": "cb-108",
+      "q": "Your team uses a managed Kubernetes service. Which part do you still operate yourself?",
+      "choices": [
+        "The etcd cluster that stores the Kubernetes control-plane state and its backups",
+        "Your workloads' manifests, resource limits, node pools and upgrade timing",
+        "The Kubernetes API server's availability, which you run on your own VMs",
+        "The physical networking between the provider's data centres and regions"
+      ],
+      "answer": 1,
+      "why": "Managed Kubernetes runs the control plane for you, but you still own deployments, requests and limits, scaling, node pool versions and upgrades, and everything inside the cluster. It is less managed than a PaaS such as Cloud Run or App Service.",
+      "tags": ["containers", "compute"],
+      "level": 2,
+      "asked": "Helps calibrate 'should we use Kubernetes'; strong answers compare it with simpler PaaS options."
+    },
+    {
+      "id": "cb-109",
+      "q": "A team wants to host a single CRUD API with modest traffic. Which reasoning about Kubernetes is most sound?",
+      "choices": [
+        "Kubernetes is required for any containerised app, so it should be used from day one",
+        "Kubernetes is always cheaper than a PaaS, because it packs containers tightly",
+        "A PaaS or managed container service is simpler until you need Kubernetes' features",
+        "Kubernetes cannot run a single API, since it needs at least ten services to schedule"
+      ],
+      "answer": 2,
+      "why": "Kubernetes pays off with many services, custom scheduling or a platform team to run it; for one API it adds upgrades, networking and YAML to own. Containers run happily on Cloud Run, App Service, Fly.io or ECS without it.",
+      "tags": ["containers", "compute"],
+      "level": 2,
+      "asked": "Judgement question; interviewers like candidates who resist over-engineering."
+    },
+    {
+      "id": "cb-110",
+      "q": "Cloud providers publish an SLA of, say, 99.95% for a managed service. What does the SLA actually give you if it is breached?",
+      "choices": [
+        "Automatic compensation for your lost revenue during the outage period",
+        "A guarantee that the outage will not happen again for the next twelve months",
+        "Free migration to a different region chosen by the provider's engineers",
+        "Service credits on your bill, usually a percentage of that service's cost"
+      ],
+      "answer": 3,
+      "why": "SLA remedies are credits against the service's own charge, which rarely match your business loss. The SLA tells you what to design around, not what you will be paid; your own availability target must account for it.",
+      "tags": ["reliability", "cost"],
+      "level": 2,
+      "asked": "Corrects the common belief that an SLA is insurance."
+    },
+    {
+      "id": "cb-111",
+      "q": "How does a cloud provider's DDoS protection typically help a public web app?",
+      "choices": [
+        "It absorbs and filters volumetric floods at the network edge before they reach you",
+        "It rate-limits every user to one request per second so floods are impossible",
+        "It moves your app to a secret IP address each time an attack is detected",
+        "It blocks all traffic from countries outside your home region automatically"
+      ],
+      "answer": 0,
+      "why": "Providers have edge capacity far beyond any single app, so network-layer floods are dropped there; CDNs and WAF rate rules help with application-layer floods. Per-user limits of one request per second would break normal browsing.",
+      "tags": ["security", "networking"],
+      "level": 1,
+      "asked": "Basic edge-security awareness; strong answers separate network-layer from application-layer attacks."
+    },
+    {
+      "id": "cb-112",
+      "q": "Your web app, API and database are in one availability zone. A zone outage takes everything down. What is the minimum change to survive it?",
+      "choices": [
+        "Add a second region with its own database, and fail over between them by hand",
+        "Run app instances in two or more zones and use a multi-AZ database",
+        "Increase the instance sizes, since larger instances are placed in several zones",
+        "Take backups every hour, so you can rebuild quickly after the zone returns"
+      ],
+      "answer": 1,
+      "why": "Spreading instances across zones behind the load balancer, plus a multi-AZ database, survives a single-zone failure within one region. Multi-region is far more complex and costly; backups help recovery but not availability.",
+      "tags": ["reliability"],
+      "level": 2,
+      "asked": "Right-sized reliability; interviewers like 'multi-AZ first, multi-region only if the business needs it'."
+    },
+    {
+      "id": "cb-113",
+      "q": "What is the purpose of a CAA DNS record?",
+      "choices": [
+        "It points the domain at the certificate authority's servers for validation",
+        "It publishes the site's public key so browsers can skip the TLS handshake",
+        "It lists which certificate authorities may issue certificates for the domain",
+        "It tells browsers to always use HTTPS for the domain, like an HSTS header"
+      ],
+      "answer": 2,
+      "why": "Certificate Authority Authorization records restrict issuance: a CA must check them and refuse if it is not listed, reducing the risk of a rogue certificate. HSTS is a separate HTTP header, and CAA does not affect the handshake.",
+      "tags": ["networking", "security"],
+      "level": 3,
+      "asked": "A niche but telling detail; it tends to come up when a certificate renewal is unexpectedly refused."
+    },
+    {
+      "id": "cb-114",
+      "q": "Your app serves over HTTPS, but the first visit to `http://example.com` is still redirected via plain HTTP. What does HSTS add?",
+      "choices": [
+        "It encrypts the plain-HTTP redirect response itself so that it cannot be read in transit",
+        "It moves the redirect into DNS so no HTTP request is ever made at all",
+        "It makes the load balancer reject port 80, so HTTP requests fail instead",
+        "After a first HTTPS visit, the browser upgrades future requests to HTTPS itself"
+      ],
+      "answer": 3,
+      "why": "`Strict-Transport-Security` tells the browser to use HTTPS for the domain for `max-age`, so later visits never send plain HTTP that an attacker could intercept. The very first visit stays exposed unless the domain is on the browser preload list.",
+      "tags": ["security", "networking"],
+      "level": 2,
+      "asked": "Shows you understand the SSL-stripping risk that a redirect alone does not solve."
+    },
+    {
+      "id": "cb-115",
+      "q": "Your production database was created by hand in the console before the team adopted Terraform. How do you bring it under IaC without recreating it?",
+      "choices": [
+        "Delete it and let Terraform create a fresh one, then restore last night's backup",
+        "Write the matching resource block and import the existing resource into state",
+        "Copy its settings into a tfvars file, since Terraform reads state from variables",
+        "Nothing is needed, because Terraform discovers every resource in the account"
+      ],
+      "answer": 1,
+      "why": "An import (the `import` block or `terraform import`) records the real resource's id in state against your resource block; then `plan` should show no changes once the code matches. Deleting and restoring causes downtime and data loss, and Terraform only manages what is in its state.",
+      "tags": ["iac", "database"],
+      "level": 3,
+      "asked": "Almost every team adopts IaC with existing resources; knowing import shows you have done it."
     }
   ]
 }

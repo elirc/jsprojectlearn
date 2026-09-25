@@ -427,6 +427,1604 @@
       "tags": ["query-plans", "joins"],
       "level": 2,
       "asked": "Reading the join node is the second skill after row estimates; strong answers say when each of the three join strategies wins."
+    },
+    {
+      "id": "sqa-027",
+      "q": "What does `ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at)` assign?",
+      "choices": [
+        "A number from 1 across the whole result, ordered by customer and then date",
+        "A number from 1 per distinct created_at, shared by rows with the same date",
+        "The count of orders per customer, repeated on every one of that customer's rows",
+        "A number from 1 within each customer's orders, restarting for each customer"
+      ],
+      "answer": 3,
+      "why": "PARTITION BY splits the rows into groups and the numbering restarts at 1 in each, following the ORDER BY inside OVER. It never collapses rows, unlike GROUP BY. Rows tied on created_at get arbitrary distinct numbers unless you add a tiebreaker such as id.",
+      "tags": ["window-functions"],
+      "level": 1,
+      "asked": "The building block of 'first/latest N per group' queries; interviewers expect you to explain PARTITION BY clearly."
+    },
+    {
+      "id": "sqa-028",
+      "q": "Why does this fail in Postgres, SQL Server and SQLite?",
+      "code": "SELECT id, customer_id,\n       ROW_NUMBER() OVER (PARTITION BY customer_id\n                          ORDER BY created_at DESC) AS rn\nFROM orders\nWHERE rn = 1;",
+      "lang": "sql",
+      "choices": [
+        "Window functions run after WHERE, so filter on rn in an outer query or CTE",
+        "ROW_NUMBER needs an explicit frame clause when it is used with PARTITION BY",
+        "The alias rn clashes with a reserved word and must be quoted to be used",
+        "PARTITION BY and ORDER BY cannot name different columns in one window"
+      ],
+      "answer": 0,
+      "why": "Window functions are computed after WHERE, GROUP BY and HAVING, alongside the SELECT list, so neither the alias nor the function is available in WHERE. Wrap the query in a subquery or CTE and filter there. Snowflake, BigQuery and DuckDB offer QUALIFY for this; Postgres, SQL Server, MySQL and SQLite do not.",
+      "tags": ["window-functions", "execution-order"],
+      "level": 1,
+      "asked": "Everyone hits this once; explaining the evaluation order is what makes the answer more than 'use a subquery'."
+    },
+    {
+      "id": "sqa-029",
+      "q": "Salaries in one department are 90, 90, 80 and 70. You want everyone on the second-highest salary. Which function makes `WHERE r = 2` return the 80?",
+      "choices": [
+        "ROW_NUMBER(), because it numbers each row in salary order",
+        "DENSE_RANK(), because ranks follow on with no gap after a tie",
+        "RANK(), because tied rows share their position in the list",
+        "NTILE(2), because it splits the salaries into a top and a bottom half"
+      ],
+      "answer": 1,
+      "why": "DENSE_RANK gives 1, 1, 2, 3, so rank 2 is the second-highest distinct salary. RANK gives 1, 1, 3, 4, so rank 2 does not exist; ROW_NUMBER gives the second 90 rank 2. Choose based on whether ties should consume positions.",
+      "tags": ["window-functions"],
+      "level": 2,
+      "asked": "'Nth highest salary' is a classic; choosing DENSE_RANK deliberately shows you thought about ties."
+    },
+    {
+      "id": "sqa-030",
+      "q": "In Postgres, SQL Server or SQLite, `NTILE(4) OVER (ORDER BY v)` runs over 10 rows. How many rows land in each bucket?",
+      "choices": [
+        "2, 3, 2 and 3: the extra rows alternate between buckets",
+        "2, 2, 3 and 3: the extra rows go to the latest buckets",
+        "3, 3, 2 and 2: the extra rows go to the earliest buckets",
+        "3, 3, 3 and 1: buckets fill up in order until rows run out"
+      ],
+      "answer": 2,
+      "why": "NTILE divides the rows as evenly as it can and gives the remainder to the first buckets, one each. It splits by row count, not by value, so tied values can straddle two buckets; for value-based percentiles use PERCENT_RANK or PERCENTILE_CONT.",
+      "tags": ["window-functions"],
+      "level": 2,
+      "asked": "Quartile reports use NTILE; knowing it buckets by count, not value, avoids a misleading chart."
+    },
+    {
+      "id": "sqa-031",
+      "q": "Why does `LAST_VALUE(price) OVER (ORDER BY day)` return the current row's own price instead of the final day's?",
+      "choices": [
+        "LAST_VALUE reads backwards, so the current row is the last one it sees",
+        "ORDER BY inside OVER sorts descending unless ASC is written out",
+        "LAST_VALUE needs PARTITION BY, and without it the frame is one row",
+        "With ORDER BY, the default frame ends at the current row and its peers"
+      ],
+      "answer": 3,
+      "why": "The default frame with ORDER BY is RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW, so the last value in the frame is the current row (or its last peer). Specify `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING`, or use `FIRST_VALUE` with the order reversed. FIRST_VALUE works by default because the frame always starts at the top.",
+      "tags": ["window-functions", "frames"],
+      "level": 3,
+      "asked": "A classic frame trap; explaining the default frame proves you understand windows rather than copy them."
+    },
+    {
+      "id": "sqa-032",
+      "q": "`sales` has amounts 10 and 30 for region N and 60 for S. What does `pct` hold?",
+      "code": "SELECT region, amount,\n       amount * 100.0 / SUM(amount) OVER () AS pct\nFROM sales;",
+      "lang": "sql",
+      "choices": [
+        "10, 30 and 60: each row's share of the grand total of 100",
+        "25, 75 and 100: each row's share of its own region's total",
+        "NULL on every row, as an empty OVER () has no rows in its frame",
+        "An error, as SUM needs a GROUP BY when other columns are selected"
+      ],
+      "answer": 0,
+      "why": "`OVER ()` makes the window the whole result, so every row sees the grand total without collapsing rows. Add `PARTITION BY region` for the share within a region. The `100.0` avoids integer division, which would truncate shares such as 33.3 to 33 in Postgres, SQL Server and SQLite.",
+      "tags": ["window-functions", "reporting"],
+      "level": 1,
+      "asked": "Percentage-of-total is a stock reporting query; the empty OVER () is the neat answer."
+    },
+    {
+      "id": "sqa-033",
+      "q": "What does this give each row, in Postgres, SQL Server or SQLite?",
+      "code": "SELECT region, SUM(amount) AS total,\n       SUM(SUM(amount)) OVER () AS grand\nFROM sales\nGROUP BY region;",
+      "lang": "sql",
+      "choices": [
+        "An error, as aggregate functions cannot be nested inside each other",
+        "The region's total, and the sum of every region's total beside it",
+        "The region's total twice, as the outer SUM sees one value per group",
+        "The region's total, and a running total across regions in order"
+      ],
+      "answer": 1,
+      "why": "The window function runs after GROUP BY, so its input is the grouped rows and the inner SUM is the per-region total; the outer windowed SUM adds those up across all groups. Plain nested aggregates are an error, but an aggregate inside a window function is allowed. Without ORDER BY in OVER there is no running total.",
+      "tags": ["window-functions", "aggregation"],
+      "level": 3,
+      "asked": "Mixing GROUP BY and windows is where reporting queries get compact; this tests the evaluation order."
+    },
+    {
+      "id": "sqa-034",
+      "q": "`logins` has one row per user per day they logged in. Which idea finds each user's runs of consecutive days (a 'streak')?",
+      "choices": [
+        "Compare each day with LAG(day) and count rows where the gap is exactly one",
+        "GROUP BY user and date, and keep groups where COUNT(*) is more than one",
+        "Subtract ROW_NUMBER() from the date: consecutive days share one value",
+        "Self-join each day to every later day and keep the longest match found"
+      ],
+      "answer": 2,
+      "why": "In a run of consecutive dates, date and row number both rise by one, so `day - ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY day)` is constant within the run and changes after a gap; group by it to get each streak's start, end and length. Counting one-day gaps with LAG gives the number of consecutive pairs, not the separate runs.",
+      "tags": ["window-functions", "gaps-and-islands"],
+      "level": 3,
+      "asked": "Gaps-and-islands is the go-to 'advanced SQL' interview puzzle for streaks, sessions and availability."
+    },
+    {
+      "id": "sqa-035",
+      "q": "A `products` table has duplicate rows per `sku` from a bad import. In Postgres, which statement deletes all but the newest row per sku?",
+      "choices": [
+        "DELETE ... WHERE id NOT IN (SELECT MAX(sku) FROM products GROUP BY id)",
+        "DELETE ... WHERE ROW_NUMBER() OVER (PARTITION BY sku ORDER BY id DESC) > 1",
+        "DELETE ... WHERE id NOT IN (SELECT MIN(id) FROM products GROUP BY sku)",
+        "DELETE ... WHERE id IN (ids whose ROW_NUMBER() per sku, newest first, is > 1)"
+      ],
+      "answer": 3,
+      "why": "Number the rows within each sku, newest first, in a subquery, then delete the ids ranked 2 or more. Window functions are not allowed directly in WHERE, the first option groups the wrong way round, and keeping MIN(id) keeps the oldest row rather than the newest. Add a unique constraint afterwards so the duplicates cannot come back.",
+      "tags": ["window-functions", "data-cleanup"],
+      "level": 2,
+      "asked": "Cleaning duplicates before adding a unique constraint is a real task; interviewers like the ROW_NUMBER approach."
+    },
+    {
+      "id": "sqa-036",
+      "q": "The query computes `ROW_NUMBER() OVER (ORDER BY score DESC)` but has no ORDER BY of its own. In what order do rows come back?",
+      "choices": [
+        "In an unspecified order; only a final ORDER BY guarantees it",
+        "In row-number order, since the numbering is applied to the output",
+        "In score order, since the window's ORDER BY also sorts the output",
+        "In primary-key order, since window functions preserve storage order"
+      ],
+      "answer": 0,
+      "why": "ORDER BY inside OVER controls how the window is computed, not the order of the result. Rows often come out in that order because the engine sorted them, but a different plan or a second window with another order changes it. Add `ORDER BY rn` if order matters.",
+      "tags": ["window-functions", "queries"],
+      "level": 2,
+      "asked": "It catches people relying on accidental ordering, a class of bug that appears after a plan change."
+    },
+    {
+      "id": "sqa-037",
+      "q": "A paginated API needs the page of rows and the total match count. What does `COUNT(*) OVER ()` add to `SELECT ... LIMIT 20` in Postgres?",
+      "choices": [
+        "The number of rows on this page, at most 20, on every row",
+        "The total number of rows matching the WHERE, before the LIMIT",
+        "An error, as a window function cannot be combined with a LIMIT clause",
+        "The total number of rows in the table, ignoring the WHERE"
+      ],
+      "answer": 1,
+      "why": "Window functions are computed before LIMIT and OFFSET, so every row carries the full match count and you avoid a second query. The engine still has to find every match, so it is no cheaper than a separate COUNT; on huge results an estimate or 'has more' flag is often better.",
+      "tags": ["window-functions", "pagination"],
+      "level": 2,
+      "asked": "Total counts for pagination come up in API design; knowing both the trick and its cost shows judgment."
+    },
+    {
+      "id": "sqa-038",
+      "q": "In Postgres, `daily_visits` has gaps (days with no row). Which frame averages the current day and the six calendar days before it?",
+      "choices": [
+        "ROWS BETWEEN 6 PRECEDING AND CURRENT ROW",
+        "ROWS BETWEEN INTERVAL '6 days' PRECEDING AND CURRENT ROW",
+        "RANGE BETWEEN INTERVAL '6 days' PRECEDING AND CURRENT ROW",
+        "GROUPS BETWEEN 7 PRECEDING AND CURRENT ROW, one group per distinct day"
+      ],
+      "answer": 2,
+      "why": "ROWS counts physical rows, so with missing days it reaches back further than a week. RANGE with an interval offset (Postgres 11+, ordering by a date or timestamp) includes rows whose value lies within six days, however many rows that is. SQL Server does not support RANGE with an offset; fill the gaps with a calendar table first there.",
+      "tags": ["window-functions", "frames"],
+      "level": 3,
+      "asked": "Moving averages over sparse data are a real reporting bug; knowing ROWS vs RANGE by value shows depth."
+    },
+    {
+      "id": "sqa-039",
+      "q": "What does `LAG(created_at) OVER (PARTITION BY customer_id ORDER BY created_at)` return on each customer's first order?",
+      "choices": [
+        "The previous customer's last order date",
+        "The earliest order date in the whole table",
+        "The order's own created_at, used as a default",
+        "NULL, as the partition has no earlier row"
+      ],
+      "answer": 3,
+      "why": "LAG never looks outside the current partition, so the first row of each customer has nothing before it and gets NULL (or the default, if you pass a third argument). That makes 'days since the previous order' naturally NULL for first orders, which is usually what you want.",
+      "tags": ["window-functions"],
+      "level": 1,
+      "asked": "Time-between-events queries use LAG with PARTITION BY; this checks you know partitions are sealed."
+    },
+    {
+      "id": "sqa-040",
+      "q": "In Postgres or SQL Server, which window on `SUM(total)` gives each order a running total that restarts per customer?",
+      "choices": [
+        "OVER (PARTITION BY customer_id ORDER BY created_at, id ROWS UNBOUNDED PRECEDING)",
+        "OVER (PARTITION BY customer_id), with an outer ORDER BY created_at",
+        "OVER (ORDER BY customer_id, created_at, id ROWS UNBOUNDED PRECEDING)",
+        "SUM(total) with GROUP BY customer_id, created_at ORDER BY created_at"
+      ],
+      "answer": 0,
+      "why": "PARTITION BY restarts per customer, ORDER BY makes it cumulative, and a ROWS frame with a unique tiebreaker adds one row at a time even when timestamps tie. Without ORDER BY the sum is the customer's grand total on every row; without PARTITION BY it keeps running across customers.",
+      "tags": ["window-functions", "frames"],
+      "level": 1,
+      "asked": "Running totals are the most common window-function task; the tiebreaker is what separates a careful answer."
+    },
+    {
+      "id": "sqa-041",
+      "q": "What does the WINDOW clause buy you in this Postgres, MySQL 8 or SQLite query?",
+      "code": "SELECT day,\n  AVG(v) OVER w AS avg7,\n  MAX(v) OVER w AS max7\nFROM metrics\nWINDOW w AS (ORDER BY day ROWS 6 PRECEDING);",
+      "lang": "sql",
+      "choices": [
+        "It caches the window results so that later queries reuse them",
+        "It names one window definition so that several functions share it",
+        "It forces the two functions to run in parallel over the window",
+        "It creates a temporary view named w that lasts for the rest of the session"
+      ],
+      "answer": 1,
+      "why": "A named window avoids repeating the same PARTITION BY, ORDER BY and frame, and makes it obvious the functions use the same one, which also lets the engine sort once. SQL Server added the WINDOW clause in 2022 (compatibility level 160).",
+      "tags": ["window-functions"],
+      "level": 2,
+      "asked": "A readability question; strong candidates know the clause exists and keep report SQL tidy."
+    },
+    {
+      "id": "sqa-042",
+      "q": "In Postgres, what does `percentile_cont(0.5) WITHIN GROUP (ORDER BY amount)` compute?",
+      "choices": [
+        "The average amount of the lower half of the rows, ordered by amount",
+        "The value exactly halfway between the minimum and maximum amount",
+        "The median, interpolating between the two middle values when needed",
+        "The amount that appears most often among all the rows in the group"
+      ],
+      "answer": 2,
+      "why": "percentile_cont is an ordered-set aggregate that returns a continuous percentile, so with an even count it averages the two middle values; percentile_disc returns an actual row value instead. SQL Server has PERCENTILE_CONT only as a window function, with OVER (PARTITION BY ...).",
+      "tags": ["aggregation", "reporting"],
+      "level": 3,
+      "asked": "Medians are asked when averages mislead (response times, salaries); knowing the syntax per engine is a plus."
+    },
+    {
+      "id": "sqa-043",
+      "q": "`o` has orders (id 1, paid, oldest) and (id 2, void, newest) for one customer. The goal is each customer's newest order, if it is paid. What does this return?",
+      "code": "SELECT id FROM (\n  SELECT id, ROW_NUMBER() OVER (\n    PARTITION BY customer_id ORDER BY created_at DESC) AS rn\n  FROM o WHERE status = 'paid'\n) t WHERE rn = 1;",
+      "lang": "sql",
+      "choices": [
+        "Nothing, because the customer's newest order is void",
+        "Orders 1 and 2, because the filter and the numbering disagree",
+        "Order 2, because numbering happens before the WHERE",
+        "Order 1, because WHERE filters before rows are numbered"
+      ],
+      "answer": 3,
+      "why": "WHERE runs before the window, so the void order is gone and the paid one becomes number 1: the query answers 'newest paid order', not 'newest order, if paid'. For the second meaning, number all orders in the subquery and test `rn = 1 AND status = 'paid'` outside it.",
+      "tags": ["window-functions", "execution-order"],
+      "level": 2,
+      "asked": "Filtering before or after ranking changes the business meaning; this checks you can tell the two apart."
+    },
+    {
+      "id": "sqa-044",
+      "q": "What is the main reason to write a non-recursive CTE (`WITH x AS (...)`) instead of a nested subquery?",
+      "choices": [
+        "Readability: the steps are named and listed top-down, and reusable",
+        "It is always faster, because the CTE result is cached for the query",
+        "It is the only way to use a subquery's columns in the outer SELECT",
+        "It runs in its own transaction, so a failure cannot affect the rest"
+      ],
+      "answer": 0,
+      "why": "A CTE is mainly a way to name intermediate results so a long query reads as steps, and to reference one result more than once. Whether it is inlined or materialised depends on the engine and version, so it is not automatically faster or slower than a subquery.",
+      "tags": ["ctes"],
+      "level": 1,
+      "asked": "A warm-up; the follow-up is usually what the engine does with it, so avoid claiming it is always cached."
+    },
+    {
+      "id": "sqa-045",
+      "q": "In SQL Server, a CTE that runs an expensive aggregate is referenced twice in the main query. What happens?",
+      "choices": [
+        "The CTE is computed once and stored in tempdb for both references",
+        "The CTE's query is typically expanded and evaluated for each reference",
+        "It is an error to reference the same CTE more than once in a single query",
+        "SQL Server creates an indexed view for the CTE on the first reference"
+      ],
+      "answer": 1,
+      "why": "SQL Server treats a CTE like an inline view and does not materialise it, so two references usually mean two evaluations. If that is costly, put the result in a temp table first. Postgres 12+ materialises a CTE by default only when it is referenced more than once, and lets you choose with MATERIALIZED / NOT MATERIALIZED.",
+      "tags": ["ctes", "performance", "sql-server"],
+      "level": 3,
+      "asked": "Knowing CTEs are not caches in SQL Server explains surprising plans; the temp-table fix is the practical part."
+    },
+    {
+      "id": "sqa-046",
+      "q": "A recursive CTE walks a `categories` tree, but bad data contains a cycle (A is B's parent and B is A's). What happens by default?",
+      "choices": [
+        "The engine detects the repeated row and stops walking quietly",
+        "The CTE returns each category once, as UNION ALL removes repeats",
+        "Postgres runs until stopped; SQL Server errors after 100 levels",
+        "Postgres errors at once, and SQL Server returns the partial tree"
+      ],
+      "answer": 2,
+      "why": "Nothing stops a UNION ALL recursion that keeps finding rows. SQL Server enforces a default MAXRECURSION of 100 and raises an error; Postgres runs until it exhausts memory or a statement timeout. Guard with a depth column, UNION instead of UNION ALL when rows repeat exactly, or Postgres 14's CYCLE clause.",
+      "tags": ["ctes", "recursive"],
+      "level": 3,
+      "asked": "Hierarchies in real data do get cycles; knowing the guards shows you have run recursive queries in production."
+    },
+    {
+      "id": "sqa-047",
+      "q": "In Postgres, what is the idiomatic way to produce one row per day for a month, so days with no orders show as zero?",
+      "choices": [
+        "SELECT DISTINCT created_at::date FROM orders, filling gaps in app code",
+        "An INNER JOIN from orders to a calendar table, which keeps the empty days",
+        "GROUP BY created_at::date WITH ROLLUP, which adds the missing days",
+        "A LEFT JOIN from generate_series(start, end, interval '1 day') to orders"
+      ],
+      "answer": 3,
+      "why": "generate_series builds the full date spine, and a LEFT JOIN plus `COUNT(o.id)` gives zero for empty days. SQL Server 2022 has GENERATE_SERIES for integers, and elsewhere a recursive CTE or a permanent calendar table does the job. Selecting from orders alone can never return a day with no orders.",
+      "tags": ["reporting", "postgres"],
+      "level": 2,
+      "asked": "Charts with missing days are a common bug; a date spine is the standard answer."
+    },
+    {
+      "id": "sqa-048",
+      "q": "In SQL Server, how do you write a recursive CTE?",
+      "choices": [
+        "WITH tree AS (anchor UNION ALL recursive part): no RECURSIVE keyword",
+        "WITH RECURSIVE tree AS (anchor UNION ALL recursive part), as in Postgres",
+        "CONNECT BY PRIOR id = parent_id after the anchor SELECT statement",
+        "Recursive CTEs are unsupported; hierarchies need a WHILE loop"
+      ],
+      "answer": 0,
+      "why": "SQL Server infers recursion when the CTE references itself; writing RECURSIVE is a syntax error there, while Postgres, MySQL 8 and SQLite require it. CONNECT BY is Oracle's older syntax. SQL Server also offers the hierarchyid type for trees.",
+      "tags": ["ctes", "recursive", "engines"],
+      "level": 2,
+      "asked": "Moving recursive SQL between engines trips on this; it is a quick check of cross-engine experience."
+    },
+    {
+      "id": "sqa-049",
+      "q": "In a recursive CTE over `categories (id, parent_id, name)`, how do you also return each node's depth and its breadcrumb path?",
+      "choices": [
+        "Call ROW_NUMBER() in the recursive part, which numbers each level in turn",
+        "Add depth and path columns: anchor sets 0 and name; each step adds 1 and appends",
+        "Use COUNT(*) OVER (PARTITION BY parent_id) in the final SELECT to get depth",
+        "Recursive CTEs can only return the columns of the table they walk"
+      ],
+      "answer": 1,
+      "why": "A recursive CTE can carry computed columns: the anchor starts them, and the recursive member derives each row's value from its parent's, such as `s.depth + 1` and `s.path || ' > ' || c.name`. Casting the anchor's path to a wide type avoids length errors in SQL Server.",
+      "tags": ["ctes", "recursive"],
+      "level": 2,
+      "asked": "Breadcrumbs and indented trees are real UI needs; carrying state through recursion is the key technique."
+    },
+    {
+      "id": "sqa-050",
+      "q": "What does this Postgres statement do?",
+      "code": "WITH moved AS (\n  DELETE FROM orders\n  WHERE created_at < now() - interval '2 years'\n  RETURNING *\n)\nINSERT INTO orders_archive SELECT * FROM moved;",
+      "lang": "sql",
+      "choices": [
+        "It errors, as a CTE may contain only a SELECT statement",
+        "It copies the old orders to the archive and leaves them in place",
+        "It moves the old orders to the archive in one atomic statement",
+        "It deletes the old orders, and the INSERT sees an empty CTE"
+      ],
+      "answer": 2,
+      "why": "Postgres allows data-modifying statements in WITH; RETURNING feeds the deleted rows to the INSERT, and the whole statement is atomic. SQL Server gets the same effect with `DELETE ... OUTPUT deleted.* INTO orders_archive`. For millions of rows, batch it to keep locks and WAL manageable.",
+      "tags": ["ctes", "postgres"],
+      "level": 3,
+      "asked": "Archiving jobs are common; knowing a single atomic statement can move rows is a practical Postgres skill."
+    },
+    {
+      "id": "sqa-051",
+      "q": "In Postgres, what does `LEFT JOIN LATERAL (... LIMIT 3) ON true` let you do that a plain subquery join cannot?",
+      "code": "SELECT c.name, o.id, o.total\nFROM customers c\nLEFT JOIN LATERAL (\n  SELECT id, total FROM orders\n  WHERE customer_id = c.id\n  ORDER BY created_at DESC LIMIT 3\n) o ON true;",
+      "lang": "sql",
+      "choices": [
+        "Run the subquery once for all customers, then join the three results",
+        "Keep only customers with exactly three orders, as LIMIT acts as a filter",
+        "Return three customers per order, as LATERAL reverses the join direction",
+        "Refer to c inside the subquery, so it returns three orders per customer"
+      ],
+      "answer": 3,
+      "why": "LATERAL lets a subquery in FROM reference earlier tables, so it runs per customer and its LIMIT applies per customer. With an index on (customer_id, created_at) that is very efficient. SQL Server spells it CROSS APPLY / OUTER APPLY; LEFT ... ON true keeps customers with no orders.",
+      "tags": ["joins", "lateral"],
+      "level": 2,
+      "asked": "Top-N per group has two idioms, window functions and LATERAL; knowing both and when each wins is a strong signal."
+    },
+    {
+      "id": "sqa-052",
+      "q": "In SQL Server, what is the difference between CROSS APPLY and OUTER APPLY?",
+      "choices": [
+        "CROSS APPLY drops left rows with no result; OUTER APPLY keeps them",
+        "CROSS APPLY runs the function once; OUTER APPLY runs it per row",
+        "CROSS APPLY returns the Cartesian product; OUTER APPLY joins on keys",
+        "CROSS APPLY is read-only; OUTER APPLY may call modifying functions"
+      ],
+      "answer": 0,
+      "why": "Both evaluate the right-hand expression per left row and may reference its columns. CROSS APPLY behaves like an inner join, removing rows where it returns nothing; OUTER APPLY behaves like a LEFT JOIN, returning NULLs. They match Postgres's CROSS JOIN LATERAL and LEFT JOIN LATERAL.",
+      "tags": ["joins", "lateral", "sql-server"],
+      "level": 2,
+      "asked": "APPLY is everywhere in SQL Server code; this checks you know which one silently drops rows."
+    },
+    {
+      "id": "sqa-053",
+      "q": "What does Postgres's `DISTINCT ON` do here?",
+      "code": "SELECT DISTINCT ON (customer_id)\n       customer_id, id, created_at\nFROM orders\nORDER BY customer_id, created_at DESC;",
+      "lang": "sql",
+      "choices": [
+        "It returns every order, sorted by customer, with duplicates removed",
+        "It returns one row per customer: the first in the ORDER BY, the newest",
+        "It returns one row per customer, but which one is left unspecified",
+        "It errors, as DISTINCT ON needs every selected column listed inside its ON"
+      ],
+      "answer": 1,
+      "why": "DISTINCT ON keeps the first row of each group of equal ON values, where 'first' is set by the ORDER BY, whose leading columns must match the ON list. It is Postgres-only; elsewhere use ROW_NUMBER. Without a deciding ORDER BY, the row kept would be arbitrary.",
+      "tags": ["queries", "postgres"],
+      "level": 2,
+      "asked": "A concise Postgres idiom for 'latest per group'; interviewers on Postgres teams often expect it."
+    },
+    {
+      "id": "sqa-054",
+      "q": "In Postgres or SQL Server, what extra rows does `GROUP BY ROLLUP (region, city)` add?",
+      "choices": [
+        "Every combination of region and city, including ones with no rows",
+        "One subtotal per city across every region, and nothing else",
+        "One subtotal per region (city NULL) and a grand total (both NULL)",
+        "A running total for each city, in the order the rows were stored"
+      ],
+      "answer": 2,
+      "why": "ROLLUP produces the grouping sets (region, city), (region) and (), so you get detail rows, region subtotals and a grand total in one query. CUBE adds every combination, including per-city totals across regions, and GROUPING SETS lets you list exactly which you want. MySQL writes `WITH ROLLUP`.",
+      "tags": ["aggregation", "reporting"],
+      "level": 2,
+      "asked": "Subtotals are a staple of reporting; knowing ROLLUP saves you a UNION of three queries."
+    },
+    {
+      "id": "sqa-055",
+      "q": "A ROLLUP report has rows where `city` is NULL. How do you tell a subtotal row from a real group whose city is NULL?",
+      "choices": [
+        "Subtotal rows always come last, so their position identifies them",
+        "You cannot; replace NULL cities with a placeholder before grouping",
+        "Check COUNT(city): it is zero on subtotal rows and positive otherwise",
+        "Use GROUPING(city), which is 1 on rows where city was rolled up"
+      ],
+      "answer": 3,
+      "why": "GROUPING(col) returns 1 when the column is aggregated away in that row and 0 when it is a real grouping value, NULL or not. Use it to label rows ('All cities') without confusing them with missing data. COUNT(city) is also zero for a real NULL-city group, so it cannot tell them apart.",
+      "tags": ["aggregation", "null", "reporting"],
+      "level": 3,
+      "asked": "A deeper reporting question; it combines grouping sets with NULL semantics, which strong candidates handle cleanly."
+    },
+    {
+      "id": "sqa-056",
+      "q": "How do you produce one row per order with its product names as a comma-separated list, in Postgres and SQL Server 2017+?",
+      "choices": [
+        "STRING_AGG(name, ', ') in both, with the ordering syntax differing",
+        "GROUP_CONCAT(name) in both, which is the ANSI standard spelling",
+        "CONCAT(name, ', ') with GROUP BY, which joins the grouped values",
+        "ARRAY_AGG(name) in both engines, then TRIM to strip off the array brackets"
+      ],
+      "answer": 0,
+      "why": "Both have STRING_AGG: Postgres orders it with `STRING_AGG(name, ', ' ORDER BY name)`, SQL Server with `WITHIN GROUP (ORDER BY name)`. MySQL and SQLite use GROUP_CONCAT. Without an order the list order is arbitrary, which makes snapshot tests flaky.",
+      "tags": ["aggregation", "engines"],
+      "level": 2,
+      "asked": "Everyday reporting need; knowing the ordering syntax and the MySQL name shows breadth."
+    },
+    {
+      "id": "sqa-057",
+      "q": "`amount` rows for one region are 10 and 30. What does `SUM(amount) OVER (PARTITION BY region)` put on each of them?",
+      "choices": [
+        "10 and 40, a running total down the partition",
+        "40 on each, the partition's total on every row",
+        "40 once, collapsed into a single row for the region",
+        "10 and 30, since no ORDER BY means no summing"
+      ],
+      "answer": 1,
+      "why": "Without ORDER BY the frame is the whole partition, so each row carries the region total and no rows are removed. Adding ORDER BY switches to a cumulative frame and gives the running total. Collapsing to one row is what GROUP BY does.",
+      "tags": ["window-functions", "frames"],
+      "level": 1,
+      "asked": "Checks you know ORDER BY inside OVER changes the frame, not just the sort."
+    },
+    {
+      "id": "sqa-058",
+      "q": "`LEAD(created_at) OVER (PARTITION BY session_id ORDER BY created_at)` is used on a `page_views` table. What is it typically for?",
+      "choices": [
+        "Removing duplicate views that share a session and a timestamp",
+        "Finding the first view of each session, to identify the landing page",
+        "Finding the time of the next view in the session, to measure time on page",
+        "Counting the views in each session, which it then returns on every row"
+      ],
+      "answer": 2,
+      "why": "LEAD reads the following row in the window, so subtracting created_at from it gives the time until the next view; the last view in a session gets NULL. FIRST_VALUE gives the landing page, and COUNT(*) OVER gives the per-session count.",
+      "tags": ["window-functions", "reporting"],
+      "level": 1,
+      "asked": "Event analytics is a common place for window functions; this checks you can map LEAD to a real metric."
+    },
+    {
+      "id": "sqa-059",
+      "q": "There is an index on `orders (customer_id, created_at)`. What does it do for this query?",
+      "code": "SELECT * FROM orders\nWHERE customer_id = 42\nORDER BY created_at DESC\nLIMIT 20;",
+      "lang": "sql",
+      "choices": [
+        "It finds customer 42's rows, but a separate sort is still needed for ORDER BY",
+        "It helps only the ORDER BY, since the equality filter uses the primary key",
+        "Nothing: an index cannot serve a DESC order when it was built ascending",
+        "It finds customer 42's rows already in date order, so no sort step is needed"
+      ],
+      "answer": 3,
+      "why": "Within one customer_id the index entries are sorted by created_at, so the engine can read them backwards and stop after 20, with no sort at all. B-trees can be walked in either direction. Sorting on a column not in the index after the equality (such as total) does need a sort step.",
+      "tags": ["indexes", "query-plans"],
+      "level": 2,
+      "asked": "'Latest N for this user' is the most common query in CRUD apps; designing its index is a core skill."
+    },
+    {
+      "id": "sqa-060",
+      "q": "The only index is on `orders (status, created_at)`. In Postgres 17 or SQL Server, why does `WHERE created_at > now() - interval '1 day'` not seek on it?",
+      "choices": [
+        "created_at is not the leading column, so the entries are not sorted by it",
+        "Range predicates can never use an index; only equality can",
+        "The index was built before the rows it would need were inserted",
+        "Composite indexes are only used when every one of their columns is filtered"
+      ],
+      "answer": 0,
+      "why": "A composite index is sorted by the first column, then the second within it, so recent rows are spread across every status. The planner may scan the whole index but cannot seek. Postgres 18's skip scan can jump through a few distinct leading values; otherwise add an index led by created_at.",
+      "tags": ["indexes"],
+      "level": 2,
+      "asked": "Column order in composite indexes is asked constantly; mentioning Postgres 18 skip scan shows you are current."
+    },
+    {
+      "id": "sqa-061",
+      "q": "In Postgres, you create `CREATE INDEX ix_users_email_lower ON users (lower(email))`. Which query can use it?",
+      "choices": [
+        "SELECT * FROM users WHERE email = $1",
+        "SELECT * FROM users WHERE lower(email) = lower($1)",
+        "SELECT * FROM users WHERE email ILIKE $1",
+        "SELECT * FROM users WHERE upper(email) = upper($1)"
+      ],
+      "answer": 1,
+      "why": "An expression index stores the computed value, so the query must use the same expression for the planner to match it. `email = $1` needs a plain index on email, ILIKE is a different operator, and upper() is a different expression. SQLite supports expression indexes too; in SQL Server index a computed column.",
+      "tags": ["indexes", "postgres"],
+      "level": 2,
+      "asked": "Case-insensitive lookups are everywhere; the expression index is the fix for the non-sargable LOWER() query."
+    },
+    {
+      "id": "sqa-062",
+      "q": "In SQL Server, `Email` is `varchar(200)` with an index, and the app sends the parameter as `nvarchar(4000)`. Why is the lookup a scan?",
+      "choices": [
+        "The long parameter length makes the optimiser distrust the index statistics",
+        "varchar columns cannot be sought with any parameter at all",
+        "nvarchar ranks higher, so the column is converted on every row",
+        "Parameters always prevent seeks, so the query should be inlined"
+      ],
+      "answer": 2,
+      "why": "Data-type precedence converts the varchar column to nvarchar, not the parameter to varchar, and converting the column defeats a normal seek (the plan shows CONVERT_IMPLICIT). Send the parameter with the column's type, for example by setting the parameter DbType or column type in EF Core or Dapper.",
+      "tags": ["indexes", "sql-server", "performance"],
+      "level": 3,
+      "asked": "Implicit conversion is one of the most common real SQL Server performance problems; spotting it in a plan impresses."
+    },
+    {
+      "id": "sqa-063",
+      "q": "In Postgres, why is this slow, and what is the sargable rewrite?",
+      "code": "SELECT * FROM orders\nWHERE created_at::date = '2026-03-14';",
+      "lang": "sql",
+      "choices": [
+        "Casting in WHERE is invalid; use CONVERT(date, created_at) instead",
+        "The date literal needs a time zone suffix before any index can match",
+        "Dates must be passed as parameters, because a literal always forces a sequential scan",
+        "The cast hides the column from its index; use created_at >= day AND < next day"
+      ],
+      "answer": 3,
+      "why": "Applying a cast or function to the column means the index on created_at cannot be searched for the result. A half-open range `created_at >= '2026-03-14' AND created_at < '2026-03-15'` uses the index and also handles fractional seconds. An expression index on the cast is the alternative.",
+      "tags": ["indexes", "dates"],
+      "level": 2,
+      "asked": "Date filtering is where most non-sargable predicates hide; the half-open range is the pattern to know."
+    },
+    {
+      "id": "sqa-064",
+      "q": "In SQL Server, which predicate lets an index on `CreatedAt` be used for a seek?",
+      "choices": [
+        "WHERE CreatedAt >= '2026-01-01' AND CreatedAt < '2027-01-01'",
+        "WHERE CONVERT(char(4), CreatedAt, 120) = '2026' -- ISO style",
+        "WHERE YEAR(CreatedAt) = 2026",
+        "WHERE DATEDIFF(year, CreatedAt, '2026-01-01') = 0"
+      ],
+      "answer": 0,
+      "why": "Only the range leaves the column bare, so the optimiser can seek to the start and read to the end. The function forms have to compute a value for every row. SQL Server does special-case CAST(col AS date), but relying on that is less clear than writing the range.",
+      "tags": ["indexes", "sql-server"],
+      "level": 1,
+      "asked": "Sargability is the concept behind half of all 'why is my query slow' answers; this is the entry-level form."
+    },
+    {
+      "id": "sqa-065",
+      "q": "Postgres has separate indexes on `email` and on `phone`. How can it answer `WHERE email = $1 OR phone = $2` efficiently?",
+      "choices": [
+        "It cannot use either index, as OR always forces a sequential scan",
+        "It combines them in a BitmapOr of two bitmap index scans",
+        "It uses only the index on the first column named in the OR",
+        "It needs a composite index on (email, phone) to handle the OR"
+      ],
+      "answer": 1,
+      "why": "Postgres can scan each index into a bitmap, OR the bitmaps, and then visit the matching table pages once. A composite (email, phone) index does not help the phone half, because phone is not leading. In engines that handle OR poorly, rewriting as a UNION of two indexed queries is the classic fix.",
+      "tags": ["indexes", "query-plans", "postgres"],
+      "level": 3,
+      "asked": "OR conditions defeating indexes is a common complaint; knowing bitmap scans and the UNION rewrite shows depth."
+    },
+    {
+      "id": "sqa-066",
+      "q": "Postgres shows `Index Only Scan ... Heap Fetches: 98000` for a query the index should fully cover. What is the likely cause?",
+      "choices": [
+        "The index is missing a column, so each row is read from the table",
+        "The index is corrupt, and a REINDEX is needed to rebuild all of its entries",
+        "The visibility map is stale, so it still checks the table; VACUUM fixes it",
+        "Heap fetches are normal for index-only scans and cost almost nothing"
+      ],
+      "answer": 2,
+      "why": "Postgres indexes do not store visibility, so an index-only scan checks the visibility map and must visit the table page for any page not marked all-visible. After heavy writes, until VACUUM runs, most pages are not marked. Tuning autovacuum on busy tables keeps index-only scans effective.",
+      "tags": ["indexes", "query-plans", "postgres"],
+      "level": 3,
+      "asked": "A deep Postgres question; linking index-only scans to VACUUM shows you understand MVCC's costs."
+    },
+    {
+      "id": "sqa-067",
+      "q": "A SQL Server actual plan shows an Index Seek feeding a Key Lookup that runs 50,000 times. What does the Key Lookup mean?",
+      "choices": [
+        "The index covers the query, and the lookup only validates the keys",
+        "The seek failed, so SQL Server fell back to scanning the table key by key instead",
+        "The foreign keys are being checked row by row against the parent table",
+        "For each row found, SQL Server fetches missing columns from the clustered index"
+      ],
+      "answer": 3,
+      "why": "The nonclustered index found the rows but lacked some selected or filtered columns, so each row needs a trip to the clustered index. At 50,000 rows that is costly; add the missing columns with INCLUDE, or select fewer columns. The optimiser switches to a scan when the lookups would cost more.",
+      "tags": ["query-plans", "sql-server", "indexes"],
+      "level": 2,
+      "asked": "Key Lookups are the most common thing to fix in a SQL Server plan; covering indexes are the expected answer."
+    },
+    {
+      "id": "sqa-068",
+      "q": "Postgres uses a Seq Scan on a 200-row `countries` table even though `code` is indexed. Should you worry?",
+      "choices": [
+        "No: for a table that fits in a page or two, a scan is the cheapest plan",
+        "Yes: a sequential scan means the index is broken and should be rebuilt",
+        "Yes: force the index with SET enable_seqscan = off for the application",
+        "No: by rule, Postgres never uses an index on a table with fewer than 10,000 rows"
+      ],
+      "answer": 0,
+      "why": "The planner costs each option, and reading a couple of pages sequentially beats walking an index and then fetching rows. There is no fixed row threshold; it is a cost estimate. Turning off seqscan is a diagnostic tool for a session, never a production setting.",
+      "tags": ["query-plans", "postgres"],
+      "level": 1,
+      "asked": "Checks that you don't treat every Seq Scan as a problem, which is a sign of plan-reading maturity."
+    },
+    {
+      "id": "sqa-069",
+      "q": "What is the key risk of running `EXPLAIN ANALYZE DELETE FROM orders WHERE ...` in Postgres?",
+      "choices": [
+        "It locks the table until the plan output is read by the client",
+        "It deletes the rows, because ANALYZE runs the statement for real",
+        "It updates table statistics, which may change other queries' plans",
+        "None: EXPLAIN never executes the statement it is explaining"
+      ],
+      "answer": 1,
+      "why": "EXPLAIN alone only plans; EXPLAIN ANALYZE executes the statement to measure real timings and row counts. For writes, wrap it in BEGIN ... ROLLBACK. The name is confusing: the ANALYZE command collects statistics, but EXPLAIN's ANALYZE option means 'run it'.",
+      "tags": ["query-plans", "postgres"],
+      "level": 1,
+      "asked": "A safety question with teeth; people have deleted production data this way."
+    },
+    {
+      "id": "sqa-070",
+      "q": "In `EXPLAIN (ANALYZE, BUFFERS)` output, what does `Buffers: shared hit=120 read=48000` tell you?",
+      "choices": [
+        "120 rows came from the table and 48,000 from indexes",
+        "The query ran 120 times and read 48,000 rows on each",
+        "120 pages were in memory and 48,000 were read from outside it",
+        "120 dirty pages were written back to disk and 48,000 pages were read"
+      ],
+      "answer": 2,
+      "why": "Shared hits were found in Postgres's buffer cache; reads had to come from the OS cache or disk. A high read count explains why the first run is slow and later runs are fast. Pages are 8 kB, so 48,000 reads is about 375 MB of I/O, which is often the real cost.",
+      "tags": ["query-plans", "postgres"],
+      "level": 2,
+      "asked": "BUFFERS turns 'it's slow sometimes' into a caching explanation; interviewers like candidates who use it."
+    },
+    {
+      "id": "sqa-071",
+      "q": "A Postgres plan shows an inner `Index Scan ... (actual time=0.020..0.025 rows=1 loops=40000)`. How much time did that node take in total?",
+      "choices": [
+        "About 0.025 ms, as the actual time covers every loop",
+        "It cannot be told from the plan without running it again",
+        "About 40 seconds, as each loop costs 1 ms plus the time",
+        "About 1 second: roughly 0.025 ms per loop times 40,000"
+      ],
+      "answer": 3,
+      "why": "For nodes executed repeatedly, the actual time and rows are averages per loop, so multiply by loops for the total. A cheap-looking inner index scan inside a nested loop is often where the time goes. Tools such as explain.depesz.com do this arithmetic for you.",
+      "tags": ["query-plans", "postgres"],
+      "level": 3,
+      "asked": "Misreading per-loop timings is the most common plan-reading error; getting it right shows real practice."
+    },
+    {
+      "id": "sqa-072",
+      "q": "In Postgres, `city` and `postcode` are strongly correlated, and the planner badly underestimates rows for `WHERE city = $1 AND postcode = $2`. What fixes the estimate?",
+      "choices": [
+        "CREATE STATISTICS on (city, postcode) with dependencies, then ANALYZE",
+        "Raising work_mem, so the planner can hold more statistics in memory",
+        "A composite index on (city, postcode), which also stores statistics",
+        "Running VACUUM FULL, which rebuilds the per-column histograms from scratch"
+      ],
+      "answer": 0,
+      "why": "By default Postgres assumes columns are independent and multiplies their selectivities, which underestimates correlated filters. Extended statistics (`CREATE STATISTICS s (dependencies) ON city, postcode FROM addresses`) teach it the correlation. An index on an expression gathers statistics on that expression, but a plain composite index does not fix this.",
+      "tags": ["query-plans", "statistics", "postgres"],
+      "level": 3,
+      "asked": "A deep planner question; knowing the independence assumption explains a whole class of bad plans."
+    },
+    {
+      "id": "sqa-073",
+      "q": "A Postgres plan shows `Sort Method: external merge  Disk: 850MB`. What does it mean and what is the first thing to try?",
+      "choices": [
+        "The table is too large to sort; add a LIMIT to the query",
+        "The sort spilled to disk; add an index for the ORDER BY or raise work_mem",
+        "The sort is being done by the operating system; restart Postgres",
+        "The disk is almost full, so Postgres had to sort the rows in smaller batches"
+      ],
+      "answer": 1,
+      "why": "The rows to sort did not fit in work_mem, so Postgres sorted in temporary files. An index that supplies the order avoids the sort entirely; raising work_mem for that session helps otherwise. Raise it globally with care, since each sort or hash in each connection can use that much.",
+      "tags": ["query-plans", "postgres"],
+      "level": 3,
+      "asked": "Spilling sorts are a common cause of slow reports; the work_mem caveat shows you understand the memory model."
+    },
+    {
+      "id": "sqa-074",
+      "q": "In SQL Server Management Studio, what is the difference between the estimated and the actual execution plan?",
+      "choices": [
+        "The estimated plan uses statistics; the actual plan uses no statistics at all",
+        "The estimated plan is from the cache; the actual plan is always freshly compiled",
+        "The estimated plan is compiled without running; the actual one adds runtime row counts",
+        "They show different operators, because the actual plan is chosen only after execution has ended"
+      ],
+      "answer": 2,
+      "why": "Both show the same plan shape for the same compilation, but only the actual plan runs the query and records actual rows, executions and warnings such as spills. Comparing estimated with actual rows per operator is the core of diagnosing a bad plan.",
+      "tags": ["query-plans", "sql-server"],
+      "level": 1,
+      "asked": "A baseline SQL Server tooling question; estimated vs actual rows is the follow-up."
+    },
+    {
+      "id": "sqa-075",
+      "q": "A SQL Server stored procedure suffers from parameter sniffing: its plan suits some values badly. Which is a standard targeted fix?",
+      "choices": [
+        "Rebuild every index nightly, so the plan cache is cleared each day",
+        "Mark the procedure WITH ENCRYPTION, which disables plan caching for every statement",
+        "Replace the parameters with string concatenation of the literal values",
+        "Add OPTION (RECOMPILE) to the statement, or OPTIMIZE FOR a typical value"
+      ],
+      "answer": 3,
+      "why": "RECOMPILE builds a fresh plan per execution for that statement, trading CPU for a plan fitted to each value; OPTIMIZE FOR (or OPTIMIZE FOR UNKNOWN) pins the plan to a chosen value or the average. SQL Server 2022's Parameter Sensitive Plan optimisation can cache several plans automatically. Concatenating values reintroduces injection risk.",
+      "tags": ["query-plans", "sql-server"],
+      "level": 3,
+      "asked": "A follow-up to 'what is parameter sniffing'; naming the fixes and their costs is what interviewers look for."
+    },
+    {
+      "id": "sqa-076",
+      "q": "In Postgres, what is a 'dead tuple', and what removes it?",
+      "choices": [
+        "An old row version left by an UPDATE or DELETE; VACUUM reclaims its space",
+        "A row that failed a constraint check; it is removed by the next ROLLBACK",
+        "An index entry that points at a dropped column; REINDEX removes it",
+        "A row that no query has read for a month; autovacuum moves it out to cold storage"
+      ],
+      "answer": 0,
+      "why": "Postgres's MVCC writes a new row version on UPDATE and marks the old one dead once no transaction can see it. VACUUM (usually autovacuum) marks the space reusable. Long-running transactions stop VACUUM cleaning up, which is how tables bloat.",
+      "tags": ["mvcc", "postgres"],
+      "level": 2,
+      "asked": "Understanding dead tuples explains bloat and why idle-in-transaction connections are harmful."
+    },
+    {
+      "id": "sqa-077",
+      "q": "In Postgres, how does plain `VACUUM` differ from `VACUUM FULL`?",
+      "choices": [
+        "VACUUM only refreshes planner statistics; FULL is the one that actually removes dead tuples",
+        "VACUUM makes space reusable while traffic continues; FULL rewrites under an exclusive lock",
+        "VACUUM runs on indexes only; FULL also processes the table heap",
+        "VACUUM needs the table offline; FULL can run while traffic continues"
+      ],
+      "answer": 1,
+      "why": "Plain VACUUM runs alongside reads and writes and makes dead space reusable, but rarely shrinks the file. VACUUM FULL rewrites the table compactly and returns space to the OS, holding an ACCESS EXCLUSIVE lock that blocks everything. Tools such as pg_repack do the rewrite online.",
+      "tags": ["mvcc", "postgres", "operations"],
+      "level": 2,
+      "asked": "Running VACUUM FULL on a live table causes outages; knowing the lock difference is the point."
+    },
+    {
+      "id": "sqa-078",
+      "q": "In Postgres, what does `CREATE INDEX CONCURRENTLY` change compared with a plain `CREATE INDEX` on a busy table?",
+      "choices": [
+        "It builds faster, using several worker processes on the table",
+        "It builds the whole index in memory first, then swaps it into place atomically at the end",
+        "It lets writes continue during the build, but cannot run inside a transaction",
+        "It skips validation, so the index may be used before it is complete"
+      ],
+      "answer": 2,
+      "why": "A plain CREATE INDEX blocks inserts, updates and deletes for the whole build. CONCURRENTLY takes a weaker lock and scans twice, so it is slower but writes continue. It cannot run in a transaction block, and if it fails it leaves an INVALID index you must drop and retry.",
+      "tags": ["indexes", "migrations", "postgres"],
+      "level": 3,
+      "asked": "Adding an index to a hot table is a real production task; the INVALID-index caveat marks real experience."
+    },
+    {
+      "id": "sqa-079",
+      "q": "Why would you choose a B-tree index over a hash index in Postgres for a `created_at` column?",
+      "choices": [
+        "Hash indexes are not crash-safe in any Postgres version",
+        "B-trees are smaller, since hash indexes store every value twice",
+        "Hash indexes cannot store timestamp values, only integers",
+        "B-trees support range queries and ORDER BY; hash only equality"
+      ],
+      "answer": 3,
+      "why": "A hash index maps values to buckets with no ordering, so it answers `=` only. Timestamps are usually filtered by range and sorted, which needs a B-tree. Hash indexes have been WAL-logged and crash-safe since Postgres 10, and are rarely worth it over a B-tree.",
+      "tags": ["indexes", "postgres"],
+      "level": 2,
+      "asked": "Tests whether you know index types exist for reasons, not just 'CREATE INDEX' by default."
+    },
+    {
+      "id": "sqa-080",
+      "q": "An append-only `events` table in Postgres has 2 billion rows, inserted in time order and queried by time range. Which index type is tiny yet effective here?",
+      "choices": [
+        "BRIN, which stores the min and max per block range",
+        "GIN, which indexes each timestamp as a separate key",
+        "Hash, which gives each timestamp its own bucket",
+        "GiST, which is designed for full-text documents"
+      ],
+      "answer": 0,
+      "why": "Because rows arrive in time order, each block range covers a narrow time window, and BRIN records just the min and max per range, so it is kilobytes instead of gigabytes and lets Postgres skip ranges. It is useless if the physical order does not follow the column. GIN suits arrays, jsonb and full-text.",
+      "tags": ["indexes", "postgres"],
+      "level": 3,
+      "asked": "A good 'do you know beyond B-tree' question for logging and analytics tables."
+    },
+    {
+      "id": "sqa-081",
+      "q": "In Postgres, how can you make `WHERE name ILIKE '%smith%'` use an index?",
+      "choices": [
+        "A B-tree index on lower(name), which also handles leading wildcards",
+        "A GIN index using gin_trgm_ops from the pg_trgm extension",
+        "A hash index on name, which matches any substring by hashing it",
+        "It cannot: a leading wildcard always means a full table scan"
+      ],
+      "answer": 1,
+      "why": "pg_trgm splits text into three-character trigrams, and a GIN or GiST trigram index can find rows containing a substring, with or without case sensitivity. A B-tree only helps prefix patterns such as `'smith%'`. For word-based search with ranking, full-text search is the better tool.",
+      "tags": ["indexes", "search", "postgres"],
+      "level": 2,
+      "asked": "Substring search is a frequent feature request; knowing pg_trgm shows you can solve it without a search engine."
+    },
+    {
+      "id": "sqa-082",
+      "q": "A list is sorted `ORDER BY priority DESC, created_at ASC` and is slow. In Postgres or SQL Server, which index lets it read rows already in order?",
+      "choices": [
+        "(priority, created_at), as a B-tree can be read in either direction",
+        "(created_at, priority), as the most selective column goes first",
+        "(priority DESC, created_at ASC), matching the mixed directions",
+        "Two single-column indexes, which the planner merges into one order"
+      ],
+      "answer": 2,
+      "why": "A B-tree can be scanned forwards or backwards, which serves (ASC, ASC) or (DESC, DESC), but not mixed directions. Declaring the index with the same mixed order, or its exact reverse, lets the sort be skipped. For single-column or same-direction sorts the direction does not matter.",
+      "tags": ["indexes", "query-plans"],
+      "level": 3,
+      "asked": "Mixed-direction sorts are a subtle index-design case; getting it right shows you understand how B-trees are read."
+    },
+    {
+      "id": "sqa-083",
+      "q": "Writes to a table are slow and it has 14 indexes. In Postgres, how do you find indexes that are never used?",
+      "choices": [
+        "Check pg_indexes for indexes whose definition has no WHERE clause",
+        "Run EXPLAIN on a single query and drop any index it does not mention",
+        "Drop them all, then re-add whichever ones users complain about when their pages get slow again",
+        "Check pg_stat_user_indexes for indexes whose idx_scan is 0 since the last reset"
+      ],
+      "answer": 3,
+      "why": "Postgres counts scans per index in pg_stat_user_indexes; SQL Server has sys.dm_db_index_usage_stats. Check over a representative period (month-end jobs!), on every replica that serves reads, and keep indexes that enforce uniqueness even if they are never scanned.",
+      "tags": ["indexes", "operations"],
+      "level": 2,
+      "asked": "Index hygiene is a practical ops question; the caveats about replicas and constraints show judgment."
+    },
+    {
+      "id": "sqa-084",
+      "q": "When is a Merge Join the natural choice for the planner?",
+      "choices": [
+        "When both inputs are already sorted on the join key, for example by indexes",
+        "When the join condition uses inequality, such as a.x > b.y",
+        "When one input is tiny and the other has an index on the join key",
+        "When the two tables live on different servers, so their rows must be merged remotely"
+      ],
+      "answer": 0,
+      "why": "A merge join walks two sorted inputs side by side, like merging two sorted lists, which is cheap when both arrive sorted and large. A small outer input with an indexed inner side favours a nested loop; large unsorted inputs favour a hash join. Merge and hash joins need an equality condition.",
+      "tags": ["query-plans", "joins"],
+      "level": 2,
+      "asked": "Knowing the three join algorithms and when each wins is standard plan-reading knowledge."
+    },
+    {
+      "id": "sqa-085",
+      "q": "Why can a Nested Loop join be the best plan, despite its name suggesting O(n x m) work?",
+      "choices": [
+        "Because the planner parallelises each iteration of the loop across every available CPU core",
+        "Because with few outer rows, each inner lookup is a cheap index seek",
+        "Because it caches the inner table in memory after the first loop",
+        "Because it is used only when both tables have fewer than 1,000 rows"
+      ],
+      "answer": 1,
+      "why": "With 10 outer rows and an index on the inner join key, a nested loop does 10 cheap seeks and returns the first rows immediately. It becomes a problem when the outer estimate is wrong and it actually loops 100,000 times, which is why misestimates show up as slow nested loops.",
+      "tags": ["query-plans", "joins"],
+      "level": 2,
+      "asked": "It checks you don't read operator names as good or bad, but reason from row counts."
+    },
+    {
+      "id": "sqa-086",
+      "q": "In SQL Server, what does a `Clustered Index Scan` on `Orders` in a plan usually mean?",
+      "choices": [
+        "The query used the clustered index to jump straight to the matching rows",
+        "The clustered index is being rebuilt while the query is running",
+        "SQL Server read the whole table, since the clustered index is the table",
+        "Only the key columns were read, which is cheaper than any seek"
+      ],
+      "answer": 2,
+      "why": "Because the clustered index holds the table's rows, scanning it is a full table scan. A Clustered Index Seek is the targeted form. Scans are fine for small tables or when most rows are needed; on a large table with a selective filter they point to a missing or unusable index.",
+      "tags": ["query-plans", "sql-server"],
+      "level": 1,
+      "asked": "Reading operator names correctly is the entry level of SQL Server plan reading."
+    },
+    {
+      "id": "sqa-087",
+      "q": "Which Postgres extension is the usual first step to find which queries use the most total time in production?",
+      "choices": [
+        "pgcrypto, which hashes query texts so that they can be grouped together",
+        "pg_trgm, which records the text of every slow query in a trigram index",
+        "auto_explain on every single query, which writes each plan to the server log for later grepping",
+        "pg_stat_statements, which aggregates calls, time and rows per normalised query"
+      ],
+      "answer": 3,
+      "why": "pg_stat_statements groups queries by shape and records calls, total and mean time, so you can sort by total time and fix what matters most, often a fast query called millions of times. auto_explain with a duration threshold complements it by logging plans of slow runs. SQL Server's equivalent is Query Store.",
+      "tags": ["performance", "postgres", "operations"],
+      "level": 2,
+      "asked": "'How would you find the slow queries?' is a standard question; naming the tool and sorting by total time is the strong answer."
+    },
+    {
+      "id": "sqa-088",
+      "q": "In SQLite, `EXPLAIN QUERY PLAN` for a query on `o (customer_id, created_at)` shows `SEARCH o USING COVERING INDEX ix (customer_id=?)`. What does that tell you?",
+      "choices": [
+        "The index found the rows and held every needed column, so the table was skipped",
+        "The whole table was scanned, and the index was consulted per row",
+        "The query used the index for ORDER BY only, and filtered in a temp table",
+        "The index was created automatically just for this query, then discarded when it finished"
+      ],
+      "answer": 0,
+      "why": "SEARCH means an index seek on the listed columns (SCAN means reading everything), and COVERING means all the selected columns were in the index, so no table lookup was needed. `USE TEMP B-TREE FOR ORDER BY` would mean an extra sort. Automatic indexes show as AUTOMATIC.",
+      "tags": ["query-plans", "sqlite"],
+      "level": 1,
+      "asked": "SQLite is common in tests and small apps; being able to read its plan output is a useful, quick skill."
+    },
+    {
+      "id": "sqa-089",
+      "q": "SQL Server's execution plan shows a green 'Missing Index' suggestion. How should you treat it?",
+      "choices": [
+        "Create it as written, as the optimiser has proven it is the best index",
+        "Use it as a hint: check overlap with existing indexes and write costs first",
+        "Ignore it, as missing-index hints are shown only for estimated plans",
+        "Create it, but only after dropping the table's clustered index to make room for it on disk"
+      ],
+      "answer": 1,
+      "why": "The suggestion is generated for one query in isolation; it ignores existing similar indexes, key-column order subtleties and the write cost. Consolidate it with what exists, often by widening an index with INCLUDE, rather than adding near-duplicates for every query.",
+      "tags": ["indexes", "sql-server"],
+      "level": 2,
+      "asked": "Tables with 30 overlapping indexes usually come from accepting every hint; this checks your judgment."
+    },
+    {
+      "id": "sqa-090",
+      "q": "A job-queue table has 5 million done jobs and a few hundred pending ones. Workers run `WHERE status = 'pending' ORDER BY id`. In Postgres, which index is the best fit?",
+      "choices": [
+        "A B-tree on status alone, as that is the column being filtered",
+        "A hash index on status, as the filter is an equality test",
+        "A partial index ON jobs (id) WHERE status = 'pending'",
+        "A BRIN index on id, as ids arrive in increasing order"
+      ],
+      "answer": 2,
+      "why": "A partial index contains only the pending rows, so it stays tiny however many done jobs pile up, and it is ordered by id for the ORDER BY. The planner uses it when the query's WHERE implies the index's predicate. SQL Server calls these filtered indexes.",
+      "tags": ["indexes", "partial-index", "queues"],
+      "level": 2,
+      "asked": "Queue and status tables are everywhere; the partial index is an elegant, practical answer."
+    },
+    {
+      "id": "sqa-091",
+      "q": "Why does `SELECT MAX(created_at) FROM orders` return instantly when `created_at` is indexed?",
+      "choices": [
+        "The engine caches the maximum of every indexed column",
+        "The query is rewritten as ORDER BY with LIMIT 1 in memory",
+        "MAX is computed from table statistics, not the data",
+        "It reads one end of the sorted index instead of every row"
+      ],
+      "answer": 3,
+      "why": "A B-tree is sorted, so the maximum is the last entry (ignoring NULLs): one short descent. It is also why `ORDER BY created_at DESC LIMIT 1` is fast. Statistics are only estimates and never used as query answers.",
+      "tags": ["indexes"],
+      "level": 2,
+      "asked": "A small question that checks you think of indexes as sorted structures, not magic."
+    },
+    {
+      "id": "sqa-092",
+      "q": "What is the default transaction isolation level in both Postgres 17 and SQL Server 2022?",
+      "choices": [
+        "READ COMMITTED, in both engines",
+        "READ UNCOMMITTED, for maximum throughput",
+        "REPEATABLE READ, in both engines",
+        "SERIALIZABLE, in both engines"
+      ],
+      "answer": 0,
+      "why": "Both default to READ COMMITTED: each statement sees only committed data, but two reads in one transaction can see different values. SERIALIZABLE is available but opt-in because it costs retries or blocking; READ UNCOMMITTED is not the default anywhere mainstream.",
+      "tags": ["isolation"],
+      "level": 1,
+      "asked": "Knowing the default tells you which anomalies your code is already exposed to without anyone choosing them."
+    },
+    {
+      "id": "sqa-093",
+      "q": "In Postgres, SQL Server (with `UPDLOCK`) or MySQL, what does `SELECT ... FOR UPDATE` do inside a transaction?",
+      "code": "BEGIN;\nSELECT balance FROM accounts WHERE id = 7 FOR UPDATE;\n-- compute in the app\nUPDATE accounts SET balance = 40 WHERE id = 7;\nCOMMIT;",
+      "lang": "sql",
+      "choices": [
+        "It copies the row into a private snapshot that nobody else can see",
+        "It locks the row so other writers wait until this transaction ends",
+        "It marks the row as dirty so other readers skip it until commit",
+        "It upgrades the whole transaction to SERIALIZABLE for its lifetime"
+      ],
+      "answer": 1,
+      "why": "FOR UPDATE takes a row lock at read time, so a concurrent `FOR UPDATE` or UPDATE on row 7 blocks until COMMIT, closing the read-compute-write race. Plain readers in Postgres are not blocked (MVCC), and the isolation level is unchanged.",
+      "tags": ["locking", "concurrency"],
+      "level": 1,
+      "asked": "It is the simplest pessimistic fix for read-then-write races, and a strong answer says who is and is not blocked."
+    },
+    {
+      "id": "sqa-094",
+      "q": "What is a deadlock in a relational database?",
+      "choices": [
+        "A query that waits on a lock longer than the configured timeout",
+        "A transaction that holds locks and never commits because the app crashed",
+        "Two transactions each holding a lock the other one needs to proceed",
+        "A table lock taken because too many row locks were held at once"
+      ],
+      "answer": 2,
+      "why": "A deadlock is a cycle: A waits for B's lock while B waits for A's, so neither can ever proceed. A long wait or an abandoned open transaction is blocking, which resolves when the holder finishes; a deadlock never resolves by itself.",
+      "tags": ["deadlocks", "locking"],
+      "level": 1,
+      "asked": "Candidates often confuse deadlocks with slow blocking; the distinction decides whether you tune timeouts or fix lock ordering."
+    },
+    {
+      "id": "sqa-095",
+      "q": "Postgres or SQL Server detects a deadlock between two of your transactions. What does your application see?",
+      "choices": [
+        "Each statement hangs until its command timeout fires",
+        "Each transaction is rolled back and each caller gets an error",
+        "The engine silently retries the second transaction after the first",
+        "One is rolled back with an error; the other one continues"
+      ],
+      "answer": 3,
+      "why": "The engine picks a victim, aborts it with a deadlock error (Postgres SQLSTATE 40P01, SQL Server error 1205) and lets the survivor finish. Nothing is retried for you: the app should catch that error and retry the whole transaction.",
+      "tags": ["deadlocks", "error-handling"],
+      "level": 1,
+      "asked": "Interviewers want to hear that deadlocks are expected occasionally and that the fix includes a retry path in code."
+    },
+    {
+      "id": "sqa-096",
+      "q": "`tags` holds ('sql', 1). In Postgres or SQLite, what does the final SELECT return?",
+      "code": "INSERT INTO tags (name, uses) VALUES ('sql', 9)\nON CONFLICT (name) DO NOTHING;\n\nSELECT name, uses FROM tags;",
+      "lang": "sql",
+      "choices": [
+        "('sql', 1), because the conflicting row is skipped",
+        "An error, because name is the primary key and is duplicated",
+        "('sql', 9), because the new values overwrite the old ones",
+        "Two rows, since DO NOTHING turns off the uniqueness check"
+      ],
+      "answer": 0,
+      "why": "DO NOTHING swallows the unique violation for that row and leaves the existing one untouched. Overwriting needs `DO UPDATE SET uses = excluded.uses`; the constraint itself is never disabled.",
+      "tags": ["upserts"],
+      "level": 1,
+      "asked": "Idempotent inserts are everywhere in webhooks and imports, so knowing the two ON CONFLICT forms is expected."
+    },
+    {
+      "id": "sqa-097",
+      "q": "In Postgres or SQLite 3.35+, `accounts` row 1 has balance 100. What does this statement return?",
+      "code": "UPDATE accounts SET balance = balance - 30\nWHERE id = 1\nRETURNING balance;",
+      "lang": "sql",
+      "choices": [
+        "100, the value as it was before the update",
+        "70, the value after the update was applied",
+        "1, the number of rows the update affected",
+        "Nothing, since RETURNING only works on INSERT"
+      ],
+      "answer": 1,
+      "why": "RETURNING evaluates against the new row version, so you get 70 in the same round trip. For the old value in SQL Server, `OUTPUT deleted.balance` gives the before image; the affected-row count comes from the driver, not RETURNING.",
+      "tags": ["upserts", "queries"],
+      "level": 1,
+      "asked": "RETURNING removes a read-after-write round trip and a race, which is why reviewers like to see it."
+    },
+    {
+      "id": "sqa-098",
+      "q": "In Postgres, `data` is a jsonb column holding `{\"age\": 30}`. What is the difference between `data -> 'age'` and `data ->> 'age'`?",
+      "choices": [
+        "`->` reads one level; `->>` searches all levels",
+        "`->` returns text; `->>` returns jsonb",
+        "`->` returns jsonb; `->>` returns text",
+        "`->` yields NULL if missing; `->>` raises an error"
+      ],
+      "answer": 2,
+      "why": "`->` keeps the result as jsonb (good for chaining into nested objects), while `->>` extracts it as text, so `(data->>'age')::int > 18` is the usual filter. Neither searches recursively, and both yield NULL for a missing key.",
+      "tags": ["json", "postgres"],
+      "level": 1,
+      "asked": "Comparing a jsonb value to a string or number is a daily bug source, so interviewers check you know which operator yields what."
+    },
+    {
+      "id": "sqa-099",
+      "q": "In SQL Server 2022, `Data` holds `{\"name\":\"Ann\",\"tags\":[\"a\",\"b\"]}` as nvarchar. What do `JSON_VALUE(Data, '$.tags')` and `JSON_QUERY(Data, '$.tags')` return?",
+      "choices": [
+        "Each returns the array text; JSON_VALUE trims its whitespace",
+        "Each returns NULL, as arrays need OPENJSON to be read at all",
+        "JSON_VALUE returns 'a'; JSON_QUERY returns the whole array text",
+        "JSON_VALUE returns NULL (not a scalar); JSON_QUERY returns the array"
+      ],
+      "answer": 3,
+      "why": "JSON_VALUE extracts scalars only and returns NULL in lax mode for objects or arrays; JSON_QUERY extracts objects and arrays. To turn the array into rows you would then use OPENJSON.",
+      "tags": ["json", "sql-server"],
+      "level": 1,
+      "asked": "Picking the wrong function gives silent NULLs, a classic SQL Server JSON bug."
+    },
+    {
+      "id": "sqa-100",
+      "q": "`SELECT json_extract('{\"a\":{\"b\":[10,20]}}', '$.a.b[1]')` runs in SQLite. What does it return?",
+      "choices": [
+        "20, because JSON path indexes start at 0",
+        "10, because JSON path indexes start at 1",
+        "The text '[10,20]', since arrays are not indexed",
+        "NULL, since nested paths need json_each"
+      ],
+      "answer": 0,
+      "why": "SQL/JSON paths (SQLite, MySQL, SQL Server, Postgres jsonpath) index arrays from 0, so `$.a.b[1]` is the second element, 20. Nested paths work directly; json_each is for turning arrays into rows.",
+      "tags": ["json", "sqlite"],
+      "level": 1,
+      "asked": "JSON paths are the common syntax across engines, and off-by-one index errors are easy to make."
+    },
+    {
+      "id": "sqa-101",
+      "q": "In Postgres, what is the practical difference between the `json` and `jsonb` types?",
+      "choices": [
+        "json is binary and indexable; jsonb keeps the original text as typed",
+        "jsonb is parsed and indexable; json keeps the exact text as typed",
+        "jsonb is only for arrays; json is for objects with named keys",
+        "They are aliases; jsonb is the newer name kept for compatibility"
+      ],
+      "answer": 1,
+      "why": "jsonb stores a decomposed binary form: duplicate keys and key order are dropped, but it supports GIN indexes and containment operators. json stores the input text verbatim and reparses it on every access. jsonb is the right default for application data.",
+      "tags": ["json", "postgres"],
+      "level": 1,
+      "asked": "Choosing json by accident loses indexing, so interviewers expect jsonb as the default with a reason."
+    },
+    {
+      "id": "sqa-102",
+      "q": "Your product search uses `WHERE description LIKE '%running shoes%'`. Why is full-text search usually better for a search box?",
+      "choices": [
+        "LIKE is case-sensitive on every engine, while full-text never is",
+        "LIKE cannot match text longer than an indexed column's length",
+        "Full-text search matches word forms and ranks results by relevance",
+        "Full-text search runs without an index, so writes stay fast"
+      ],
+      "answer": 2,
+      "why": "Full-text search tokenises and stems text, so 'run' finds 'running' and word order or gaps do not matter, and it can rank matches; with a GIN or full-text index it avoids scanning every row. LIKE's case sensitivity depends on collation, and FTS does need its own index.",
+      "tags": ["search", "full-text"],
+      "level": 1,
+      "asked": "Search features are common in CRUD apps; a good answer knows when to reach for built-in FTS before an external engine."
+    },
+    {
+      "id": "sqa-103",
+      "q": "In Postgres, why does this return true?",
+      "code": "SELECT to_tsvector('english', 'She was running late')\n    @@ to_tsquery('english', 'run');",
+      "lang": "sql",
+      "choices": [
+        "`@@` does a substring match, and 'run' occurs inside 'running'",
+        "The english config treats every verb form as a stop word",
+        "to_tsquery adds a trailing wildcard to every term automatically",
+        "The english config stems 'running' and 'run' to the same lexeme"
+      ],
+      "answer": 3,
+      "why": "Both sides go through the english dictionary, which reduces 'running' and 'run' to the lexeme 'run', so the match is on normalised words, not substrings. Prefix matching needs an explicit `run:*`; stop words like 'she' and 'was' are dropped, not verbs.",
+      "tags": ["full-text", "postgres"],
+      "level": 1,
+      "asked": "Understanding stemming explains both why FTS finds more and why it sometimes surprises users."
+    },
+    {
+      "id": "sqa-104",
+      "q": "In Postgres, SQL Server or SQLite, what does `top` hold on each row?",
+      "code": "SELECT name, dept,\n  FIRST_VALUE(name) OVER (\n    PARTITION BY dept ORDER BY salary DESC) AS top\nFROM employees;",
+      "lang": "sql",
+      "choices": [
+        "The name of the highest-paid employee in that row's department",
+        "The first employee name in the table, the same on every row",
+        "The row's own name when it is the top earner, otherwise NULL",
+        "The alphabetically first name within that row's department"
+      ],
+      "answer": 0,
+      "why": "FIRST_VALUE takes the first row of each partition's window in the given order, so every row in a department sees that department's top earner. Unlike LAST_VALUE, the default frame does not trip it up, because the frame always starts at the partition's first row.",
+      "tags": ["window-functions"],
+      "level": 1,
+      "asked": "Showing each row next to its group's best is a common reporting request that avoids a self-join."
+    },
+    {
+      "id": "sqa-105",
+      "q": "In Postgres or SQLite, what does `COUNT(*) FILTER (WHERE status = 'paid')` do in a grouped query?",
+      "choices": [
+        "It removes unpaid rows from the whole query before grouping",
+        "It counts only the paid rows within each group",
+        "It counts the groups that contain at least one paid row overall",
+        "It is a HAVING condition that drops groups with no paid rows"
+      ],
+      "answer": 1,
+      "why": "FILTER restricts which rows feed that one aggregate, so `COUNT(*)` and `COUNT(*) FILTER (...)` can sit side by side in the same group. It is the standard-SQL form of `SUM(CASE WHEN ... THEN 1 ELSE 0 END)`; it neither filters the query nor the groups.",
+      "tags": ["aggregation", "reporting"],
+      "level": 1,
+      "asked": "Dashboards need several conditional counts per row, and FILTER is the tidiest way to express them where supported."
+    },
+    {
+      "id": "sqa-106",
+      "q": "`daily` holds (day 1, 40), (day 2, 55), (day 3, 50). What does `ch` contain, in day order?",
+      "code": "SELECT day, n - LAG(n, 1, 0) OVER (ORDER BY day) AS ch\nFROM daily;",
+      "lang": "sql",
+      "choices": [
+        "NULL, 15, -5",
+        "0, 15, -5",
+        "40, 15, -5",
+        "15, -5, NULL"
+      ],
+      "answer": 2,
+      "why": "LAG's third argument is the default when there is no previous row, so day 1 computes 40 - 0 = 40 rather than NULL. Without that default the first row would be NULL; the NULL at the end belongs to LEAD.",
+      "tags": ["window-functions"],
+      "level": 1,
+      "asked": "The default argument avoids a COALESCE, and remembering where LAG yields NULL shows real use."
+    },
+    {
+      "id": "sqa-107",
+      "q": "Under default settings in Postgres, transaction A has run `UPDATE orders SET status = 'paid' WHERE id = 5` but not committed. What happens to other sessions?",
+      "choices": [
+        "Readers and writers of row 5 both wait until A commits or rolls back",
+        "Nothing waits; the last transaction to commit overwrites the other",
+        "Readers see 'paid' already; another UPDATE of row 5 fails immediately",
+        "Readers see the old row; another UPDATE of row 5 waits for A to finish"
+      ],
+      "answer": 3,
+      "why": "Postgres MVCC means plain SELECTs read the last committed version without blocking, but a second writer on the same row must wait for A's row lock. Dirty reads never happen in Postgres, and the second writer queues rather than failing.",
+      "tags": ["locking", "mvcc"],
+      "level": 1,
+      "asked": "Knowing that writers block writers but not readers is the basis for reasoning about any contention problem."
+    },
+    {
+      "id": "sqa-108",
+      "q": "A handler opens a transaction, updates an order, then calls a payment API that sometimes takes 20 seconds before committing. What is the main database problem?",
+      "choices": [
+        "Its row locks are held through the API call, blocking writers",
+        "The transaction switches to autocommit after its first statement",
+        "The engine rolls back any transaction left idle for over a second",
+        "The API call's result is written to disk before the order row is"
+      ],
+      "answer": 0,
+      "why": "Locks are held until COMMIT or ROLLBACK, so slow external calls inside a transaction make every other writer of those rows queue behind them and hold a pooled connection. Do the external call outside the transaction (or record intent and finish in a second short transaction).",
+      "tags": ["locking", "transactions"],
+      "level": 1,
+      "asked": "Short transactions are a design rule; interviewers look for candidates who keep network I/O out of them."
+    },
+    {
+      "id": "sqa-109",
+      "q": "In Postgres, what does `SELECT ... FOR UPDATE NOWAIT` do when another transaction already holds a lock on the row?",
+      "choices": [
+        "It waits for the lock, then returns the row as it now stands",
+        "It fails at once with a lock-not-available error you can handle",
+        "It returns the row anyway, ignoring the other transaction's lock",
+        "It returns no rows, silently skipping the ones that are locked"
+      ],
+      "answer": 1,
+      "why": "NOWAIT turns the wait into an immediate error (SQLSTATE 55P03), useful when a user should be told 'someone else is editing this' instead of hanging. Silently skipping locked rows is SKIP LOCKED, which suits job queues rather than single-record edits.",
+      "tags": ["locking", "postgres"],
+      "level": 1,
+      "asked": "Choosing between waiting, NOWAIT and SKIP LOCKED shows you match the lock behaviour to the use case."
+    },
+    {
+      "id": "sqa-110",
+      "q": "What is a database trigger, and what is the most common complaint about using one for business rules?",
+      "choices": [
+        "A scheduled job run by the engine; it cannot see the changed rows",
+        "A constraint checked at commit time; it cannot enforce cross-row rules",
+        "Code the engine runs on INSERT/UPDATE/DELETE; its effects are hidden",
+        "A stored query that runs on read; it slows every SELECT on the table"
+      ],
+      "answer": 2,
+      "why": "A trigger fires automatically on data changes and can see old and new rows, so it is good for audit trails or keeping derived data in sync. The complaint is invisibility: developers reading app code do not see the extra writes, and bulk operations get slower. Scheduled jobs are a separate feature.",
+      "tags": ["triggers"],
+      "level": 1,
+      "asked": "Interviewers want a balanced view: triggers are fine for auditing, risky as a home for core business logic."
+    },
+    {
+      "id": "sqa-111",
+      "q": "In Postgres, `EXPLAIN` is run without `ANALYZE`. What do the row counts in its output represent?",
+      "choices": [
+        "The exact table sizes, read from the files on disk at plan time",
+        "The actual rows read, measured by running the query in a rollback",
+        "The rows cached in memory at the time the plan was generated",
+        "The planner's estimates; the query is planned but not executed"
+      ],
+      "answer": 3,
+      "why": "Plain EXPLAIN only plans the statement and shows estimated rows and costs from statistics. `EXPLAIN ANALYZE` actually executes it and adds actual rows and timings, which is how you spot misestimates. Neither reads cache contents unless you ask for BUFFERS with ANALYZE.",
+      "tags": ["query-plans", "postgres"],
+      "level": 1,
+      "asked": "Comparing estimates to actuals is the core diagnostic move, so knowing which one you are looking at matters."
+    },
+    {
+      "id": "sqa-112",
+      "q": "A Postgres plan for `SELECT * FROM users WHERE email = $1` on 3 million rows shows `Seq Scan on users ... Filter: (email = $1) Rows Removed by Filter: 2999999`. What does this most likely indicate?",
+      "choices": [
+        "There is no usable index on email for this lookup",
+        "The table's statistics are stale and it needs an ANALYZE",
+        "The query is correct; seq scans are always the fastest",
+        "The email column holds too many NULLs to be indexed"
+      ],
+      "answer": 0,
+      "why": "Reading every row to keep one is the signature of a missing (or unusable) index: add one on email, or check the query is not wrapping the column in a function. Seq scans are right for small tables or low-selectivity filters, not a single-row lookup on a large one.",
+      "tags": ["query-plans", "indexes"],
+      "level": 1,
+      "asked": "Reading 'Rows Removed by Filter' is the first plan skill anyone should have."
+    },
+    {
+      "id": "sqa-113",
+      "q": "Why not simply add an index on every column of a busy table?",
+      "choices": [
+        "Engines refuse more than one index per table at a time",
+        "Each index slows every insert and update and takes space",
+        "Extra indexes make SELECT queries return rows in random order",
+        "Indexes on non-key columns disable the primary key index"
+      ],
+      "answer": 1,
+      "why": "Every index must be updated on each write that touches its columns, costs disk and memory, and adds work for vacuum or maintenance. Engines allow many indexes, and indexes never change query results; you add them for the queries you actually run.",
+      "tags": ["indexes", "performance"],
+      "level": 1,
+      "asked": "Indexes are a trade-off, and interviewers want to hear the write cost, not 'more is faster'."
+    },
+    {
+      "id": "sqa-114",
+      "q": "A team stores each post's tag ids in a JSON array column instead of a `post_tags` table. What do they lose?",
+      "choices": [
+        "The ability to store more than a few ids in one row",
+        "Transactions on writes that touch the tag array",
+        "Foreign keys on the ids and simple, indexable joins",
+        "The ability to read tags back in the order written"
+      ],
+      "answer": 2,
+      "why": "Ids inside JSON cannot reference `tags(id)`, so deleted tags leave dangling ids, and queries like 'posts with tag 5' need JSON functions instead of an indexed join. JSON arrays preserve order and are written transactionally like any other column.",
+      "tags": ["json", "modelling"],
+      "level": 1,
+      "asked": "JSON columns are tempting shortcuts, and interviewers check you know what relational guarantees you give up."
+    },
+    {
+      "id": "sqa-115",
+      "q": "Which isolation level makes concurrent transactions behave as if they had run one after another?",
+      "choices": [
+        "READ COMMITTED",
+        "REPEATABLE READ",
+        "SNAPSHOT",
+        "SERIALIZABLE"
+      ],
+      "answer": 3,
+      "why": "SERIALIZABLE guarantees the result equals some serial order, preventing every anomaly including write skew. REPEATABLE READ and SNAPSHOT still allow write skew (two transactions each reading, then writing different rows based on what they read).",
+      "tags": ["isolation"],
+      "level": 1,
+      "asked": "It anchors the isolation ladder; a strong answer adds that it costs retries or blocking."
+    },
+    {
+      "id": "sqa-116",
+      "q": "Your app renames `users.fullname` to `display_name` in one migration during a rolling deploy. What breaks?",
+      "choices": [
+        "Old app instances still query fullname and fail until replaced",
+        "Nothing, because the engine keeps the old name as an alias",
+        "The rename rewrites the whole table and locks it for minutes",
+        "New app instances fail because the rename runs after they start"
+      ],
+      "answer": 0,
+      "why": "During a rolling deploy old and new code run side by side, so a rename breaks whichever version expects the other name. The zero-downtime pattern is expand and contract: add the new column, write both, backfill, switch reads, then drop the old one. A rename itself is a quick metadata change in most engines.",
+      "tags": ["migrations", "zero-downtime"],
+      "level": 1,
+      "asked": "Expand and contract is the core zero-downtime migration idea and comes up in almost every deployment discussion."
+    },
+    {
+      "id": "sqa-117",
+      "q": "In Postgres, why prefer `id bigint GENERATED ALWAYS AS IDENTITY` over the older `id bigserial`?",
+      "choices": [
+        "Identity columns never leave gaps after a rolled-back insert",
+        "It is SQL-standard and blocks accidental manual id inserts",
+        "serial columns are removed in Postgres 17 and will not parse",
+        "Identity columns are faster because they avoid any sequence"
+      ],
+      "answer": 1,
+      "why": "Identity is the standard syntax, ties the sequence cleanly to the column (ownership, permissions, dump/restore) and, with ALWAYS, rejects explicit id values unless you say OVERRIDING SYSTEM VALUE. It still uses a sequence under the hood, so gaps still happen; serial still works.",
+      "tags": ["keys", "postgres"],
+      "level": 2,
+      "asked": "It shows you keep up with modern Postgres defaults rather than copying old tutorials."
+    },
+    {
+      "id": "sqa-118",
+      "q": "Under SERIALIZABLE in Postgres, a transaction fails with SQLSTATE 40001 (could not serialize access). What should the application do?",
+      "choices": [
+        "Lower the isolation level for that session and resubmit it",
+        "Retry only the failing statement inside the same transaction",
+        "Retry the whole transaction from the start, a few times at most",
+        "Treat it as a bug in the query, since it cannot happen by design"
+      ],
+      "answer": 2,
+      "why": "Serialization failures are the price of SERIALIZABLE's guarantee: the engine aborts one transaction instead of allowing an anomaly, and the correct response is to rerun the entire transaction, because its reads are now stale. The aborted transaction cannot continue, so retrying one statement fails.",
+      "tags": ["isolation", "error-handling"],
+      "level": 2,
+      "asked": "Using SERIALIZABLE without a retry loop is a common mistake, and interviewers probe for it."
+    },
+    {
+      "id": "sqa-119",
+      "q": "What is table partitioning (Postgres declarative partitioning, SQL Server partitioned tables) mainly used for in an application database?",
+      "choices": [
+        "Spreading one table's rows across several servers for write scaling",
+        "Keeping a hot copy of the table in memory for faster reads",
+        "Giving each tenant a separate schema with its own permissions",
+        "Splitting a huge table by a key such as month for pruning and drops"
+      ],
+      "answer": 3,
+      "why": "Partitioning splits one logical table into child tables by range, list or hash, so queries filtering on the key touch only relevant partitions and old data can be removed by dropping a partition instead of a huge DELETE. It stays on one server; spreading across servers is sharding.",
+      "tags": ["partitioning", "performance"],
+      "level": 2,
+      "asked": "Time-series tables such as events or audit logs are the usual trigger, and interviewers want the retention benefit named."
+    },
+    {
+      "id": "sqa-120",
+      "q": "In Postgres, what does `WHERE data @> '{\"status\": \"active\"}'` match on a jsonb column, and why is it preferred?",
+      "choices": [
+        "Rows whose data contains that key and value; a GIN index can serve it",
+        "Rows whose data equals exactly that object; a B-tree index serves it",
+        "Rows where any nested value contains 'active' as a substring match",
+        "Rows whose data has a status key, whatever its value happens to be"
+      ],
+      "answer": 0,
+      "why": "`@>` is containment: the left document must include the right one (extra keys are fine), and a GIN index on data (jsonb_ops or jsonb_path_ops) accelerates it. `data->>'status' = 'active'` needs a separate expression index. Key existence alone is the `?` operator.",
+      "tags": ["json", "indexes", "postgres"],
+      "level": 2,
+      "asked": "It shows you can query JSON in a way the index actually supports."
+    },
+    {
+      "id": "sqa-121",
+      "q": "What is a Postgres advisory lock (`pg_advisory_lock(key)`) typically used for in an application?",
+      "choices": [
+        "Locking a table so that reads wait during a bulk import",
+        "Ensuring only one instance runs a job or migration at once",
+        "Preventing two users from editing the same row via the ORM",
+        "Warning the planner that a table is about to change a lot"
+      ],
+      "answer": 1,
+      "why": "Advisory locks lock an application-chosen number, not a table or row, so several app instances can agree that only one runs the nightly job or migration at a time. They do not stop anyone touching data; row edits are protected with row locks or optimistic concurrency.",
+      "tags": ["locking", "postgres"],
+      "level": 2,
+      "asked": "Once apps run several replicas, 'run this only once' needs a coordination primitive, and the database often already has one."
+    },
+    {
+      "id": "sqa-122",
+      "q": "A Postgres session has sat 'idle in transaction' for three hours. Besides holding locks, what harm does it do?",
+      "choices": [
+        "It forces every other query to run under SERIALIZABLE",
+        "It doubles the WAL written by each concurrent transaction",
+        "It stops VACUUM removing dead rows newer than its snapshot",
+        "It pins its tables in memory, evicting other data from cache"
+      ],
+      "answer": 2,
+      "why": "VACUUM can only remove row versions that no open transaction might still see, so one ancient transaction makes dead tuples pile up across the database, causing bloat and slower queries. `idle_in_transaction_session_timeout` is the usual guard. It does not change others' isolation.",
+      "tags": ["mvcc", "postgres", "operations"],
+      "level": 2,
+      "asked": "Bloat from forgotten transactions is a real production incident type, and naming the timeout setting is a plus."
+    },
+    {
+      "id": "sqa-123",
+      "q": "In Postgres 11+, what does `ALTER TABLE orders ADD COLUMN source text NOT NULL DEFAULT 'web'` cost on a 50-million-row table?",
+      "choices": [
+        "A full table rewrite under an exclusive lock, taking minutes",
+        "A rewrite in the background while reads and writes carry on",
+        "Nothing at all, because NOT NULL is checked lazily on later reads",
+        "A quick metadata change, since the constant default is stored once"
+      ],
+      "answer": 3,
+      "why": "Since Postgres 11 a non-volatile default is stored in the catalogue and returned for old rows without rewriting them, so the ALTER needs only a brief lock. A volatile default such as `random()` or `clock_timestamp()` still forces a rewrite.",
+      "tags": ["migrations", "zero-downtime", "postgres"],
+      "level": 2,
+      "asked": "Knowing which DDL is instant and which rewrites the table is what lets you plan migrations without downtime."
+    },
+    {
+      "id": "sqa-124",
+      "q": "In SQL Server 2022, what do you need before `WHERE CONTAINS(Description, 'waterproof')` works?",
+      "choices": [
+        "A full-text catalogue and full-text index on the table",
+        "A plain nonclustered index on the Description column",
+        "The database compatibility level set below 150",
+        "A computed column that stores Description in lower case"
+      ],
+      "answer": 0,
+      "why": "CONTAINS and FREETEXT only work against a full-text index, which lives in a full-text catalogue and requires a unique key index on the table. A normal B-tree index cannot serve word searches, and full-text matching is case-insensitive anyway.",
+      "tags": ["full-text", "sql-server"],
+      "level": 2,
+      "asked": "It tests whether you know full-text search is a separate feature you must set up, not a query trick."
+    },
+    {
+      "id": "sqa-125",
+      "q": "In Postgres, what makes full-text search over `articles.body` fast on a large table?",
+      "code": "SELECT id FROM articles\nWHERE to_tsvector('english', body)\n      @@ plainto_tsquery('english', $1);",
+      "lang": "sql",
+      "choices": [
+        "A B-tree index on body, which sorts the words inside the text",
+        "A GIN index on to_tsvector('english', body), or a stored column",
+        "A hash index on body, since the search is an equality match",
+        "Nothing; @@ scans each row but is always fast enough in practice"
+      ],
+      "answer": 1,
+      "why": "A GIN index maps each lexeme to the rows containing it; it must be built on exactly the same expression (same config) the query uses, or on a generated tsvector column. B-tree and hash indexes work on whole values, not words inside them.",
+      "tags": ["full-text", "indexes", "postgres"],
+      "level": 2,
+      "asked": "Getting FTS to use its index is where most first attempts fail, so interviewers check the expression-match rule."
+    },
+    {
+      "id": "sqa-126",
+      "q": "Why do experienced SQL Server developers avoid adding `WITH (NOLOCK)` to report queries to stop blocking?",
+      "choices": [
+        "NOLOCK makes the query take a table lock, which blocks everyone",
+        "It is ignored on tables that have a clustered index anyway",
+        "It reads uncommitted data and can skip or double-count rows",
+        "It forces a recompile of the plan on every single execution"
+      ],
+      "answer": 2,
+      "why": "NOLOCK is READ UNCOMMITTED: it can return rows that later roll back and, during page splits, miss or duplicate rows. The safer fix for readers blocking writers is READ_COMMITTED_SNAPSHOT (row versioning), which gives consistent committed reads without shared locks.",
+      "tags": ["isolation", "sql-server"],
+      "level": 2,
+      "asked": "NOLOCK sprinkled everywhere is a code-review red flag, and knowing RCSI as the alternative is the strong answer."
+    },
+    {
+      "id": "sqa-127",
+      "q": "In SQL Server, what does the OUTPUT clause return in this statement?",
+      "code": "UPDATE Accounts SET Balance = Balance - 30\nOUTPUT deleted.Balance, inserted.Balance\nWHERE Id = 1;",
+      "lang": "sql",
+      "choices": [
+        "An error, since OUTPUT is only valid on INSERT and DELETE",
+        "The deleted and inserted row counts for the statement",
+        "The balance after the update, twice, for comparison",
+        "The balance before and after the update"
+      ],
+      "answer": 3,
+      "why": "Inside OUTPUT, `deleted` is the before image and `inserted` the after image, so an UPDATE can return both, which Postgres RETURNING cannot do directly. OUTPUT works on INSERT, UPDATE, DELETE and MERGE.",
+      "tags": ["sql-server", "queries"],
+      "level": 2,
+      "asked": "It is SQL Server's RETURNING, and audit or balance-change code uses it to avoid a second query."
+    },
+    {
+      "id": "sqa-128",
+      "q": "A Postgres migration runs `ALTER TABLE orders ADD CONSTRAINT ...` and the whole app freezes, though the ALTER itself is quick. Why, and what is the usual guard?",
+      "choices": [
+        "The ALTER waits behind a long query and blocks all queued queries; set lock_timeout",
+        "The ALTER rewrites the table in place and blocks reads; add the constraint as NOT VALID",
+        "The ALTER triggers an autovacuum that blocks writes; run VACUUM FULL beforehand",
+        "The ALTER invalidates every cached plan at once; run DISCARD ALL on the pool"
+      ],
+      "answer": 0,
+      "why": "ALTER needs an ACCESS EXCLUSIVE lock; while it waits behind a long-running SELECT, every later query queues behind the ALTER, so a quick DDL causes a full outage. `SET lock_timeout = '5s'` makes the migration fail fast and retry instead. NOT VALID helps with validation cost, not lock queueing.",
+      "tags": ["migrations", "locking", "postgres"],
+      "level": 3,
+      "asked": "Lock queueing behind DDL is the classic surprise outage in 'safe' migrations, and seniors know the lock_timeout habit."
+    },
+    {
+      "id": "sqa-129",
+      "q": "In SQL Server, a batch UPDATE touching 20,000 rows suddenly blocks unrelated queries on the same table. What is the likely mechanism?",
+      "choices": [
+        "Page splits during the update force a full index rebuild",
+        "Lock escalation converted many row locks into a table lock",
+        "The update switched the database to SINGLE_USER mode",
+        "The optimiser chose a parallel plan that locks each partition"
+      ],
+      "answer": 1,
+      "why": "SQL Server escalates to a table (or partition) lock once a statement holds roughly 5,000 locks on one object, trading memory for concurrency. Batching the update in smaller chunks keeps it below the threshold. Page splits and parallel plans do not lock the whole table.",
+      "tags": ["locking", "sql-server"],
+      "level": 3,
+      "asked": "Chunking large updates is standard practice, and escalation is the reason behind it."
+    },
+    {
+      "id": "sqa-130",
+      "q": "In SQLite, `orders.data` holds JSON like `{\"items\":[\"a\",\"b\"]}`. What does this query return for an order whose items array is empty?",
+      "code": "SELECT o.id, j.value\nFROM orders o, json_each(o.data, '$.items') j;",
+      "lang": "sql",
+      "choices": [
+        "One row with a NULL value, as a LEFT JOIN would",
+        "One row whose value is '[]', the raw array",
+        "No rows at all for that particular order",
+        "An error, as json_each needs a non-empty array"
+      ],
+      "answer": 2,
+      "why": "json_each (like Postgres `jsonb_array_elements` or SQL Server `CROSS APPLY OPENJSON`) is a table-valued function producing one row per element, and the comma join is an inner join, so an empty array yields no rows. Keeping the order needs `LEFT JOIN json_each(...) ON true` or OUTER APPLY.",
+      "tags": ["json", "sqlite"],
+      "level": 2,
+      "asked": "Turning a JSON array into rows is how you report on semi-structured data, and dropped parents are the usual bug."
     }
   ]
 }

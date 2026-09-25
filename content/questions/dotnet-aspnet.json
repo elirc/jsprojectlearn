@@ -653,6 +653,2622 @@
       "tags": ["serialisation", "aspnet"],
       "level": 1,
       "asked": "A first-week bug on every .NET-plus-React team; the interviewer wants the mechanism and the one-line fix."
+    },
+    {
+      "id": "dn-043",
+      "q": "Both lines run in Program.cs. What does a constructor that takes a single `INotifier` receive?",
+      "code": "builder.Services.AddScoped<INotifier, EmailNotifier>();\nbuilder.Services.AddScoped<INotifier, SmsNotifier>();",
+      "lang": "cs",
+      "choices": [
+        "An `EmailNotifier`, because the first registration for a service type wins",
+        "An `SmsNotifier`, because the last registration wins for a single resolve",
+        "Nothing: the host throws at startup because `INotifier` is registered twice",
+        "A composite that forwards each call to both notifiers in registration order"
+      ],
+      "answer": 1,
+      "why": "The default container keeps every registration; resolving one `INotifier` gives the last, and injecting `IEnumerable<INotifier>` gives both in order. It never throws on duplicates and never builds a composite for you, which is why accidental double registration fails silently.",
+      "tags": ["di"],
+      "level": 1,
+      "asked": "Tests whether you know how plug-in style registrations work and why a library registration can silently override yours."
+    },
+    {
+      "id": "dn-044",
+      "q": "A reusable library registers its default `IClock` in an `AddMyLibrary()` extension. Why should it use `TryAddSingleton` rather than `AddSingleton`?",
+      "choices": [
+        "`TryAddSingleton` skips the registration if the app has already registered an `IClock`",
+        "`TryAddSingleton` catches exceptions thrown by the constructor and falls back to null",
+        "`TryAddSingleton` makes the registration thread-safe when several hosts start together",
+        "`TryAddSingleton` delays creating the instance until the first request has arrived"
+      ],
+      "answer": 0,
+      "why": "The `TryAdd*` methods (in `Microsoft.Extensions.DependencyInjection.Extensions`) add only when no registration for the service type exists, so an app that registered its own `IClock` first keeps it. Every singleton is created lazily on first resolve anyway, so that is not what TryAdd adds.",
+      "tags": ["di"],
+      "level": 2,
+      "asked": "Separates people who have written reusable registration code from people who have only consumed it."
+    },
+    {
+      "id": "dn-045",
+      "q": "What is the difference between `sp.GetService<IFoo>()` and `sp.GetRequiredService<IFoo>()` when `IFoo` is not registered?",
+      "choices": [
+        "`GetService` throws `InvalidOperationException`; `GetRequiredService` returns null",
+        "Each returns null; `GetRequiredService` also logs a warning at startup",
+        "`GetService` returns null; `GetRequiredService` throws `InvalidOperationException`",
+        "Each throws, but only `GetRequiredService` names the missing type"
+      ],
+      "answer": 2,
+      "why": "`GetService` is the optional lookup and returns null for an unregistered type, which usually surfaces later as a confusing `NullReferenceException`. `GetRequiredService` fails immediately with a message naming the type. Prefer constructor injection; when you must resolve manually, prefer the required form.",
+      "tags": ["di"],
+      "level": 1,
+      "asked": "A quick check that you fail fast instead of passing nulls around."
+    },
+    {
+      "id": "dn-046",
+      "q": "In Program.cs, what happens when this line runs after `var app = builder.Build();`?",
+      "code": "builder.Services.AddScoped<IReportService, ReportService>();",
+      "lang": "cs",
+      "choices": [
+        "It works, but only requests that start after this line can resolve the service",
+        "It registers the service as a singleton, since the scope factory is already built",
+        "It is ignored silently, so resolving `IReportService` later returns null",
+        "It throws `InvalidOperationException`: the service collection is now read-only"
+      ],
+      "answer": 3,
+      "why": "`Build()` creates the service provider from the collection and makes the collection read-only, so any later `Add*` throws. All registrations belong before `Build()`. A silently ignored registration would be worse, which is why the framework throws instead.",
+      "tags": ["di", "aspnet"],
+      "level": 1,
+      "asked": "A first-week mistake when moving code around in Program.cs; the interviewer wants to hear that Build freezes the container."
+    },
+    {
+      "id": "dn-047",
+      "q": "A service depends on a type nobody registered. With the default `WebApplication` host, when does the error appear?",
+      "choices": [
+        "At startup in every environment, because the container validates on build",
+        "At startup in Development; in Production only on the first resolve",
+        "Only when the service is first resolved, whichever environment the app runs in",
+        "Never as an error: the missing dependency is injected as null and fails later"
+      ],
+      "answer": 1,
+      "why": "In Development the host turns on `ValidateOnBuild` and `ValidateScopes`, so building the provider checks every registration's constructor. In other environments both are off by default for startup speed, so the failure waits for the first resolve. You can switch them on everywhere via `builder.Host.UseDefaultServiceProvider`.",
+      "tags": ["di", "configuration"],
+      "level": 3,
+      "asked": "Explains the classic 'works on my machine, 500s in production on one endpoint' report and shows you know the dev-only validation."
+    },
+    {
+      "id": "dn-048",
+      "q": "What does this registration let you inject?",
+      "code": "builder.Services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));",
+      "lang": "cs",
+      "choices": [
+        "`IRepository<T>` for any `T`, each closed over the matching `EfRepository<T>`",
+        "Only the non-generic `IRepository`, since `typeof` erases the type arguments",
+        "One shared `EfRepository<object>` that is cast to whichever `T` is requested",
+        "Nothing until each closed type such as `IRepository<Order>` is also registered"
+      ],
+      "answer": 0,
+      "why": "This is an open generic registration: when something asks for `IRepository<Order>`, the container closes `EfRepository<>` over `Order` and creates it with the registered lifetime. No per-type registration is needed, and nothing is shared across different `T`.",
+      "tags": ["di"],
+      "level": 2,
+      "asked": "Common in codebases with a generic repository or pipeline behaviours; the interviewer checks you can read the registration."
+    },
+    {
+      "id": "dn-049",
+      "q": "Which of these singletons will the container dispose when the app shuts down?",
+      "code": "builder.Services.AddSingleton<CacheA>();\nbuilder.Services.AddSingleton(sp => new CacheB());\nbuilder.Services.AddSingleton(new CacheC());",
+      "lang": "cs",
+      "choices": [
+        "All three, because every registered singleton is owned by the root provider",
+        "Only `CacheC`, because it is the only instance the container can see up front",
+        "`CacheA` and `CacheB`; `CacheC` was created by you, so you must dispose it",
+        "None of them: singletons live until the process exits and are never disposed"
+      ],
+      "answer": 2,
+      "why": "The container disposes what it creates, including instances returned from a factory. An instance you construct and pass in is treated as owned by you, so its `Dispose` is not called. This matters for anything holding sockets or file handles.",
+      "tags": ["di"],
+      "level": 3,
+      "asked": "A subtle ownership rule that shows up when a registered client leaks connections on shutdown."
+    },
+    {
+      "id": "dn-050",
+      "q": "A singleton creates a scope to use a service that implements only `IAsyncDisposable`. Why use `CreateAsyncScope` here?",
+      "code": "await using var scope = scopeFactory.CreateAsyncScope();\nvar exporter = scope.ServiceProvider.GetRequiredService<Exporter>();\nawait exporter.RunAsync(ct);",
+      "lang": "cs",
+      "choices": [
+        "`CreateScope` runs every resolved service on a single thread, which deadlocks here",
+        "`CreateAsyncScope` resolves services in parallel, which makes startup faster",
+        "`CreateScope` shares the singleton's scope, so `Exporter` would never be disposed",
+        "Disposing a sync scope that holds an async-only disposable throws at runtime"
+      ],
+      "answer": 3,
+      "why": "A scope disposed with `Dispose()` cannot call `DisposeAsync`, so the container throws `InvalidOperationException` for a service that implements only `IAsyncDisposable`. `CreateAsyncScope` returns an `AsyncServiceScope` you can `await using`. Neither method changes threading or resolution order.",
+      "tags": ["di", "background-work"],
+      "level": 3,
+      "asked": "Checks that you have created scopes by hand in hosted services and hit the async disposal rule."
+    },
+    {
+      "id": "dn-051",
+      "q": "In C# 12, what is the main caveat of injecting through a primary constructor like this?",
+      "code": "public class OrderService(IOrderRepository repo, ILogger<OrderService> log)\n{\n    public Task<Order?> Get(int id) => repo.FindAsync(id);\n}",
+      "lang": "cs",
+      "choices": [
+        "The container cannot see primary constructors, so it needs `[ActivatorUtilitiesConstructor]`",
+        "The captured parameters are mutable, not `readonly` fields, so code can reassign them",
+        "Primary constructor parameters are copied per call, so each method gets a new repository",
+        "A class with a primary constructor must be registered as a singleton in the container"
+      ],
+      "answer": 1,
+      "why": "The container sees a primary constructor like any other constructor. The parameters are captured into compiler-generated state that code in the class can reassign, which a `private readonly` field would forbid. Some teams assign them to readonly fields or rely on an analyser for that reason.",
+      "tags": ["di"],
+      "level": 2,
+      "asked": "Primary constructors are now everywhere in .NET 8+ code; a strong answer knows the readonly trade-off."
+    },
+    {
+      "id": "dn-052",
+      "q": "What is the difference between `app.Use(...)` and `app.Run(...)`?",
+      "choices": [
+        "`Use` runs before routing and `Run` after it, whatever order they are written in",
+        "`Use` adds middleware that can call the next one; `Run` adds a terminal delegate",
+        "`Use` is for synchronous middleware and `Run` for middleware that awaits I/O",
+        "`Use` applies to every request and `Run` only to requests matching an endpoint"
+      ],
+      "answer": 1,
+      "why": "`Use` receives the next delegate and decides whether to call it. `Run` receives only the `HttpContext`, so nothing registered after it on that branch ever executes. Both run in registration order and both can be async.",
+      "tags": ["middleware"],
+      "level": 1,
+      "asked": "A warm-up that confirms you understand the pipeline is a chain of delegates."
+    },
+    {
+      "id": "dn-053",
+      "q": "A request arrives for `/admin/users`. What do `Request.PathBase` and `Request.Path` hold inside this branch?",
+      "code": "app.Map(\"/admin\", admin =>\n{\n    admin.Run(ctx => ctx.Response.WriteAsync($\"{ctx.Request.PathBase}|{ctx.Request.Path}\"));\n});",
+      "lang": "cs",
+      "choices": [
+        "PathBase is empty and Path is `/admin/users`, since Map does not alter the request",
+        "PathBase is `/admin/users` and Path is empty, because the whole path was matched",
+        "PathBase is `/admin` and Path is `/users`: Map moves the matched segment across",
+        "PathBase is `/` and Path is `/admin/users`, because PathBase is always the site root"
+      ],
+      "answer": 2,
+      "why": "`Map` branches on a path prefix and moves the matched segment from `Path` to `PathBase`, so the branch sees paths relative to its mount point. A branch created with `Map` never rejoins the main pipeline, which is the other thing people forget.",
+      "tags": ["middleware"],
+      "level": 2,
+      "asked": "Branching is how health or admin sub-apps get mounted; the PathBase detail explains many broken redirects."
+    },
+    {
+      "id": "dn-054",
+      "q": "What is the practical difference between `app.UseWhen(pred, branch)` and `app.MapWhen(pred, branch)`?",
+      "choices": [
+        "`UseWhen` rejoins the main pipeline after the branch; `MapWhen` never does",
+        "`UseWhen` tests the path only; `MapWhen` can test any part of the request",
+        "`UseWhen` runs the branch after the endpoint; `MapWhen` runs it before routing",
+        "`UseWhen` evaluates the predicate once at startup; `MapWhen` does so per request"
+      ],
+      "answer": 0,
+      "why": "Both take a predicate over `HttpContext` evaluated per request. With `UseWhen`, if the branch does not short-circuit, the request continues into the rest of the main pipeline. `MapWhen` forks permanently, so the branch must end in something that writes a response.",
+      "tags": ["middleware"],
+      "level": 2,
+      "asked": "Asked when someone wants extra middleware only for `/api` paths; picking the wrong one silently drops requests."
+    },
+    {
+      "id": "dn-055",
+      "q": "This middleware sometimes throws 'Headers are read-only, response has already started'. What is the fix?",
+      "code": "app.Use(async (ctx, next) =>\n{\n    var sw = Stopwatch.StartNew();\n    await next(ctx);\n    ctx.Response.Headers[\"X-Elapsed\"] = sw.ElapsedMilliseconds.ToString();\n});",
+      "lang": "cs",
+      "choices": [
+        "Set the header before `await next(ctx)` and keep updating it as the request runs",
+        "Wrap the header assignment in a try/catch so the error is logged and ignored",
+        "Call `ctx.Response.Clear()` after `next` so the headers become writable again",
+        "Set it in a `ctx.Response.OnStarting` callback registered before `next`"
+      ],
+      "answer": 3,
+      "why": "Once the endpoint writes to the body, the headers have been sent and are read-only, so code after `next` cannot add one. `OnStarting` runs just before the headers go out. `Clear` throws once the response has started, and a value set before `next` cannot be the elapsed time.",
+      "tags": ["middleware"],
+      "level": 2,
+      "asked": "Tests whether you understand that a response streams out, which explains a whole class of middleware bugs."
+    },
+    {
+      "id": "dn-056",
+      "q": "A convention-based middleware class takes `AppDbContext` in its constructor. What goes wrong?",
+      "choices": [
+        "Nothing: middleware constructors are called once per request, like controllers",
+        "The middleware is built once for the app, so one DbContext serves every request",
+        "The host refuses to start, because middleware cannot have constructor parameters",
+        "Each request gets a new DbContext, but it is never disposed after the request"
+      ],
+      "answer": 1,
+      "why": "Convention-based middleware is instantiated once when the pipeline is built, so a scoped dependency in its constructor is captured for the app's lifetime. Take scoped services as extra parameters of `InvokeAsync`, which are resolved per request, or implement `IMiddleware`.",
+      "tags": ["middleware", "di"],
+      "level": 2,
+      "asked": "The captive-dependency bug in its most common real form; interviewers like it because it looks harmless."
+    },
+    {
+      "id": "dn-057",
+      "q": "How does a middleware that implements `IMiddleware` differ from a convention-based one?",
+      "choices": [
+        "It is resolved from DI for each request, so it must be registered and may be scoped",
+        "It can only be used in minimal APIs, since controllers expect convention middleware",
+        "It runs outside the pipeline on a background thread, after the response is sent",
+        "It is created once at startup, which makes it the faster choice for hot paths"
+      ],
+      "answer": 0,
+      "why": "`UseMiddleware<T>()` with an `IMiddleware` type asks `IMiddlewareFactory` to resolve it per request, so you must register it (for example `AddScoped<MyMiddleware>()`), and its constructor can take scoped services. Convention-based middleware is the one created once at startup.",
+      "tags": ["middleware", "di"],
+      "level": 3,
+      "asked": "Follows the captive-dependency question: the interviewer wants the alternative and its registration requirement."
+    },
+    {
+      "id": "dn-058",
+      "q": "Why does `app.UseExceptionHandler(...)` normally go first in the pipeline?",
+      "choices": [
+        "It must run before routing, or endpoints cannot be matched for error paths",
+        "It only catches exceptions thrown by middleware registered before it runs",
+        "It wraps everything registered after it, so it sees their exceptions",
+        "The framework requires it first and throws at startup if it is placed later"
+      ],
+      "answer": 2,
+      "why": "Each middleware wraps the ones added after it, so an exception handler added first sees failures from the whole pipeline. Placed after, say, authentication, it cannot catch what authentication throws. Nothing validates the position at startup; it just silently catches less.",
+      "tags": ["middleware", "errors"],
+      "level": 1,
+      "asked": "A direct application of 'order matters' that shows you can reason about the pipeline rather than recite it."
+    },
+    {
+      "id": "dn-059",
+      "q": "In .NET 8+, you register two `IExceptionHandler` implementations. What does returning `false` from `TryHandleAsync` do?",
+      "code": "builder.Services.AddExceptionHandler<ValidationExceptionHandler>();\nbuilder.Services.AddExceptionHandler<FallbackExceptionHandler>();\nbuilder.Services.AddProblemDetails();\napp.UseExceptionHandler();",
+      "lang": "cs",
+      "choices": [
+        "It rethrows the exception so the server returns an empty 500 immediately",
+        "It hands the exception to the next handler in registration order",
+        "It marks the exception as handled but leaves the response for the endpoint",
+        "It retries the request once, then hands the exception to the next handler"
+      ],
+      "answer": 1,
+      "why": "Handlers run in the order they were registered, and returning `true` stops the chain. If every handler returns `false`, the middleware falls back to its default behaviour, which with `AddProblemDetails` writes a ProblemDetails 500. Nothing is retried.",
+      "tags": ["errors", "middleware"],
+      "level": 2,
+      "asked": "The modern replacement for hand-written try/catch middleware; interviewers check you know the chain semantics."
+    },
+    {
+      "id": "dn-060",
+      "q": "In a .NET 8+ app built with `WebApplication.CreateBuilder`, how is the developer exception page enabled?",
+      "choices": [
+        "It is always on and must be turned off manually before deploying to production",
+        "You must call `app.UseDeveloperExceptionPage()` yourself in every environment",
+        "It is only available to controllers, not to minimal API endpoints",
+        "The host adds it automatically when the environment is Development"
+      ],
+      "answer": 3,
+      "why": "`WebApplication` adds the developer exception page for you when `IsDevelopment()` is true, so stack traces never leak in Production by default. Calling it manually is legacy template code, and it covers every endpoint type.",
+      "tags": ["errors", "configuration"],
+      "level": 1,
+      "asked": "Checks that you know what the minimal hosting model does implicitly, which matters when a stack trace shows up in the wrong place."
+    },
+    {
+      "id": "dn-061",
+      "q": "Why do the templates call `app.UseHsts()` only outside Development?",
+      "choices": [
+        "Browsers remember HSTS per host, forcing HTTPS on every localhost app",
+        "HSTS needs a certificate from a public CA, and dev certificates are self-signed",
+        "Kestrel cannot send the header over HTTP/2, which is what dev servers use",
+        "The header slows hot reload, because every change needs a new TLS handshake"
+      ],
+      "answer": 0,
+      "why": "`Strict-Transport-Security` tells the browser to use HTTPS for that host for `max-age`, and browsers remember it. On localhost that breaks every other project you run over plain HTTP. The certificate type and HTTP version are irrelevant to the decision.",
+      "tags": ["security", "middleware"],
+      "level": 2,
+      "asked": "Shows you know what HSTS does in the browser rather than treating it as a magic security switch."
+    },
+    {
+      "id": "dn-062",
+      "q": "With this endpoint, what does `GET /orders/abc` return?",
+      "code": "app.MapGet(\"/orders/{id:int}\", (int id) => TypedResults.Ok(id));",
+      "lang": "cs",
+      "choices": [
+        "400 Bad Request, because `abc` cannot be converted to the `int` parameter",
+        "404 Not Found, because the `int` route constraint means no endpoint matches",
+        "422 Unprocessable Content with a ProblemDetails body naming the `id` field",
+        "200 OK with `0`, because a failed conversion leaves the default value"
+      ],
+      "answer": 1,
+      "why": "Route constraints take part in matching: `abc` fails `:int`, so the route is not a candidate and routing yields 404. Without the constraint the route would match and parameter binding would fail with 400. Constraints are for disambiguating routes, not for input validation.",
+      "tags": ["routing"],
+      "level": 2,
+      "asked": "Tests the distinction between routing and binding, which explains why clients see 404 instead of a helpful 400."
+    },
+    {
+      "id": "dn-063",
+      "q": "Both endpoints are mapped. Which one handles `GET /items/new`?",
+      "code": "app.MapGet(\"/items/{id}\", (string id) => $\"item {id}\");\napp.MapGet(\"/items/new\", () => \"new form\");",
+      "lang": "cs",
+      "choices": [
+        "`/items/{id}`, because it was registered first and routes match in order",
+        "Neither: two matching templates cause an ambiguous match error",
+        "`/items/new`, because literal segments outrank route parameters",
+        "Whichever the router picks at random, so the result changes between runs"
+      ],
+      "answer": 2,
+      "why": "Endpoint routing orders candidates by template precedence, not registration order: literal segments beat parameters, and constrained parameters beat unconstrained ones. Ambiguity only arises when two templates have equal precedence and both match.",
+      "tags": ["routing"],
+      "level": 2,
+      "asked": "Explains routing behaviour people otherwise learn from bugs, and contrasts with order-sensitive routers like Express."
+    },
+    {
+      "id": "dn-064",
+      "q": "Two controllers accidentally declare `[HttpGet(\"api/reports\")]`. What happens when a client calls that URL?",
+      "choices": [
+        "The first controller alphabetically handles it; the other is skipped",
+        "The app fails at startup with a duplicate route error listing both actions",
+        "Each action runs in turn and the results are merged into one array",
+        "The request fails with an ambiguous match exception, which becomes a 500"
+      ],
+      "answer": 3,
+      "why": "Routing detects the ambiguity only when a request matches both endpoints with equal precedence, and throws `AmbiguousMatchException`, which surfaces as a 500. Startup does not validate route uniqueness, so the bug ships unless a test calls the URL.",
+      "tags": ["routing"],
+      "level": 2,
+      "asked": "A real merge-conflict bug; the interviewer wants to hear that it is a runtime failure and how a test would catch it."
+    },
+    {
+      "id": "dn-065",
+      "q": "A custom middleware reads `context.GetEndpoint()?.Metadata` to find an attribute. Where must it be placed to see a non-null endpoint?",
+      "choices": [
+        "Before `UseRouting`, because routing clears the endpoint once it has matched",
+        "After routing has run, since routing is what selects the endpoint",
+        "Anywhere, because the endpoint is chosen when the request is first accepted",
+        "Only inside an endpoint filter; middleware can never see endpoint metadata"
+      ],
+      "answer": 1,
+      "why": "Routing matches the request and stores the chosen endpoint on the context; the endpoint runs later at the end of the pipeline. Middleware between the two, such as authorization, CORS and rate limiting, can read its metadata. `WebApplication` inserts `UseRouting` at the start if you do not call it, so explicit placement only matters when you do.",
+      "tags": ["routing", "middleware"],
+      "level": 3,
+      "asked": "This is how authorization knows about `[Authorize]`; explaining it shows you understand endpoint routing's two halves."
+    },
+    {
+      "id": "dn-066",
+      "q": "What does `.ShortCircuit()` (.NET 8+) do to this endpoint?",
+      "code": "app.MapGet(\"/robots.txt\", () => \"User-agent: *\nDisallow:\").ShortCircuit();",
+      "lang": "cs",
+      "choices": [
+        "It caches the response in memory so later requests skip the handler",
+        "It runs the handler before `UseExceptionHandler`, so errors are not caught",
+        "It runs the endpoint straight after routing, skipping later middleware",
+        "It returns 204 to HEAD requests without running the handler at all"
+      ],
+      "answer": 2,
+      "why": "A short-circuited endpoint executes as soon as routing matches it, so middleware such as authentication, authorization and CORS never runs for it. It suits cheap, public responses like robots.txt or health pings. Nothing is cached, and middleware placed before routing still runs.",
+      "tags": ["routing", "middleware"],
+      "level": 3,
+      "asked": "A .NET 8 addition interviewers use to check you know which middleware sits after routing."
+    },
+    {
+      "id": "dn-067",
+      "q": "In a minimal API, what does this handler send?",
+      "code": "app.MapPost(\"/orders\", (CreateOrder cmd) =>\n{\n    var order = Order.From(cmd);\n    return TypedResults.Created($\"/orders/{order.Id}\", order);\n});",
+      "lang": "cs",
+      "choices": [
+        "201 with a `Location` header for the new order and the order as JSON",
+        "200 with the order as JSON, plus a `Content-Location` header",
+        "201 with an empty body, since a Created result never writes the resource",
+        "302 redirecting the client to `/orders/{id}` so it can fetch the order"
+      ],
+      "answer": 0,
+      "why": "`Created` sets status 201, puts the URI in `Location` and serialises the value as the body. A redirect would force a second round trip, and `Content-Location` means something different in RFC 9110.",
+      "tags": ["aspnet", "rest"],
+      "level": 1,
+      "asked": "The basic 'what should a POST return' check, asked in ASP.NET terms."
+    },
+    {
+      "id": "dn-068",
+      "q": "Why do many teams prefer `TypedResults.Ok(order)` over `Results.Ok(order)` in minimal APIs?",
+      "choices": [
+        "`TypedResults` serialises faster because it uses source-generated JSON",
+        "`Results` is obsolete in .NET 9 and produces a compiler warning",
+        "`TypedResults` writes the status code before the body starts streaming",
+        "`TypedResults` returns concrete types that OpenAPI and tests can read"
+      ],
+      "answer": 3,
+      "why": "`Results.Ok` returns `IResult`, which says nothing about the response. `TypedResults.Ok` returns `Ok<Order>`, so the framework can describe the 200 response in OpenAPI and a unit test can check the type and value directly. Both serialise the same way, and `Results` is not obsolete.",
+      "tags": ["aspnet", "openapi"],
+      "level": 2,
+      "asked": "Shows you have written tested, documented minimal APIs rather than demos."
+    },
+    {
+      "id": "dn-069",
+      "q": "Why does this handler declare `Results<Ok<Order>, NotFound>` as its return type?",
+      "code": "app.MapGet(\"/orders/{id}\", async Task<Results<Ok<Order>, NotFound>> (int id, IOrderRepo repo) =>\n    await repo.Find(id) is { } o ? TypedResults.Ok(o) : TypedResults.NotFound());",
+      "lang": "cs",
+      "choices": [
+        "Without it the lambda's two branches have no common type, and OpenAPI loses both",
+        "It tells the runtime to try `Ok` first and fall back to `NotFound` on an exception",
+        "It is needed only for AOT, because reflection cannot inspect lambda return types",
+        "It makes the endpoint return 404 automatically whenever the handler returns null"
+      ],
+      "answer": 0,
+      "why": "`Ok<Order>` and `NotFound` are different types, so the conditional has no natural type; the `Results<...>` union gives it one and implicitly converts from each. The union also tells the OpenAPI generator both possible responses. It changes nothing about null handling or exceptions.",
+      "tags": ["aspnet", "openapi"],
+      "level": 2,
+      "asked": "Tests whether you have hit the compiler error and understand the union type rather than falling back to `IResult`."
+    },
+    {
+      "id": "dn-070",
+      "q": "What does each of these minimal API endpoints send back?",
+      "code": "app.MapGet(\"/a\", () => \"hello\");\napp.MapGet(\"/b\", () => new { Message = \"hello\" });",
+      "lang": "cs",
+      "choices": [
+        "Each sends JSON: `/a` sends a quoted string and `/b` an object",
+        "`/a` sends `text/plain` `hello`; `/b` sends JSON `{\"message\":\"hello\"}`",
+        "`/a` sends `text/html`; `/b` sends JSON with the property kept as `Message`",
+        "Each sends `text/plain`, because neither handler returns `IResult`"
+      ],
+      "answer": 1,
+      "why": "Minimal APIs write a returned `string` as `text/plain` and serialise any other object as JSON using the web defaults, which camel-case property names. Return `TypedResults.Json(...)` if you really want a JSON string.",
+      "tags": ["aspnet", "serialisation"],
+      "level": 1,
+      "asked": "A small surprise that breaks clients expecting JSON everywhere."
+    },
+    {
+      "id": "dn-071",
+      "q": "In what order do these endpoint filters run around the handler?",
+      "code": "app.MapPost(\"/orders\", Create)\n   .AddEndpointFilter<AuditFilter>()\n   .AddEndpointFilter<ValidationFilter>();",
+      "lang": "cs",
+      "choices": [
+        "`ValidationFilter` first, because the last filter added is the outermost",
+        "In parallel, and the handler runs after whichever one finishes last",
+        "`AuditFilter` outermost, then `ValidationFilter`, then the handler",
+        "In alphabetical order of the filter type names, whatever order they are added"
+      ],
+      "answer": 2,
+      "why": "Endpoint filters form a pipeline like middleware: the first one added is outermost, so its code before `next` runs first and its code after `next` runs last. Put a validation filter where you want invalid requests to stop, and remember outer filters still see the short-circuited result.",
+      "tags": ["aspnet", "filters"],
+      "level": 2,
+      "asked": "Checks whether you can reason about filter pipelines the same way you reason about middleware."
+    },
+    {
+      "id": "dn-072",
+      "q": "In a controller, what is the difference between returning `ActionResult<Order>` and `IActionResult`?",
+      "choices": [
+        "`ActionResult<Order>` always returns 200; `IActionResult` can return any status",
+        "`IActionResult` is for synchronous actions; `ActionResult<T>` is for async ones",
+        "`ActionResult<Order>` returns the entity untracked; `IActionResult` keeps tracking",
+        "`ActionResult<Order>` lets you return an `Order` directly and documents its type"
+      ],
+      "answer": 3,
+      "why": "`ActionResult<T>` has implicit conversions from both `T` and `ActionResult`, so `return order;` and `return NotFound();` both compile, and OpenAPI knows the success body type. `IActionResult` hides the type unless you add `[ProducesResponseType]`. Neither relates to sync versus async or to EF tracking.",
+      "tags": ["controllers"],
+      "level": 1,
+      "asked": "A controllers basic that also checks whether you think about API documentation."
+    },
+    {
+      "id": "dn-073",
+      "q": "In a controller with `[ApiController]`, where does a complex-type parameter like `CreateOrder cmd` bind from if it has no attribute?",
+      "choices": [
+        "The query string, with each property read from a matching query key",
+        "The request body, because complex types are inferred as `[FromBody]`",
+        "The form, because `[ApiController]` assumes HTML form posts by default",
+        "Route values first, then the query string, then the body, in that order"
+      ],
+      "answer": 1,
+      "why": "`[ApiController]` applies binding source inference: complex types come from the body, parameters named in the route template from the route, services from DI, and remaining simple types from the query. Without `[ApiController]` complex types are bound from form, route and query values instead, which is why a JSON body can arrive empty.",
+      "tags": ["controllers", "model-binding"],
+      "level": 2,
+      "asked": "Explains the classic 'my JSON body is always empty' bug in controllers without the attribute."
+    },
+    {
+      "id": "dn-074",
+      "q": "You want a controller to return your own error shape instead of the automatic 400 that `[ApiController]` sends for invalid models. What is the supported hook?",
+      "choices": [
+        "Replace `ApiBehaviorOptions.InvalidModelStateResponseFactory`",
+        "Throw a `ValidationException` from the action and catch it in exception middleware",
+        "Remove `[ApiController]` and check `ModelState.IsValid` at the top of each action",
+        "Register a `JsonConverter` for `ModelStateDictionary` so it serialises differently"
+      ],
+      "answer": 0,
+      "why": "The automatic 400 comes from a filter that calls `InvalidModelStateResponseFactory`, so replacing that delegate changes the response everywhere. The action never runs when the model is invalid, so throwing from it is too late. Dropping `[ApiController]` loses inference and attribute-routing checks too.",
+      "tags": ["controllers", "model-binding"],
+      "level": 3,
+      "asked": "Asked on teams with a house error format; it shows you know where the automatic behaviour lives."
+    },
+    {
+      "id": "dn-075",
+      "q": "In what order do MVC filter types run for a controller action that passes authorization?",
+      "choices": [
+        "Action, authorization, resource, then result filters, with exception filters last",
+        "Resource, authorization, action, result, all in the order they were registered",
+        "Authorization, resource, action around the action, then result",
+        "Exception filters first, so they can wrap all the others in one try/catch block"
+      ],
+      "answer": 2,
+      "why": "Authorization filters run first and can short-circuit; resource filters wrap most of the rest, including model binding; action filters wrap the action; result filters wrap writing the result. Exception filters handle exceptions from the action and action filters, not from the whole pipeline.",
+      "tags": ["controllers", "filters"],
+      "level": 3,
+      "asked": "Shows depth with MVC, and matters when deciding whether a cross-cutting concern belongs in a filter or middleware."
+    },
+    {
+      "id": "dn-076",
+      "q": "A filter needs `IAuditStore` from DI. Why use `[ServiceFilter(typeof(AuditFilter))]` rather than `[AuditFilter]`?",
+      "choices": [
+        "Attributes are built by reflection, so they cannot take DI services",
+        "`[ServiceFilter]` runs the filter on every action, while an attribute runs it once",
+        "An attribute filter cannot short-circuit, while a service filter can set a result",
+        "`[ServiceFilter]` runs the filter asynchronously; attribute filters run synchronously"
+      ],
+      "answer": 0,
+      "why": "Attribute arguments must be compile-time constants and the attribute is created by reflection, so constructor injection is impossible. `ServiceFilter` resolves the filter from DI, so it must be registered; `TypeFilter` creates it with `ActivatorUtilities` without registration. Both kinds can short-circuit and be async.",
+      "tags": ["controllers", "filters", "di"],
+      "level": 2,
+      "asked": "A classic MVC question; it checks you understand attribute limitations rather than memorising names."
+    },
+    {
+      "id": "dn-077",
+      "q": "In .NET 9, what happens when the app maps this minimal API endpoint?",
+      "code": "app.MapPost(\"/transfer\", (Account from, Account to) => Transfer(from, to));",
+      "lang": "cs",
+      "choices": [
+        "Each parameter reads its own top-level property, `from` and `to`, of the JSON body",
+        "The body is deserialised twice, once into each parameter, so both hold the same data",
+        "Building the endpoint throws: only one parameter may be inferred from the body",
+        "`from` is bound from the body and `to` from the query string, in declaration order"
+      ],
+      "answer": 2,
+      "why": "A request has one body stream, so minimal APIs allow a single body parameter and fail with an `InvalidOperationException` listing the inferred body parameters. Wrap both in one request DTO. There is no per-property splitting of the body and no fallback to the query string for complex types.",
+      "tags": ["model-binding"],
+      "level": 2,
+      "asked": "A common first error with minimal APIs; the fix (one request DTO) is the answer the interviewer wants."
+    },
+    {
+      "id": "dn-078",
+      "q": "In .NET 9 this GET endpoint throws an `InvalidOperationException` instead of running. What is the idiomatic fix?",
+      "code": "record SearchFilter(string? Term, int Page, int PageSize);\napp.MapGet(\"/products\", (SearchFilter filter, CatalogDb db) => Search(db, filter));",
+      "lang": "cs",
+      "choices": [
+        "Add `[FromBody]` to `filter` so the GET request's JSON body is read explicitly",
+        "Add `[AsParameters]` so each property of `SearchFilter` binds from the query",
+        "Register `SearchFilter` in DI so the container can construct it for each request",
+        "Change the verb to `MapPost`, because GET endpoints cannot take complex types"
+      ],
+      "answer": 1,
+      "why": "Minimal APIs do not infer a body for GET, so a complex parameter with no source cannot be bound. `[AsParameters]` binds each constructor parameter or property by the normal rules, here from the query string. A GET body is technically allowed but ignored by many proxies and clients, and switching verbs breaks caching.",
+      "tags": ["model-binding"],
+      "level": 2,
+      "asked": "Search and filter endpoints are everywhere in CRUD apps; `[AsParameters]` is the tidy answer."
+    },
+    {
+      "id": "dn-079",
+      "q": "How does a minimal API bind a query value to a custom type like `Point` in `/nearby?at=51.5,-0.12`?",
+      "choices": [
+        "Give `Point` a static `TryParse(string?, out Point)` method to parse the value",
+        "Register a `JsonConverter<Point>`, because query values are parsed as JSON by default",
+        "Add a `TypeConverter` attribute to `Point`, which minimal APIs look up via reflection",
+        "It cannot: minimal APIs bind only primitives from the query and need a DTO body"
+      ],
+      "answer": 0,
+      "why": "Minimal APIs look for a static `TryParse` (or `BindAsync(HttpContext, ParameterInfo)` for full control) on the parameter type and use it for route, query and header values. JSON converters apply only to bodies, and `TypeConverter` is an MVC model-binding mechanism.",
+      "tags": ["model-binding"],
+      "level": 3,
+      "asked": "Shows you know the extension points instead of parsing strings by hand in every handler."
+    },
+    {
+      "id": "dn-080",
+      "q": "What does `ids` contain for `GET /orders?ids=3&ids=7` in .NET 8+?",
+      "code": "app.MapGet(\"/orders\", (int[] ids) => ids);",
+      "lang": "cs",
+      "choices": [
+        "Only `[7]`, because the last value of a repeated query key wins",
+        "Only `[3]`, because binding stops at the first matching key",
+        "Nothing: arrays bind from the JSON body, so this request gets a 400",
+        "`[3, 7]`, as arrays bind every value of a repeated key"
+      ],
+      "answer": 3,
+      "why": "Since .NET 7, array and `StringValues` parameters of simple types bind from repeated query keys (and headers). For GET this is inferred without an attribute. The first-or-last-wins behaviour applies only when binding a single value.",
+      "tags": ["model-binding"],
+      "level": 2,
+      "asked": "Filter-by-several-ids is a common endpoint, and knowing the repeated-key convention avoids comma-splitting code."
+    },
+    {
+      "id": "dn-081",
+      "q": "Why is this handler given a `CancellationToken` parameter?",
+      "code": "app.MapGet(\"/report\", async (ReportService svc, CancellationToken ct) =>\n    TypedResults.Ok(await svc.BuildAsync(ct)));",
+      "lang": "cs",
+      "choices": [
+        "It binds to `RequestAborted`, so work stops when the client disconnects",
+        "It enforces the default 30-second request timeout configured in Kestrel",
+        "It is required for every async handler, or the endpoint runs synchronously",
+        "It lets the framework cancel the handler when the app pool recycles hourly"
+      ],
+      "answer": 0,
+      "why": "`CancellationToken` is a special parameter type bound to `RequestAborted`, which fires when the client goes away. Passing it down to EF Core or HttpClient calls stops wasted work. It is optional, and Kestrel has no default request-processing timeout for it to enforce.",
+      "tags": ["model-binding", "async"],
+      "level": 1,
+      "asked": "Checks that you propagate cancellation, a cheap habit that interviewers read as production experience."
+    },
+    {
+      "id": "dn-082",
+      "q": "Each endpoint is called with no query string. What does each one do?",
+      "code": "app.MapGet(\"/a\", (int page) => page);\napp.MapGet(\"/b\", (int page = 1) => page);",
+      "lang": "cs",
+      "choices": [
+        "`/a` returns 0 and `/b` returns 1, since missing values use the default",
+        "`/a` returns 400 because `page` is required; `/b` returns 1",
+        "Each returns 400, because a query value is required for any `int`",
+        "`/a` throws a `NullReferenceException`, which becomes a 500"
+      ],
+      "answer": 1,
+      "why": "Minimal APIs treat a non-nullable parameter without a default as required and reject the request with 400 when it is missing. Make it optional with `int?` or a default value. The value type never silently becomes 0.",
+      "tags": ["model-binding"],
+      "level": 1,
+      "asked": "A quick check of how optionality is expressed in minimal APIs, which drives the OpenAPI document too."
+    },
+    {
+      "id": "dn-083",
+      "q": "A client posts `{\"Name\":\"Tea\",\"PRICE\":3}` to a minimal API bound to `record Product(string Name, decimal Price)`. What does the handler get?",
+      "choices": [
+        "`Name` is bound but `Price` stays 0, since only exact camelCase keys match",
+        "Nothing: the request is rejected with 400 because the casing does not match",
+        "`Name = \"Tea\"`, `Price = 3`: the web defaults read case-insensitively",
+        "`Name` and `Price` both stay default, since PascalCase keys are ignored"
+      ],
+      "answer": 2,
+      "why": "ASP.NET Core uses `JsonSerializerDefaults.Web`: camelCase on write and case-insensitive property matching on read. A console app calling `JsonSerializer.Deserialize` without options is case-sensitive, which is where the 'it works in the API but not in my test' confusion comes from.",
+      "tags": ["serialisation"],
+      "level": 1,
+      "asked": "Explains why the same JSON binds in the API but not in a unit test using default serializer options."
+    },
+    {
+      "id": "dn-084",
+      "q": "A client sends `{\"quantity\": \"5\"}` for an `int Quantity` property in an ASP.NET Core API. What happens?",
+      "choices": [
+        "The request fails with 400, since a JSON string is never converted to a number",
+        "Quantity stays 0 and a warning is written to the log for the property",
+        "The value is parsed only when the property is marked with `[JsonNumber]`",
+        "Quantity is 5: the web defaults allow reading numbers from JSON strings"
+      ],
+      "answer": 3,
+      "why": "`JsonSerializerDefaults.Web` sets `NumberHandling = AllowReadingFromString`, so quoted numbers are accepted. Plain `JsonSerializer` defaults are strict and would throw. If you want the strict behaviour in the API you configure it explicitly.",
+      "tags": ["serialisation"],
+      "level": 3,
+      "asked": "A detail that surprises people comparing API behaviour with unit tests; knowing it shows you have read the defaults."
+    },
+    {
+      "id": "dn-085",
+      "q": "A client adds `\"isAdmin\": true` to a JSON body whose DTO has no `IsAdmin` property. With default System.Text.Json settings, what happens to that key?",
+      "choices": [
+        "It is ignored: unknown properties are skipped unless you opt out",
+        "It is rejected: unknown properties make the request fail with a 400",
+        "It is stored in `HttpContext.Items` so middleware can inspect it later on",
+        "It is bound to any property with a similar name, such as `Admin`"
+      ],
+      "answer": 0,
+      "why": "Unmapped JSON members are skipped by default, which is why a DTO without the property is the real defence against overposting. .NET 8 added `JsonUnmappedMemberHandling.Disallow` if you want strict contracts. Nothing does fuzzy name matching.",
+      "tags": ["serialisation", "security"],
+      "level": 2,
+      "asked": "Connects serialisation defaults to overposting, a real security review topic."
+    },
+    {
+      "id": "dn-086",
+      "q": "You add `JsonStringEnumConverter` with `builder.Services.ConfigureHttpJsonOptions(...)`, but a controller still returns enums as numbers. Why?",
+      "choices": [
+        "Enums are always serialised as numbers in controllers for compatibility",
+        "The converter must also be registered as a singleton in the container",
+        "`ConfigureHttpJsonOptions` must run after `builder.Build()` to take effect",
+        "It configures minimal APIs; controllers use `AddJsonOptions`"
+      ],
+      "answer": 3,
+      "why": "Minimal APIs and MVC keep separate `JsonOptions` types, configured by `ConfigureHttpJsonOptions` and `AddJsonOptions` respectively. An app that mixes both styles must configure both. Configuration after `Build()` would throw rather than apply.",
+      "tags": ["serialisation", "controllers"],
+      "level": 2,
+      "asked": "A real mixed-codebase bug; the answer shows you know the two stacks are configured separately."
+    },
+    {
+      "id": "dn-087",
+      "q": "An endpoint returns EF Core entities where `Order.Customer.Orders` points back at the order. What does System.Text.Json do by default?",
+      "choices": [
+        "It serialises each object once and writes `null` wherever a cycle appears",
+        "It follows the cycle forever until the process runs out of stack space",
+        "It throws `JsonException` because a possible object cycle was detected",
+        "It writes `$ref` pointers that JavaScript clients resolve automatically"
+      ],
+      "answer": 2,
+      "why": "The default has no cycle handling and throws when it passes the maximum depth, reporting a possible cycle. `ReferenceHandler.IgnoreCycles` writes null and `Preserve` writes `$id`/`$ref`, but the better fix is to return DTOs rather than tracked entity graphs.",
+      "tags": ["serialisation"],
+      "level": 2,
+      "asked": "Returning entities from endpoints is a code-review smell; the interviewer wants DTOs, not a serializer flag."
+    },
+    {
+      "id": "dn-088",
+      "q": "What does System.Text.Json (.NET 8+) do when the JSON omits `Email` for this type?",
+      "code": "public class SignUp\n{\n    public required string Email { get; init; }\n    public string? Name { get; init; }\n}",
+      "lang": "cs",
+      "choices": [
+        "It sets `Email` to an empty string, because `required` only affects `new` calls",
+        "It throws `JsonException`, because `required` members must be present in JSON",
+        "It sets `Email` to null and logs a nullable warning at runtime",
+        "It skips the object and returns null from `Deserialize` without an error"
+      ],
+      "answer": 1,
+      "why": "Since .NET 7 System.Text.Json honours the C# `required` modifier (and `[JsonRequired]`), so a missing property fails deserialisation; in an API that becomes a 400. It checks presence only: an explicit `\"email\": null` still gets through unless you also enable nullable-annotation checks.",
+      "tags": ["serialisation", "validation"],
+      "level": 3,
+      "asked": "Shows you know which contract checks happen in the serializer versus in validation."
+    },
+    {
+      "id": "dn-089",
+      "q": "In .NET 9, a client sends `\"name\": null` for a non-nullable `string Name` property. What does System.Text.Json do by default?",
+      "choices": [
+        "It rejects the payload, because nullable annotations are enforced by default",
+        "It substitutes an empty string so the non-nullable contract still holds",
+        "It stores null; enforcement needs `RespectNullableAnnotations`",
+        "It leaves `Name` at its initialiser's value and ignores the null silently"
+      ],
+      "answer": 2,
+      "why": "Nullable reference types are compile-time only, so by default the serializer happily writes null into a `string`. .NET 9 added `JsonSerializerOptions.RespectNullableAnnotations`, off by default, to make it throw instead. Validation attributes are the other guard.",
+      "tags": ["serialisation", "validation"],
+      "level": 3,
+      "asked": "Probes whether you know NRT annotations are not runtime checks, a frequent source of null bugs."
+    },
+    {
+      "id": "dn-090",
+      "q": "In .NET 9, a minimal API takes `CreateUser` with `[Required]` and `[EmailAddress]` attributes. What checks them?",
+      "choices": [
+        "Nothing: .NET 9 minimal APIs do not run DataAnnotations validation",
+        "The JSON serializer, which reads validation attributes while deserialising",
+        "The routing middleware, which returns 400 before the endpoint is selected",
+        "The `[ApiController]` filter, which minimal APIs apply to every endpoint"
+      ],
+      "answer": 0,
+      "why": "Up to .NET 9, minimal APIs ignore DataAnnotations; you validate with a library, a filter or by hand. .NET 10 adds built-in support you switch on with `builder.Services.AddValidation()`, which returns a validation ProblemDetails 400. `[ApiController]` is an MVC feature only.",
+      "tags": ["validation"],
+      "level": 2,
+      "asked": "Teams moving from controllers get caught by this; the .NET 10 change is the up-to-date part of the answer."
+    },
+    {
+      "id": "dn-091",
+      "q": "Why does `[Required]` never fail for this property in a model bound from JSON?",
+      "code": "public class CreateItem\n{\n    [Required] public int Quantity { get; set; }\n}",
+      "lang": "cs",
+      "choices": [
+        "`[Required]` works only on strings; numbers need `[MinLength]` instead",
+        "A missing `int` defaults to 0, which is a value, so `[Required]` passes",
+        "Validation attributes apply only to route and query values, not to bodies",
+        "`[Required]` runs before deserialisation, when the property is always set"
+      ],
+      "answer": 1,
+      "why": "`[Required]` checks for null, and a value type is never null, so an absent `Quantity` arrives as 0 and passes. Make it `int?` with `[Required]` to detect absence, or use `[Range(1, 100)]` to reject 0. `[MinLength]` is for strings and collections.",
+      "tags": ["validation"],
+      "level": 2,
+      "asked": "A classic validation bug that separates people who have tested their validation from those who assumed it worked."
+    },
+    {
+      "id": "dn-092",
+      "q": "In an `[ApiController]` with nullable reference types enabled, a client omits `Title` for `public string Title { get; set; }`. What happens?",
+      "choices": [
+        "Title is null and the action runs, since NRT is only a compile-time feature",
+        "Title becomes an empty string, because non-nullable strings get a default",
+        "The JSON serializer throws, which the framework turns into a 500 response",
+        "MVC treats the non-nullable property as required, so the client gets a 400"
+      ],
+      "answer": 3,
+      "why": "MVC infers an implicit `[Required]` for non-nullable reference-type properties and parameters, so the automatic 400 fires. This is controlled by `SuppressImplicitRequiredAttributeForNonNullableReferenceTypes`. The serializer itself does not enforce annotations, which is why the other stack differs.",
+      "tags": ["validation", "controllers"],
+      "level": 3,
+      "asked": "Explains surprising 400s after a team turns on nullable reference types."
+    },
+    {
+      "id": "dn-093",
+      "q": "A booking DTO must reject `EndDate` earlier than `StartDate`. Which DataAnnotations-friendly mechanism fits?",
+      "choices": [
+        "Put `[Range]` on `EndDate` with `StartDate` passed as the attribute's minimum",
+        "Implement `IValidatableObject` and return a result from its `Validate` method",
+        "Add `[Compare(\"StartDate\")]`, which checks that one date follows another",
+        "Mark both properties `[DataType(DataType.Date)]` so the order is checked"
+      ],
+      "answer": 1,
+      "why": "`IValidatableObject.Validate` runs as part of model validation and can yield `ValidationResult`s naming the members involved. Attribute arguments must be constants, so `[Range]` cannot reference another property, and `[Compare]` checks equality, as for password confirmation.",
+      "tags": ["validation"],
+      "level": 2,
+      "asked": "Cross-field rules are the first thing attribute validation cannot express; knowing the hook is expected."
+    },
+    {
+      "id": "dn-094",
+      "q": "What does the `errors` member look like in the 400 that ASP.NET Core returns for an invalid model?",
+      "choices": [
+        "An array of strings, one message per failed rule, with no field names",
+        "A single string that joins every message with semicolons",
+        "An object keyed by field name, each holding an array of messages",
+        "An array of objects, each with `code`, `field` and `message` members"
+      ],
+      "answer": 2,
+      "why": "`ValidationProblemDetails` extends RFC 9457 problem details with `errors`, a dictionary from member name to an array of messages, for example `{\"Email\": [\"The Email field is required.\"]}`. Front ends map those keys back to form fields, which is why the shape matters.",
+      "tags": ["validation", "errors"],
+      "level": 1,
+      "asked": "Asked on fullstack roles because the React form code depends on this exact shape."
+    },
+    {
+      "id": "dn-095",
+      "q": "FluentValidation's automatic ASP.NET Core integration is no longer recommended. What do its docs suggest instead?",
+      "choices": [
+        "Registering validators as middleware so they run before routing",
+        "Converting every validator into DataAnnotations attributes",
+        "Running validators inside the JSON converter for each request type",
+        "Injecting `IValidator<T>` and calling `ValidateAsync` explicitly"
+      ],
+      "answer": 3,
+      "why": "The auto-validation package hooked into MVC's synchronous validation pipeline, which cannot run async rules and does not exist for minimal APIs. Calling the validator explicitly, or from an endpoint or action filter, works everywhere and keeps async rules async.",
+      "tags": ["validation", "filters"],
+      "level": 2,
+      "asked": "FluentValidation is in most .NET codebases; knowing the current guidance shows you keep up."
+    },
+    {
+      "id": "dn-096",
+      "q": "An update action binds the request directly to the `User` entity and saves it. What is the risk, and the fix?",
+      "code": "[HttpPut(\"{id}\")]\npublic async Task<IActionResult> Update(int id, User user)\n{\n    db.Users.Update(user);\n    await db.SaveChangesAsync();\n    return NoContent();\n}",
+      "lang": "cs",
+      "choices": [
+        "Only performance: binding an entity is slow, so switch to a record type",
+        "Overposting: a client can set `IsAdmin`; bind to a DTO and copy allowed fields",
+        "Concurrency: two updates clash, so wrap the save in a serializable transaction",
+        "Injection: bound strings reach SQL unescaped, so encode them before saving"
+      ],
+      "answer": 1,
+      "why": "Binding to the entity lets any client set any mapped property, including roles or foreign keys, and `Update` marks every column modified. A request DTO with only editable fields closes the hole. EF Core parameterises values, so injection is not the issue here.",
+      "tags": ["model-binding", "security"],
+      "level": 1,
+      "asked": "Overposting is a staple of .NET security questions and code reviews; the DTO is the expected answer."
+    },
+    {
+      "id": "dn-097",
+      "q": "A .NET 9 Web API calls `builder.Services.AddOpenApi()` and `app.MapOpenApi()`. Where is the document served by default?",
+      "choices": [
+        "At `/swagger/v1/swagger.json`, with Swagger UI at `/swagger`",
+        "At `/openapi/v1.json`, with no UI unless you add one yourself",
+        "At `/api-docs`, rendered as HTML by the built-in documentation page",
+        "Nowhere at runtime: the document is written to disk during build"
+      ],
+      "answer": 1,
+      "why": "`Microsoft.AspNetCore.OpenApi` serves the JSON document at `/openapi/{documentName}.json`, `v1` by default. The .NET 9 templates dropped Swashbuckle, so there is no UI; teams add Scalar or Swagger UI and point it at that URL. Build-time generation is a separate opt-in.",
+      "tags": ["openapi"],
+      "level": 1,
+      "asked": "Checks you are current with .NET 9 templates rather than describing the Swashbuckle-era setup."
+    },
+    {
+      "id": "dn-098",
+      "q": "A minimal API handler returns `IResult`. How do you make OpenAPI list its 200 and 404 responses without changing the return type?",
+      "choices": [
+        "Add `.Produces<Order>(200)` and `.ProducesProblem(404)` to the endpoint",
+        "Put XML doc comments on the lambda so the generator reads the status codes",
+        "Throw exceptions for errors, since the generator documents thrown types",
+        "Add `[ApiController]` to Program.cs so the response types are inferred"
+      ],
+      "answer": 0,
+      "why": "An `IResult` return carries no type information, so you add response metadata with `Produces`, `ProducesProblem` or `ProducesValidationProblem`. Returning `TypedResults` in a `Results<...>` union gives the same metadata automatically. The generator cannot see what a handler might throw.",
+      "tags": ["openapi"],
+      "level": 2,
+      "asked": "Generated clients depend on accurate response metadata, so interviewers ask how you keep the document honest."
+    },
+    {
+      "id": "dn-099",
+      "q": "What does `.WithName(\"GetOrder\")` give a minimal API endpoint?",
+      "choices": [
+        "A display name used only in the developer exception page",
+        "A route prefix, so the endpoint is served under `/GetOrder`",
+        "A name for link generation and the OpenAPI operationId",
+        "A policy name that authorization looks up for the endpoint"
+      ],
+      "answer": 2,
+      "why": "Endpoint names must be unique and let `LinkGenerator` or `CreatedAtRoute` build URLs to the endpoint without hard-coding paths. The OpenAPI generator also uses the name as the `operationId`, which becomes the method name in generated clients.",
+      "tags": ["routing", "openapi"],
+      "level": 1,
+      "asked": "Small detail, but generated-client method names come from it, which fullstack teams notice."
+    },
+    {
+      "id": "dn-100",
+      "q": "You call `AddProblemDetails()`, yet `return TypedResults.NotFound();` still sends a 404 with an empty body. What adds a ProblemDetails body to it?",
+      "choices": [
+        "`app.UseStatusCodePages()`, which fills in empty error bodies",
+        "`app.UseExceptionHandler()`, which catches every non-success status code",
+        "Nothing can: `NotFound()` always sends an empty body by design",
+        "`app.UseHttpLogging()`, which writes a body for responses that have none"
+      ],
+      "answer": 0,
+      "why": "With `AddProblemDetails` registered, the status code pages middleware writes a ProblemDetails body for 4xx and 5xx responses that have no body. The exception handler deals only with exceptions. Alternatively return `TypedResults.Problem(...)` explicitly with the details you want.",
+      "tags": ["errors"],
+      "level": 3,
+      "asked": "Tests whether you know which middleware produces which error bodies, a common confusion."
+    },
+    {
+      "id": "dn-101",
+      "q": "How do you add the current trace id to every ProblemDetails the app produces?",
+      "code": "builder.Services.AddProblemDetails(o =>\n    o.CustomizeProblemDetails = ctx => { /* ? */ });",
+      "lang": "cs",
+      "choices": [
+        "Throw a custom exception type that carries the trace id as a message",
+        "Add a JSON converter for `ProblemDetails` that writes an extra property",
+        "Set a `traceId` response header in middleware; bodies cannot be changed",
+        "Set `ctx.ProblemDetails.Extensions[\"traceId\"]` in the callback"
+      ],
+      "answer": 3,
+      "why": "`CustomizeProblemDetails` runs for every ProblemDetails written through `IProblemDetailsService`, and `Extensions` holds extra members that serialise at the top level. Including the trace id lets support match a user's error to the logs. A custom converter would be much more fragile.",
+      "tags": ["errors", "observability"],
+      "level": 2,
+      "asked": "Connects error responses to observability, which is what a mid-level answer should do."
+    },
+    {
+      "id": "dn-102",
+      "q": "What route does this controller's `Get` action have?",
+      "code": "[ApiController]\n[Route(\"api/[controller]\")]\npublic class OrdersController : ControllerBase\n{\n    [HttpGet(\"{id:int}\")] public IActionResult Get(int id) => Ok(id);\n}",
+      "lang": "cs",
+      "choices": [
+        "`api/OrdersController/{id}`, using the full class name as the token",
+        "`api/[controller]/{id}`, because tokens need `UseRouting` to be replaced",
+        "`api/Get/{id}`, because the action name replaces the controller token",
+        "`api/Orders/{id}`, since `[controller]` is the name minus the suffix"
+      ],
+      "answer": 3,
+      "why": "Route tokens are replaced at startup: `[controller]` becomes the class name without the `Controller` suffix and `[action]` the method name. Matching is case-insensitive by default, so `/api/orders/5` works too.",
+      "tags": ["controllers", "routing"],
+      "level": 1,
+      "asked": "Controllers basics; interviewers use it to check you can read attribute routing quickly."
+    },
+    {
+      "id": "dn-103",
+      "q": "What does `CreatedAtAction(nameof(Get), new { id = order.Id }, order)` need to produce a correct `Location` header?",
+      "choices": [
+        "An action called `Get` whose route accepts `id`, so a URL can be generated",
+        "A `[Location]` attribute on the `Order` class naming the property that holds its URL",
+        "An absolute base URL set in configuration under `Kestrel:Endpoints`",
+        "The `Get` action must be in a separate controller, or the name is ambiguous"
+      ],
+      "answer": 0,
+      "why": "`CreatedAtAction` uses link generation to build the URL from the action name and route values; if no action matches, it throws when the result executes. There is no `[Location]` attribute, and link generation uses the current request's host.",
+      "tags": ["controllers", "rest"],
+      "level": 1,
+      "asked": "Returning a proper 201 is a REST basic; the follow-up is usually 'what happens if the route values are wrong'."
+    },
+    {
+      "id": "dn-104",
+      "q": "With default Kestrel limits, a client uploads a 50 MB file to an endpoint without size attributes. What happens?",
+      "choices": [
+        "The upload succeeds, since Kestrel has no request body limit by default",
+        "It fails with 413 once the body passes the 30,000,000-byte limit",
+        "The request times out after 100 seconds and the client sees a 504",
+        "The body is truncated to 30 MB and the handler receives a partial file"
+      ],
+      "answer": 1,
+      "why": "Kestrel's `MaxRequestBodySize` defaults to 30,000,000 bytes (about 28.6 MB); larger bodies are rejected with 413 Payload Too Large. Raise it per endpoint with `[RequestSizeLimit]` or `DisableRequestSizeLimit`, or globally in Kestrel options, and stream large files instead of buffering.",
+      "tags": ["aspnet", "hosting"],
+      "level": 2,
+      "asked": "Upload features hit this in the first week; knowing the limit and the per-endpoint override is expected."
+    },
+    {
+      "id": "dn-105",
+      "q": "What response does this minimal API endpoint send?",
+      "code": "app.MapGet(\"/invoices/{id}/pdf\", async (int id, InvoicePdf pdf) =>\n    TypedResults.File(await pdf.RenderAsync(id), \"application/pdf\", $\"invoice-{id}.pdf\"));",
+      "lang": "cs",
+      "choices": [
+        "The PDF inline, with no filename, because a MIME type was supplied",
+        "A redirect to a temporary URL where the PDF can be downloaded",
+        "The bytes with `Content-Disposition: attachment` and that name",
+        "A JSON object whose `content` member holds the file as base64"
+      ],
+      "answer": 2,
+      "why": "Passing a download name makes the file result set `Content-Disposition: attachment; filename=...`, so browsers save it. Omit the name to let the browser display it inline. File results write raw bytes, not JSON, and never redirect.",
+      "tags": ["aspnet"],
+      "level": 1,
+      "asked": "Downloads come up in every business app; interviewers check you know the header that controls them."
+    },
+    {
+      "id": "dn-106",
+      "q": "What does a client receive from this .NET 8+ minimal API endpoint?",
+      "code": "app.MapGet(\"/events\", (EventStore store) => store.ReadAllAsync());\n// ReadAllAsync returns IAsyncEnumerable<Event>",
+      "lang": "cs",
+      "choices": [
+        "Server-sent events, one `data:` line for each item as it is produced",
+        "A single JSON array streamed to the client as items are produced",
+        "Nothing until every item has been buffered into a list in memory",
+        "One HTTP response per item, sent over a kept-alive connection"
+      ],
+      "answer": 1,
+      "why": "System.Text.Json serialises `IAsyncEnumerable<T>` as one JSON array and flushes as it goes, so the server does not buffer everything. It is still one ordinary JSON response, not an SSE stream; .NET 10 adds a separate `TypedResults.ServerSentEvents` result for that.",
+      "tags": ["aspnet", "serialisation"],
+      "level": 2,
+      "asked": "Large exports are a real requirement; streaming shows you think about memory on the server."
+    },
+    {
+      "id": "dn-107",
+      "q": "Why can an ASP.NET Core controller return XML to one client and JSON to another, while a minimal API cannot out of the box?",
+      "choices": [
+        "Controllers negotiate over registered formatters; minimal APIs write JSON",
+        "Minimal APIs ignore the `Accept` header only in Production builds for speed",
+        "Controllers serialise with Newtonsoft.Json, which can output XML natively",
+        "Minimal APIs negotiate too, but only between JSON and plain text formats"
+      ],
+      "answer": 0,
+      "why": "MVC's output formatters pick a format from the `Accept` header (XML requires `AddXmlSerializerFormatters`). Minimal API results always write JSON for objects, which keeps them small and AOT-friendly. Controllers use System.Text.Json by default, not Newtonsoft.",
+      "tags": ["controllers", "serialisation"],
+      "level": 2,
+      "asked": "A legitimate reason to keep controllers in some APIs; the interviewer wants trade-offs, not fashion."
+    },
+    {
+      "id": "dn-108",
+      "q": "Why do minimal APIs work with Native AOT in .NET 8+ while MVC controllers do not?",
+      "choices": [
+        "Controllers need the full framework, which AOT compilation cannot target",
+        "AOT supports only one route per app, and controllers register many",
+        "Minimal API binding can be source-generated; MVC relies on reflection",
+        "Minimal APIs run in the browser via WebAssembly, where AOT is required"
+      ],
+      "answer": 2,
+      "why": "With AOT enabled, the Request Delegate Generator emits binding and response code at compile time, and JSON uses a source-generated `JsonSerializerContext`. MVC discovers controllers, filters and binders by reflection at runtime, which trimming breaks.",
+      "tags": ["aspnet"],
+      "level": 3,
+      "asked": "AOT is a common reason teams pick minimal APIs; knowing why shows you understand what the source generators do."
+    },
+    {
+      "id": "dn-109",
+      "q": "What does `WebApplication.CreateSlimBuilder(args)` leave out compared with `CreateBuilder(args)`?",
+      "choices": [
+        "Configuration from environment variables and command-line arguments",
+        "Dependency injection, so services must be constructed by hand",
+        "Kestrel, so the app must be hosted in IIS in-process instead",
+        "HTTPS, HTTP/3 and hosting-startup support, to stay small"
+      ],
+      "answer": 3,
+      "why": "The slim builder is aimed at trimmed and AOT apps: it keeps DI, configuration, logging and Kestrel, but drops things like HTTPS and HTTP/3 support, `IHostingStartup` and some logging providers unless you add them back. Environment variables and command-line configuration still work.",
+      "tags": ["aspnet", "hosting"],
+      "level": 3,
+      "asked": "Tests whether you know what the default builder does for you, which matters when a feature is missing in a slim app."
+    },
+    {
+      "id": "dn-110",
+      "q": "In a container, which environment variable overrides `ConnectionStrings:Default` from appsettings.json?",
+      "choices": [
+        "`ConnectionStrings:Default`, because colons are valid in variable names everywhere",
+        "`CONNECTIONSTRINGS_DEFAULT`, since keys are upper-cased and joined by one underscore",
+        "`ConnectionStrings__Default`, because a double underscore maps to the colon",
+        "`ConnectionStrings.Default`, because the provider maps dots to section separators"
+      ],
+      "answer": 2,
+      "why": "The environment variables provider replaces `__` with `:` so nested keys work on every platform, including Linux shells that reject colons. Keys are case-insensitive, but a single underscore is kept as part of the name, and dots are not separators.",
+      "tags": ["configuration"],
+      "level": 1,
+      "asked": "Everyone deploying to containers or Azure App Service needs this; getting it wrong means the app silently uses the dev value."
+    },
+    {
+      "id": "dn-111",
+      "q": "`Limits:MaxItems` is 50 in appsettings.json, 100 in appsettings.Production.json, and the environment variable `Limits__MaxItems=200` is set. In Production with the default builder, what does the app read?",
+      "choices": [
+        "200, because environment variables are added after both JSON files",
+        "100, because the environment-specific file always has the final say",
+        "50, because appsettings.json is the base and is never overridden",
+        "An error at startup, because the same key is defined in three places"
+      ],
+      "answer": 0,
+      "why": "Providers are layered and the last one added wins per key: appsettings.json, then appsettings.{Environment}.json, then user secrets in Development, then environment variables, then command-line arguments. Duplicate keys are the whole point of the layering, not an error.",
+      "tags": ["configuration"],
+      "level": 1,
+      "asked": "Applied version of the provider-order question; interviewers use it to see if you can debug a wrong setting."
+    },
+    {
+      "id": "dn-112",
+      "q": "Which statement about .NET user secrets is true?",
+      "choices": [
+        "They are encrypted with the machine key and safe to use in production",
+        "They are stored in the repo under `secrets.json` but ignored by Git",
+        "They are loaded in every environment once `UserSecretsId` is present",
+        "They are plain JSON in your user profile, read only in Development"
+      ],
+      "answer": 3,
+      "why": "`dotnet user-secrets` writes plain JSON under your user profile, outside the repo, and the default builder adds it only in Development. It keeps secrets out of Git on dev machines; production secrets come from the environment or a vault such as Azure Key Vault.",
+      "tags": ["configuration", "security"],
+      "level": 1,
+      "asked": "Checks you know user secrets are a dev convenience, not a production secret store."
+    },
+    {
+      "id": "dn-113",
+      "q": "You set `ASPNETCORE_ENVIRONMENT` to Staging in `Properties/launchSettings.json`. What does that change on the deployed server?",
+      "choices": [
+        "The server runs as Staging, because the file is copied to the publish output",
+        "Nothing: launchSettings.json is only read by local tooling such as `dotnet run`",
+        "The server runs as Staging only when it is hosted in IIS rather than Kestrel",
+        "The value becomes the default whenever the server's own variable is missing"
+      ],
+      "answer": 1,
+      "why": "launchSettings.json configures local launch profiles for `dotnet run`, Visual Studio and Rider; it is not published. On a server the environment comes from real environment variables, and when none is set the app runs as Production.",
+      "tags": ["configuration", "hosting"],
+      "level": 1,
+      "asked": "A common confusion when an app behaves differently on the server; the interviewer checks you know where the environment really comes from."
+    },
+    {
+      "id": "dn-114",
+      "q": "With the default builder, what does `config.GetValue<int>(\"Limits:MaxItems\")` return when the key does not exist?",
+      "choices": [
+        "It throws `KeyNotFoundException` naming the missing key",
+        "It throws `InvalidOperationException` when the app starts",
+        "It returns 0, the default for `int`, without any error",
+        "It returns null, which makes the caller's `int` fail to compile"
+      ],
+      "answer": 2,
+      "why": "`GetValue<T>` returns `default(T)` for a missing key, or the default you pass as its second argument. That is why silent zeros show up after a typo in a key name. Strongly typed options with validation make a missing value fail loudly instead.",
+      "tags": ["configuration"],
+      "level": 2,
+      "asked": "Explains a whole category of 'the limit is somehow zero' bugs."
+    },
+    {
+      "id": "dn-115",
+      "q": "appsettings.json has `\"Origins\": [\"a.com\", \"b.com\", \"c.com\"]` and appsettings.Production.json has `\"Origins\": [\"prod.com\"]`. What does `Origins` bind to in Production?",
+      "choices": [
+        "`[\"prod.com\"]`, because the later file replaces the whole array",
+        "`[\"a.com\", \"b.com\", \"c.com\", \"prod.com\"]`, because arrays are concatenated",
+        "`[\"prod.com\", \"b.com\", \"c.com\"]`, because array items merge by index",
+        "Nothing, because arrays in two files make the binder throw at startup"
+      ],
+      "answer": 2,
+      "why": "Configuration flattens arrays into keys like `Origins:0`, `Origins:1`, and later providers override key by key. The production file only sets `Origins:0`, so indices 1 and 2 survive from the base file. Keep lists in one place, or use a delimited string you split yourself.",
+      "tags": ["configuration"],
+      "level": 3,
+      "asked": "A real production incident pattern with CORS origins; knowing the flattening model is the deep answer."
+    },
+    {
+      "id": "dn-116",
+      "q": "A singleton service takes `IOptionsSnapshot<SmtpOptions>` in its constructor. What happens in Development?",
+      "choices": [
+        "The host throws, because a scoped service cannot be consumed from a singleton",
+        "It works and sees fresh values per request, because snapshots are thread-safe",
+        "It works but always sees the startup values, like `IOptions<T>` does",
+        "It compiles but throws `NullReferenceException` on the first `.Value` read"
+      ],
+      "answer": 0,
+      "why": "`IOptionsSnapshot<T>` is registered as scoped, so scope validation in Development rejects it in a singleton. A singleton that needs current values should take `IOptionsMonitor<T>` and read `CurrentValue`, or subscribe with `OnChange`.",
+      "tags": ["configuration", "di"],
+      "level": 2,
+      "asked": "Combines the options interfaces with DI lifetimes, which is exactly how the bug appears in real code."
+    },
+    {
+      "id": "dn-117",
+      "q": "Two blob containers are configured as named options. How does a service get the `images` settings?",
+      "code": "builder.Services.Configure<BlobOptions>(\"images\", config.GetSection(\"Blobs:Images\"));\nbuilder.Services.Configure<BlobOptions>(\"docs\", config.GetSection(\"Blobs:Docs\"));",
+      "lang": "cs",
+      "choices": [
+        "Inject `IOptions<BlobOptions>` and read `.Value`, which picks the first name",
+        "Inject `[FromKeyedServices(\"images\")] BlobOptions`, since names become keys",
+        "Inject `IConfiguration` and bind `Blobs:Images` again, since names are lost",
+        "Inject `IOptionsMonitor<BlobOptions>` and call `.Get(\"images\")`"
+      ],
+      "answer": 3,
+      "why": "Named options are retrieved with `Get(name)` on `IOptionsMonitor<T>` or `IOptionsSnapshot<T>`. `IOptions<T>.Value` returns the default unnamed instance, which here was never configured. Options names are unrelated to keyed services.",
+      "tags": ["configuration"],
+      "level": 3,
+      "asked": "Multi-tenant and multi-client configuration uses this; the interviewer checks you know the retrieval API."
+    },
+    {
+      "id": "dn-118",
+      "q": "The config section is called `Smtp`, but a typo binds `Smpt`. What happens by default?",
+      "code": "builder.Services.AddOptions<SmtpOptions>().BindConfiguration(\"Smpt\");",
+      "lang": "cs",
+      "choices": [
+        "The app fails at startup because the section `Smpt` cannot be found",
+        "The options bind with default property values and nothing reports it",
+        "The binder falls back to the closest section name and logs a warning",
+        "The first read of `.Value` throws `OptionsValidationException`"
+      ],
+      "answer": 1,
+      "why": "Binding a missing section is not an error; you get an instance with default values, such as an empty host. Adding `ValidateDataAnnotations()` with `[Required]` members plus `ValidateOnStart()` turns the typo into a startup failure. Without validators nothing throws on `.Value` either.",
+      "tags": ["configuration"],
+      "level": 2,
+      "asked": "Shows you would make misconfiguration fail fast instead of at 2 a.m. on the first email send."
+    },
+    {
+      "id": "dn-119",
+      "q": "Why would a Native AOT app set `<EnableConfigurationBindingGenerator>` (on automatically with `PublishAot`)?",
+      "choices": [
+        "It replaces JSON config files with compiled constants for faster startup",
+        "It lets configuration reload without restarting a trimmed application",
+        "It emits binding code at compile time, so no reflection is needed",
+        "It encrypts configuration values at build time so they are not readable"
+      ],
+      "answer": 2,
+      "why": "The reflection-based binder breaks under trimming, so .NET 8 added a source generator that intercepts `Bind`, `Get` and `Configure` calls and generates the binding code. Configuration values are still read at runtime from the usual providers.",
+      "tags": ["configuration"],
+      "level": 3,
+      "asked": "A niche but telling question for teams shipping AOT or trimmed services."
+    },
+    {
+      "id": "dn-120",
+      "q": "You run the official .NET 8+ ASP.NET Core container image without setting any URLs. Which port does the app listen on?",
+      "choices": [
+        "Port 80, the HTTP default, as the root user inside the container",
+        "Port 8080, since the images set `ASPNETCORE_HTTP_PORTS=8080`",
+        "Port 5000, the Kestrel default when nothing else is configured",
+        "Port 443 with a generated self-signed development certificate"
+      ],
+      "answer": 1,
+      "why": "From .NET 8 the images default to port 8080 and include a non-root `app` user, since binding ports below 1024 needs root. Older images used 80, which is why upgraded deployments suddenly get connection refused until the port mapping or `ASPNETCORE_HTTP_PORTS` changes.",
+      "tags": ["hosting", "configuration"],
+      "level": 2,
+      "asked": "A real upgrade breakage; it shows hands-on container experience."
+    },
+    {
+      "id": "dn-121",
+      "q": "Kubernetes sends SIGTERM to a .NET 9 API during a rolling deploy. What does the generic host do by default?",
+      "choices": [
+        "It exits immediately, dropping in-flight requests; you must add a handler",
+        "It keeps serving new requests until the pod is killed with SIGKILL",
+        "It stops accepting connections and waits up to 30 s for work to finish",
+        "It waits for every hosted service to finish, however long that takes"
+      ],
+      "answer": 2,
+      "why": "The host treats SIGTERM as a shutdown request: Kestrel stops taking new connections, in-flight requests drain and `StopAsync` runs on hosted services, bounded by `HostOptions.ShutdownTimeout`, which defaults to 30 seconds since .NET 8 (it was 5). Long background work must honour the stopping token.",
+      "tags": ["hosting", "background-work"],
+      "level": 3,
+      "asked": "Zero-downtime deploys depend on this; strong candidates mention the timeout and cancellation tokens."
+    },
+    {
+      "id": "dn-122",
+      "q": "How does code outside a request react when the app begins shutting down?",
+      "choices": [
+        "Catch `ThreadAbortException`, which the host raises in every thread",
+        "Poll `Environment.HasShutdownStarted` in a loop on a timer",
+        "Override `Finalize` on the service so it runs when the host stops",
+        "Use the `ApplicationStopping` token from `IHostApplicationLifetime`"
+      ],
+      "answer": 3,
+      "why": "`IHostApplicationLifetime` exposes `ApplicationStarted`, `ApplicationStopping` and `ApplicationStopped` tokens. `BackgroundService` passes an equivalent token to `ExecuteAsync`. Thread aborts do not exist in modern .NET, and finalizers give no ordering guarantees.",
+      "tags": ["hosting"],
+      "level": 2,
+      "asked": "Graceful shutdown is a production-readiness signal interviewers look for."
+    },
+    {
+      "id": "dn-123",
+      "q": "An ASP.NET Core app runs on Windows behind IIS with the in-process hosting model. Which server handles the requests?",
+      "choices": [
+        "IIS HTTP Server inside the IIS worker process; Kestrel is not used",
+        "Kestrel inside the IIS worker process, with IIS acting as a proxy",
+        "Kestrel in a separate process, with IIS forwarding over localhost",
+        "HTTP.sys directly, because IIS unloads when the app starts"
+      ],
+      "answer": 0,
+      "why": "In-process hosting, the default for IIS, loads the app into `w3wp.exe` and uses the IIS HTTP Server (`IISHttpServer`). The out-of-process model is the one that runs Kestrel separately with IIS as a reverse proxy. HTTP.sys is a separate server option for Windows without IIS.",
+      "tags": ["hosting"],
+      "level": 2,
+      "asked": "Still common in enterprise .NET shops; the answer shows you know hosting models, not just `dotnet run`."
+    },
+    {
+      "id": "dn-124",
+      "q": "appsettings.json sets `\"Logging:LogLevel:Microsoft.AspNetCore\": \"Warning\"`. Which messages does that filter?",
+      "choices": [
+        "Only logs from a class literally named `Microsoft.AspNetCore`",
+        "Every category starting with `Microsoft.AspNetCore`, below Warning",
+        "Every log in the app, since framework filters apply to all categories",
+        "Only HTTP request logs, since that category covers the Kestrel server"
+      ],
+      "answer": 1,
+      "why": "Log filter keys match category prefixes, and the most specific match wins, so this silences Information and Debug logs from all ASP.NET Core categories while `Default` still governs your own. `ILogger<T>` uses the full type name as its category, which is why prefix rules work.",
+      "tags": ["observability", "configuration"],
+      "level": 1,
+      "asked": "Tuning noisy framework logs is day-one production work."
+    },
+    {
+      "id": "dn-125",
+      "q": "In a catch block, which call keeps the most useful information in structured logs?",
+      "choices": [
+        "`logger.LogError(ex.Message)`",
+        "`logger.LogError($\"Order {id} failed: {ex}\")`",
+        "`logger.LogError(ex, \"Order {OrderId} failed\", id)`",
+        "`logger.LogError(\"Order {OrderId} failed: \" + ex.StackTrace, id)`"
+      ],
+      "answer": 2,
+      "why": "The overload that takes the exception first records it as a structured exception, with type, stack trace and inner exceptions, and `{OrderId}` becomes a searchable property. Interpolation or concatenation flattens everything into one string and loses the properties.",
+      "tags": ["observability", "errors"],
+      "level": 1,
+      "asked": "A basic that reveals whether you have ever searched production logs."
+    },
+    {
+      "id": "dn-126",
+      "q": "What does `[LoggerMessage]` add over calling `logger.LogInformation(\"...\", args)`?",
+      "code": "public static partial class Log\n{\n    [LoggerMessage(Level = LogLevel.Information, Message = \"Order {OrderId} shipped\")]\n    public static partial void OrderShipped(ILogger logger, int orderId);\n}",
+      "lang": "cs",
+      "choices": [
+        "It sends the message to OpenTelemetry instead of the console provider",
+        "It encrypts the arguments so personal data never reaches the log sink",
+        "It makes the call asynchronous, so logging never blocks the request",
+        "Generated code that checks the level and avoids boxing and parsing"
+      ],
+      "answer": 3,
+      "why": "The source generator parses the template at compile time and emits a strongly typed method that checks `IsEnabled` before doing any work, so there is no template parsing, `params` array or boxing per call. Providers and sinks are unchanged, and logging stays synchronous.",
+      "tags": ["observability"],
+      "level": 3,
+      "asked": "A performance-aware logging question; knowing the generator shows you have worked on hot paths."
+    },
+    {
+      "id": "dn-127",
+      "q": "What does `logger.BeginScope` give you here, assuming a provider with scopes enabled?",
+      "code": "using (logger.BeginScope(new Dictionary<string, object> { [\"OrderId\"] = id }))\n{\n    logger.LogInformation(\"Charging card\");\n    logger.LogInformation(\"Sending email\");\n}",
+      "lang": "cs",
+      "choices": [
+        "Each message carries an `OrderId` property without repeating it",
+        "The two messages are buffered and written as one entry when the block ends",
+        "Messages inside the block skip the level filter so they are always written",
+        "The block runs in its own thread so the logging does not slow the request"
+      ],
+      "answer": 0,
+      "why": "A scope attaches its state to every log written while it is active, including logs from code you call. Providers must support scopes (for the console, `IncludeScopes`; OpenTelemetry has its own option). Scopes do not buffer, bypass filters or change threads.",
+      "tags": ["observability"],
+      "level": 2,
+      "asked": "Correlation is the core of useful logging; scopes are the .NET mechanism for it."
+    },
+    {
+      "id": "dn-128",
+      "q": "What is the main risk of turning on `AddHttpLogging` with request and response bodies in production?",
+      "choices": [
+        "It turns off response compression, which doubles bandwidth costs",
+        "It stops the exception handler from running for failed requests",
+        "It logs passwords, tokens and personal data, and costs throughput",
+        "It forces every response to HTTP/1.1, which breaks gRPC clients"
+      ],
+      "answer": 2,
+      "why": "HTTP logging can write headers and bodies, which include credentials and personal data; it redacts unlisted headers by default but bodies are logged as-is. Buffering bodies also costs memory and latency. Log selected fields, and keep body logging for short debugging sessions.",
+      "tags": ["observability", "security"],
+      "level": 2,
+      "asked": "Interviewers want to hear about PII in logs, which is a compliance problem, not only a performance one."
+    },
+    {
+      "id": "dn-129",
+      "q": "You create spans with `new ActivitySource(\"Shop.Orders\")`, but they never reach your OpenTelemetry backend while ASP.NET Core spans do. What is missing?",
+      "choices": [
+        "Calling `Activity.Stop()` by hand, since `using` does not end spans",
+        "Registering the source with `.WithTracing(t => t.AddSource(\"Shop.Orders\"))`",
+        "Setting `Activity.DefaultIdFormat` to W3C, which is off by default",
+        "Adding the source as a scoped service so each request gets its own"
+      ],
+      "answer": 1,
+      "why": "The tracer provider only listens to sources it has been told about; with no listener, `StartActivity` returns null and nothing is recorded. Disposing the activity ends it, and W3C ids have been the default since .NET 5.",
+      "tags": ["observability"],
+      "level": 3,
+      "asked": "The most common reason custom tracing 'doesn't work'; knowing it shows real OpenTelemetry use."
+    },
+    {
+      "id": "dn-130",
+      "q": "Why does this code use `?.` on the activity?",
+      "code": "using var activity = Source.StartActivity(\"ReserveStock\");\nactivity?.SetTag(\"order.id\", orderId);",
+      "lang": "cs",
+      "choices": [
+        "`StartActivity` returns null when nothing listens, so tags need a guard",
+        "`SetTag` throws on a stopped activity, so the operator checks it is running",
+        "The operator is only for style; `StartActivity` never returns null",
+        "It avoids a race with the `using` statement disposing the activity early"
+      ],
+      "answer": 0,
+      "why": "If no `ActivityListener` wants the source, or the sampler drops it, `StartActivity` returns null to avoid allocating. Unit tests usually have no listener, so unguarded calls throw there first. `SetTag` on a stopped activity is harmless.",
+      "tags": ["observability"],
+      "level": 3,
+      "asked": "Tests whether you have written instrumentation that runs in tests and production alike."
+    },
+    {
+      "id": "dn-131",
+      "q": "For request duration in OpenTelemetry metrics, which instrument should you use?",
+      "choices": [
+        "A `Counter<double>` that adds each duration, divided by the request count later",
+        "An `UpDownCounter<long>`, since durations can go up and down over time",
+        "An `ObservableGauge<double>` reporting the duration of the last request",
+        "A `Histogram<double>`, whose buckets give you percentiles"
+      ],
+      "answer": 3,
+      "why": "Latency needs percentiles such as p95 and p99, which only a histogram's buckets provide; averages from a counter hide the slow tail. Gauges report a current value and would lose everything between scrapes. ASP.NET Core already emits `http.server.request.duration` as a histogram.",
+      "tags": ["observability"],
+      "level": 2,
+      "asked": "Distinguishes people who have built dashboards from people who have only read about metrics."
+    },
+    {
+      "id": "dn-132",
+      "q": "Your API calls another service with an `HttpClient` from `IHttpClientFactory`, and both use OpenTelemetry. How does the downstream span join the same trace?",
+      "choices": [
+        "The two services must share a table that stores the trace id",
+        "The client sends a `traceparent` header, which the server continues",
+        "Traces are matched afterwards by comparing timestamps in the backend",
+        "You must copy the trace id into a custom `X-Trace` header by hand"
+      ],
+      "answer": 1,
+      "why": "HttpClient's diagnostics inject the W3C `traceparent` header from `Activity.Current`, and ASP.NET Core reads it to parent its request activity. No custom header or shared store is needed as long as both sides propagate W3C context.",
+      "tags": ["observability", "httpclient"],
+      "level": 2,
+      "asked": "Distributed tracing is expected knowledge for microservice roles; the header name is the concrete detail."
+    },
+    {
+      "id": "dn-133",
+      "q": "What is the default `Timeout` of an `HttpClient` in .NET?",
+      "choices": [
+        "30 seconds, matching the host's default shutdown timeout",
+        "No timeout: requests wait until the server closes the socket",
+        "100 seconds, after which a `TaskCanceledException` is thrown",
+        "5 seconds, the recommended budget for calls inside a request"
+      ],
+      "answer": 2,
+      "why": "`HttpClient.Timeout` defaults to 100 seconds, and a timeout surfaces as `TaskCanceledException` (with a `TimeoutException` inner exception since .NET 5). That is far too long inside a web request, so set a sensible timeout per client or use a resilience pipeline.",
+      "tags": ["httpclient"],
+      "level": 2,
+      "asked": "Slow dependencies take down APIs; interviewers check you know the default is dangerous."
+    },
+    {
+      "id": "dn-134",
+      "q": "A typed client registered with `AddHttpClient<GeoClient>()` is injected into a singleton. What goes wrong over time?",
+      "choices": [
+        "The singleton keeps one handler, so DNS changes are never seen",
+        "Each call creates a new socket, so the server runs out of ephemeral ports",
+        "The factory disposes the client after two minutes and later calls throw",
+        "Nothing: typed clients are designed to be captured by singletons"
+      ],
+      "answer": 0,
+      "why": "Typed clients are transient; the factory rotates handlers (every two minutes by default) only for clients it creates. A singleton captures one client and its handler for good, missing DNS changes. Inject `IHttpClientFactory` into singletons, or use a static client with `SocketsHttpHandler.PooledConnectionLifetime`.",
+      "tags": ["httpclient", "di"],
+      "level": 3,
+      "asked": "A follow-up to 'why IHttpClientFactory' that exposes whether you understand handler lifetime."
+    },
+    {
+      "id": "dn-135",
+      "q": "What does `.AddStandardResilienceHandler()` from Microsoft.Extensions.Http.Resilience add to an HttpClient?",
+      "choices": [
+        "Automatic caching of GET responses according to `Cache-Control` headers",
+        "Retry, circuit breaker and total and per-attempt timeouts, with defaults",
+        "Client-side rate limiting that queues requests beyond a fixed quota",
+        "Request signing with a key stored in the Data Protection key ring"
+      ],
+      "answer": 1,
+      "why": "The standard handler builds a Polly v8 pipeline: rate limiter, total timeout, retry with backoff, circuit breaker and per-attempt timeout, all configurable. It replaces hand-written Polly policies for most apps. It does not cache or sign requests.",
+      "tags": ["httpclient", "resilience"],
+      "level": 2,
+      "asked": "Asked of anyone integrating third-party APIs; the modern answer is this package, not raw Polly."
+    },
+    {
+      "id": "dn-136",
+      "q": "You add a retry pipeline to an HttpClient that creates payments with POST. What must you check first?",
+      "choices": [
+        "That the client uses HTTP/2, since HTTP/1.1 cannot retry a request",
+        "That the retry count is odd, so a split vote never leaves the state unclear",
+        "That the server's clock matches, or the retried request is rejected as stale",
+        "That the endpoint is idempotent, for example via an idempotency key"
+      ],
+      "answer": 3,
+      "why": "A timeout does not mean the server did nothing, so retrying a non-idempotent POST can charge twice. Either the API accepts an idempotency key or you exclude unsafe methods from retries (the resilience package offers `DisableForUnsafeHttpMethods()`).",
+      "tags": ["httpclient", "resilience"],
+      "level": 2,
+      "asked": "Payments are the canonical example; interviewers want idempotency, not just 'add Polly'."
+    },
+    {
+      "id": "dn-137",
+      "q": "What does `response.EnsureSuccessStatusCode()` do with a 404?",
+      "choices": [
+        "It returns false, and you check the result before reading the body",
+        "It throws `HttpRequestException` with `StatusCode` set to 404",
+        "It retries the request once, then returns the second response",
+        "It logs a warning and lets you read the error body afterwards"
+      ],
+      "answer": 1,
+      "why": "It throws for any non-2xx status, and since .NET 5 the exception's `StatusCode` property carries the code. If a 404 is an expected outcome, check `IsSuccessStatusCode` or the status yourself so you can read the ProblemDetails body instead of throwing.",
+      "tags": ["httpclient", "errors"],
+      "level": 1,
+      "asked": "Basic, but it leads into how you would surface a downstream error to your own caller."
+    },
+    {
+      "id": "dn-138",
+      "q": "With default options, what does `MapHealthChecks(\"/health\")` return when a check reports Degraded?",
+      "choices": [
+        "503 Service Unavailable, so the load balancer removes the instance",
+        "500 Internal Server Error with the failing check's exception",
+        "429 Too Many Requests, telling probes to back off for a while",
+        "200 OK with the text `Degraded` as the response body"
+      ],
+      "answer": 3,
+      "why": "`HealthCheckOptions.ResultStatusCodes` maps Healthy and Degraded to 200 and Unhealthy to 503 by default. Degraded is meant for 'working but impaired', which should not pull the instance out of rotation. Change the mapping if your platform needs it.",
+      "tags": ["observability", "hosting"],
+      "level": 2,
+      "asked": "Health endpoints drive orchestrator decisions; knowing the status mapping prevents accidental outages."
+    },
+    {
+      "id": "dn-139",
+      "q": "In ASP.NET Core terms, what is the difference between authentication and authorisation?",
+      "choices": [
+        "Authentication checks permissions; authorisation checks the password",
+        "Authentication says who the caller is; authorisation, what they may do",
+        "Authentication runs only for cookies; authorisation runs only for bearer tokens",
+        "Authentication happens in controllers; authorisation happens in middleware"
+      ],
+      "answer": 1,
+      "why": "The authentication middleware turns a cookie or token into `HttpContext.User`; authorisation then evaluates policies against that user for the endpoint. Both apply to any scheme, and both run as middleware before the endpoint executes.",
+      "tags": ["auth"],
+      "level": 1,
+      "asked": "The most basic security vocabulary question; muddling the two is a red flag."
+    },
+    {
+      "id": "dn-140",
+      "q": "When does ASP.NET Core answer 401 and when 403 for an `[Authorize(Roles = \"Admin\")]` endpoint?",
+      "choices": [
+        "401 for a signed-in non-admin; 403 when no credentials were sent",
+        "401 for an expired token; 403 for every other failure",
+        "401 when not authenticated; 403 when signed in but not an admin",
+        "403 in both cases, since the endpoint forbids everyone who is not an admin"
+      ],
+      "answer": 2,
+      "why": "An anonymous caller gets a challenge (401 for bearer auth); an authenticated user who fails the policy gets forbid (403). Mixing them up confuses clients, which use 401 to trigger a sign-in and 403 to show 'no access'.",
+      "tags": ["auth", "rest"],
+      "level": 1,
+      "asked": "Clients depend on the difference; interviewers expect you to know which is which."
+    },
+    {
+      "id": "dn-141",
+      "q": "A controller has `[Authorize]`, and one of its actions has `[AllowAnonymous]`. Who can call that action?",
+      "choices": [
+        "Only authenticated users, because the controller attribute wins",
+        "Nobody, because the two attributes conflict and block the action",
+        "Only users with a role, because AllowAnonymous needs a role list",
+        "Anyone: AllowAnonymous skips authorisation for that action"
+      ],
+      "answer": 3,
+      "why": "`[AllowAnonymous]` bypasses all authorisation checks for the endpoint, even when `[Authorize]` sits on the controller or a fallback policy exists. That makes it powerful and worth reviewing, because it also overrides stricter policies placed higher up.",
+      "tags": ["auth"],
+      "level": 1,
+      "asked": "A quick check on attribute precedence, which matters when auditing endpoints."
+    },
+    {
+      "id": "dn-142",
+      "q": "What does `.RequireAuthorization()` with no arguments do to this minimal API endpoint?",
+      "code": "app.MapGet(\"/orders\", GetOrders).RequireAuthorization();",
+      "lang": "cs",
+      "choices": [
+        "Applies the default policy, which requires an authenticated user",
+        "Requires the Admin role, the default role for protected endpoints",
+        "Requires an API key header, checked before authentication runs",
+        "Nothing until `[Authorize]` is also added to the handler method"
+      ],
+      "answer": 0,
+      "why": "Without a policy name, `RequireAuthorization()` adds the default policy, which out of the box just requires an authenticated user. Pass a policy name for anything stricter. It is the minimal API equivalent of `[Authorize]`.",
+      "tags": ["auth", "routing"],
+      "level": 1,
+      "asked": "Everyday minimal API security; the follow-up is usually about named policies."
+    },
+    {
+      "id": "dn-143",
+      "q": "Who can call an action marked `[Authorize(Roles = \"Admin,Manager\")]`?",
+      "choices": [
+        "Only users who hold both the Admin and the Manager role",
+        "Users in either the Admin or the Manager role",
+        "Users whose single role claim is exactly \"Admin,Manager\"",
+        "Anyone authenticated, because Roles is only documentation"
+      ],
+      "answer": 1,
+      "why": "A comma-separated list inside one attribute means any of the roles. To require both, stack two attributes, `[Authorize(Roles = \"Admin\")]` and `[Authorize(Roles = \"Manager\")]`, because separate attributes must all pass.",
+      "tags": ["auth"],
+      "level": 1,
+      "asked": "A small syntax point with security consequences if misread."
+    },
+    {
+      "id": "dn-144",
+      "q": "A React app and its ASP.NET Core API share a site. Why do many teams prefer an HttpOnly auth cookie over storing a JWT in localStorage?",
+      "choices": [
+        "Cookies are encrypted by the browser, while localStorage is sent as plain text",
+        "Cookies never need CSRF protection, unlike tokens kept in localStorage",
+        "JWTs cannot be used by React apps because browsers block the Authorization header",
+        "Script cannot read an HttpOnly cookie, so an XSS bug cannot steal the session"
+      ],
+      "answer": 3,
+      "why": "Anything in localStorage is readable by any script on the page, so one XSS flaw leaks the token. An HttpOnly cookie is sent automatically but hidden from JavaScript. The trade-off is that cookie auth needs SameSite and antiforgery defences against CSRF.",
+      "tags": ["auth", "security"],
+      "level": 1,
+      "asked": "A standard SPA security question; strong answers mention the CSRF trade-off too."
+    },
+    {
+      "id": "dn-145",
+      "q": "In a controller action, how do you read the signed-in user's id when it is issued as the name identifier claim?",
+      "choices": [
+        "`User.Identity.Name`, which always holds the user's id",
+        "`HttpContext.Session[\"UserId\"]`, set by the authentication middleware",
+        "`User.FindFirstValue(ClaimTypes.NameIdentifier)`",
+        "`Request.Headers[\"UserId\"]`, added to each authenticated request"
+      ],
+      "answer": 2,
+      "why": "`User` is the `ClaimsPrincipal` built by authentication, and `FindFirstValue` reads a claim. `Identity.Name` comes from the name claim, which is often an email or display name. Never trust a user id sent in a header or body.",
+      "tags": ["auth"],
+      "level": 1,
+      "asked": "Getting the current user safely is in almost every endpoint that touches owned data."
+    },
+    {
+      "id": "dn-146",
+      "q": "Your API has no CORS policy, yet calls from Postman and from another server succeed. Why?",
+      "choices": [
+        "CORS is enforced by browsers; other clients ignore it",
+        "ASP.NET Core allows every origin until a policy is configured",
+        "Postman and servers send a secret header that bypasses CORS",
+        "CORS applies only to POST requests, and those calls were GETs"
+      ],
+      "answer": 0,
+      "why": "CORS is a browser mechanism that decides whether page script may read a cross-origin response. Non-browser clients are unaffected, so CORS is not access control; authentication and authorisation are. Without a policy, browsers block cross-origin reads.",
+      "tags": ["security", "cors"],
+      "level": 1,
+      "asked": "Clears up the most common CORS misconception: that it protects the API."
+    },
+    {
+      "id": "dn-147",
+      "q": "A React app on another origin sends `fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })`. What does the browser do first?",
+      "choices": [
+        "Sends the POST directly, because JSON is a simple content type",
+        "Sends an OPTIONS preflight to ask if the method and headers are allowed",
+        "Sends a HEAD request to check the endpoint exists before the POST",
+        "Blocks the request outright, because cross-origin POSTs are never allowed"
+      ],
+      "answer": 1,
+      "why": "`application/json` is not one of the CORS-safelisted content types, so the browser preflights with OPTIONS and only sends the POST if the response allows the origin, method and headers. The CORS middleware answers preflights for you when the policy matches.",
+      "tags": ["cors"],
+      "level": 1,
+      "asked": "Explains the mysterious OPTIONS requests in the network tab, and what must be allowed."
+    },
+    {
+      "id": "dn-148",
+      "q": "What does `app.UseHttpsRedirection()` do, and why is it not enough on its own for an API?",
+      "choices": [
+        "It encrypts HTTP traffic in place; APIs also need a certificate on the client",
+        "It turns HTTP into HTTPS inside Kestrel, so no redirect ever reaches clients",
+        "It forces TLS 1.3, which some API clients do not yet support",
+        "It redirects to HTTPS, but API clients may already have sent secrets"
+      ],
+      "answer": 3,
+      "why": "The middleware answers HTTP requests with a redirect to HTTPS. Browsers follow it, but an API client has already sent its token or body in clear text, and many clients do not follow redirects for POST. For APIs, do not listen on HTTP, or reject it.",
+      "tags": ["security", "middleware"],
+      "level": 1,
+      "asked": "Shows you think about what actually travels over the wire, not just the green padlock."
+    },
+    {
+      "id": "dn-149",
+      "q": "What does this fallback policy change?",
+      "code": "builder.Services.AddAuthorization(o =>\n    o.FallbackPolicy = new AuthorizationPolicyBuilder()\n        .RequireAuthenticatedUser().Build());",
+      "lang": "cs",
+      "choices": [
+        "Endpoints with no auth metadata require a signed-in user",
+        "Endpoints with `[Authorize]` now also require the Admin role",
+        "Anonymous users are redirected to a fallback login page",
+        "Failed policies fall back to allowing the request after logging"
+      ],
+      "answer": 0,
+      "why": "The fallback policy applies to endpoints with neither `[Authorize]` nor `[AllowAnonymous]`, making the app secure by default: a new endpoint someone forgets to protect is still locked. Public endpoints then opt out explicitly.",
+      "tags": ["auth"],
+      "level": 2,
+      "asked": "Secure-by-default configuration is a mature habit interviewers look for."
+    },
+    {
+      "id": "dn-150",
+      "q": "Two authorisation handlers are registered for the same requirement. One calls `context.Succeed(requirement)`; the other does nothing. What is the outcome?",
+      "choices": [
+        "Denied, because every handler must call Succeed for the requirement",
+        "Denied, because a handler that does nothing counts as a failure",
+        "Allowed, because one handler succeeding satisfies the requirement",
+        "It depends on registration order, as the last handler decides"
+      ],
+      "answer": 2,
+      "why": "Handlers for one requirement act as alternatives: any `Succeed` satisfies it, and doing nothing is neutral. Only an explicit `context.Fail()` vetoes it regardless of others. Separate requirements in a policy must all be satisfied.",
+      "tags": ["auth"],
+      "level": 2,
+      "asked": "Explains how to model 'owner or admin' rules with multiple handlers."
+    },
+    {
+      "id": "dn-151",
+      "q": "An action has both `[Authorize(Policy = \"Employee\")]` and `[Authorize(Policy = \"FinanceTeam\")]`. What must the user satisfy?",
+      "choices": [
+        "Either policy; ASP.NET Core picks whichever passes first",
+        "Only the policy declared last, which overrides the earlier one",
+        "Only the policy declared first, as the others are ignored",
+        "Each of the two, since every `[Authorize]` attribute must pass"
+      ],
+      "answer": 3,
+      "why": "Multiple `[Authorize]` attributes (on the action, controller or endpoint) combine with AND: all of them must succeed. For OR logic, write one policy whose requirement has several handlers, or use `RequireAssertion`.",
+      "tags": ["auth"],
+      "level": 2,
+      "asked": "Combining attributes is common; getting AND versus OR wrong opens or closes the wrong doors."
+    },
+    {
+      "id": "dn-152",
+      "q": "A JWT's `exp` time passed three minutes ago. With default `TokenValidationParameters`, does `AddJwtBearer` accept it?",
+      "choices": [
+        "No: expired tokens are rejected from the first second",
+        "Yes: the default clock skew allows five minutes after expiry",
+        "Yes: expiry is not checked unless `ValidateLifetime` is set",
+        "No: the token is rejected and the refresh endpoint is called"
+      ],
+      "answer": 1,
+      "why": "`ClockSkew` defaults to five minutes to tolerate clock drift between issuer and API, so tokens live a little longer than `exp` says. Lower it (for example to 30 seconds) when short-lived tokens matter. `ValidateLifetime` is on by default.",
+      "tags": ["auth", "security"],
+      "level": 2,
+      "asked": "A classic 'why does my expired token still work?' question in real projects."
+    },
+    {
+      "id": "dn-153",
+      "q": "A token carries a `sub` claim, but `User.FindFirst(\"sub\")` returns null with default JwtBearer settings. Why?",
+      "choices": [
+        "It is mapped to `ClaimTypes.NameIdentifier`; `MapInboundClaims = false` keeps it",
+        "The `sub` claim is stripped for privacy, so it never reaches the ClaimsPrincipal",
+        "Claims are only populated after `UseAuthorization`, which runs after the endpoint",
+        "`FindFirst` is case-sensitive, and the handler stores the claim as `SUB`"
+      ],
+      "answer": 0,
+      "why": "By default the JWT handler maps short claim names to the long legacy `ClaimTypes` URIs, so `sub` becomes `.../nameidentifier`. Read that type, or disable the mapping with `MapInboundClaims = false` to keep the token's names.",
+      "tags": ["auth"],
+      "level": 2,
+      "asked": "A confusing default that nearly everyone hits; knowing it saves hours."
+    },
+    {
+      "id": "dn-154",
+      "q": "Every JSON call from the SPA on another origin is preceded by an OPTIONS request, adding a round trip each time. Which CORS policy setting reduces that?",
+      "choices": [
+        "`AllowAnyMethod()`, which tells browsers to stop sending preflights",
+        "`SetPreflightMaxAge(...)`, so browsers cache the preflight answer",
+        "`WithExposedHeaders(\"*\")`, which merges the preflight into the call",
+        "`DisallowCredentials()`, as preflights are only sent with cookies"
+      ],
+      "answer": 1,
+      "why": "The policy's preflight max age becomes `Access-Control-Max-Age`, letting the browser reuse a successful preflight for that URL for a while (browsers cap the value). Allowing methods or exposing headers changes what is permitted, not whether a preflight is needed.",
+      "tags": ["cors", "performance"],
+      "level": 2,
+      "asked": "Shows you can tune CORS for latency once it works, not just make the error go away."
+    },
+    {
+      "id": "dn-155",
+      "q": "Only `/api/public` should be callable cross-origin. How do you apply a named CORS policy to just that group of minimal API endpoints?",
+      "choices": [
+        "Call `app.UseCors(\"Spa\")` a second time after mapping the group",
+        "Add `.RequireCors(\"Spa\")` to the group and keep `app.UseCors()`",
+        "Add an `Access-Control-Allow-Origin: *` header in each handler",
+        "Name the route group \"Spa\" so it matches the policy by convention"
+      ],
+      "answer": 1,
+      "why": "Endpoint-level CORS uses `RequireCors(policyName)` (or `[EnableCors]` on controllers), and the CORS middleware without a default policy applies it per endpoint. Setting headers by hand skips preflight handling and is easy to get wrong.",
+      "tags": ["cors", "routing"],
+      "level": 2,
+      "asked": "Scoping CORS narrowly is better security than opening the whole app."
+    },
+    {
+      "id": "dn-156",
+      "q": "An app runs on three instances behind a load balancer. Users are randomly signed out and antiforgery checks fail. What is the likely cause?",
+      "choices": [
+        "Each instance has its own Data Protection keys and cannot read others' cookies",
+        "The load balancer strips cookies larger than 4 KB from every forwarded request",
+        "Session state is stored per instance, so authentication is lost when it moves",
+        "Kestrel limits the number of cookies per request when behind a proxy"
+      ],
+      "answer": 0,
+      "why": "Auth cookies and antiforgery tokens are encrypted with Data Protection keys, which by default live on each machine. Persist keys to shared storage (for example `PersistKeysToDbContext` or blob storage) and set one application name so every instance can decrypt them.",
+      "tags": ["security", "hosting"],
+      "level": 2,
+      "asked": "A classic scale-out bug; the fix shows you understand what protects cookies."
+    },
+    {
+      "id": "dn-157",
+      "q": "Why does a cookie-authenticated form endpoint need antiforgery protection when a bearer-token API usually does not?",
+      "choices": [
+        "Bearer tokens are encrypted by TLS, while cookies travel in plain text",
+        "Cookie endpoints accept form posts, which browsers cannot send securely",
+        "Antiforgery also validates the token signature, which cookies lack",
+        "Browsers attach cookies to cross-site requests; tokens need your script"
+      ],
+      "answer": 3,
+      "why": "CSRF works because the browser sends cookies with requests that another site triggers. A bearer token must be attached by your own script, which the attacker's page cannot do. SameSite cookies reduce the risk, and antiforgery tokens close it.",
+      "tags": ["security", "auth"],
+      "level": 2,
+      "asked": "Tests whether you understand CSRF as a property of cookies, not of forms."
+    },
+    {
+      "id": "dn-158",
+      "q": "What does this rate-limiting partition achieve?",
+      "code": "o.AddPolicy(\"per-user\", ctx => RateLimitPartition.GetFixedWindowLimiter(\n    ctx.User.Identity?.Name ?? ctx.Connection.RemoteIpAddress?.ToString() ?? \"anon\",\n    _ => new() { PermitLimit = 100, Window = TimeSpan.FromMinutes(1) }));",
+      "lang": "cs",
+      "choices": [
+        "One shared limit of 100 per minute for the whole application",
+        "A limit of 100 per minute per endpoint, whoever calls it",
+        "100 a minute for each user, or per IP for anonymous callers",
+        "100 requests in total per user, reset only when the app restarts"
+      ],
+      "answer": 2,
+      "why": "The partition key picks which limiter a request uses, so each user name (or IP) gets its own fixed window. Without partitioning, one noisy client could exhaust a global limit for everyone. Behind a proxy, configure forwarded headers so the IP is the client's.",
+      "tags": ["rate-limiting", "security"],
+      "level": 2,
+      "asked": "Per-client limits are the realistic design; interviewers look for the partition idea."
+    },
+    {
+      "id": "dn-159",
+      "q": "A fixed window allows 100 requests per minute. Why might a team switch to a sliding window or token bucket limiter?",
+      "choices": [
+        "Fixed windows allow a burst of 200 around a window boundary",
+        "Fixed windows cannot be partitioned by user or IP address",
+        "Fixed windows reject requests with 500 instead of 429",
+        "Fixed windows keep one timer per request, using lots of memory"
+      ],
+      "answer": 0,
+      "why": "A client can send 100 at the end of one window and 100 at the start of the next. Sliding windows split the period into segments, and token buckets refill steadily, both smoothing bursts. Every limiter type can be partitioned, and the rejection code is configurable.",
+      "tags": ["rate-limiting"],
+      "level": 3,
+      "asked": "Shows you understand algorithm behaviour, not just the configuration API."
+    },
+    {
+      "id": "dn-160",
+      "q": "Rate-limiting policies attached with `RequireRateLimiting(\"per-user\")` are ignored. The pipeline calls `app.UseRateLimiter()` before `app.UseRouting()`. Why?",
+      "choices": [
+        "Named policies apply only to controllers, never to minimal APIs",
+        "Before routing, no endpoint is chosen, so its metadata is unseen",
+        "The limiter needs `UseAuthorization` to run first to read the user",
+        "Policies take effect only after the first minute of uptime"
+      ],
+      "answer": 1,
+      "why": "Endpoint-specific policies are metadata on the selected endpoint, which exists only after routing. With an explicit `UseRouting`, put `UseRateLimiter` after it. Global limiters do not depend on the endpoint and work anywhere.",
+      "tags": ["rate-limiting", "middleware"],
+      "level": 3,
+      "asked": "Middleware order bugs are subtle; this checks you reason from endpoint metadata."
+    },
+    {
+      "id": "dn-161",
+      "q": "`AddJwtBearer` is configured with `Authority = \"https://login.example.com/\"` and no signing key. How does it validate signatures?",
+      "choices": [
+        "It does not: tokens are trusted whenever the issuer claim matches",
+        "It sends each token back to the authority to check it on every request",
+        "It uses the TLS certificate of the authority as the signing key",
+        "It fetches the issuer's published signing keys and refreshes them"
+      ],
+      "answer": 3,
+      "why": "With an `Authority`, the handler reads `.well-known/openid-configuration`, fetches the JWKS signing keys, caches them and refreshes periodically, so key rotation just works. Validation is local; there is no per-request call to the issuer.",
+      "tags": ["auth"],
+      "level": 3,
+      "asked": "Explains how APIs trust an identity provider without sharing secrets."
+    },
+    {
+      "id": "dn-162",
+      "q": "An `IClaimsTransformation` adds a `permission` claim from the database. Why must it be written to be idempotent?",
+      "choices": [
+        "It can run more than once per request, so it must not duplicate claims",
+        "It runs once at start-up, so the claims it adds must never change afterwards",
+        "It runs before authentication, so the user may still be anonymous",
+        "It runs on a background thread, so it must avoid scoped services"
+      ],
+      "answer": 0,
+      "why": "`TransformAsync` runs each time authentication is evaluated, which can happen more than once per request, so blindly adding claims duplicates them. Check before adding, or clone the principal. It also runs per request, so cache database lookups.",
+      "tags": ["auth"],
+      "level": 3,
+      "asked": "A deeper hook that interviewers use to see whether you read how it is invoked."
+    },
+    {
+      "id": "dn-163",
+      "q": "In .NET 10, a signed-out client calls a cookie-authenticated minimal API endpoint that returns JSON. What does it get by default?",
+      "choices": [
+        "A 302 redirect to `/Account/Login`, exactly as in earlier versions",
+        "A 200 with an empty body, because the endpoint allows anonymous reads",
+        "A 401, as cookie auth no longer redirects for known API endpoints",
+        "A 404, so the endpoint's existence is hidden from anonymous callers"
+      ],
+      "answer": 2,
+      "why": "Earlier versions redirected any unauthenticated cookie request to the login page, which API clients read as a confusing 200 or 302. .NET 10 returns 401/403 for endpoints recognised as APIs, such as minimal APIs returning data and `[ApiController]` actions; pages still redirect.",
+      "tags": ["auth", "aspnet"],
+      "level": 3,
+      "asked": "Shows you follow recent framework changes that affect SPA and API behaviour."
+    },
+    {
+      "id": "dn-164",
+      "q": "What does this cache call do on the first and on later requests within five minutes?",
+      "code": "var rates = await cache.GetOrCreateAsync(\"rates\", e =>\n{\n    e.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);\n    return api.GetRatesAsync();\n});",
+      "lang": "cs",
+      "choices": [
+        "Calls the API every time and stores the latest result for other callers",
+        "Calls the API once, then serves the cached value for five minutes",
+        "Calls the API once and keeps the value until the app restarts",
+        "Serves the cached value and refreshes it in the background every time"
+      ],
+      "answer": 1,
+      "why": "`GetOrCreateAsync` runs the factory only on a miss and stores the result with the entry's options. Absolute expiration removes it five minutes after creation, and the next call fetches again. `IMemoryCache` never refreshes entries in the background by itself.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Cache-aside with expiry is the most common caching pattern in CRUD apps."
+    },
+    {
+      "id": "dn-165",
+      "q": "In .NET 8+, what is needed for `.CacheOutput()` on this endpoint to take effect?",
+      "code": "app.MapGet(\"/products\", GetProducts).CacheOutput();",
+      "lang": "cs",
+      "choices": [
+        "`builder.Services.AddOutputCache()` and `app.UseOutputCache()`",
+        "A `Cache-Control: public` header added by the handler itself",
+        "`builder.Services.AddMemoryCache()` so responses have somewhere to go",
+        "Nothing else; the attribute alone stores the response on the client"
+      ],
+      "answer": 0,
+      "why": "Output caching needs its services and middleware; the endpoint call only adds metadata. The server then stores whole responses (60 seconds by default) and replays them without running the handler. It does not depend on client headers.",
+      "tags": ["caching", "middleware"],
+      "level": 1,
+      "asked": "Checks you know output caching is a server-side feature with its own middleware."
+    },
+    {
+      "id": "dn-166",
+      "q": "What does `IDistributedCache` store, and why use a Redis-backed one?",
+      "choices": [
+        "Strongly typed objects; Redis keeps them in the app's own memory",
+        "Only strings; Redis is required because SQL Server cannot store bytes",
+        "Byte arrays by key; a shared store keeps every instance consistent",
+        "Whole HTTP responses; Redis replays them to clients automatically"
+      ],
+      "answer": 2,
+      "why": "`IDistributedCache` is a key/byte[] abstraction (with string helpers), so you serialise values yourself. Backing it with Redis (`AddStackExchangeRedisCache`) or SQL Server gives all instances one cache that survives restarts.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Leads into the in-memory versus distributed trade-off every scaled app faces."
+    },
+    {
+      "id": "dn-167",
+      "q": "Products are cached for ten minutes under `product:{id}`. After an admin edits a product, what should the update endpoint do?",
+      "choices": [
+        "Nothing; the stale entry is harmless until it expires",
+        "Clear the entire cache so no entry can be stale",
+        "Restart the app so the cache is rebuilt from scratch",
+        "Remove that product's cache entry after saving"
+      ],
+      "answer": 3,
+      "why": "Invalidate the specific key once the write commits, so the next read loads fresh data. Wiping everything causes a load spike, and waiting for expiry shows admins their old values. On multiple instances, local caches each need invalidating, which is where distributed caches help.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Cache invalidation is famously hard; interviewers want to see a concrete strategy."
+    },
+    {
+      "id": "dn-168",
+      "q": "Which is the idiomatic way to run work every five minutes inside a `BackgroundService` in .NET 6+?",
+      "code": "protected override async Task ExecuteAsync(CancellationToken ct)\n{\n    // ???\n}",
+      "lang": "cs",
+      "choices": [
+        "`while (true) { Thread.Sleep(300_000); DoWork(); }` on the host thread",
+        "A `System.Timers.Timer` whose callback is an async void method",
+        "A `PeriodicTimer` loop: `while (await timer.WaitForNextTickAsync(ct))`",
+        "Recursion: ExecuteAsync calls itself after a `Task.Delay` of five minutes"
+      ],
+      "answer": 2,
+      "why": "`PeriodicTimer` gives an async, cancellable tick loop that never overlaps runs and stops cleanly on shutdown. `Thread.Sleep` blocks a thread and ignores cancellation, async void timer callbacks swallow exceptions and can overlap, and recursion grows state.",
+      "tags": ["background-work"],
+      "level": 1,
+      "asked": "A small but modern API choice that shows you write clean hosted services."
+    },
+    {
+      "id": "dn-169",
+      "q": "A cached dashboard query is keyed as `\"dashboard\"`, but its data depends on the signed-in user's tenant. What goes wrong?",
+      "choices": [
+        "The cache throws, because keys must include a user id",
+        "Every tenant is served whichever tenant's data was cached first",
+        "Nothing, since memory caches are separate for each user session",
+        "The entry expires at once, because tenant claims change each request"
+      ],
+      "answer": 1,
+      "why": "A cache is shared across requests, so a key must include everything the value depends on, such as tenant id, user id or culture. Otherwise one customer sees another's data, which is a security incident rather than a performance bug.",
+      "tags": ["caching", "security"],
+      "level": 1,
+      "asked": "Checks that you treat cache keys as a data-isolation concern."
+    },
+    {
+      "id": "dn-170",
+      "q": "An endpoint starts `_ = Task.Run(() => SendReceiptAsync(db, order));` and returns at once. The task later fails with `ObjectDisposedException`. Why?",
+      "choices": [
+        "The DbContext belongs to the request scope, disposed when it ends",
+        "Task.Run tasks are cancelled automatically when the HTTP response is sent",
+        "SendReceiptAsync must be marked static to run on a background thread",
+        "The thread pool disposes objects that are captured by lambda closures"
+      ],
+      "answer": 0,
+      "why": "Scoped services live until the request finishes, but the fire-and-forget task outlives it. Hand the work to a queue processed by a hosted service that creates its own scope. Failures in unobserved tasks are also silently lost.",
+      "tags": ["background-work", "di"],
+      "level": 1,
+      "asked": "Fire-and-forget in controllers is a common bug; this checks you know why and what to do instead."
+    },
+    {
+      "id": "dn-171",
+      "q": "How does output caching differ from caching data with `IMemoryCache` inside the handler?",
+      "choices": [
+        "Output caching stores the whole HTTP response and skips the handler",
+        "Output caching stores data in the browser; IMemoryCache on the server",
+        "Output caching only works for POST; IMemoryCache only for GET",
+        "Output caching needs Redis, while IMemoryCache never needs any setup"
+      ],
+      "answer": 0,
+      "why": "Output caching replays serialised responses without running the endpoint, which is ideal for identical public responses. `IMemoryCache` caches objects your code chooses, so it can serve personalised responses built from shared data. Output caching can use memory or Redis.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "Picking the right caching layer is a design decision interviewers like to probe."
+    },
+    {
+      "id": "dn-172",
+      "q": "Why should a `BackgroundService` loop pass `stoppingToken` to `Task.Delay` and to its I/O calls?",
+      "choices": [
+        "Without it, the delay runs on the UI thread and freezes the app",
+        "The token makes the delay more accurate on busy servers",
+        "So shutdown cancels the waits and the host can stop promptly",
+        "The token is required, or the service never starts at all"
+      ],
+      "answer": 2,
+      "why": "`stoppingToken` is cancelled when the host begins shutting down. Passing it through lets waits and queries end quickly instead of holding up shutdown until the host's timeout, after which work is abandoned mid-way.",
+      "tags": ["background-work", "hosting"],
+      "level": 1,
+      "asked": "Graceful shutdown matters in containers; this checks the basic habit."
+    },
+    {
+      "id": "dn-173",
+      "q": "What does `HybridCache` (.NET 9) combine behind one `GetOrCreateAsync` API?",
+      "choices": [
+        "Output caching and response caching for HTTP responses",
+        "A local in-memory cache with an optional distributed cache",
+        "Browser storage and a server cache, synchronised over SignalR",
+        "EF Core's second-level cache and the change tracker"
+      ],
+      "answer": 1,
+      "why": "`HybridCache` keeps a fast in-process layer and, when an `IDistributedCache` is registered, a shared second layer. It also handles serialisation and stops concurrent callers from running the same factory at once.",
+      "tags": ["caching"],
+      "level": 1,
+      "asked": "A newer API that replaces a lot of hand-written cache-aside code."
+    },
+    {
+      "id": "dn-174",
+      "q": "By default, which of these responses does output caching store?",
+      "choices": [
+        "Every GET, including those with an Authorization header",
+        "A POST that returns 201 Created with the new resource",
+        "A 200 GET for an anonymous request with no cookies",
+        "A GET that returns 200 and sets a Set-Cookie header"
+      ],
+      "answer": 2,
+      "why": "The default policy caches only GET/HEAD requests answered with 200, and skips authenticated requests and responses that set cookies, to avoid serving one user's data to another. Custom policies can change this, carefully.",
+      "tags": ["caching", "security"],
+      "level": 2,
+      "asked": "Knowing the safe defaults explains why caching 'does nothing' on authenticated endpoints."
+    },
+    {
+      "id": "dn-175",
+      "q": "Endpoints need to enqueue emails for a `BackgroundService` to send. What is a good in-process building block for the queue?",
+      "choices": [
+        "A static `List<Email>` that the service polls every second",
+        "A singleton `Channel<Email>` that endpoints write to",
+        "A scoped `Queue<Email>` injected into both endpoints and service",
+        "`ConcurrentBag<Email>`, drained whenever the service is idle"
+      ],
+      "answer": 1,
+      "why": "`Channel<T>` is a thread-safe async producer/consumer queue: endpoints `WriteAsync`, the service `await foreach` over `ReadAllAsync`, with no polling. A bounded channel adds back-pressure. A scoped queue would be a different instance per request.",
+      "tags": ["background-work"],
+      "level": 2,
+      "asked": "Shows you can build a simple, correct in-process queue without extra infrastructure."
+    },
+    {
+      "id": "dn-176",
+      "q": "Since .NET 6, what happens by default when a `BackgroundService` throws an unhandled exception from `ExecuteAsync`?",
+      "choices": [
+        "The exception is logged and the host stops the application",
+        "The exception is swallowed and the service restarts silently",
+        "The service stops quietly while the rest of the app keeps running",
+        "The exception is rethrown inside the next HTTP request"
+      ],
+      "answer": 0,
+      "why": "`BackgroundServiceExceptionBehavior.StopHost` is the default, so a crashing worker takes the app down and gets noticed. Before .NET 6 the service died silently. Catch and log per iteration if the loop should survive transient errors.",
+      "tags": ["background-work", "hosting"],
+      "level": 2,
+      "asked": "A behaviour change many teams discover in production; knowing it prevents surprises."
+    },
+    {
+      "id": "dn-177",
+      "q": "Emails are queued in an in-memory `Channel<T>`. What is the main risk, and when do teams move beyond it?",
+      "choices": [
+        "Channels drop items after one minute, so slow consumers lose work",
+        "Channels block every request until the email has been sent",
+        "Channels only work in Development, as production hosts disable them",
+        "Queued work is lost on restart or crash; durable queues fix that"
+      ],
+      "answer": 3,
+      "why": "An in-memory queue disappears with the process, including during every deployment. When losing a job matters, persist it: a database table (outbox), Hangfire, or a broker such as Azure Service Bus or RabbitMQ, which also spread work across instances.",
+      "tags": ["background-work"],
+      "level": 2,
+      "asked": "Tests whether you match the tool to the durability the business needs."
+    },
+    {
+      "id": "dn-178",
+      "q": "Two hundred requests miss the cache for the same key at once. What does `HybridCache.GetOrCreateAsync` do that a naive `IMemoryCache` check-then-set does not?",
+      "choices": [
+        "It runs the factory once; the other callers await that result",
+        "It rejects the extra callers with 429 until the entry is stored",
+        "It runs all 200 factories and keeps the result of the fastest",
+        "It serves null to the extra callers until the entry is ready"
+      ],
+      "answer": 0,
+      "why": "HybridCache coalesces concurrent requests for the same key, preventing a cache stampede where every caller hits the database together. With plain `IMemoryCache.GetOrCreateAsync`, concurrent misses can each run the factory.",
+      "tags": ["caching", "performance"],
+      "level": 2,
+      "asked": "Stampede protection separates caching that helps under load from caching that collapses."
+    },
+    {
+      "id": "dn-179",
+      "q": "Product list responses are output-cached with a tag. How do you evict them when a product changes?",
+      "code": "app.MapGet(\"/products\", GetProducts)\n   .CacheOutput(p => p.Tag(\"products\"));",
+      "lang": "cs",
+      "choices": [
+        "Call `IMemoryCache.Remove(\"products\")` in the update endpoint",
+        "Call `EvictByTagAsync(\"products\", ct)` on `IOutputCacheStore`",
+        "Send `Cache-Control: no-cache` from the update endpoint's response",
+        "Restart the output cache middleware with `app.UseOutputCache()`"
+      ],
+      "answer": 1,
+      "why": "Tags group cached responses so a write can evict all of them through `IOutputCacheStore`. Output cache entries are not in `IMemoryCache` under your key, and response headers on another endpoint do not affect them.",
+      "tags": ["caching"],
+      "level": 2,
+      "asked": "Invalidation is the hard part of output caching; tags are the intended tool."
+    },
+    {
+      "id": "dn-180",
+      "q": "`/products?page=2` and `/products?page=3` should be cached separately, but `?utm_source=...` should not create new entries. What fits?",
+      "choices": [
+        "`.CacheOutput(p => p.VaryByQuery(\"page\"))`",
+        "`.CacheOutput(p => p.NoCache())` on the product list",
+        "`.CacheOutput(p => p.VaryByHeader(\"page\"))`",
+        "`.CacheOutput(p => p.Expire(TimeSpan.Zero))` per page"
+      ],
+      "answer": 0,
+      "why": "`VaryByQuery` names the query keys that form part of the cache key, so only `page` creates separate entries. `VaryByHeader` looks at request headers, not the query, and `NoCache` or zero expiry turn caching off.",
+      "tags": ["caching"],
+      "level": 2,
+      "asked": "Cache key design decides hit rate; this checks you can tune it."
+    },
+    {
+      "id": "dn-181",
+      "q": "An endpoint uses `.WithRequestTimeout(TimeSpan.FromSeconds(2))` with `app.UseRequestTimeouts()` (.NET 8+). How does the timeout take effect?",
+      "choices": [
+        "The handler's thread is aborted after two seconds",
+        "Kestrel closes the TCP connection after two seconds",
+        "`RequestAborted` is cancelled; code must observe it for the 504",
+        "The request is retried once on another thread after two seconds"
+      ],
+      "answer": 2,
+      "why": "The middleware cancels `HttpContext.RequestAborted`; handlers that pass that token (or a bound `CancellationToken`) to their I/O stop, and the middleware then writes a 504 by default. Code that ignores the token keeps running. .NET never aborts threads.",
+      "tags": ["middleware", "async"],
+      "level": 2,
+      "asked": "Shows you understand cooperative cancellation in .NET, which timeouts rely on."
+    },
+    {
+      "id": "dn-182",
+      "q": "A nightly clean-up runs as a `BackgroundService`. After scaling to three instances, it runs three times a night. What are sensible fixes?",
+      "choices": [
+        "Add `[Singleton]` to the class so only one instance ever runs it",
+        "Register the service as scoped so each request gets its own run",
+        "Increase the timer interval to 24 hours on two of the instances",
+        "Use a distributed lock, or one scheduler outside the web app"
+      ],
+      "answer": 3,
+      "why": "Every instance runs every hosted service. Coordinate with a lease or lock in the database or Redis, use a job library such as Hangfire or Quartz with clustering, or move the job to a single scheduled worker. DI lifetimes do not span processes.",
+      "tags": ["background-work", "hosting"],
+      "level": 2,
+      "asked": "Scaling out breaks singleton assumptions; interviewers want to see you anticipate that."
+    },
+    {
+      "id": "dn-183",
+      "q": "Why is sliding expiration alone risky for a popular cache entry?",
+      "code": "cache.Set(\"config\", value, new MemoryCacheEntryOptions\n{\n    SlidingExpiration = TimeSpan.FromMinutes(10)\n});",
+      "lang": "cs",
+      "choices": [
+        "Sliding expiration removes an entry on every read, so it never hits",
+        "Each read extends the entry, so hot data may never refresh",
+        "Sliding expiration is ignored unless a size limit is also configured",
+        "Sliding entries are evicted first whenever the process needs memory"
+      ],
+      "answer": 1,
+      "why": "Sliding expiration resets on each access, so a value read every minute lives forever and goes stale. Combine it with an absolute expiration that caps the lifetime, or rely on absolute expiry for data that changes.",
+      "tags": ["caching"],
+      "level": 2,
+      "asked": "A subtle staleness bug; the fix shows you understand both expiry modes."
+    },
+    {
+      "id": "dn-184",
+      "q": "In .NET 8 and 9, a `BackgroundService` does 20 seconds of synchronous work before its first `await`. What happens at start-up?",
+      "choices": [
+        "Nothing unusual, because hosted services always start on the thread pool",
+        "The app starts, and the service is skipped until the work completes",
+        "The host throws, because ExecuteAsync must await within a second",
+        "Start-up waits: the synchronous part runs inside StartAsync"
+      ],
+      "answer": 3,
+      "why": "In those versions `StartAsync` calls `ExecuteAsync` directly, so everything before the first real await runs on the start-up path and delays the host (.NET 10 runs ExecuteAsync as a background task instead). Start with `await Task.Yield()` or move heavy work after an await.",
+      "tags": ["background-work", "hosting"],
+      "level": 3,
+      "asked": "A subtle start-up delay that shows you know how hosted services are invoked."
+    },
+    {
+      "id": "dn-185",
+      "q": "`HybridCache` entries for products are stored with the tag `\"catalogue\"`. What does `await cache.RemoveByTagAsync(\"catalogue\")` do?",
+      "choices": [
+        "Removes only entries whose key string contains the word catalogue",
+        "Invalidates every entry with that tag, so the next reads refetch",
+        "Clears the distributed layer but leaves stale entries in memory",
+        "Blocks new writes to the catalogue until the app restarts"
+      ],
+      "answer": 1,
+      "why": "Tags let you invalidate a group of entries without knowing their keys, and HybridCache honours the invalidation in both layers for later reads. Keys are not searched by text, and nothing is blocked.",
+      "tags": ["caching"],
+      "level": 3,
+      "asked": "Group invalidation is what makes caching maintainable as features grow."
+    },
+    {
+      "id": "dn-186",
+      "q": "Why is response compression over HTTPS disabled by default in ASP.NET Core (`EnableForHttps = false`)?",
+      "choices": [
+        "TLS already compresses the payload, so a second pass is wasted work",
+        "Browsers cannot decompress a Brotli response sent over HTTPS",
+        "Compressing secrets beside attacker input can leak them",
+        "Compression breaks HTTP/2 multiplexing when TLS is in use"
+      ],
+      "answer": 2,
+      "why": "Attacks such as CRIME and BREACH infer secrets from compressed sizes when a response mixes secrets and attacker-controlled data. Enable it for HTTPS only when responses do not do that, or rely on a proxy or CDN. TLS itself no longer compresses.",
+      "tags": ["security", "performance"],
+      "level": 3,
+      "asked": "Tests whether you know that a performance switch can have security costs."
+    },
+    {
+      "id": "dn-187",
+      "q": "After setting `SizeLimit = 1000` on the memory cache options, a call to `cache.Set(key, value)` without options throws. Why?",
+      "choices": [
+        "With a size limit, every entry must declare its own Size",
+        "Set requires an expiration whenever a size limit exists",
+        "The limit is measured in megabytes, and the value is too large",
+        "Keys must be integers once a size limit has been configured"
+      ],
+      "answer": 0,
+      "why": "`SizeLimit` has no units; the cache just sums the `Size` you assign to each entry, so an entry without a size cannot be accounted for and is rejected. Choose a unit (items, approximate bytes) and set it everywhere, or do not use a limit.",
+      "tags": ["caching"],
+      "level": 3,
+      "asked": "A surprising runtime error that shows whether you have bounded a cache in practice."
+    },
+    {
+      "id": "dn-188",
+      "q": "With default options, which files does `app.UseStaticFiles()` serve?",
+      "choices": [
+        "Any file in the project folder, including appsettings.json",
+        "Files under the web root, wwwroot by default, by their path",
+        "Only the files listed in a manifest generated at build time",
+        "Files anywhere on disk, if the request path is an absolute one"
+      ],
+      "answer": 1,
+      "why": "The static files middleware maps request paths onto the web root (wwwroot unless configured), so `/css/site.css` serves `wwwroot/css/site.css`. Files outside it, such as appsettings.json, are not exposed, which is why the web root must hold only public assets.",
+      "tags": ["hosting", "middleware"],
+      "level": 1,
+      "asked": "A basic hosting question that doubles as a security check on what the app exposes."
+    },
+    {
+      "id": "dn-189",
+      "q": "A middleware resolves the tenant for each request, and the endpoint needs it. What is `HttpContext.Items` for in this situation?",
+      "choices": [
+        "A cache shared by all requests, cleared when the app restarts",
+        "A per-request dictionary for passing data along the pipeline",
+        "A list of the middleware registered for the current endpoint",
+        "A cookie store that persists values between separate requests"
+      ],
+      "answer": 1,
+      "why": "`Items` lives exactly as long as one request, so middleware can stash a value that later middleware or the endpoint reads. It is not shared between requests and is never sent to the client. A scoped service holding the tenant is a typed alternative.",
+      "tags": ["middleware"],
+      "level": 1,
+      "asked": "Checks you know the right place for request-scoped data between middleware and endpoints."
+    },
+    {
+      "id": "dn-190",
+      "q": "Which is a common, explicit way to version a public REST API built with ASP.NET Core?",
+      "choices": [
+        "Change the response shape silently and let clients adapt",
+        "Create a separate database for each version of the API",
+        "Put it in the URL, such as `/v2/orders`, or in a header",
+        "Rename every endpoint on each release so old names stop working"
+      ],
+      "answer": 2,
+      "why": "URL segments, a query parameter or a header all make the version explicit, and the Asp.Versioning packages support each for controllers and minimal APIs. Versioning lets old clients keep working while new ones adopt breaking changes.",
+      "tags": ["rest", "routing"],
+      "level": 1,
+      "asked": "Opens a discussion about breaking changes and how you support existing clients."
+    },
+    {
+      "id": "dn-191",
+      "q": "A list endpoint takes `pageSize` from the query string. Why should it cap the value?",
+      "code": "app.MapGet(\"/orders\", (int page = 1, int pageSize = 20) => ...);",
+      "lang": "cs",
+      "choices": [
+        "Kestrel rejects query values larger than 100 with a 400 anyway",
+        "EF Core cannot translate `Take` for values above 1,000",
+        "Paging only works when pageSize is a power of two",
+        "A client could ask for a million rows and exhaust the server"
+      ],
+      "answer": 3,
+      "why": "Unbounded page sizes let one request load huge result sets into memory and hold database resources. Clamp to a sensible maximum (for example 100) and document it. Kestrel and EF impose no such limit for you.",
+      "tags": ["rest", "security"],
+      "level": 1,
+      "asked": "A small defensive habit that shows you think about abuse, not just the happy path."
+    },
+    {
+      "id": "dn-192",
+      "q": "What should a successful minimal API DELETE endpoint usually return when there is nothing to send back?",
+      "code": "app.MapDelete(\"/orders/{id:int}\", async (int id, AppDbContext db) =>\n{\n    await db.Orders.Where(o => o.Id == id).ExecuteDeleteAsync();\n    return /* ??? */;\n});",
+      "lang": "cs",
+      "choices": [
+        "`TypedResults.NoContent()`, a 204 with an empty body",
+        "`TypedResults.Ok()`, a 200 whose body is `null` JSON",
+        "`TypedResults.Accepted()`, since deletes complete later",
+        "`TypedResults.Created()`, since the state has changed"
+      ],
+      "answer": 0,
+      "why": "204 No Content says the action succeeded and there is no body. 202 means the work has not finished, which is untrue here, and 201 is for new resources. Returning 404 when the row count is 0 is a common refinement.",
+      "tags": ["rest"],
+      "level": 1,
+      "asked": "Status code choices are part of API design interviews; 204 for deletes is the expected default."
+    },
+    {
+      "id": "dn-193",
+      "q": "Why does this controller action fail at start-up or on the first request?",
+      "code": "[HttpPost]\npublic IActionResult Merge([FromBody] Cart a, [FromBody] Cart b) => Ok();",
+      "lang": "cs",
+      "choices": [
+        "Controllers must return `ActionResult<T>` when they bind a body",
+        "Each cart must be a record, since classes cannot bind from JSON",
+        "The body is read once, so only one parameter may bind from it",
+        "`[FromBody]` is only allowed on actions that accept GET requests"
+      ],
+      "answer": 2,
+      "why": "The request body is a stream read once by one input formatter, so an action may have at most one `[FromBody]` parameter. Wrap both carts in one DTO, such as `record MergeRequest(Cart A, Cart B)`.",
+      "tags": ["model-binding", "controllers"],
+      "level": 1,
+      "asked": "A common beginner error that shows whether you understand how bodies are bound."
+    },
+    {
+      "id": "dn-194",
+      "q": "In Development you want emails written to the console instead of sent. Which registration does that cleanly?",
+      "code": "if (builder.Environment.IsDevelopment())\n    builder.Services.AddSingleton<IEmailSender, ConsoleEmailSender>();\nelse\n    builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();",
+      "lang": "cs",
+      "choices": [
+        "It fails, because services cannot depend on the environment",
+        "It works: the environment is known before services are built",
+        "It works only if `ASPNETCORE_ENVIRONMENT` is set in appsettings.json",
+        "It registers both, so every email is written and sent in Development"
+      ],
+      "answer": 1,
+      "why": "`builder.Environment` is available while you register services, so picking an implementation per environment is straightforward. The environment comes from `ASPNETCORE_ENVIRONMENT` or `DOTNET_ENVIRONMENT`, not appsettings, and only one branch runs.",
+      "tags": ["di", "configuration"],
+      "level": 1,
+      "asked": "Everyday wiring that keeps side effects out of local development."
+    },
+    {
+      "id": "dn-195",
+      "q": "An ASP.NET Core app serves a React SPA from wwwroot. Refreshing on `/orders/42` returns 404. What fixes it?",
+      "choices": [
+        "`app.MapFallbackToFile(\"index.html\")` after the API routes",
+        "`app.UseDefaultFiles()`, which maps every unknown path to index.html",
+        "A 404 exception handler that redirects to the home page",
+        "Adding a controller action for every route the SPA defines"
+      ],
+      "answer": 0,
+      "why": "Client-side routes do not exist on the server, so unmatched paths must return the SPA's `index.html` and let the router take over. `MapFallbackToFile` does that for anything no other endpoint matched. `UseDefaultFiles` only serves index.html for directory requests.",
+      "tags": ["routing", "hosting"],
+      "level": 1,
+      "asked": "Hosting a SPA with the API is common; this checks you know how deep links work."
+    },
+    {
+      "id": "dn-196",
+      "q": "A new project calls `builder.Services.AddControllers();`, but requests to controller routes all return 404. What is missing?",
+      "choices": [
+        "`[ApiController]` on every controller, or routes are ignored",
+        "`app.UseEndpoints()`, which .NET 8 still requires for routing",
+        "`builder.Services.AddRouting()`, which AddControllers does not call",
+        "`app.MapControllers()`, which maps their attribute routes"
+      ],
+      "answer": 3,
+      "why": "`AddControllers` registers the services; `MapControllers` adds the controller endpoints to routing. Without it no controller route exists, hence 404. Routing services are already registered, and `[ApiController]` changes behaviour, not discovery.",
+      "tags": ["controllers", "routing"],
+      "level": 1,
+      "asked": "A quick check on the services-versus-pipeline split in Program.cs."
+    },
+    {
+      "id": "dn-197",
+      "q": "A handler has a dictionary of field errors. Which result sends a 400 in the standard validation problem format?",
+      "code": "var errors = new Dictionary<string, string[]>\n{\n    [\"email\"] = [\"Email is already registered.\"]\n};",
+      "lang": "cs",
+      "choices": [
+        "`TypedResults.BadRequest(errors)`, which wraps them as ProblemDetails",
+        "`TypedResults.ValidationProblem(errors)`",
+        "`TypedResults.Problem(errors.ToString())`",
+        "`TypedResults.Conflict(errors)`, always used for duplicates"
+      ],
+      "answer": 1,
+      "why": "`ValidationProblem` returns `HttpValidationProblemDetails` with status 400 and an `errors` map, the same shape `[ApiController]` produces, so clients handle both alike. `BadRequest(errors)` just serialises the dictionary. Some teams use 409 for duplicates, but not in this format.",
+      "tags": ["validation", "errors"],
+      "level": 1,
+      "asked": "Consistent error shapes are a big part of a usable API."
+    },
+    {
+      "id": "dn-198",
+      "q": "How does ASP.NET Core handle an uploaded file bound to `IFormFile` by default?",
+      "choices": [
+        "It streams the file straight to the handler without storing it",
+        "It keeps the whole file in memory, however large it is",
+        "It buffers it, spilling to a temp file beyond 64 KB",
+        "It rejects files over 64 KB unless streaming is enabled"
+      ],
+      "answer": 2,
+      "why": "Form files are buffered before the handler runs: small ones in memory, larger ones to temporary disk files. That is simple but costly for very large uploads, where streaming with `MultipartReader` (or direct-to-storage uploads) is better.",
+      "tags": ["model-binding", "performance"],
+      "level": 2,
+      "asked": "Upload handling reveals whether you have considered memory and disk under load."
+    },
+    {
+      "id": "dn-199",
+      "q": "What does .NET 9's `app.MapStaticAssets()` add over the older `UseStaticFiles()`?",
+      "choices": [
+        "Build-time compression and fingerprinted URLs with long caching",
+        "Server-side rendering of static HTML files before they are sent",
+        "Automatic authorisation checks on every static file request",
+        "Hosting static files in a CDN without any configuration at all"
+      ],
+      "answer": 0,
+      "why": "`MapStaticAssets` uses build-time metadata to serve pre-compressed files, strong ETags and fingerprinted URLs that can be cached aggressively and bust on change. `UseStaticFiles` still works but does less at build time. Neither applies authorisation by default.",
+      "tags": ["hosting", "performance"],
+      "level": 2,
+      "asked": "Shows you keep up with how modern ASP.NET Core serves front-end assets."
+    },
+    {
+      "id": "dn-200",
+      "q": "In .NET 10, what does `builder.Services.AddValidation()` enable for minimal APIs?",
+      "code": "record CreateUser([Required] string Name, [EmailAddress] string Email);\napp.MapPost(\"/users\", (CreateUser u) => TypedResults.Ok(u));",
+      "lang": "cs",
+      "choices": [
+        "Validation of the response body before it is sent to the client",
+        "DataAnnotations checks on bound parameters, with a 400 on failure",
+        "FluentValidation rules discovered automatically from the assembly",
+        "Checks on configuration options once the host has started"
+      ],
+      "answer": 1,
+      "why": "From .NET 10, minimal APIs can validate DataAnnotations on parameters and their types, returning a validation problem response before the handler runs; earlier versions needed a filter or a library. It does not validate responses or run FluentValidation.",
+      "tags": ["validation"],
+      "level": 2,
+      "asked": "Tracks a notable gap closed in .NET 10; candidates on older versions should know the workaround."
+    },
+    {
+      "id": "dn-201",
+      "q": "Which OpenAPI version does `Microsoft.AspNetCore.OpenApi` generate by default in .NET 10?",
+      "choices": [
+        "Swagger 2.0, for compatibility with older tools",
+        "OpenAPI 3.0, the same default as in .NET 9",
+        "OpenAPI 3.1, aligned with modern JSON Schema",
+        "It needs `OpenApiVersion` set, with no default"
+      ],
+      "answer": 2,
+      "why": ".NET 9 introduced built-in document generation targeting OpenAPI 3.0; .NET 10 moved the default to 3.1, which uses JSON Schema 2020-12 (for example, nullable types via type arrays). You can still choose 3.0 in the options for older tooling.",
+      "tags": ["openapi"],
+      "level": 2,
+      "asked": "Relevant when generating clients: schema changes between 3.0 and 3.1 affect tools."
+    },
+    {
+      "id": "dn-202",
+      "q": "What does this .NET 10 minimal API endpoint send?",
+      "code": "app.MapGet(\"/prices\", (PriceFeed feed, CancellationToken ct) =>\n    TypedResults.ServerSentEvents(feed.StreamAsync(ct)));",
+      "lang": "cs",
+      "choices": [
+        "A JSON array written once the feed completes",
+        "A WebSocket upgrade, then a message per price",
+        "A single event, after which the connection closes",
+        "A `text/event-stream` response, an event per item"
+      ],
+      "answer": 3,
+      "why": "`ServerSentEvents` writes each item from the async sequence as an SSE event over a long-lived HTTP response, which browsers read with `EventSource`. It is one-way and simpler than WebSockets or SignalR for live feeds.",
+      "tags": ["rest", "async"],
+      "level": 2,
+      "asked": "A newer built-in option for real-time updates; knowing when it beats SignalR is a plus."
+    },
+    {
+      "id": "dn-203",
+      "q": "A GET handler sets an `ETag` header. With no caching middleware, what happens when a client repeats the request with a matching `If-None-Match`?",
+      "choices": [
+        "ASP.NET Core returns 304 automatically for every endpoint",
+        "The handler runs and returns 200 with the full body again",
+        "Kestrel returns 412, as the precondition matched the ETag",
+        "The browser skips the request and never contacts the server"
+      ],
+      "answer": 1,
+      "why": "For API endpoints, conditional GET is your code's job: compare `If-None-Match` with the current ETag and return 304 when they match. Static files and some caching features do it for you, but a plain handler does not. 412 is for failed `If-Match` preconditions.",
+      "tags": ["rest", "caching"],
+      "level": 2,
+      "asked": "Checks you understand conditional requests beyond knowing the header names."
+    },
+    {
+      "id": "dn-204",
+      "q": "With Asp.Versioning configured as `ReportApiVersions = true`, what do clients see?",
+      "choices": [
+        "Headers listing supported and deprecated versions",
+        "A redirect from any old version to the newest version's URL",
+        "A 410 Gone for every request to a deprecated version",
+        "The version number appended to every JSON response body"
+      ],
+      "answer": 0,
+      "why": "The library adds `api-supported-versions` and `api-deprecated-versions` headers, so clients can discover upgrades. Deprecated versions keep working until you remove them; nothing is redirected or rewritten.",
+      "tags": ["rest", "openapi"],
+      "level": 2,
+      "asked": "Communicating deprecation is as important as versioning itself."
+    },
+    {
+      "id": "dn-205",
+      "q": "A video endpoint should support seeking in the browser's player. What should it return?",
+      "choices": [
+        "`TypedResults.Bytes(File.ReadAllBytes(path), \"video/mp4\")` in memory",
+        "A JSON object with the video encoded as a Base64 string",
+        "A 302 to a `file://` path the browser can open locally",
+        "`PhysicalFile(path, \"video/mp4\", enableRangeProcessing: true)`"
+      ],
+      "answer": 3,
+      "why": "Range processing honours `Range` headers with 206 Partial Content, which players use to seek and resume. Loading the whole file into a byte array wastes memory, Base64 inflates it by a third, and `file://` URLs point at the client's own disk.",
+      "tags": ["rest", "performance"],
+      "level": 2,
+      "asked": "Serving large files well is a practical skill with memory and UX consequences."
+    },
+    {
+      "id": "dn-206",
+      "q": "An export builds a 500 MB CSV and returns it with `TypedResults.File(bytes, \"text/csv\")`. What is the main problem?",
+      "choices": [
+        "The whole file sits in memory per request; stream it instead",
+        "`File` results are limited to 100 MB and are truncated silently",
+        "CSV is not an allowed content type for file results",
+        "The response is buffered to disk, so the first byte is slow"
+      ],
+      "answer": 0,
+      "why": "A byte array holds the entire export in memory, and a few concurrent exports can exhaust the server. Write rows directly to the response body stream, or use a `Stream` overload, so memory stays flat. There is no size cap or content-type restriction.",
+      "tags": ["performance"],
+      "level": 2,
+      "asked": "Exports are a common source of memory spikes; streaming is the expected answer."
+    },
+    {
+      "id": "dn-207",
+      "q": "A service needs the URL of the `GetOrder` endpoint for an email link, without hard-coding the route. What does ASP.NET Core provide?",
+      "choices": [
+        "`IUrlHelper`, injected as a singleton into any service",
+        "`HttpContext.Request.Path`, which holds every route template",
+        "`LinkGenerator.GetUriByName(\"GetOrder\", new { id }, ...)` from DI",
+        "`EndpointDataSource.Find(\"GetOrder\")`, which returns a URL string"
+      ],
+      "answer": 2,
+      "why": "`LinkGenerator` is a DI service that builds paths or absolute URIs from endpoint names and route values, inside or outside a request. It keeps links correct when routes change. `IUrlHelper` is tied to a request's action context.",
+      "tags": ["routing"],
+      "level": 2,
+      "asked": "Generating links from names avoids brittle string URLs across the codebase."
+    },
+    {
+      "id": "dn-208",
+      "q": "A NuGet library must add a middleware at the very start of every consumer's pipeline without them editing Program.cs. What mechanism exists for this?",
+      "choices": [
+        "An `IStartupFilter` registered in DI, which wraps the pipeline",
+        "A static constructor that calls `app.Use` on the running app",
+        "An `IHostedService` that inserts middleware once the app starts",
+        "A module initialiser that edits the compiled Program class"
+      ],
+      "answer": 0,
+      "why": "`IStartupFilter.Configure` receives the next configure delegate and can add middleware before (or after) the app's own, which is how some libraries plug in early. Use it sparingly, as hidden middleware surprises readers of Program.cs.",
+      "tags": ["middleware", "di"],
+      "level": 3,
+      "asked": "A deeper extensibility point; knowing it exists helps when debugging 'where did this middleware come from?'."
+    },
+    {
+      "id": "dn-209",
+      "q": "You enable HTTP/3 on Kestrel, yet browsers keep using HTTP/2. Which requirement is most often missed?",
+      "choices": [
+        "HTTP/3 only works for requests without cookies or auth",
+        "Clients find HTTP/3 via `Alt-Svc`, and need TLS and UDP",
+        "HTTP/3 requires the app to be published with Native AOT",
+        "HTTP/3 is used only when the port number is 3000 or above"
+      ],
+      "answer": 1,
+      "why": "HTTP/3 runs over QUIC on UDP and always uses TLS; browsers usually connect with HTTP/2 first and switch after seeing `Alt-Svc`. Firewalls or load balancers that block UDP, or a missing HTTPS endpoint, keep clients on HTTP/2. The OS also needs QUIC support.",
+      "tags": ["hosting"],
+      "level": 3,
+      "asked": "Shows you understand protocol negotiation rather than just flipping a setting."
+    },
+    {
+      "id": "dn-210",
+      "q": "A PUT sends `If-Match: \"v7\"`, but the resource's current ETag is `\"v8\"`. What should the API return?",
+      "choices": [
+        "409 Conflict, with the latest version of the resource attached",
+        "304 Not Modified, since the client already has a version",
+        "200 OK, applying the update because the resource exists",
+        "412 Precondition Failed, as the version check failed"
+      ],
+      "answer": 3,
+      "why": "`If-Match` makes the update conditional; a mismatch means someone changed it first, and RFC 9110 specifies 412. It is the HTTP form of optimistic concurrency, often backed by a row version. 409 is a common choice for conflicts without preconditions; 304 applies to GETs.",
+      "tags": ["rest", "errors"],
+      "level": 3,
+      "asked": "Links HTTP semantics to concurrency control, a sign of solid API design."
     }
   ]
 }

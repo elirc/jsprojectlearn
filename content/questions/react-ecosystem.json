@@ -465,6 +465,1873 @@
       ],
       "level": 2,
       "asked": "It checks whether you know the hook's contract, especially that the optimistic value disappears the moment the action settles."
+    },
+    {
+      "id": "re-026",
+      "q": "In React Router v7, a layout route renders a header and a sidebar. Where do its matched child routes appear?",
+      "code": "function DashboardLayout() {\n  return (\n    <div className=\"shell\">\n      <Sidebar />\n      <main><Outlet /></main>\n    </div>\n  );\n}",
+      "lang": "jsx",
+      "choices": [
+        "After the whole layout, because children always render as siblings of the parent element",
+        "Wherever `<Outlet />` sits, so the matched child fills the `<main>` region of the layout",
+        "Nowhere until each child is also passed as a prop called `children` to the layout",
+        "In a new React root the router creates, so the child cannot read the layout's context"
+      ],
+      "answer": 1,
+      "why": "`<Outlet />` is the slot where the router renders the next matched route down the tree, so the layout decides exactly where child screens go. Children are not passed as `children` props, and they render inside the same React tree, so they can read any provider the layout renders.",
+      "tags": [
+        "routing"
+      ],
+      "level": 1,
+      "asked": "A warm-up that shows whether you have actually built nested layouts rather than repeating a header on every page."
+    },
+    {
+      "id": "re-027",
+      "q": "In React Router v7, the route `/dashboard` has children `settings` and an index route. What does the index route render for?",
+      "code": "{ path: 'dashboard', element: <Dashboard />, children: [\n  { index: true, element: <Overview /> },\n  { path: 'settings', element: <Settings /> },\n] }",
+      "lang": "jsx",
+      "choices": [
+        "Every child URL, so `<Overview />` shows above `<Settings />` on `/dashboard/settings`",
+        "Only a URL that no sibling matches, acting as the not-found page for the dashboard",
+        "Exactly `/dashboard`, filling the parent outlet when no child path segment is present",
+        "Nothing, because an index route must also declare `path: ''` before it can match"
+      ],
+      "answer": 2,
+      "why": "An index route is the default child: it renders in the parent's outlet when the URL matches the parent exactly. It is not a catch-all (that is `path: '*'`), and it never renders alongside a sibling that matched.",
+      "tags": [
+        "routing"
+      ],
+      "level": 1,
+      "asked": "It checks you know how to avoid an empty content area on a layout URL without hacks like a redirect."
+    },
+    {
+      "id": "re-028",
+      "q": "In React Router v7, the route path is `/users/:userId` and the URL is `/users/7`. What does `useParams()` return?",
+      "choices": [
+        "`{ userId: 7 }`, because numeric segments are converted to numbers",
+        "`{ userId: '7' }`, because every path param is a string value",
+        "`['7']`, an array of the dynamic segments in the order they appear",
+        "`{ userId: '/users/7' }`, the full matched pathname for the param"
+      ],
+      "answer": 1,
+      "why": "Params come straight from the URL, so they are always strings (or `undefined` if the segment is optional and missing). Code that compares `params.userId === user.id` against a number silently fails, which is why you parse or validate params at the edge.",
+      "tags": [
+        "routing"
+      ],
+      "level": 1,
+      "asked": "Interviewers like it because the string-versus-number bug is a very common production slip."
+    },
+    {
+      "id": "re-029",
+      "q": "In React Router v7, a parent layout route and its child route both have loaders. When the user navigates to the child URL for the first time, how do the loaders run?",
+      "choices": [
+        "Parent first, then the child once the parent loader has resolved its data",
+        "Child first, so the most specific data is ready before the layout renders",
+        "In parallel, and the page renders once all of the matched loaders settle",
+        "Only the child loader runs, and the parent reuses whatever it last loaded"
+      ],
+      "answer": 2,
+      "why": "The router starts every matched loader at once, which is the main reason loaders beat effects: no parent-then-child waterfall. The flip side is that a child loader cannot wait on the parent's result, so shared lookups have to be fetched (or cached) independently.",
+      "tags": [
+        "routing",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "A strong answer names the waterfall this removes and the trade-off that loaders cannot depend on each other."
+    },
+    {
+      "id": "re-030",
+      "q": "In React Router v7 data mode, a route has an `action`. What happens after a `<Form method=\"post\">` submission to it finishes?",
+      "choices": [
+        "Only the submitting route's loader reruns, and the rest of the page is kept as is",
+        "Nothing is refetched; the component must call `navigate(0)` to refresh its data",
+        "The page reloads in full, because a posted form always triggers a document request",
+        "The loaders of the matched routes rerun, so data on the page reflects the change"
+      ],
+      "answer": 3,
+      "why": "After any action, the router revalidates the loaders of the current matches, so a list or a count elsewhere on the page picks up the mutation without manual refetching. `<Form>` is intercepted client-side, so there is no full reload.",
+      "tags": [
+        "routing",
+        "mutations"
+      ],
+      "level": 2,
+      "asked": "It separates people who know the loader/action model from those who bolt fetch calls onto a router."
+    },
+    {
+      "id": "re-031",
+      "q": "In React Router v7, each row in a list has a \"star\" toggle that posts to an action. Why use `useFetcher` rather than `<Form>` for it?",
+      "choices": [
+        "A fetcher submits without navigating, so the URL and history stay unchanged",
+        "A fetcher skips the action entirely and writes straight to the loader data",
+        "A fetcher disables revalidation, so the list does not refetch after a star",
+        "A fetcher sends JSON instead of form data, which actions require for toggles"
+      ],
+      "answer": 0,
+      "why": "Fetchers call loaders and actions without a navigation, and each has its own `state`, so many rows can submit independently. They still trigger revalidation after an action, which is what keeps the rest of the page in sync.",
+      "tags": [
+        "routing",
+        "mutations"
+      ],
+      "level": 2,
+      "asked": "Knowing when a mutation is not a navigation is a good signal of real experience with data routers."
+    },
+    {
+      "id": "re-032",
+      "q": "In React Router v7, which sequence does `useNavigation().state` go through for a `<Form method=\"post\">` submission that is followed by revalidation?",
+      "choices": [
+        "`'idle'` → `'loading'` → `'submitting'` → `'idle'`",
+        "`'idle'` → `'submitting'` → `'loading'` → `'idle'`",
+        "`'idle'` → `'pending'` → `'success'` → `'idle'`",
+        "`'idle'` → `'submitting'` → `'idle'`, with no loading step"
+      ],
+      "answer": 1,
+      "why": "While the action runs the state is `submitting`; while the loaders revalidate (or a redirect loads) it is `loading`; then it returns to `idle`. Plain link navigations skip `submitting`. There is no `pending` or `success` state.",
+      "tags": [
+        "routing",
+        "pending-ui"
+      ],
+      "level": 2,
+      "asked": "It shows whether you can build a correct \"Saving…\" versus \"Loading…\" indicator."
+    },
+    {
+      "id": "re-033",
+      "q": "A product list keeps its filters in `useState`. What do you gain by moving them into the URL search params instead?",
+      "choices": [
+        "Faster renders, since reading the URL is cheaper than reading React state",
+        "Automatic validation, because the router rejects unknown search param keys",
+        "Private filters, since search params are never sent to the server or logged",
+        "Shareable, bookmarkable views that survive a reload and work with Back"
+      ],
+      "answer": 3,
+      "why": "URL state is the source of truth for \"which view am I looking at\": a colleague can open the same link, reloads keep the filters, and Back undoes a filter change. The URL is logged and sent to servers, so it is the wrong place for anything private.",
+      "tags": [
+        "routing",
+        "client-state"
+      ],
+      "level": 1,
+      "asked": "Interviewers want to hear that URL state is state, not an afterthought."
+    },
+    {
+      "id": "re-034",
+      "q": "What does `searchParams.get('page')` return for the URL `/orders?page=2&page=3`?",
+      "choices": [
+        "`'2'`, the first value, as a string",
+        "`'3'`, the last value, as a string",
+        "`['2', '3']`, all values as an array",
+        "`2`, the first value parsed as a number"
+      ],
+      "answer": 0,
+      "why": "`URLSearchParams.get` returns the first value for a key as a string, or `null` when the key is absent; `getAll` returns every value. Nothing is parsed, so `page` must be converted and validated before use.",
+      "tags": [
+        "routing"
+      ],
+      "level": 1,
+      "asked": "It checks you parse URL input defensively rather than trusting its type."
+    },
+    {
+      "id": "re-035",
+      "q": "In React Router v7, the `/orders/:id` child route has an `errorElement` and its loader throws. What does the user see?",
+      "choices": [
+        "A blank screen, because a loader error unmounts the whole router",
+        "The root error page, because loader errors always go to the top route",
+        "The child's error element inside the parent layout, which stays visible",
+        "The previous page, because a failed navigation is cancelled and ignored"
+      ],
+      "answer": 2,
+      "why": "Errors bubble to the nearest route with an `errorElement` (or `ErrorBoundary` in framework mode), and it renders in place of that route's element. Parents above it keep rendering, so the navigation and header still work and the user can recover.",
+      "tags": [
+        "routing",
+        "error-handling"
+      ],
+      "level": 2,
+      "asked": "A good answer mentions putting error boundaries on leaf routes so one failure does not blank the app."
+    },
+    {
+      "id": "re-036",
+      "q": "In React Router v7, how can the error element tell a deliberate \"not found\" apart from a crash?",
+      "code": "export async function loader({ params }) {\n  const order = await getOrder(params.id);\n  if (!order) throw data('Order not found', { status: 404 });\n  return order;\n}",
+      "lang": "js",
+      "choices": [
+        "Check `error instanceof NotFoundError`, which the router attaches to the thrown value",
+        "Use `isRouteErrorResponse(error)` and read `error.status`, which is 404 here",
+        "Read `useLoaderData()` in the error element, which holds the thrown payload",
+        "Compare `error.message` to the string, since `data()` wraps it in an `Error`"
+      ],
+      "answer": 1,
+      "why": "Throwing `data(...)` (or a `Response`) produces a route error response with `status`, `statusText` and `data`, which `isRouteErrorResponse` detects. Anything else is an unexpected error, so the element can show a friendly 404 for one and a generic failure for the other.",
+      "tags": [
+        "routing",
+        "error-handling"
+      ],
+      "level": 2,
+      "asked": "It shows you design for expected failures instead of letting every miss look like a crash."
+    },
+    {
+      "id": "re-037",
+      "q": "Why does a create-order action return `redirect('/orders/' + id)` instead of rendering a success message on the same route?",
+      "choices": [
+        "Actions cannot return data, so a redirect is the only way to end one",
+        "A redirect clears the router cache, which is needed after any mutation",
+        "Redirecting skips the loaders, so the new page renders without fetching",
+        "Reload or Back then shows a normal page instead of resubmitting the form"
+      ],
+      "answer": 3,
+      "why": "This is post/redirect/get: once the write is done, you move the user to a GET-able URL, so refreshing does not repeat the POST and the new resource has a real address. Actions can return data (for validation errors, say), and the target route's loaders still run.",
+      "tags": [
+        "routing",
+        "mutations"
+      ],
+      "level": 1,
+      "asked": "Interviewers look for the post/redirect/get pattern by name and the double-submit problem it prevents."
+    },
+    {
+      "id": "re-038",
+      "q": "In React Router v7, the `/admin` layout loader throws `redirect('/login')` for anonymous users. Its child `/admin/users` has its own loader. Is the users data safe?",
+      "choices": [
+        "Yes: a redirect thrown by a parent loader cancels its children before they start",
+        "Yes: the router runs parent loaders first and only continues if they return",
+        "No: loaders run in parallel, so the child loader still runs and must check too",
+        "No: redirects thrown from loaders are ignored unless the route also has an action"
+      ],
+      "answer": 2,
+      "why": "Matched loaders start together, so the child fetch is already in flight when the parent decides to redirect; the page never renders, but the request was made. The real protection belongs on the API, and each loader (or router middleware) should check the session rather than relying on the layout.",
+      "tags": [
+        "routing",
+        "auth"
+      ],
+      "level": 3,
+      "asked": "It exposes the belief that a client-side route guard is a security boundary."
+    },
+    {
+      "id": "re-039",
+      "q": "In React Router v7, what does adding `lazy` to a route definition do?",
+      "code": "{ path: 'reports', lazy: () => import('./routes/reports') }",
+      "lang": "js",
+      "choices": [
+        "Delays the route's loader until the component has mounted and painted once",
+        "Loads the route module (component, loader, action) on the first visit to it",
+        "Renders the route only when it scrolls into view, like a lazy-loaded image",
+        "Marks the route as low priority so its loader runs after the other matches"
+      ],
+      "answer": 1,
+      "why": "The dynamic `import()` becomes a separate chunk that is fetched when a navigation first matches the route, and its exports fill in the route's `Component`, `loader` and so on. Unlike `React.lazy` inside a component, the router can fetch the code and start the loader together.",
+      "tags": [
+        "routing",
+        "code-splitting"
+      ],
+      "level": 2,
+      "asked": "It checks you can shrink the initial bundle of a large app without creating a code-then-data waterfall."
+    },
+    {
+      "id": "re-040",
+      "q": "After a successful login, the app calls `navigate('/dashboard', { replace: true })`. What does `replace` change?",
+      "choices": [
+        "It replaces the login entry in history, so Back does not return to the form",
+        "It replaces the dashboard loader data with the data from the login action",
+        "It reloads the whole document, so cached state from the login page is gone",
+        "It replaces the URL without rendering, so the dashboard mounts on next click"
+      ],
+      "answer": 0,
+      "why": "A replace navigation overwrites the current history entry instead of pushing a new one. Without it, pressing Back from the dashboard lands on a login form the user no longer needs. It is still a client-side navigation with loaders and rendering.",
+      "tags": [
+        "routing",
+        "auth"
+      ],
+      "level": 1,
+      "asked": "A small UX detail interviewers use to see whether you think about history, not just URLs."
+    },
+    {
+      "id": "re-041",
+      "q": "In React Router v7, a `<Form method=\"get\" action=\"/search\">` is submitted with a field named `q`. What happens?",
+      "choices": [
+        "The `/search` route's action runs with the fields as form data in the body",
+        "The browser does a full page load to `/search?q=…`, skipping the router",
+        "The router navigates to `/search?q=…` and runs loaders; no action is called",
+        "Nothing, because GET forms are only allowed on routes that have no loader"
+      ],
+      "answer": 2,
+      "why": "A GET submission serialises the fields into the search params and performs a normal client-side navigation, so loaders read them from `request.url`. Actions only handle non-GET methods. This is how search boxes and filter forms stay in the URL.",
+      "tags": [
+        "routing",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "It shows you can build filters that are shareable without writing any state-sync code."
+    },
+    {
+      "id": "re-042",
+      "q": "In React Router v7, why pass `request.signal` to `fetch` inside a loader?",
+      "code": "export async function loader({ request, params }) {\n  const res = await fetch(`/api/orders/${params.id}`, { signal: request.signal });\n  return res.json();\n}",
+      "lang": "js",
+      "choices": [
+        "It marks the request as coming from the router so the server can cache it",
+        "It lets the router retry the fetch automatically when the network drops",
+        "It forwards the user's cookies, which `fetch` would otherwise leave off",
+        "It aborts the fetch when the navigation is interrupted by a newer one"
+      ],
+      "answer": 3,
+      "why": "If the user clicks elsewhere before the loader finishes, the router aborts that request's signal. Passing it on cancels the network call instead of letting it finish and be discarded. It has nothing to do with retries or cookies.",
+      "tags": [
+        "routing",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "A good answer connects it to cancelling stale work when users click quickly."
+    },
+    {
+      "id": "re-043",
+      "q": "In a React Router v7 data router, the user clicks \"Order 1\" and then \"Order 2\" before the first loader resolves. Which order is shown?",
+      "choices": [
+        "Order 1, then Order 2 replaces it once the second loader resolves",
+        "Order 2 only; the first navigation is cancelled and its data dropped",
+        "Whichever loader resolves last, because both navigations are applied",
+        "Order 1 only, because a second click is ignored while one is pending"
+      ],
+      "answer": 1,
+      "why": "The router tracks one active navigation; starting a new one interrupts the old, aborts its request signal and ignores its result. That removes the classic \"fast clicks show the wrong record\" race that hand-written effects need an ignore flag for.",
+      "tags": [
+        "routing",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "It links the router to the race conditions candidates have usually hit in effect-based fetching."
+    },
+    {
+      "id": "re-044",
+      "q": "In React Router v7, a loader returns a promise for reviews without awaiting it. What does this allow?",
+      "code": "export async function loader({ params }) {\n  const product = await getProduct(params.id);\n  const reviews = getReviews(params.id); // not awaited\n  return { product, reviews };\n}",
+      "lang": "js",
+      "choices": [
+        "Nothing: the router awaits every promise in the object before rendering",
+        "The reviews are fetched only if a component reads them during render",
+        "The page renders with the product, and reviews stream in via `<Await>`",
+        "The reviews request is cached across navigations until the tab closes"
+      ],
+      "answer": 2,
+      "why": "The router waits only for what the loader awaited, so critical data blocks the transition and the rest renders later inside `<Suspense>` with `<Await resolve={reviews}>` (or `use`). The promise was already started, so there is no extra waterfall; v7 dropped the old `defer()` wrapper for this.",
+      "tags": [
+        "routing",
+        "streaming"
+      ],
+      "level": 3,
+      "asked": "It tests whether you can trade time-to-first-content against layout shift on a slow endpoint."
+    },
+    {
+      "id": "re-045",
+      "q": "In React Router v7 framework mode, what is the difference between a route module's `loader` and `clientLoader` exports?",
+      "choices": [
+        "`loader` runs only during the build; `clientLoader` runs on each request",
+        "`loader` runs on the server; `clientLoader` runs in the browser instead",
+        "`loader` returns HTML; `clientLoader` returns JSON for later navigations",
+        "`loader` runs once per session; `clientLoader` runs on every navigation"
+      ],
+      "answer": 1,
+      "why": "A server `loader` can use secrets and databases and is called over the network on client navigations; a `clientLoader` runs in the browser and can read client-only caches or call the server loader via `serverLoader()`. Pre-rendering is a separate option, not what `loader` means.",
+      "tags": [
+        "routing",
+        "ssr"
+      ],
+      "level": 2,
+      "asked": "It checks you know where your code runs, which decides what it can safely touch."
+    },
+    {
+      "id": "re-046",
+      "q": "In React Router v7, a child route needs the user object that the root route's loader already returned. What is the idiomatic way to read it?",
+      "choices": [
+        "Call `useLoaderData()` in the child, which merges data from every parent",
+        "Re-fetch the user in the child loader, since loader data is never shared",
+        "Pass it down through `<Outlet context>` only, since hooks cannot reach it",
+        "Call `useRouteLoaderData('root')`, which reads that route's loader data"
+      ],
+      "answer": 3,
+      "why": "`useLoaderData` only returns the current route's data; `useRouteLoaderData(id)` reads any active route's data by id, and the root route's id is `'root'` in framework mode. `<Outlet context>` also works, but it is not the only way.",
+      "tags": [
+        "routing",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "It catches the habit of refetching the same user in every loader."
+    },
+    {
+      "id": "re-047",
+      "q": "In React Router v7, how do you render a \"page not found\" screen for any URL no route matches?",
+      "choices": [
+        "Add a `path: '*'` route, which matches anything the other routes do not",
+        "Add an index route at the root, which renders whenever nothing else matches",
+        "Wrap the router in an error boundary, which catches the missing-route throw",
+        "Set `notFound: true` on the root route so the router shows a built-in page"
+      ],
+      "answer": 0,
+      "why": "A splat route `*` ranks below every specific path, so it only renders when nothing else fits. An index route matches only the parent URL itself, and there is no `notFound` option; unmatched URLs otherwise surface as a 404 route error at the root.",
+      "tags": [
+        "routing"
+      ],
+      "level": 1,
+      "asked": "Simple, but a missing 404 page is a common gap in take-home projects."
+    },
+    {
+      "id": "re-048",
+      "q": "In React Router v7, how can a star button show its new state immediately while the fetcher's action is still running?",
+      "code": "const fetcher = useFetcher();\nconst starred = fetcher.formData\n  ? fetcher.formData.get('starred') === 'true'\n  : item.starred;",
+      "lang": "jsx",
+      "choices": [
+        "It cannot; the value only changes after the loader revalidates the list",
+        "By copying `item.starred` into `useState` and flipping it on each click",
+        "By reading the pending submission from `fetcher.formData` while it runs",
+        "By calling `fetcher.load()` first so the cache holds the expected value"
+      ],
+      "answer": 2,
+      "why": "While a fetcher is submitting, `fetcher.formData` holds what was sent, so the UI can render the expected result. When the action and revalidation finish, `formData` clears and the real loader data takes over, so a failure rolls back without extra code.",
+      "tags": [
+        "routing",
+        "optimistic-ui"
+      ],
+      "level": 3,
+      "asked": "It shows you can do optimistic UI without keeping a second copy of server data in state."
+    },
+    {
+      "id": "re-049",
+      "q": "In a React Router v7 data router, only a search param changes (`/orders?page=1` to `/orders?page=2`). Which loaders rerun by default?",
+      "choices": [
+        "None, because the pathname is unchanged, so the route is not re-matched",
+        "Only the leaf route's loader, since parents never read search params",
+        "Only loaders that declared `searchParams` in their route definition",
+        "All loaders on the matched routes, parents included, since the URL changed"
+      ],
+      "answer": 3,
+      "why": "A search param change revalidates every matched loader by default, because any of them might read `request.url`. For an expensive layout loader that ignores the query, `shouldRevalidate` can opt it out.",
+      "tags": [
+        "routing",
+        "data-loading"
+      ],
+      "level": 3,
+      "asked": "It uncovers whether you have debugged \"why is my layout refetching on every filter change\"."
+    },
+    {
+      "id": "re-050",
+      "q": "In React Router v7, what does `<NavLink>` give you over `<Link>` in a sidebar menu?",
+      "choices": [
+        "It prefetches the target route's code and data as soon as the page loads",
+        "It knows if its route is active, for styling and `aria-current=\"page\"`",
+        "It opens the link in a new tab when the user holds a modifier key",
+        "It blocks navigation while a form on the current page has unsaved edits"
+      ],
+      "answer": 1,
+      "why": "`NavLink` matches its `to` against the current location and exposes `isActive` and `isPending` to `className`, `style` and children, and sets `aria-current=\"page\"` when active. Modifier-click behaviour is shared with `<Link>`, and blocking unsaved changes is `useBlocker`.",
+      "tags": [
+        "routing",
+        "accessibility"
+      ],
+      "level": 1,
+      "asked": "A quick check that you know the router primitives and the accessibility detail that comes with them."
+    },
+    {
+      "id": "re-051",
+      "q": "In TanStack Query v5, which call is valid?",
+      "choices": [
+        "`useQuery(['todos'], fetchTodos)`",
+        "`useQuery('todos', fetchTodos, { staleTime: 0, retry: 3 })`",
+        "`useQuery({ queryKey: ['todos'], queryFn: fetchTodos })`",
+        "`useQuery(fetchTodos, { key: 'todos' })`"
+      ],
+      "answer": 2,
+      "why": "v5 removed the positional overloads: every hook takes a single options object with `queryKey` and `queryFn`. The array-plus-function form is v4 and earlier code you will still see in old tutorials and answers.",
+      "tags": [
+        "server-state"
+      ],
+      "level": 1,
+      "asked": "It quickly shows whether your TanStack Query knowledge is current or from pre-2023 blog posts."
+    },
+    {
+      "id": "re-052",
+      "q": "With TanStack Query defaults, a user switches to another browser tab and back. The network panel shows the orders query refetching. Why?",
+      "choices": [
+        "The query errored while hidden, and errors always retry when the tab regains focus",
+        "The default `staleTime` is 0, so the data is stale and window focus triggers a refetch",
+        "The default `gcTime` is 0, so the cache was emptied the moment the tab was hidden from view",
+        "The browser drops fetch responses for background tabs, so the cache must refill"
+      ],
+      "answer": 1,
+      "why": "Out of the box data is stale immediately, and stale queries refetch on mount, window focus and reconnect. That is deliberate; if the data rarely changes, raise `staleTime` rather than turning off `refetchOnWindowFocus` everywhere. The default `gcTime` is five minutes, not zero.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 1,
+      "asked": "Almost everyone meets this on day one; a strong answer reaches for `staleTime` rather than disabling features."
+    },
+    {
+      "id": "re-053",
+      "q": "In TanStack Query v5, what is the difference between `isPending` and `isFetching` on a query?",
+      "choices": [
+        "`isPending` means a mutation is running; `isFetching` means a query is",
+        "`isPending` is true on every fetch; `isFetching` only on the very first",
+        "`isPending` means no data yet; `isFetching`, any fetch in flight",
+        "`isPending` covers retries only; `isFetching` covers the original request"
+      ],
+      "answer": 2,
+      "why": "`isPending` (status `pending`) means there is no cached data to show, so you render a skeleton. `isFetching` is also true during background refetches when data is already on screen, which suits a small spinner rather than replacing the content.",
+      "tags": [
+        "server-state"
+      ],
+      "level": 1,
+      "asked": "It shows whether you would blank the page on every background refresh."
+    },
+    {
+      "id": "re-054",
+      "q": "In the browser, a TanStack Query v5 `queryFn` fails on every call. With default options, roughly when does the component see `isError`?",
+      "choices": [
+        "Immediately after the first failed request, because queries never retry",
+        "After one retry, so the error shows about a second after the first failure",
+        "Never; failed queries stay pending until the window regains focus",
+        "After three retries with growing delays, several seconds after the first"
+      ],
+      "answer": 3,
+      "why": "Queries retry three times on the client with exponential backoff (1 s, 2 s, 4 s), so a hard failure takes about seven seconds to surface. For 4xx responses that will never succeed, a `retry` function that skips them gives faster feedback. Mutations do not retry by default.",
+      "tags": [
+        "server-state",
+        "error-handling"
+      ],
+      "level": 2,
+      "asked": "Candidates who have debugged \"why does my error state take forever\" answer this instantly."
+    },
+    {
+      "id": "re-055",
+      "q": "In TanStack Query v5, the orders query needs the `userId` returned by another query. How do you stop it running before the id exists?",
+      "code": "const { data: user } = useQuery(userQuery);\nconst orders = useQuery({\n  queryKey: ['orders', user?.id],\n  queryFn: () => fetchOrders(user.id),\n  /* ? */\n});",
+      "lang": "jsx",
+      "choices": [
+        "Add `enabled: !!user?.id`, so the query waits until the id is available",
+        "Wrap the second `useQuery` in `if (user)`, so it only runs when ready",
+        "Add `retry: true`, so it keeps retrying until `user.id` stops failing",
+        "Set `staleTime: Infinity`, so the query only runs once the key changes"
+      ],
+      "answer": 0,
+      "why": "`enabled: false` keeps a query idle until the condition becomes true, which is the standard dependent-query pattern. Calling a hook conditionally breaks the rules of hooks, and retrying a function that throws on `undefined` just produces noise.",
+      "tags": [
+        "server-state",
+        "data-loading"
+      ],
+      "level": 1,
+      "asked": "It is the first thing people get wrong when one request depends on another."
+    },
+    {
+      "id": "re-056",
+      "q": "In TanStack Query v5, a page must fetch details for a list of ids whose length changes at runtime. Which API fits?",
+      "choices": [
+        "A `useQuery` call per id inside a `map`, since each hook is independent",
+        "`useQueries({ queries: ids.map(id => ({ queryKey, queryFn })) })`",
+        "`useInfiniteQuery`, treating each id as another page of the result",
+        "One `useQuery` whose `queryFn` loops over the ids with `await` in turn"
+      ],
+      "answer": 1,
+      "why": "`useQueries` takes a dynamic array and caches each entry under its own key, in parallel. Calling hooks in a loop whose length changes violates the rules of hooks, and a single sequential `queryFn` both waterfalls and loses per-id caching.",
+      "tags": [
+        "server-state",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "It checks you can handle a variable number of parallel requests without breaking hook rules."
+    },
+    {
+      "id": "re-057",
+      "q": "In TanStack Query v5, a paginated table flashes a spinner every time the page number changes. What stops the flash?",
+      "code": "useQuery({\n  queryKey: ['orders', page],\n  queryFn: () => fetchOrders(page),\n});",
+      "lang": "jsx",
+      "choices": [
+        "Setting `staleTime: Infinity`, so the next page is served from the cache at once",
+        "Setting `gcTime: 0`, so the old page is dropped and the new one renders sooner",
+        "Adding `placeholderData: keepPreviousData`, which shows the last page meanwhile",
+        "Removing `page` from the key, so the query refetches in place with the same key"
+      ],
+      "answer": 2,
+      "why": "A new key has no data, so the query is pending. `keepPreviousData` shows the previous key's data as a placeholder with `isPlaceholderData: true` until the new page arrives. Dropping `page` from the key would mix pages under one cache entry, so one entry would flip between pages.",
+      "tags": [
+        "server-state",
+        "pagination"
+      ],
+      "level": 2,
+      "asked": "Interviewers want the v5 name (`placeholderData`), since the v4 `keepPreviousData: true` flag no longer exists."
+    },
+    {
+      "id": "re-058",
+      "q": "In TanStack Query v5, when does `hasNextPage` become false for this infinite query?",
+      "code": "useInfiniteQuery({\n  queryKey: ['feed'],\n  queryFn: ({ pageParam }) => fetchFeed(pageParam),\n  initialPageParam: 0,\n  getNextPageParam: (last) => last.nextCursor,\n});",
+      "lang": "jsx",
+      "choices": [
+        "When a page comes back with fewer items than the first page contained",
+        "When `getNextPageParam` returns `undefined` or `null` for the last page",
+        "When `fetchNextPage` throws, since errors end the list of pages",
+        "Never; you must track the end of the list yourself in component state"
+      ],
+      "answer": 1,
+      "why": "`getNextPageParam` receives the last page and returns the param for the next one; returning `undefined` or `null` signals there are no more pages. So the API must expose a cursor or an end marker, and `initialPageParam` is required in v5.",
+      "tags": [
+        "server-state",
+        "pagination"
+      ],
+      "level": 2,
+      "asked": "Infinite scroll is a common take-home feature, and this is where people hand-roll fragile state."
+    },
+    {
+      "id": "re-059",
+      "q": "In TanStack Query v5, you prefetch an order on link hover. When the details page mounts, the order shows instantly but a second identical request still fires. Why?",
+      "code": "onMouseEnter={() => queryClient.prefetchQuery({\n  queryKey: ['order', id],\n  queryFn: () => fetchOrder(id),\n})}",
+      "lang": "jsx",
+      "choices": [
+        "`prefetchQuery` does not write to the cache; it only warms the browser HTTP cache",
+        "The hover and the page use different `QueryClient` instances, so nothing is shared",
+        "Prefetched data is stored as placeholder data, which is always refetched on mount",
+        "The data is stale at once (default `staleTime` 0), so mounting refetches it anyway"
+      ],
+      "answer": 3,
+      "why": "Prefetching fills the cache, so the page renders immediately, but a stale query still refetches on mount. Setting a `staleTime` on the page's query (easiest via shared `queryOptions`) makes the prefetched data count as fresh and removes the duplicate call.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 3,
+      "asked": "It separates people who have measured their prefetching from those who assume it works."
+    },
+    {
+      "id": "re-060",
+      "q": "In TanStack Query v5, a component only needs the count of open orders from a large list query. What does `select` do here?",
+      "code": "const { data: openCount } = useQuery({\n  ...ordersQuery,\n  select: (orders) => orders.filter((o) => o.open).length,\n});",
+      "lang": "jsx",
+      "choices": [
+        "It sends the filter to the server so the response only holds open orders",
+        "It overwrites the cached list with the count, so other readers get a number",
+        "It derives the count here and re-renders only when the count changes",
+        "It runs the filter once when the query first loads and never again after that"
+      ],
+      "answer": 2,
+      "why": "`select` transforms data per observer: the cache keeps the full list for everyone else, and this component re-renders only when the selected value changes. It runs on the client after the fetch, so it does not reduce the payload.",
+      "tags": [
+        "server-state",
+        "re-renders"
+      ],
+      "level": 2,
+      "asked": "It tests whether you can cut re-renders on a shared query without adding a second request."
+    },
+    {
+      "id": "re-061",
+      "q": "In TanStack Query v5, which cached queries does this call mark as stale?",
+      "code": "queryClient.invalidateQueries({ queryKey: ['orders'] });",
+      "lang": "js",
+      "choices": [
+        "Every key starting with `'orders'`, such as `['orders', 5]` and `['orders', { page: 2 }]`",
+        "Only the entry whose key is exactly `['orders']`, leaving detail queries untouched",
+        "Every query in the client, because invalidation always refreshes the entire cache at once",
+        "Only the orders queries that are currently mounted; unmounted ones are removed"
+      ],
+      "answer": 0,
+      "why": "Query filters match by prefix by default, so one call covers the list, every page and every detail under that root; `exact: true` narrows it. Active matches refetch immediately and inactive ones refetch next time they are used. This is why hierarchical keys matter.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 2,
+      "asked": "It checks you design query keys so that invalidation after a mutation is a one-liner."
+    },
+    {
+      "id": "re-062",
+      "q": "In TanStack Query v5, the \"rename order\" endpoint returns the full updated order. What does writing it with `setQueryData` in `onSuccess` gain over invalidating?",
+      "code": "onSuccess: (order) => {\n  queryClient.setQueryData(['order', order.id], order);\n},",
+      "lang": "js",
+      "choices": [
+        "It skips a request: the detail cache is updated from the response itself",
+        "It makes the update permanent, so later refetches cannot overwrite it",
+        "It rolls the change back automatically if the server later rejects it",
+        "It updates every orders list too, since all keys share one data store"
+      ],
+      "answer": 0,
+      "why": "When the response already holds the new state, writing it straight into the cache avoids a round trip. It only updates that exact key, so lists that show the order still need invalidating (or their own update), and the next refetch will replace it as usual.",
+      "tags": [
+        "server-state",
+        "mutations"
+      ],
+      "level": 2,
+      "asked": "A good answer weighs saved requests against the risk of forgetting other cached views of the same entity."
+    },
+    {
+      "id": "re-063",
+      "q": "In this TanStack Query v5 optimistic update, why is `invalidateQueries` in `onSettled` rather than only in `onError`?",
+      "code": "onMutate: async (todo) => { /* cancel, snapshot, setQueryData */ return { prev }; },\nonError: (_e, _todo, ctx) => queryClient.setQueryData(['todos'], ctx.prev),\nonSettled: () => queryClient.invalidateQueries({ queryKey: ['todos'] }),",
+      "lang": "js",
+      "choices": [
+        "Because `onError` cannot call query client methods while a mutation is rolling back",
+        "So the cache is resynced with the server after success as well as after a rollback",
+        "Because `onSettled` runs before `onMutate`, which lets the snapshot be taken fresh",
+        "So the mutation is retried automatically if the invalidation request itself fails"
+      ],
+      "answer": 1,
+      "why": "The optimistic write is a guess: on success the server may have added ids, timestamps or other users' changes, and on failure the snapshot may itself be outdated. Refetching once the mutation settles, either way, puts the real server state back in the cache.",
+      "tags": [
+        "server-state",
+        "mutations",
+        "optimistic-ui"
+      ],
+      "level": 3,
+      "asked": "It tests whether you treat optimistic data as provisional rather than as the truth."
+    },
+    {
+      "id": "re-064",
+      "q": "A React 19 app with TanStack Query v5 loses all cached data whenever `App` re-renders. What is the bug?",
+      "code": "function App() {\n  const queryClient = new QueryClient();\n  return (\n    <QueryClientProvider client={queryClient}><Routes /></QueryClientProvider>\n  );\n}",
+      "lang": "jsx",
+      "choices": [
+        "The provider must wrap `App` from outside, never be rendered inside a component",
+        "`QueryClient` needs an explicit `gcTime`, or its cache clears on every render",
+        "A new client, and so a new empty cache, is created on every render of `App`",
+        "Providers rerender their subtree, and any rerender invalidates the whole cache"
+      ],
+      "answer": 2,
+      "why": "The cache lives inside the `QueryClient` instance, so constructing it in the render body replaces it every time. Create it once at module level for a client-only app, or with `useState(() => new QueryClient())` when you need one per request or per test.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 1,
+      "asked": "A classic setup bug that shows whether you understand where the cache actually lives."
+    },
+    {
+      "id": "re-065",
+      "q": "In TanStack Query v5, the API returns 404 for a missing order, yet the query shows `isSuccess` with an error body as `data`. Why?",
+      "code": "queryFn: () => fetch(`/api/orders/${id}`).then((r) => r.json()),",
+      "lang": "js",
+      "choices": [
+        "TanStack Query ignores HTTP status codes unless `throwOnError` is set",
+        "`fetch` only rejects on network failure, so the query fn must throw on `!r.ok`",
+        "The 404 was cached by the browser, so the query never saw the real status",
+        "JSON parsing converts error responses into normal objects before the query returns"
+      ],
+      "answer": 1,
+      "why": "The query library only knows a request failed if the promise rejects. `fetch` resolves for any HTTP response, so a wrapper that checks `res.ok` and throws is needed; otherwise error payloads land in the cache as data. `throwOnError` is about rethrowing to error boundaries, not detecting failures.",
+      "tags": [
+        "server-state",
+        "error-handling"
+      ],
+      "level": 1,
+      "asked": "It catches a bug that ships in many apps and makes error states silently never appear."
+    },
+    {
+      "id": "re-066",
+      "q": "In TanStack Query v5, what is the drawback of `useSuspenseQuery` compared with `useQuery`?",
+      "choices": [
+        "Its `data` may be `undefined`, so every consumer needs a loading check",
+        "It ignores the query cache and always fetches again when it mounts",
+        "It needs a Server Component parent, so it cannot run in client-only apps",
+        "It has no `enabled` option, so dependent queries need a different shape"
+      ],
+      "answer": 3,
+      "why": "Suspense queries always run: loading is handled by the nearest `<Suspense>` and errors by an error boundary, so `data` is guaranteed to be defined. That rules out `enabled` and `placeholderData`; dependent fetches are usually split into a child component that renders once the first value exists.",
+      "tags": [
+        "server-state",
+        "suspense"
+      ],
+      "level": 2,
+      "asked": "It checks you know the trade-offs rather than treating suspense as a free upgrade."
+    },
+    {
+      "id": "re-067",
+      "q": "When prefetching TanStack Query v5 data during server rendering, why create a new `QueryClient` for each request?",
+      "choices": [
+        "A shared client would leak one user's cached data into another user's page",
+        "Each client may only run one query, so a page needs a client per request",
+        "The server cache must be empty for `dehydrate` to produce valid JSON",
+        "Clients created at module level cannot be passed to `HydrationBoundary`"
+      ],
+      "answer": 0,
+      "why": "Module-level state on a server is shared by every request, so a global cache would serve user A's orders to user B. Per-request clients are prefetched, dehydrated, sent with the HTML and hydrated into the browser's own long-lived client through `HydrationBoundary`.",
+      "tags": [
+        "server-state",
+        "ssr"
+      ],
+      "level": 3,
+      "asked": "It tests whether you think about request isolation, which is a real security issue in SSR apps."
+    },
+    {
+      "id": "re-068",
+      "q": "In TanStack Query v5, why define an order query with `queryOptions` and reuse it?",
+      "code": "export const orderQuery = (id) => queryOptions({\n  queryKey: ['order', id],\n  queryFn: () => fetchOrder(id),\n  staleTime: 30_000,\n});",
+      "lang": "js",
+      "choices": [
+        "It registers the query globally, so it is prefetched as soon as the app starts up",
+        "The same key, fn and options serve `useQuery`, prefetching and `getQueryData`",
+        "It turns the query into a mutation, so it can also be used to save the order",
+        "It makes the query immune to invalidation, since its options are frozen"
+      ],
+      "answer": 1,
+      "why": "`queryOptions` bundles key, function and settings in one place, so every caller agrees on the key and TypeScript can infer the data type from the key in calls like `getQueryData`. It does nothing on its own until a hook or client method uses it.",
+      "tags": [
+        "server-state"
+      ],
+      "level": 2,
+      "asked": "It shows how you avoid typo-driven cache misses in a large codebase."
+    },
+    {
+      "id": "re-069",
+      "q": "In TanStack Query v5, when does the request in `useMutation` actually run?",
+      "code": "const save = useMutation({ mutationFn: saveOrder });",
+      "lang": "jsx",
+      "choices": [
+        "When the component mounts, the same as a query does on first render",
+        "Only when you call `save.mutate(variables)`, usually from an event handler",
+        "Whenever the variables passed to `useMutation` change between two renders",
+        "When a query with the same `mutationFn` is invalidated by the cache"
+      ],
+      "answer": 1,
+      "why": "Queries are declarative reads that run when mounted; mutations are imperative writes that run only when triggered. `save.isPending` then drives a disabled button, and `mutate` can take per-call `onSuccess`/`onError` callbacks.",
+      "tags": [
+        "server-state",
+        "mutations"
+      ],
+      "level": 1,
+      "asked": "A basic check that you separate reads from writes in server-state tools."
+    },
+    {
+      "id": "re-070",
+      "q": "In TanStack Query v5, a dashboard polls with `refetchInterval: 10_000`. What happens while its browser tab is hidden, with other options at their defaults?",
+      "choices": [
+        "Polling continues every 10 seconds, since intervals ignore visibility",
+        "Polling speeds up to catch up on changes missed while hidden",
+        "Polling pauses, and resumes when the tab becomes visible again",
+        "The query is removed from the cache after `gcTime` while hidden"
+      ],
+      "answer": 2,
+      "why": "`refetchIntervalInBackground` defaults to false, so interval refetches pause in hidden tabs, saving server load. The query is still observed by a mounted component, so it is not garbage-collected. Set the flag if something genuinely must poll in the background.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 2,
+      "asked": "It checks you know the cost of polling and what the library does to limit it."
+    },
+    {
+      "id": "re-071",
+      "q": "A TanStack Query v5 refetch returns JSON deeply equal to what is cached. What happens to `data` in components using it?",
+      "choices": [
+        "The previous object is kept by reference, so memoised children do not re-render",
+        "A new object replaces it, so every consumer re-renders with identical values",
+        "The refetch is discarded before parsing, since the server response is unchanged",
+        "The cache compares with `===` only, so arrays are always swapped for new ones"
+      ],
+      "answer": 0,
+      "why": "Structural sharing merges the new result into the old one and keeps every unchanged object reference, so `data` is the same object when nothing changed and only changed branches get new references. That makes `data` safe as an effect or memo dependency.",
+      "tags": [
+        "server-state",
+        "re-renders"
+      ],
+      "level": 3,
+      "asked": "It shows you know why polling does not cause a re-render storm."
+    },
+    {
+      "id": "re-072",
+      "q": "A component copies TanStack Query data into local state. What goes wrong?",
+      "code": "const { data } = useQuery(ordersQuery);\nconst [orders, setOrders] = useState([]);\nuseEffect(() => { if (data) setOrders(data); }, [data]);",
+      "lang": "jsx",
+      "choices": [
+        "Nothing; this is the recommended way to make query data editable",
+        "The effect runs before the query, so `orders` is always empty",
+        "The extra state and render duplicate the cache and drift from it",
+        "React forbids `setState` inside effects, so the code throws in 19"
+      ],
+      "answer": 2,
+      "why": "The cache is already the state; a copy adds an extra render with stale data and can fall out of sync once edits and refetches interleave. Render `data` directly, derive values during render, and keep only genuinely local edits (like a draft form) in state.",
+      "tags": [
+        "server-state",
+        "client-state"
+      ],
+      "level": 1,
+      "asked": "It detects the habit of syncing server state into component state that makes caches pointless."
+    },
+    {
+      "id": "re-073",
+      "q": "In TanStack Query v5, how do you stop a query retrying 404 and 403 responses while still retrying server errors?",
+      "choices": [
+        "Set `retryOnMount: false`, which stops client errors being retried",
+        "Set `retryDelay: 0`, which makes client errors fail on the first attempt",
+        "Pass `retry: (count, error) => error.status >= 500 && count < 3`",
+        "Set `networkMode: 'always'`, which skips retries for HTTP client errors"
+      ],
+      "answer": 2,
+      "why": "`retry` accepts a function of the failure count and the error, so the query function can throw an error carrying the status and the policy retries only transient failures. `retryDelay` controls timing, not whether to retry, and `networkMode` is about offline behaviour.",
+      "tags": [
+        "server-state",
+        "error-handling"
+      ],
+      "level": 2,
+      "asked": "A strong answer explains why retrying a 404 just delays the error message for the user."
+    },
+    {
+      "id": "re-074",
+      "q": "In TanStack Query v5, what is the key difference between `initialData` and `placeholderData`?",
+      "choices": [
+        "`initialData` is only for SSR; `placeholderData` only for client renders",
+        "`initialData` is cached as real data; placeholder data is never cached",
+        "`initialData` is refetched at once; `placeholderData` is kept until stale",
+        "`initialData` must be a function; `placeholderData` must be a plain value"
+      ],
+      "answer": 1,
+      "why": "`initialData` is written into the cache and treated like fetched data, so with a `staleTime` it may not refetch at all and other components see it. `placeholderData` is shown only to this observer while the real fetch runs, which suits guesses such as a list row reused as a detail preview.",
+      "tags": [
+        "server-state",
+        "caching"
+      ],
+      "level": 3,
+      "asked": "Mixing these up leads to half-populated objects being cached as the truth."
+    },
+    {
+      "id": "re-075",
+      "q": "In TanStack Query v5, a query with cached data refetches in the background and the refetch fails after its retries. What do the query fields show?",
+      "code": "const { data, isError } = useQuery(ordersQuery);\nif (isError) return <ErrorPage />;\nreturn <OrdersTable orders={data} />;",
+      "lang": "jsx",
+      "choices": [
+        "`isError` stays false, because background refetch failures are ignored",
+        "`data` becomes `undefined`, so checking `isError` first is required anyway",
+        "The query rolls back to `isPending` and waits for the next focus event",
+        "`isError` is true and `data` still holds the last good result"
+      ],
+      "answer": 3,
+      "why": "The status becomes `error`, but the last successful `data` is kept. Checking `isError` first therefore replaces a perfectly usable table with an error page because of one failed refresh; checking `data` first and showing a small warning is usually better.",
+      "tags": [
+        "server-state",
+        "error-handling"
+      ],
+      "level": 3,
+      "asked": "It tests whether your status checks are ordered for real users rather than for the happy path."
+    },
+    {
+      "id": "re-076",
+      "q": "In React Hook Form v7, what does `register('email')` return for you to spread onto the input?",
+      "code": "<input type=\"email\" {...register('email')} />",
+      "lang": "jsx",
+      "choices": [
+        "The current `value` and a `setValue` function, like a `useState` pair",
+        "`name`, `onChange`, `onBlur` and a `ref` that the library uses to read it",
+        "A validated copy of the input element that React renders in its place",
+        "Only an `id`, since the library reads every input by id when submitting"
+      ],
+      "answer": 1,
+      "why": "The `ref` lets the library read the DOM value directly, and `onChange`/`onBlur` trigger validation according to the form's mode. No `value` prop is passed, so the input stays uncontrolled and typing does not re-render the whole form.",
+      "tags": [
+        "forms"
+      ],
+      "level": 1,
+      "asked": "It checks you know what the spread actually wires up, which matters when a custom input \"does not register\"."
+    },
+    {
+      "id": "re-077",
+      "q": "In React Hook Form v7, when does `onValid` run?",
+      "code": "<form onSubmit={handleSubmit(onValid)}>",
+      "lang": "jsx",
+      "choices": [
+        "On every keystroke, so the parent always holds the latest form values",
+        "On submit, whether or not validation passes, with any errors attached",
+        "On submit, only if validation passes, receiving the typed form values",
+        "On blur of the last field, since that is when the form is considered done"
+      ],
+      "answer": 2,
+      "why": "`handleSubmit` prevents the default submit, validates, and calls your handler with the values only when there are no errors; an optional second callback receives the errors instead. That is why your submit code never needs its own \"is it valid\" check.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 1,
+      "asked": "A basic check that you let the library gate submission instead of re-checking by hand."
+    },
+    {
+      "id": "re-078",
+      "q": "With React Hook Form v7 defaults, a user types an invalid email and tabs away. No error appears until they press Submit. Why?",
+      "choices": [
+        "The default `mode` is `onSubmit`, so fields are first validated on submit",
+        "Email inputs are validated by the browser only, not by the form library",
+        "Errors render only after `trigger()` is called in an effect by your code",
+        "Blur events are ignored for uncontrolled inputs registered with `register`"
+      ],
+      "answer": 0,
+      "why": "By default fields are validated on submit, then re-validated on change (`reValidateMode: 'onChange'`) once an error is shown. Setting `mode: 'onBlur'` or `'onTouched'` shows errors earlier, which is often kinder than shouting on every keystroke.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 2,
+      "asked": "It reveals whether you have tuned validation timing for real users rather than accepting defaults blindly."
+    },
+    {
+      "id": "re-079",
+      "q": "In React Hook Form v7 with Zod, what does `resolver: zodResolver(schema)` do?",
+      "choices": [
+        "It converts the form into a controlled one so Zod can watch each input",
+        "It sends the schema to the server so the API validates the same rules",
+        "It generates the form inputs automatically from the fields in the schema",
+        "It runs the schema over the values and maps each issue to a field error"
+      ],
+      "answer": 3,
+      "why": "A resolver replaces per-field rules: it validates the whole values object and converts each Zod issue, by path, into `errors.<field>`. The same schema can be imported by the API handler, but the resolver itself does nothing on the server.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 1,
+      "asked": "It checks you can wire schema validation into a form rather than duplicating rules in JSX."
+    },
+    {
+      "id": "re-080",
+      "q": "With Zod 4, this schema rejects every submission of the age field with \"expected number, received string\". Why?",
+      "code": "const schema = z.object({ age: z.number().int().min(18) });\n// <input type=\"number\" {...register('age')} />",
+      "lang": "jsx",
+      "choices": [
+        "`type=\"number\"` inputs submit `NaN` until the user presses Enter",
+        "DOM inputs hold strings, even `type=\"number\"`, so it needs coercion",
+        "`.int()` only accepts values typed as `bigint`, not plain numbers",
+        "Zod must be told the field is optional before it accepts user input"
+      ],
+      "answer": 1,
+      "why": "An input's `value` is always a string, so the schema sees `'42'`. Fix it with `register('age', { valueAsNumber: true })` or `z.coerce.number()`, keeping in mind that coercion has its own edge cases with empty strings.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 2,
+      "asked": "Everyone who has shipped a numeric field has hit this; a good answer names both fixes."
+    },
+    {
+      "id": "re-081",
+      "q": "With Zod 4, what does `z.coerce.number().parse('')` return for an optional quantity field the user left blank?",
+      "choices": [
+        "`undefined`, because empty strings are treated as a missing value",
+        "`NaN`, which then fails the schema with an \"expected number\" error",
+        "`0`, because `Number('')` is 0, so the blank passes as a real value",
+        "It throws, because coercion refuses to convert an empty string"
+      ],
+      "answer": 2,
+      "why": "`z.coerce.number()` calls `Number(input)`, and `Number('')` is `0`, so a blank field silently becomes zero. For optional numeric inputs, preprocess empty strings to `undefined` first (or use `valueAsNumber`, which gives `NaN` you can reject).",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 3,
+      "asked": "It separates people who have tested their edge cases from those who copied `z.coerce` from a tutorial."
+    },
+    {
+      "id": "re-082",
+      "q": "With Zod 4, how do you make a \"passwords do not match\" error appear under the confirm field rather than on the whole form?",
+      "code": "z.object({ password: z.string(), confirm: z.string() })\n  .refine((d) => d.password === d.confirm, { message: 'Passwords differ', /* ? */ })",
+      "lang": "js",
+      "choices": [
+        "Add `path: ['confirm']`, which attaches the issue to that field",
+        "Add `field: 'confirm'`, which tells the resolver where to show it",
+        "Move the check into `confirm: z.string().refine(...)` on its own",
+        "Nothing; object-level refinements are always shown on every field"
+      ],
+      "answer": 0,
+      "why": "An object-level refinement has an empty path by default, so the error lands at the root. Setting `path` routes it to `errors.confirm`. A field-level refine cannot see the other field's value, which is why cross-field rules live on the object.",
+      "tags": [
+        "forms",
+        "validation"
+      ],
+      "level": 2,
+      "asked": "Cross-field validation is a staple of form questions, and this is the detail that trips people up."
+    },
+    {
+      "id": "re-083",
+      "q": "In React Hook Form v7, a `useFieldArray` named `items` renders line items. What name should the quantity input of the second row register?",
+      "choices": [
+        "`items[1][quantity]`",
+        "`items.1.quantity`",
+        "`quantity[1]`",
+        "`items.quantity.1`"
+      ],
+      "answer": 1,
+      "why": "Field paths use dot notation with numeric indexes, so `items.1.quantity` maps to `values.items[1].quantity`, and its error appears at `errors.items?.[1]?.quantity`. Bracket notation is not supported in names.",
+      "tags": [
+        "forms"
+      ],
+      "level": 1,
+      "asked": "It checks you have built a dynamic form, such as an invoice with line items."
+    },
+    {
+      "id": "re-084",
+      "q": "In React Hook Form v7, the API says \"payment declined\", which is not about any one field. Where should that error go?",
+      "code": "catch (e) {\n  setError(/* ? */, { type: 'server', message: e.message });\n}",
+      "lang": "jsx",
+      "choices": [
+        "`setError('email', …)`, the first field, so the message has somewhere to render",
+        "Into a separate `useState`, because `setError` only accepts registered fields",
+        "`setError('root.serverError', …)`, then render `errors.root?.serverError`",
+        "`setError('*', …)`, which copies the message onto every registered field"
+      ],
+      "answer": 2,
+      "why": "`root` errors are form-level: they do not belong to a field, are shown wherever you render them, and are cleared on the next submit. Pinning the message to an unrelated field misleads users and screen readers; a separate state duplicates what the library already tracks.",
+      "tags": [
+        "forms",
+        "error-handling"
+      ],
+      "level": 2,
+      "asked": "It shows you handle the failures that are not validation errors, which real APIs produce all the time."
+    },
+    {
+      "id": "re-085",
+      "q": "In React Hook Form v7, `onValid` is an `async` function that posts the form. What does `formState.isSubmitting` do meanwhile?",
+      "choices": [
+        "It flips to true and back within one render, before the request starts",
+        "It stays true until the returned promise settles, so you can disable Save",
+        "It is only true while validation runs; the request itself is not tracked",
+        "It stays true until the page reloads, since forms submit only once"
+      ],
+      "answer": 1,
+      "why": "`handleSubmit` awaits your handler, so `isSubmitting` covers validation and the request. Disabling the button with it blocks double submits without a hand-written loading flag; `isSubmitSuccessful` tells you whether it finished cleanly.",
+      "tags": [
+        "forms"
+      ],
+      "level": 1,
+      "asked": "It shows you prevent double submissions with what the library already gives you."
+    },
+    {
+      "id": "re-086",
+      "q": "In React Hook Form v7, this component re-renders the whole large form on every keystroke. Why?",
+      "code": "function ProfileForm() {\n  const { register, watch } = useForm();\n  const country = watch('country');\n  return (/* 40 fields… */ <Shipping country={country} />);\n}",
+      "lang": "jsx",
+      "choices": [
+        "Registering 40 inputs makes the form controlled, so each key re-renders it",
+        "`watch` in the form root subscribes that root to the watched field's changes",
+        "`watch` must be called without arguments; passing a name watches every field",
+        "The `Shipping` child re-renders its parent whenever its props change"
+      ],
+      "answer": 1,
+      "why": "`watch` triggers re-renders at the component where `useForm` lives, so every change to `country` repaints all 40 fields. Moving the subscription into `<Shipping>` with `useWatch({ control, name: 'country' })` isolates it to the one component that needs it.",
+      "tags": [
+        "forms",
+        "re-renders"
+      ],
+      "level": 3,
+      "asked": "Large forms feeling sluggish is a real complaint, and this is the usual cause."
+    },
+    {
+      "id": "re-087",
+      "q": "In React Hook Form v7, an edit form passes `defaultValues: user` where `user` comes from a query that loads after the first render. The fields stay empty. What fixes it?",
+      "choices": [
+        "Call `reset(user)` when the data arrives, or pass it through the `values` option",
+        "Put `user` in a `key` on each input, so the inputs remount with the new values",
+        "Change `mode` to `onChange`, so default values are read again on each render",
+        "Wrap each input in `Controller`, since only controlled inputs get default values"
+      ],
+      "answer": 0,
+      "why": "`defaultValues` is read once when the form initialises and then cached, so later changes to the prop are ignored. `reset(data)` replaces the defaults and the values; the `values` option does the same reactively. Rendering the form only after the data loads also works.",
+      "tags": [
+        "forms",
+        "data-loading"
+      ],
+      "level": 2,
+      "asked": "Every edit screen hits this, and a good answer knows why the defaults are cached."
+    },
+    {
+      "id": "re-088",
+      "q": "In React Hook Form v7, when do you need `Controller` instead of `register`?",
+      "choices": [
+        "For every required field, because `register` cannot express required rules",
+        "For a component that exposes `value`/`onChange` but no input element or ref",
+        "For inputs inside a field array, since `register` only works at the top level",
+        "For forms with a Zod resolver, which cannot read values from uncontrolled inputs"
+      ],
+      "answer": 1,
+      "why": "`register` needs a DOM input it can attach a ref and listeners to. Third-party pickers and selects that manage their own state (a date picker, a combobox) only expose a controlled API, so `Controller` bridges their `value`/`onChange` to the form state.",
+      "tags": [
+        "forms"
+      ],
+      "level": 2,
+      "asked": "It checks you can integrate a component library with a form library, which most teams need."
+    },
+    {
+      "id": "re-089",
+      "q": "In Zustand v5, which of these subscriptions re-renders `CartBadge` only when the item count changes?",
+      "choices": [
+        "`const { items } = useCartStore()` inside the badge",
+        "`const count = useCartStore((s) => s.items.length)`",
+        "`const store = useCartStore(); const count = store.items.length`",
+        "`const count = useCartStore.getState().items.length`"
+      ],
+      "answer": 1,
+      "why": "A selector subscribes the component to its return value, compared by `Object.is`, so the badge ignores unrelated updates. Calling the hook with no selector subscribes to the whole state. `getState()` during render reads once and never re-renders at all.",
+      "tags": [
+        "client-state",
+        "re-renders"
+      ],
+      "level": 1,
+      "asked": "It checks you know why stores beat a single context for frequently changing state."
+    },
+    {
+      "id": "re-090",
+      "q": "After upgrading to Zustand v5, this component throws \"Maximum update depth exceeded\". Why?",
+      "code": "const { name, email } = useUserStore((s) => ({ name: s.name, email: s.email }));",
+      "lang": "jsx",
+      "choices": [
+        "Destructuring a store selector is not allowed; you must read one key per call",
+        "v5 removed selectors, so the object is recreated inside a state update loop",
+        "The selector builds a new object on each call, so the snapshot never settles",
+        "The store needs the `persist` middleware before objects can be selected"
+      ],
+      "answer": 2,
+      "why": "v5 compares selector results with `Object.is`, and a fresh object is never equal to the last one, so React keeps seeing a changed snapshot. Wrap it as `useUserStore(useShallow((s) => ({ name: s.name, email: s.email })))`, or select each field separately.",
+      "tags": [
+        "client-state",
+        "re-renders"
+      ],
+      "level": 3,
+      "asked": "It is a very common v5 upgrade failure, and the answer shows you understand selector equality."
+    },
+    {
+      "id": "re-091",
+      "q": "In Zustand v5, the store holds `{ user: { name, email }, theme }`. What does `set({ user: { name: 'Ada' } })` do?",
+      "choices": [
+        "Merges deeply, so `user.email` is kept and only `name` changes",
+        "Replaces the whole state, so `theme` is lost as well as `email`",
+        "Throws, because a partial object must be passed as an updater function",
+        "Merges the top level only, so `theme` stays but `user.email` is lost"
+      ],
+      "answer": 3,
+      "why": "`set` shallow-merges the object into state, so untouched top-level keys survive but a nested object is replaced wholesale. Nested updates need a spread (`user: { ...s.user, name }`) or the Immer middleware.",
+      "tags": [
+        "client-state"
+      ],
+      "level": 2,
+      "asked": "It catches the \"where did the email go\" bug that appears the first time a store holds nested data."
+    },
+    {
+      "id": "re-092",
+      "q": "A Zustand store uses the `persist` middleware. Why add `partialize`?",
+      "code": "persist((set) => ({ cart: [], isOpen: false, lastError: null /* … */ }), {\n  name: 'cart',\n  partialize: (s) => ({ cart: s.cart }),\n})",
+      "lang": "js",
+      "choices": [
+        "To persist only the cart, not transient UI state such as an open drawer",
+        "To split the store into smaller chunks so each loads in a separate request",
+        "To encrypt the persisted fields, since local storage is readable by scripts",
+        "To make the persisted cart read-only so other tabs cannot change it"
+      ],
+      "answer": 0,
+      "why": "Without it, everything is saved, so a user reopens the site with the drawer open or yesterday's error still showing. `partialize` picks the durable slice; it does no encryption, which is also why tokens do not belong in local storage.",
+      "tags": [
+        "client-state",
+        "persistence"
+      ],
+      "level": 2,
+      "asked": "It checks you think about which state should outlive a reload."
+    },
+    {
+      "id": "re-093",
+      "q": "In a Redux Toolkit `createSlice`, why is this \"mutating\" reducer safe?",
+      "code": "addTodo(state, action) {\n  state.items.push(action.payload);\n}",
+      "lang": "js",
+      "choices": [
+        "Redux Toolkit deep-clones the whole state before every reducer runs",
+        "Reducers in Redux may mutate state freely; immutability is optional",
+        "The reducer receives an Immer draft, and a new immutable state is produced",
+        "`createSlice` freezes the old state, so `push` quietly returns a copy"
+      ],
+      "answer": 2,
+      "why": "RTK wraps reducers in Immer: writes go to a draft proxy and Immer builds the next state with structural sharing. Outside `createSlice`/`createReducer`, the same `push` would mutate the store and break change detection.",
+      "tags": [
+        "client-state"
+      ],
+      "level": 1,
+      "asked": "It checks you understand the magic rather than believing Redux now allows mutation."
+    },
+    {
+      "id": "re-094",
+      "q": "In a Redux Toolkit slice, why does this `reset` reducer leave the state unchanged?",
+      "code": "reset(state) {\n  state = initialState;\n}",
+      "lang": "js",
+      "choices": [
+        "Reducers must be `async` to replace the whole state at once",
+        "Reassigning the local `state` variable does not touch the draft",
+        "`initialState` is frozen, so Immer refuses to copy it into the store",
+        "Slices can only change one key per reducer, so the reset is ignored"
+      ],
+      "answer": 1,
+      "why": "Immer tracks changes made through the draft; rebinding the parameter just points a local variable elsewhere and the reducer returns `undefined`, which Immer reads as \"use the draft\". Replacing the state means `return initialState` (and not also mutating the draft).",
+      "tags": [
+        "client-state"
+      ],
+      "level": 2,
+      "asked": "A small bug that shows whether you understand how Immer produces the next state."
+    },
+    {
+      "id": "re-095",
+      "q": "A team already uses Redux Toolkit and fetches products with `createAsyncThunk`, handling loading flags and refetching by hand. What does RTK Query add?",
+      "choices": [
+        "Server-side rendering of Redux state, which thunks cannot provide",
+        "A cache keyed by endpoint and args, with dedupe and tag invalidation",
+        "Persistence of the whole store to local storage between visits",
+        "Automatic generation of reducers for every piece of client state"
+      ],
+      "answer": 1,
+      "why": "RTK Query is the server-state cache that ships with Redux Toolkit: it caches per endpoint and argument, dedupes requests, tracks loading/error, and refetches when a mutation invalidates matching tags. Hand-written thunks re-implement all of that, usually partially.",
+      "tags": [
+        "client-state",
+        "server-state"
+      ],
+      "level": 2,
+      "asked": "It checks you would stop hand-rolling a cache when the team's own tooling already has one."
+    },
+    {
+      "id": "re-096",
+      "q": "In Jotai v2, which components re-render when `priceAtom` changes?",
+      "code": "const priceAtom = atom(10);\nconst qtyAtom = atom(2);\nconst totalAtom = atom((get) => get(priceAtom) * get(qtyAtom));",
+      "lang": "js",
+      "choices": [
+        "Every component under the Jotai `Provider`, since atoms share one context",
+        "Only components reading `priceAtom` directly; derived atoms never recompute",
+        "Components reading `qtyAtom` too, since atoms in one module are linked",
+        "Components reading `priceAtom` or `totalAtom`, and only if the value changed"
+      ],
+      "answer": 3,
+      "why": "Jotai tracks dependencies per atom: a derived atom recomputes when an atom it reads changes, and only subscribers of changed atoms re-render. That fine-grained graph is the main reason to pick atoms over one big context.",
+      "tags": [
+        "client-state",
+        "re-renders"
+      ],
+      "level": 2,
+      "asked": "It checks you understand the atom model rather than treating Jotai as another context wrapper."
+    },
+    {
+      "id": "re-097",
+      "q": "Which piece of state belongs in a component's own `useState` rather than a global store?",
+      "choices": [
+        "The signed-in user, which many screens read and the header displays",
+        "The contents of a basket that must survive navigating between pages",
+        "Whether one dropdown in the page header is currently open or closed",
+        "The UI language, which every component uses to translate its labels"
+      ],
+      "answer": 2,
+      "why": "State used by one component and its children should live there: it is easier to follow and disappears when the component unmounts. Global stores earn their place for state that many distant parts of the tree read, or that must outlive a screen.",
+      "tags": [
+        "client-state"
+      ],
+      "level": 1,
+      "asked": "Interviewers want to hear that you do not reach for a store by default."
+    },
+    {
+      "id": "re-098",
+      "q": "A Next.js-style app renders on the server, and a Zustand cart persisted to `localStorage` shows 0 items in the HTML but 3 in the browser, with a hydration warning. What is the usual fix?",
+      "choices": [
+        "Read `localStorage` during render on the server as well, so both sides agree",
+        "Move the cart into a React context, since contexts are never server rendered",
+        "Delay rehydrating the persisted state until after the first client render",
+        "Wrap the badge in `suppressHydrationWarning` and accept the flash of zero"
+      ],
+      "answer": 2,
+      "why": "The server has no `localStorage`, so the first client render must match its empty HTML; loading the saved cart after hydration (for example `skipHydration` plus `persist.rehydrate()` in an effect) then updates it. Contexts are rendered on the server too, and suppressing the warning only hides the symptom, one element deep.",
+      "tags": [
+        "client-state",
+        "ssr",
+        "persistence"
+      ],
+      "level": 3,
+      "asked": "It separates people who have shipped persisted state in an SSR app from those who have only read about it."
+    },
+    {
+      "id": "re-099",
+      "q": "A team fetches `/products` in an effect and stores the list in a Zustand store. What does a server-state cache like TanStack Query give them that this setup lacks?",
+      "choices": [
+        "Staleness tracking, request dedupe and refetching after mutations",
+        "A way for any component to read the products without prop drilling",
+        "Types for the product list, which a Zustand store cannot express",
+        "State that survives a remount, which component state cannot do"
+      ],
+      "answer": 0,
+      "why": "A global store already solves sharing and surviving remounts, and TypeScript works fine with it. What it lacks is the lifecycle of server data: knowing when it is stale, collapsing duplicate requests, background refresh and invalidation after writes.",
+      "tags": [
+        "client-state",
+        "server-state"
+      ],
+      "level": 1,
+      "asked": "It checks you can say precisely why server data and client state deserve different tools."
+    },
+    {
+      "id": "re-100",
+      "q": "A search box writes its text to the URL with `setSearchParams` on every keystroke. Pressing Back then steps back one letter at a time. What fixes it?",
+      "choices": [
+        "Store the text in `sessionStorage` and read it back after each render",
+        "Debounce the input so each keystroke waits 300 ms before it can render",
+        "Call `setSearchParams(next, { replace: true })` for keystroke updates",
+        "Switch to `<Link>` so the router batches all changes into one entry"
+      ],
+      "answer": 2,
+      "why": "Each `setSearchParams` call pushes a history entry by default; `replace: true` overwrites the current one, so Back leaves the search page as the user expects. Debouncing reduces the entries but still leaves several, and it delays the typed text if applied to the input itself.",
+      "tags": [
+        "routing",
+        "client-state"
+      ],
+      "level": 2,
+      "asked": "It shows you treat history as part of URL state design."
+    },
+    {
+      "id": "re-101",
+      "q": "In a React 19 app with Server Components, a file starts with `'use client'`. What does that mean for the component it exports?",
+      "choices": [
+        "It joins the client bundle and hydrates, but is still rendered to HTML on the server",
+        "It is skipped on the server entirely and renders only after the JavaScript loads",
+        "It can only be imported by other client files, never rendered by a Server Component",
+        "It runs on the server on each request and sends its state to the browser as JSON"
+      ],
+      "answer": 0,
+      "why": "`'use client'` marks a boundary: the module and everything it imports ship to the browser so the component can use state, effects and handlers. The initial HTML is still produced on the server (SSR), which is why browser-only APIs must wait for an effect. Server Components can render client components freely.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 2,
+      "asked": "The belief that client components are not server rendered is the most common RSC misconception interviewers probe."
+    },
+    {
+      "id": "re-102",
+      "q": "In a React 19 framework that defaults to Server Components, this file has no directive. Why does it fail?",
+      "code": "export default function Counter() {\n  const [n, setN] = useState(0);\n  return <button onClick={() => setN(n + 1)}>{n}</button>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`useState` must be imported from `react-dom` when used in a framework",
+        "Buttons need a `type` attribute before React attaches an `onClick` handler",
+        "Counters must be `async` in a Server Component framework to read state",
+        "Without `'use client'` it is a Server Component, which cannot hold state"
+      ],
+      "answer": 3,
+      "why": "Server Components render once on the server and never re-render in the browser, so they cannot use state, effects or event handlers. Adding `'use client'` to this file (or moving the button into one) makes it interactive.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 1,
+      "asked": "A first check that you know the default side of the boundary in modern React frameworks."
+    },
+    {
+      "id": "re-103",
+      "q": "In React 19, what does putting `'use server'` at the top of a module mean?",
+      "choices": [
+        "Every component in the file is a Server Component that renders on the server",
+        "The module is left out of the server build and only ships to the browser",
+        "The file runs once at build time and its output is saved as static HTML",
+        "Its exported async functions are server functions the client can call"
+      ],
+      "answer": 3,
+      "why": "`'use server'` marks server functions (used as actions), which the client invokes through a generated network call. Server Components need no directive at all; mixing the two up leads people to add `'use server'` to components, which is wrong.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 1,
+      "asked": "It separates people who have used server functions from those who assume the two directives are mirror images."
+    },
+    {
+      "id": "re-104",
+      "q": "In React 19, `deleteOrder(orderId)` is a `'use server'` function called from a client form. What must its body do before deleting?",
+      "choices": [
+        "Check the session and that this user may delete this order, like any endpoint",
+        "Nothing extra; only code rendered by your own Server Components can call it",
+        "Verify that the request came from the form it was imported into by name",
+        "Decrypt `orderId`, since React encrypts server function arguments for you"
+      ],
+      "answer": 0,
+      "why": "A server function is a public HTTP endpoint with a generated URL; anyone can call it with any arguments. Treat every argument as untrusted input: authenticate, authorise against the record and validate, exactly as in a REST handler.",
+      "tags": [
+        "react19",
+        "server-components",
+        "auth"
+      ],
+      "level": 2,
+      "asked": "Interviewers want to hear \"it is an endpoint\", because treating actions as private functions is a real vulnerability."
+    },
+    {
+      "id": "re-105",
+      "q": "In a React 19 RSC app, a `'use client'` component imports a helper from `lib/db.ts`, which reads `process.env.DATABASE_URL`. What is the risk, and the usual guard?",
+      "choices": [
+        "None: bundlers drop server code from client imports on their own",
+        "The helper runs twice, so add a cache around the database connection",
+        "The import fails only in development, so ignore it for production",
+        "It is pulled into the browser bundle; `import 'server-only'` fails the build"
+      ],
+      "answer": 3,
+      "why": "Everything a client module imports becomes client code, so database helpers and whatever they reference end up in the bundle or break at runtime. Importing the `server-only` package in server modules turns that mistake into a build error.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 3,
+      "asked": "It checks you understand that the client boundary follows imports, not folders."
+    },
+    {
+      "id": "re-106",
+      "q": "In React 19, `Tabs` is a client component and `OrderList` is an async Server Component. Does `OrderList` stay a Server Component here?",
+      "code": "// page.jsx (Server Component)\n<Tabs>\n  <OrderList />\n</Tabs>",
+      "lang": "jsx",
+      "choices": [
+        "Yes: it is rendered on the server and passed to `Tabs` as rendered children",
+        "No: anything inside a client component becomes a client component too",
+        "Only if `Tabs` also imports `OrderList` itself at the top of its module",
+        "No: async components cannot be passed as children to another component"
+      ],
+      "answer": 0,
+      "why": "The server renders `OrderList` and hands `Tabs` the result as its `children` prop, so interactive shells can wrap server-rendered content. What turns a component into client code is importing it from a client module, not nesting it in JSX.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 3,
+      "asked": "It is the composition pattern that keeps most of the tree on the server; strong candidates explain why imports decide it."
+    },
+    {
+      "id": "re-107",
+      "q": "In React 19, which prop can a Server Component NOT pass to a Client Component?",
+      "choices": [
+        "A `Date` for the order's creation time",
+        "A promise the client unwraps with `use`",
+        "A `Map` of product ids to quantities",
+        "An instance of a class with methods"
+      ],
+      "answer": 3,
+      "why": "Props crossing the boundary are serialised by React, which supports plain objects, arrays, primitives, `Date`, `Map`, `Set`, typed arrays and promises. Class instances (and ordinary functions) cannot be rebuilt on the other side, so map them to plain data first.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 2,
+      "asked": "It checks you know what crosses the wire, which is where many first RSC bugs come from."
+    },
+    {
+      "id": "re-108",
+      "q": "In React 19, why does the button's label never change to \"Saving…\" while the action runs?",
+      "code": "function OrderForm() {\n  const { pending } = useFormStatus();\n  return (\n    <form action={saveOrder}>\n      <button disabled={pending}>{pending ? 'Saving…' : 'Save'}</button>\n    </form>\n  );\n}",
+      "lang": "jsx",
+      "choices": [
+        "`useFormStatus` reads the parent form, and this component renders the form",
+        "`useFormStatus` only works with forms that use `method=\"post\"` explicitly",
+        "`saveOrder` must return a promise before the status can change at all",
+        "`disabled` blocks the re-render, so the label is frozen once it is clicked"
+      ],
+      "answer": 0,
+      "why": "`useFormStatus` reports on the nearest `<form>` above the calling component, like a context. Called in the component that renders the form, there is none, so `pending` stays false. Move the button into its own `SubmitButton` component inside the form.",
+      "tags": [
+        "react19",
+        "forms"
+      ],
+      "level": 2,
+      "asked": "Nearly everyone writes it this way first; the fix shows you understand where the hook reads from."
+    },
+    {
+      "id": "re-109",
+      "q": "In React 19, an uncontrolled `<form action={createOrder}>` submits and the async action finishes without throwing. What happens to the inputs?",
+      "choices": [
+        "They keep what the user typed until the component remounts",
+        "They are disabled until the page is navigated somewhere else",
+        "They are refilled from the values the action last returned",
+        "They are reset, much like after a native form submission"
+      ],
+      "answer": 3,
+      "why": "When a function is passed to `action`, React resets uncontrolled fields after the action succeeds, matching browser behaviour. That suits \"add another\" forms; if you need the values back after a validation failure, return them in `useActionState` state and use them as `defaultValue`.",
+      "tags": [
+        "react19",
+        "forms"
+      ],
+      "level": 2,
+      "asked": "The automatic reset surprises people with validation errors; a good answer knows how to keep the values."
+    },
+    {
+      "id": "re-110",
+      "q": "In React 19, where does this `<title>` end up in the DOM?",
+      "code": "function OrderPage({ order }) {\n  return (\n    <article>\n      <title>{`Order ${order.id}`}</title>\n      <h1>Order {order.id}</h1>\n    </article>\n  );\n}",
+      "lang": "jsx",
+      "choices": [
+        "React hoists it into `document.head`, replacing the need for a head library",
+        "Inside the `<article>`, where browsers ignore it, so the tab title is unchanged",
+        "Nowhere; React strips `<title>` from components and logs a warning instead",
+        "In the head only during server rendering, and inside the article after hydration"
+      ],
+      "answer": 0,
+      "why": "React 19 treats `<title>`, `<meta>` and `<link>` rendered anywhere as document metadata and places them in the head, on the client and during SSR. That covers most of what `react-helmet` was used for.",
+      "tags": [
+        "react19",
+        "seo"
+      ],
+      "level": 1,
+      "asked": "It checks you are current with React 19 rather than reaching for a helper library out of habit."
+    },
+    {
+      "id": "re-111",
+      "q": "In React 19, this client component never shows the user and keeps showing its Suspense fallback. Why?",
+      "code": "function Profile({ id }) {\n  const user = use(fetch(`/api/users/${id}`).then((r) => r.json()));\n  return <p>{user.name}</p>;\n}",
+      "lang": "jsx",
+      "choices": [
+        "`use` cannot unwrap promises from `fetch`; only the router can",
+        "The promise is created during render, so each retry starts afresh",
+        "`use` needs a `key` prop on the Suspense boundary before it resumes",
+        "The JSON body is unwrapped too late, after the fallback has committed"
+      ],
+      "answer": 1,
+      "why": "When the promise resolves, React re-renders the component, which creates a brand-new pending promise and suspends again. Promises passed to `use` must be stable: created in a Server Component, a loader, or a cache such as TanStack Query and handed down.",
+      "tags": [
+        "react19",
+        "data-loading"
+      ],
+      "level": 3,
+      "asked": "It tests whether you understand how `use` and Suspense retry, not just the syntax."
+    },
+    {
+      "id": "re-112",
+      "q": "A server-rendered React 19 page wraps its slow reviews section in `<Suspense fallback={<Spinner />}>`. What does the user receive?",
+      "choices": [
+        "A blank page until every query, including the reviews, has finished",
+        "The page without reviews, which the browser fetches later over the API",
+        "The page shell with the spinner first, then the reviews HTML streamed in",
+        "An error, since Suspense boundaries are only supported in client renders"
+      ],
+      "answer": 2,
+      "why": "Streaming SSR sends everything outside pending boundaries straight away, then streams each boundary's HTML (and a small script to swap it in) through the same response when its data resolves. No extra client fetch is needed.",
+      "tags": [
+        "react19",
+        "ssr",
+        "streaming"
+      ],
+      "level": 1,
+      "asked": "It checks you can explain why Suspense improves time to first content on server-rendered pages."
+    },
+    {
+      "id": "re-113",
+      "q": "In a React 19 RSC app, a large product page needs one interactive \"Add to basket\" button. Where should `'use client'` go?",
+      "choices": [
+        "On a small `AddToBasket` component, keeping the page on the server",
+        "On the page component, so every child can use hooks if it needs to",
+        "On the root layout, so the whole app behaves like a classic SPA",
+        "On a separate `hooks.js` file that the page component imports"
+      ],
+      "answer": 0,
+      "why": "Everything under a client boundary ships JavaScript, so pushing the directive down to the leaf that needs interactivity keeps the rest server-only. A directive high in the tree quietly turns the whole page into client code.",
+      "tags": [
+        "react19",
+        "server-components",
+        "bundle-size"
+      ],
+      "level": 1,
+      "asked": "Interviewers want to hear that you think about client JavaScript cost when drawing the boundary."
+    },
+    {
+      "id": "re-114",
+      "q": "In React 19, how long is `isPending` true here?",
+      "code": "const [isPending, startTransition] = useTransition();\nconst onSave = () => startTransition(async () => {\n  await saveOrder(form);\n  setSaved(true);\n});",
+      "lang": "jsx",
+      "choices": [
+        "For one render only, because transitions end when the callback returns",
+        "Until React has finished rendering the first state update inside it",
+        "Never; async functions passed to `startTransition` are rejected in 19",
+        "Until the async function settles, covering the whole awaited request"
+      ],
+      "answer": 3,
+      "why": "React 19 accepts async functions as transitions (actions), and `isPending` stays true until the returned promise settles. That is how you get a pending state for a save without a separate `useState` flag.",
+      "tags": [
+        "react19",
+        "mutations"
+      ],
+      "level": 2,
+      "asked": "It checks you know actions are just async transitions, which explains the rest of the React 19 form APIs."
+    },
+    {
+      "id": "re-115",
+      "q": "In a React 19 app with Server Components, what JavaScript does a Server Component add to the browser bundle?",
+      "choices": [
+        "Its full source, so the browser can re-render it after hydration",
+        "Its source minus any `await`, which the bundler strips at build",
+        "A hydration stub for each Server Component on the page it renders",
+        "None; the browser only receives its rendered output, not its code"
+      ],
+      "answer": 3,
+      "why": "Server Components run only on the server; the client receives their output in the RSC payload and never downloads or hydrates their code. Heavy libraries used only there, such as a Markdown parser, cost the user nothing.",
+      "tags": [
+        "react19",
+        "server-components",
+        "bundle-size"
+      ],
+      "level": 1,
+      "asked": "It checks you know the main performance argument for Server Components."
+    },
+    {
+      "id": "re-116",
+      "q": "In React 19, a `useActionState` action hits an expected \"email already taken\" case. Why return it as state rather than `throw` it?",
+      "choices": [
+        "Thrown errors go to the nearest error boundary and replace the form",
+        "Thrown errors are swallowed silently, so the user would see nothing",
+        "Returning is faster, since throwing makes React retry the action once",
+        "Actions cannot throw at all; React rejects functions that might throw"
+      ],
+      "answer": 0,
+      "why": "An error thrown from an action propagates to the nearest error boundary, which suits genuine failures but loses the form and the user's input. Expected validation outcomes belong in the returned state, where the form can render them next to the fields.",
+      "tags": [
+        "react19",
+        "forms",
+        "error-handling"
+      ],
+      "level": 3,
+      "asked": "It shows you separate expected outcomes from real errors, which decides whether users keep their input."
+    },
+    {
+      "id": "re-117",
+      "q": "A Vite React app reads `import.meta.env.API_URL`, which is set in `.env`. Why is it `undefined` in the browser?",
+      "choices": [
+        "Only variables prefixed with `VITE_` are exposed to client code by default",
+        "Vite reads `.env` only in production builds, never in the dev server",
+        "`import.meta.env` works only in Node, so the browser always gets nothing",
+        "Env files must be JSON, so a plain `KEY=value` line is not parsed at all"
+      ],
+      "answer": 0,
+      "why": "Vite exposes only `VITE_`-prefixed variables (plus built-ins like `MODE` and `DEV`) so server secrets in the same file do not leak into the bundle. Renaming it to `VITE_API_URL` works, which is also why nothing secret should carry that prefix.",
+      "tags": [
+        "build-tooling"
+      ],
+      "level": 1,
+      "asked": "A routine setup snag that also checks you know why the prefix exists."
+    },
+    {
+      "id": "re-118",
+      "q": "With Vite defaults, which env files does `vite build` load?",
+      "choices": [
+        "Only `.env.production`, since `.env` is reserved for the dev server",
+        "Only `.env`, because modes are a dev-server feature and are ignored",
+        "`.env.development` and `.env.production`, merged in alphabetical order",
+        "`.env`, `.env.local`, `.env.production` and `.env.production.local`"
+      ],
+      "answer": 3,
+      "why": "`vite build` runs in `production` mode, so it loads the generic files plus the mode-specific ones, with mode-specific and `.local` files taking priority. `.local` files are meant to stay out of git; `--mode staging` switches to `.env.staging`.",
+      "tags": [
+        "build-tooling"
+      ],
+      "level": 2,
+      "asked": "It checks you can set up per-environment config without committing secrets."
+    },
+    {
+      "id": "re-119",
+      "q": "The main bundle of a React 19 SPA includes a 400 kB charting library used only on `/reports`. What removes it from the initial load?",
+      "choices": [
+        "Enabling minification, which strips unused chart code from the bundle",
+        "Moving the import into a `useEffect` inside the reports component",
+        "Adding the library to `optimizeDeps`, so Vite pre-bundles it separately",
+        "Loading the reports route with `lazy(() => import('./Reports'))`"
+      ],
+      "answer": 3,
+      "why": "A dynamic `import()` gives the bundler a split point, so the reports screen and its chart dependency become a chunk fetched on first visit. Minification cannot drop code that is statically imported, and `optimizeDeps` only affects the dev server.",
+      "tags": [
+        "build-tooling",
+        "code-splitting"
+      ],
+      "level": 1,
+      "asked": "Route-level code splitting is the first performance fix interviewers expect a React developer to reach for."
+    },
+    {
+      "id": "re-120",
+      "q": "In a Vite build, `Reports.jsx` is loaded with `lazy(() => import('./Reports'))`, yet no separate chunk appears. The build prints a warning about it. What is the likely cause?",
+      "choices": [
+        "Another module still imports `Reports` statically, so it stays in the main chunk",
+        "`lazy` only splits code in development builds; production bundles are merged",
+        "Dynamic imports must use an absolute path before the bundler can split them",
+        "The component is too small, so Vite always inlines chunks under 50 kB"
+      ],
+      "answer": 0,
+      "why": "If any static import of the module remains, it has to be in the chunk that imports it, so the dynamic import cannot move it anywhere else; Vite warns about exactly this. Search for the stray `import Reports` (often a barrel `index.js`).",
+      "tags": [
+        "build-tooling",
+        "code-splitting"
+      ],
+      "level": 3,
+      "asked": "It shows whether you have checked your bundle after splitting it rather than assuming it worked."
+    },
+    {
+      "id": "re-121",
+      "q": "What is `vite preview` for?",
+      "choices": [
+        "Serving the built `dist` locally to check the production bundle",
+        "Running the dev server with hot reload and source maps enabled",
+        "Deploying the app to a temporary public URL for a pull request",
+        "Serving the production build in production behind a reverse proxy"
+      ],
+      "answer": 0,
+      "why": "It is a small static server for checking what `vite build` produced, catching issues that only appear with bundled code. It is not a production server; real deployments serve `dist` from a CDN or a proper web server.",
+      "tags": [
+        "build-tooling"
+      ],
+      "level": 1,
+      "asked": "A quick check that you test the production build before shipping it."
+    },
+    {
+      "id": "re-122",
+      "q": "In a React 19 SPA, `const Reports = lazy(() => import('./Reports'))`. Why call `import('./Reports')` in the nav link's `onMouseEnter` too?",
+      "choices": [
+        "It renders the reports page off-screen so switching to it is instant",
+        "It forces `lazy` to re-evaluate, which clears any stale cached chunk",
+        "It is needed; otherwise `lazy` cannot find the chunk at navigation time",
+        "It starts downloading the chunk early, and the later import reuses it"
+      ],
+      "answer": 3,
+      "why": "Module imports are cached, so a hover-time `import()` begins the download and the `lazy` loader later resolves from the same promise. The fallback then rarely shows. It does not render anything and is not required for `lazy` to work.",
+      "tags": [
+        "build-tooling",
+        "code-splitting"
+      ],
+      "level": 2,
+      "asked": "It checks you can hide the cost of code splitting instead of trading bundle size for spinners."
+    },
+    {
+      "id": "re-123",
+      "q": "In a React 19 RSC app, the root layout is a Server Component and needs a theme context for the whole app. How is that usually done?",
+      "choices": [
+        "A `'use client'` `Providers` component renders the context and wraps `children`",
+        "The layout calls `createContext` and renders the provider directly as a server",
+        "Server Components read the context with `useContext` and pass it to the client",
+        "Context is unavailable in RSC apps, so the theme has to be a global variable"
+      ],
+      "answer": 0,
+      "why": "Context is a client feature, so the provider lives in a small client component; the server layout renders `<Providers>{children}</Providers>` and the pages passed as children stay Server Components. Server Components themselves cannot read context.",
+      "tags": [
+        "react19",
+        "server-components",
+        "client-state"
+      ],
+      "level": 2,
+      "asked": "It checks you can wire app-wide client state into an RSC tree without making everything client code."
+    },
+    {
+      "id": "re-124",
+      "q": "In React 19, a component marked `'use client'` is declared `async` so it can `await` a fetch. What happens?",
+      "choices": [
+        "It works: React awaits the component and suspends until the fetch resolves",
+        "It works only on the server; in the browser the await is simply skipped",
+        "It renders once with `undefined` data and again when the promise resolves",
+        "React reports an error: only Server Components can be async components"
+      ],
+      "answer": 3,
+      "why": "Async components are a Server Component feature; React logs that an async Client Component is not supported, and the tree does not render correctly. Client components read async data through `use` with a stable promise, a loader or a query cache.",
+      "tags": [
+        "react19",
+        "server-components"
+      ],
+      "level": 3,
+      "asked": "It is a common mistake right after adding `'use client'` to a file, and shows you know which side supports what."
+    },
+    {
+      "id": "re-125",
+      "q": "In React 19, an order form has Save and Delete buttons. How can Delete call a different action from the same form?",
+      "code": "<form action={saveOrder}>\n  <input name=\"id\" type=\"hidden\" value={order.id} />\n  <button>Save</button>\n  <button /* ? */>Delete</button>\n</form>",
+      "lang": "jsx",
+      "choices": [
+        "Give the Delete button `formAction={deleteOrder}`, which overrides the form",
+        "Wrap Delete in a nested `<form>`, since each form can have one action",
+        "Read `event.submitter` inside `saveOrder` and call delete from there",
+        "Add `type=\"reset\"` to Delete, so React routes the submit to a second action"
+      ],
+      "answer": 0,
+      "why": "Like the HTML attribute, `formAction` on a submit button replaces the form's action for that submission and still sends the form's fields. Nested forms are invalid HTML, and a reset button clears the fields without submitting.",
+      "tags": [
+        "react19",
+        "forms"
+      ],
+      "level": 1,
+      "asked": "It checks you know the platform features React 19 builds on instead of adding click handlers everywhere."
     }
   ]
 }

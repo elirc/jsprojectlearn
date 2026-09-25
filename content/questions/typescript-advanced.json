@@ -510,6 +510,2044 @@
       ],
       "level": 3,
       "asked": "It surfaces when passing a typed DTO to a generic logging or serialising helper, and the error baffles people the first time."
+    },
+    {
+      "id": "tsa-027",
+      "q": "What is `B`?",
+      "code": "type Box<T, U = T[]> = { item: T; list: U };\ntype B = Box<string>;",
+      "choices": [
+        "`{ item: string; list: string[] }`, as a default may use T",
+        "`{ item: string; list: unknown }`, as defaults cannot read T",
+        "An error, as a default cannot refer to an earlier parameter",
+        "`{ item: string; list: T[] }`, left unresolved until used"
+      ],
+      "answer": 0,
+      "why": "A type parameter default can reference any parameter declared before it, so omitting U makes it `T[]` with T already set to `string`. Defaults are resolved at instantiation, never left as a free `T`; only references to later parameters are rejected.",
+      "tags": [
+        "generics"
+      ],
+      "level": 1,
+      "asked": "Defaults that build on earlier parameters are common in library types, and reading them is part of reading any `.d.ts`.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-028",
+      "q": "What does tsc report for the last line?",
+      "code": "function tag<K extends string, V>(key: K, value: V) {\n  return { [key]: value } as Record<K, V>;\n}\nconst t = tag<'id'>('id', 42);",
+      "choices": [
+        "Nothing; K is `'id'` and V is inferred as `number`",
+        "An error: expected 2 type arguments, but got 1",
+        "Nothing; V falls back to `unknown` since it was skipped",
+        "An error: `42` is not assignable to type `string`"
+      ],
+      "answer": 1,
+      "why": "TypeScript has no partial type-argument inference: once you pass any explicit type arguments, every parameter without a default must be supplied. Giving V a default would make the call legal, but V would then be the default, not inferred from `42`.",
+      "tags": [
+        "generics",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "It explains why libraries split one generic call into curried steps such as `builder<Model>()(config)`.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-029",
+      "q": "Which annotation is rejected?",
+      "code": "type IdA = <T>(x: T) => T;\ntype IdB<T> = (x: T) => T;\nconst a: IdA = (x) => x;\nconst b: IdB = (x) => x;",
+      "choices": [
+        "`a`, because a generic function type needs an explicit type argument",
+        "Neither, because T is inferred from the arrow function in each case",
+        "`b`, because the generic type `IdB` must be given its type argument",
+        "`a` and `b`, because an arrow function cannot take a generic type"
+      ],
+      "answer": 2,
+      "why": "`IdA` is a non-generic type whose value is a generic function, so the caller picks T on every call. `IdB` is a generic type alias; using it without `<T>` is error 2314, because type aliases never infer their arguments from an initialiser.",
+      "tags": [
+        "generics",
+        "functions"
+      ],
+      "level": 2,
+      "asked": "Where the type parameter sits decides whether a callback works for any type or is fixed to one, which matters when typing handler props.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-030",
+      "q": "What is the type of `x`?",
+      "code": "function first<T>(items: T[]): T | undefined {\n  return items[0];\n}\nconst x = first([1, 'a']);",
+      "choices": [
+        "`number | undefined`, taken from the first element in the array",
+        "An error: `'a'` is not assignable to type `number`",
+        "`unknown`, because the elements share no common type",
+        "`string | number | undefined`, from the array element union"
+      ],
+      "answer": 3,
+      "why": "The argument `[1, 'a']` is typed `(string | number)[]` before inference, so there is one candidate and T becomes `string | number`. The 'not assignable' error only appears when T has two separate inference sites whose candidates conflict, such as `pair(1, 'one')`.",
+      "tags": [
+        "generics",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "Predicting what T becomes from an argument is the core skill behind reading any generic signature.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-031",
+      "q": "Which line fails to compile?",
+      "code": "function get<T, K extends keyof T>(obj: T, key: K): T[K] {\n  return obj[key];\n}\nconst user = { name: 'Ann', age: 31 };\nconst a = get(user, 'age');\nconst b = get(user, 'email');",
+      "choices": [
+        "The `b` line, since `'email'` is not in `keyof` the user type",
+        "The `a` line, since `K` must be passed explicitly as `'age'`",
+        "Neither; `b` compiles and its value is typed as `unknown`",
+        "The `return`, since `obj[key]` needs a cast to `T[K]` first"
+      ],
+      "answer": 0,
+      "why": "`K extends keyof T` limits keys to `'name' | 'age'` once T is inferred from `user`, so `'email'` is rejected at the call and `a` is typed `number`. The body needs no cast: indexing a T by a `K extends keyof T` yields exactly `T[K]`.",
+      "tags": [
+        "generics",
+        "type-ops"
+      ],
+      "level": 1,
+      "asked": "The `K extends keyof T` pattern is behind every typed `pick`, `sortBy` or form `setValue` helper.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-032",
+      "q": "Why does this fail to compile?",
+      "code": "function byId<T>(items: T[], id: number) {\n  return items.find((item) => item.id === id);\n}",
+      "choices": [
+        "`find` cannot be called on a generic array without a type argument",
+        "Nothing tells tsc that T has an `id`, so the access is rejected",
+        "`id` is a number but `item.id` is inferred as a string property",
+        "Arrow callbacks inside generic functions lose their parameter types"
+      ],
+      "answer": 1,
+      "why": "Inside the body an unconstrained T could be anything, even `number`, so only members every type has are allowed. Adding `T extends { id: number }` fixes it; the callback's `item` is correctly typed T, the problem is what T is known to contain.",
+      "tags": [
+        "generics"
+      ],
+      "level": 1,
+      "asked": "Adding the right constraint instead of reaching for `any` is the first generic fix a reviewer looks for.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-033",
+      "q": "Why is the `return` rejected?",
+      "code": "function withDefaults<T extends { retries: number }>(opts?: T): T {\n  return opts ?? { retries: 3 };\n}",
+      "choices": [
+        "`??` is not allowed on an optional generic parameter under strict",
+        "The literal `3` widens to `number`, but T needs the literal type",
+        "A caller may pick a T with more properties than `{ retries: 3 }`",
+        "Returning an object literal from a generic function needs `as const`"
+      ],
+      "answer": 2,
+      "why": "T is chosen by the caller and can be any subtype of the constraint, such as `{ retries: number; url: string }`; the literal satisfies the constraint but not every possible T. tsc says it 'is assignable to the constraint of type T, but T could be instantiated with a different subtype'.",
+      "tags": [
+        "generics",
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "This error message confuses many developers, and explaining it shows you understand who chooses a type parameter.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-034",
+      "q": "In TypeScript 5.9, what is the type of `r`?",
+      "code": "function tuple<const T extends string[]>(xs: T) {\n  return xs;\n}\nconst r = tuple(['a', 'b']);",
+      "choices": [
+        "`readonly ['a', 'b']`, as the `const` modifier always implies",
+        "`['a', 'b']`, a mutable tuple matching the mutable constraint",
+        "An error, because a readonly tuple is not assignable to `string[]`",
+        "`string[]`, because the readonly inference fails the constraint"
+      ],
+      "answer": 1,
+      "why": "Since TypeScript 5.3, a `const` type parameter whose constraint is a mutable array infers a mutable literal tuple instead of falling back to `string[]` as 5.0 to 5.2 did. With a `readonly string[]` constraint the same call gives `readonly ['a', 'b']`; `const` only implies readonly where the constraint allows it.",
+      "tags": [
+        "generics",
+        "inference"
+      ],
+      "level": 3,
+      "asked": "Knowing how `const` type parameters interact with their constraint saves an `as const` at every call site.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-035",
+      "q": "What does tsc report on the last line?",
+      "code": "function debounce<A extends unknown[]>(fn: (...args: A) => void, ms: number) {\n  let t: ReturnType<typeof setTimeout>;\n  return (...args: A) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };\n}\nconst save = debounce((id: string, draft: boolean) => {}, 300);\nsave('42');",
+      "choices": [
+        "An error: expected 2 arguments, as `A` is `[id: string, draft: boolean]`",
+        "Nothing, because rest parameters typed as `unknown[]` take any arguments",
+        "Nothing, because `A` is widened to `(string | boolean)[]` on inference",
+        "An error: `'42'` is not assignable to a parameter of type `unknown`"
+      ],
+      "answer": 0,
+      "why": "A type parameter constrained to an array and used as `...args: A` is inferred as the callback's parameter tuple, labels included, so the wrapper keeps the exact signature. It does not widen to an array of the union; `unknown[]` is only the upper bound.",
+      "tags": [
+        "generics",
+        "functions"
+      ],
+      "level": 2,
+      "asked": "Typing wrappers like debounce, memoize or retry without losing the wrapped signature is an everyday higher-order-function task.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-036",
+      "q": "What is `P`?",
+      "code": "function fmt(x: number): string;\nfunction fmt(x: Date): string;\nfunction fmt(x: number | Date) {\n  return String(x);\n}\ntype P = Parameters<typeof fmt>;",
+      "choices": [
+        "`[x: number]`, from the first overload that was declared",
+        "`[x: Date]`, from the last overload that was declared",
+        "`[x: number] | [x: Date]`, one tuple for each overload",
+        "`[x: number | Date]`, from the implementation signature"
+      ],
+      "answer": 1,
+      "why": "Inferring from an overloaded function type, as `Parameters` and `ReturnType` do with `infer`, uses the last signature only. The implementation signature is not part of the visible type at all, and there is no automatic union of overloads.",
+      "tags": [
+        "functions",
+        "conditional"
+      ],
+      "level": 3,
+      "asked": "It bites anyone wrapping an overloaded API such as `addEventListener` with a generic helper.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-037",
+      "q": "What is `R`?",
+      "code": "function identity<T>(x: T): T {\n  return x;\n}\ntype R = ReturnType<typeof identity>;",
+      "choices": [
+        "`T`, the free type parameter carried out of the function",
+        "`any`, because the type parameter was never instantiated",
+        "`unknown`, because T is replaced by its constraint first",
+        "`never`, because there is no call site to infer T from"
+      ],
+      "answer": 2,
+      "why": "When a generic signature is matched against a non-generic pattern, its type parameters are replaced by their constraints, and an unconstrained T has constraint `unknown`. It is not `any`; for a specific result use an instantiation expression, `ReturnType<typeof identity<string>>`.",
+      "tags": [
+        "generics",
+        "conditional"
+      ],
+      "level": 3,
+      "asked": "Deriving types from generic functions comes up when typing factories and hooks, and the `unknown` result surprises people.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-038",
+      "q": "In TypeScript 4.7+, what is `makeUserMap`?",
+      "code": "type User = { id: string };\nfunction makeMap<K, V>() {\n  return new Map<K, V>();\n}\nconst makeUserMap = makeMap<string, User>;",
+      "choices": [
+        "A `Map<string, User>`, because type arguments invoke the function",
+        "A syntax error, since type arguments require call parentheses",
+        "A wrapper that tsc emits to pre-bind K and V for later calls",
+        "A function typed `() => Map<string, User>`, with nothing called"
+      ],
+      "answer": 3,
+      "why": "An instantiation expression applies type arguments without calling, so `makeUserMap` has type `() => Map<string, User>`. It emits as a plain reference to `makeMap`: no wrapper is generated and nothing runs.",
+      "tags": [
+        "generics",
+        "functions"
+      ],
+      "level": 2,
+      "asked": "Instantiation expressions are how you name a specialised version of a generic function or class without wrapping it.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-039",
+      "q": "Which member does tsc reject?",
+      "code": "class Store<T> {\n  static shared: T[] = [];\n  items: T[] = [];\n  add(x: T) { this.items.push(x); }\n}",
+      "choices": [
+        "`static shared`, since statics cannot use the class type parameter",
+        "`items`, since a generic field needs a definite assignment `!`",
+        "`add`, since methods on a generic class must repeat the `<T>`",
+        "The class header, since a generic class needs `T extends object`"
+      ],
+      "answer": 0,
+      "why": "There is one static per class, shared by `Store<string>` and `Store<number>` alike, so its type cannot depend on T (error 2302). Instance members may use T freely, and methods do not redeclare it.",
+      "tags": [
+        "generics",
+        "classes"
+      ],
+      "level": 2,
+      "asked": "It tests whether you think of a generic class as one runtime object with many type views.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-040",
+      "q": "In a `.tsx` file, why is this written `<T,>` rather than `<T>`?",
+      "code": "const first = <T,>(xs: T[]) => xs[0];",
+      "choices": [
+        "The comma marks T as optional so callers may leave it out",
+        "Without it, `<T>` is parsed as the opening of a JSX element",
+        "Arrow functions need a trailing comma in every type list",
+        "It makes T default to `unknown` instead of `any` in TSX"
+      ],
+      "answer": 1,
+      "why": "In `.tsx`, `<T>(...)` is ambiguous with a JSX tag, so the parser needs a hint that it is a type parameter list: a trailing comma or a constraint such as `<T extends unknown>`. In `.ts` files `<T>` alone is fine, and the comma changes nothing about defaults.",
+      "tags": [
+        "generics"
+      ],
+      "level": 1,
+      "asked": "Anyone writing generic React helpers hits this parser quirk in their first week.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-041",
+      "q": "What is the type of `lengths`?",
+      "code": "function mapAll<T, U>(xs: T[], fn: (x: T) => U): U[] {\n  return xs.map(fn);\n}\nconst lengths = mapAll(['a', 'bb'], (s) => s.length);",
+      "choices": [
+        "`unknown[]`, since U appears only in the callback return type",
+        "`string[]`, since U is taken from the first argument as well",
+        "`number[]`, since U is inferred from what the callback returns",
+        "An error, since `s` is implicitly `any` inside the callback"
+      ],
+      "answer": 2,
+      "why": "T is fixed from the array first, which contextually types `s` as `string`, and then U is inferred from what the callback returns. That left-to-right flow is why data arguments usually come before callbacks in generic APIs; `s` is never implicitly `any` here.",
+      "tags": [
+        "generics",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "Knowing that inference flows from earlier arguments into callbacks explains many API designs and many confusing errors.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-042",
+      "q": "In TypeScript 4.8+, what is `N`?",
+      "code": "type ToNum<S> = S extends `${infer X extends number}` ? X : never;\ntype N = ToNum<'42'>;",
+      "choices": [
+        "`number`, since `infer` in a template gives only the wide type",
+        "`'42'`, since infer keeps the matched text as a string literal",
+        "`never`, since the string `'42'` is not assignable to number",
+        "`42`, the number literal parsed from the matched string text"
+      ],
+      "answer": 3,
+      "why": "`infer X extends number` inside a template literal type asks tsc to parse the matched text as a numeric literal, so `'42'` yields `42`. Without the `extends number` clause X would be `'42'`; if the text were not numeric the match would fail and give `never`.",
+      "tags": [
+        "conditional",
+        "template-literals"
+      ],
+      "level": 2,
+      "asked": "Typed route params and parsers use it to turn `/items/:id` style strings into real numeric types.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-043",
+      "q": "What is `A`?",
+      "code": "type Unwrap<T> = T extends Promise<infer U> ? U : T;\ntype A = Unwrap<Promise<Promise<number>>>;",
+      "choices": [
+        "`Promise<number>`, since Unwrap strips one layer only",
+        "`number`, since `infer` keeps unwrapping nested promises",
+        "`Promise<Promise<number>>`, as nested ones never match",
+        "`unknown`, since U cannot be inferred through two layers"
+      ],
+      "answer": 0,
+      "why": "The conditional matches once and returns the inner type, which is still a promise. The built-in `Awaited<T>` is recursive, calling itself on the inner value, which is why it gives `number` here and is what `async` return types use.",
+      "tags": [
+        "conditional",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "Writing an unwrap helper and then realising why `Awaited` is recursive is a common first `infer` exercise.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-044",
+      "q": "What is `E`?",
+      "code": "type ElementOf<T> = T extends (infer X)[] ? X : T;\ntype E = ElementOf<string[] | number>;",
+      "choices": [
+        "`string[] | number`, as the union as a whole is not an array",
+        "`string | number`, as each union member is checked separately",
+        "`string`, as members that fail the test are dropped from it",
+        "`never`, as `number` fails the array test for the whole union"
+      ],
+      "answer": 1,
+      "why": "A conditional on a naked type parameter distributes over a union: `string[]` gives `string`, and `number` takes the false branch and stays `number`. Only a wrapped check such as `[T] extends [...]` tests the union as a whole, which would give back `string[] | number`.",
+      "tags": [
+        "conditional",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "Distribution explains most surprising conditional-type results in code review.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-045",
+      "q": "What is `R`?",
+      "code": "type Label<T> = T extends true ? 'on' : 'off';\ntype R = Label<boolean>;",
+      "choices": [
+        "`'off'`, since `boolean` as a whole is not assignable to true",
+        "`'on'`, since `boolean` is checked against its first member",
+        "`'on' | 'off'`, since `boolean` is the union `true | false`",
+        "`string`, since both branches widen to their common type"
+      ],
+      "answer": 2,
+      "why": "`boolean` is literally `true | false`, so a distributive conditional runs once per member and unions the results. People expect a single answer for `boolean`; wrapping as `[T] extends [true]` tests it whole and gives `'off'`.",
+      "tags": [
+        "conditional",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "Flag-driven types such as `Options<Strict extends boolean>` break in exactly this way.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-046",
+      "q": "What is `R`?",
+      "code": "type IsStr<T> = T extends string ? 'yes' : 'no';\ntype R = IsStr<any>;",
+      "choices": [
+        "`'yes'`, since `any` is assignable to every type",
+        "`'no'`, since `any` is not a subtype of string",
+        "`any`, since conditional types propagate `any`",
+        "`'yes' | 'no'`, since `any` takes both branches"
+      ],
+      "answer": 3,
+      "why": "When the checked type is `any`, tsc cannot pick a branch and returns the union of both. That is why naive type-equality helpers built from two `extends` checks misreport `any`, and why type-testing libraries use a stricter comparison.",
+      "tags": [
+        "conditional",
+        "soundness"
+      ],
+      "level": 3,
+      "asked": "It shows you know the special cases (`any`, `never`) that make hand-rolled type utilities unreliable.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-047",
+      "q": "In TypeScript 5.9, why is the `return` rejected?",
+      "code": "function parse<T extends 'num' | 'str'>(kind: T): T extends 'num' ? number : string {\n  return kind === 'num' ? 1 : 'one';\n}",
+      "choices": [
+        "The conditional on an unresolved T is deferred, so neither value fits it",
+        "The ternary widens `1` and `'one'` to `number | string`, which is too wide",
+        "Narrowing `kind` narrows T, but `'one'` still fails for the `'str'` branch",
+        "Conditional return types are only allowed on overload signatures"
+      ],
+      "answer": 0,
+      "why": "Inside the body T is still generic, so `T extends 'num' ? number : string` stays deferred and neither `1` nor `'one'` is assignable to it; narrowing `kind` does not narrow T. The usual fixes are overloads or one contained cast behind the well-typed signature.",
+      "tags": [
+        "conditional",
+        "generics"
+      ],
+      "level": 3,
+      "asked": "Conditional return types look elegant, and knowing their implementation cost stops people over-using them.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-048",
+      "q": "Why does this compile, although `createdAt` is clearly not a date?",
+      "code": "type DeepPartial<T> = { [K in keyof T]?: DeepPartial<T[K]> };\ntype Post = { title: string; createdAt: Date };\nconst patch: DeepPartial<Post> = { createdAt: {} };",
+      "choices": [
+        "Optional properties accept `{}` because excess checks are skipped",
+        "Date is an object, so it maps to a type with every method optional",
+        "DeepPartial stops at one level, so `createdAt` becomes `unknown`",
+        "`{}` is the empty object type, which every type is assignable to"
+      ],
+      "answer": 1,
+      "why": "The recursion treats `Date` like any object and maps its methods into optional properties, which `{}` satisfies. Real DeepPartial helpers stop at built-ins with a check such as `T[K] extends Date | Function ? T[K] : DeepPartial<T[K]>`; a plain `Partial<Post>` would reject `{}` for a Date.",
+      "tags": [
+        "mapped",
+        "conditional"
+      ],
+      "level": 3,
+      "asked": "Recursive utility types in real code need base cases for built-ins, and a reviewer should spot the missing one.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-049",
+      "q": "What is `P`?",
+      "code": "type Path<T> = {\n  [K in keyof T & string]: T[K] extends object ? K | `${K}.${Path<T[K]>}` : K;\n}[keyof T & string];\ntype P = Path<{ id: number; author: { name: string } }>;",
+      "choices": [
+        "`'id' | 'author'`, since the recursion adds nested keys as types only",
+        "`'id' | 'name' | 'author'`, with nested keys flattened to one level",
+        "`'id' | 'author' | 'author.name'`, each nested key under its parent",
+        "`'id' | 'author.name'`, since object-valued keys become only paths"
+      ],
+      "answer": 2,
+      "why": "For each key the mapped type yields the key itself and, for object values, the key joined to the paths of the nested type; indexing with `[keyof T & string]` unions them. Form libraries type `register('author.name')` this way; `& string` drops number and symbol keys that cannot go in a template.",
+      "tags": [
+        "template-literals",
+        "mapped",
+        "conditional"
+      ],
+      "level": 3,
+      "asked": "Dot-path types power form and i18n libraries, and reading one shows real fluency with recursion.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-050",
+      "q": "What is `L`?",
+      "code": "type Last<T extends unknown[]> = T extends [...unknown[], infer X] ? X : never;\ntype L = Last<[string, number, boolean]>;",
+      "choices": [
+        "`string`, since `infer` binds to the first unmatched element",
+        "`never`, since a rest element must come last in the pattern",
+        "`string | number | boolean`, as the rest absorbs everything",
+        "`boolean`, since the rest element takes all but the final one"
+      ],
+      "answer": 3,
+      "why": "Variadic tuple types allow a rest element in any position, so `[...unknown[], infer X]` matches any non-empty tuple and binds its final element. The rule that rest must be last applies to parameter lists, not tuple types; an empty tuple would give `never`.",
+      "tags": [
+        "conditional",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "Tuple patterns are how middleware chains and pipe helpers type their first and last functions.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-051",
+      "q": "What is `V`?",
+      "code": "type Both<T> = T extends { a: infer X; b: infer X } ? X : never;\ntype V = Both<{ a: string; b: number }>;",
+      "choices": [
+        "`string | number`, a union of the candidates found for X",
+        "`string`, the first candidate, with `b` failing to match",
+        "`never`, since X cannot be string and number at once",
+        "`string & number`, the intersection of both candidates"
+      ],
+      "answer": 0,
+      "why": "Several `infer X` sites in covariant positions, such as properties, produce a union of the candidates. In contravariant positions, such as two function parameters, the candidates are intersected instead, which is the trick behind `UnionToIntersection`.",
+      "tags": [
+        "conditional",
+        "inference",
+        "variance"
+      ],
+      "level": 3,
+      "asked": "It separates people who can read advanced library types from those who copy them.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-052",
+      "q": "What is `M`?",
+      "code": "type MethodKeys<T> = {\n  [K in keyof T]: T[K] extends (...a: any[]) => any ? K : never;\n}[keyof T];\ntype M = MethodKeys<{ id: number; save(): void; load(): void }>;",
+      "choices": [
+        "`{ save: 'save'; load: 'load' }`, the object before indexing",
+        "`'save' | 'load'`, with the `never` for `id` dropped from it",
+        "`'id' | 'save' | 'load'`, since every key maps to something",
+        "`'save' | 'load' | never`, which cannot be simplified further"
+      ],
+      "answer": 1,
+      "why": "The mapped type turns each property into its own key or `never`, and indexing it with `[keyof T]` collects the values as a union, where `never` vanishes. It is the classic way to pick keys by value type; since TS 4.1, key remapping with `as` can filter keys directly.",
+      "tags": [
+        "mapped",
+        "conditional"
+      ],
+      "level": 2,
+      "asked": "Selecting keys by value type is needed for typed form fields, sort keys and event maps.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-053",
+      "q": "Under `strict`, what is `S`?",
+      "code": "type StringProps<T> = { [K in keyof T as T[K] extends string ? K : never]: T[K] };\ntype S = StringProps<{ id: number; name: string; nick?: string }>;",
+      "choices": [
+        "`{ name: string; nick?: string }`, keeping the optional modifier",
+        "`{ name: string; nick: string }`, since `as` drops the modifiers",
+        "`{ name: string }`, since `nick` reads as `string | undefined` here",
+        "`{ id: never; name: string; nick?: string }`, with no key removed"
+      ],
+      "answer": 2,
+      "why": "Reading an optional property through `T[K]` includes `undefined`, and `string | undefined` does not extend `string`, so `nick` is filtered out. Test `NonNullable<T[K]>` to keep optional string fields; when a key does survive, `as` remapping keeps its modifiers.",
+      "tags": [
+        "mapped",
+        "conditional"
+      ],
+      "level": 3,
+      "asked": "Filtering keys by value type is common, and silently losing optional fields is the bug that ships.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-054",
+      "q": "What is `R`?",
+      "code": "type Stringify<T> = { [K in keyof T]: string };\ntype R = Stringify<[number, boolean]>;",
+      "choices": [
+        "An object with keys `0`, `1`, `length` and every array method",
+        "`string[]`, since mapping over a tuple loses its fixed length",
+        "`{ 0: string; 1: string }`, a plain object with numeric keys",
+        "`[string, string]`, since the mapping applies to each element"
+      ],
+      "answer": 3,
+      "why": "A homomorphic mapped type (`[K in keyof T]` with T a type parameter) instantiated with a tuple maps only the element positions and keeps the tuple shape, which is why `Partial<[a, b]>` is `[a?, b?]`. Only a mapping over a concrete array type, not a parameter, would touch `length` and the methods.",
+      "tags": [
+        "mapped"
+      ],
+      "level": 3,
+      "asked": "Typing `Promise.all`-style helpers relies on mapped types preserving tuples.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-055",
+      "q": "What is `Public`?",
+      "code": "type Without<T, X> = { [K in keyof T as Exclude<K, X>]: T[K] };\ntype Public = Without<{ readonly id: number; nick?: string; pw: string }, 'pw'>;",
+      "choices": [
+        "`{ readonly id: number; nick?: string }`, modifiers kept",
+        "`{ id: number; nick: string | undefined }`, modifiers lost",
+        "`{ readonly id: number; nick?: string; pw: never }`",
+        "`{ id: number; nick?: string }`, readonly stripped by `as`"
+      ],
+      "answer": 0,
+      "why": "Key remapping with `as` still iterates `keyof T`, so the mapped type stays homomorphic and copies `readonly` and `?` from the source. Keys remapped to `never` are removed outright rather than kept as `never`-typed properties.",
+      "tags": [
+        "mapped",
+        "modifiers"
+      ],
+      "level": 2,
+      "asked": "Building DTO types by removing sensitive keys needs you to know whether readonly and optional survive.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-056",
+      "q": "Under `strict`, what is `R`?",
+      "code": "type Req<T> = { [K in keyof T]-?: T[K] };\ntype R = Req<{ note?: string }>;",
+      "choices": [
+        "`{ note: string | undefined }`, required but still nullable",
+        "`{ note: string }`, with the `undefined` from `?` removed too",
+        "`{ note?: string }`, since `-?` applies only to readonly keys",
+        "`{ note: never }`, since an optional value cannot be required"
+      ],
+      "answer": 1,
+      "why": "`-?` removes the optional modifier and the `undefined` that `?` added, which is exactly how the built-in `Required<T>` works. Mapping without `-?` would keep `note?: string`, since homomorphic mapped types copy modifiers from the source.",
+      "tags": [
+        "mapped",
+        "modifiers"
+      ],
+      "level": 2,
+      "asked": "Knowing how `Required` is built helps you write variants such as \"required except id\".",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-057",
+      "q": "What is `K`?",
+      "code": "type Card = { id: string; last4: string };\ntype Bank = { id: string; iban: string };\ntype K = keyof (Card | Bank);",
+      "choices": [
+        "`'id' | 'last4' | 'iban'`, every key of either member",
+        "`never`, since the two types have different shapes",
+        "`'id'`, the only key both members are known to have",
+        "`string`, since keys of a union widen to `string`"
+      ],
+      "answer": 2,
+      "why": "A value of `Card | Bank` is only guaranteed to have the keys common to both, so `keyof` of a union is the intersection of the members' keys. `keyof (Card & Bank)` gives all three; for per-member keys, distribute with `T extends unknown ? keyof T : never`.",
+      "tags": [
+        "type-ops",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "It explains why generic helpers over union types suddenly accept only the shared fields.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-058",
+      "q": "How many members does `Ev` have?",
+      "code": "type Ev = `${'user' | 'order'}:${'created' | 'deleted'}`;",
+      "choices": [
+        "Two, pairing the unions position by position",
+        "Four, but only once `Ev` is used as a key type",
+        "One, since template literal types never expand unions",
+        "Four: every combination of the two unions"
+      ],
+      "answer": 3,
+      "why": "Unions inside a template literal type expand as a cross product, so two members times two gives four string literals such as `'user:created'`. It is handy for event names, but it multiplies quickly and tsc refuses results beyond 100,000 members.",
+      "tags": [
+        "template-literals",
+        "unions"
+      ],
+      "level": 1,
+      "asked": "Typed event buses and permission strings are usually built this way.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-059",
+      "q": "Which assignment does tsc reject?",
+      "code": "type Px = `${number}px`;\nconst a: Px = '1.5px';\nconst b: Px = '-2px';\nconst c: Px = '1e3px';\nconst d: Px = '1_000px';",
+      "choices": [
+        "`d`, since `Number('1_000')` does not parse as a number",
+        "`c`, since exponent notation is not a numeric literal form",
+        "`b`, since `${number}` accepts only non-negative numbers",
+        "`a`, since `${number}` in a template means integers only"
+      ],
+      "answer": 0,
+      "why": "A string matches `${number}` when JavaScript can convert that text to a number, so decimals, signs and exponents all pass. Numeric separators such as `1_000` are only source-code syntax: `Number('1_000')` is `NaN`, so `d` is rejected.",
+      "tags": [
+        "template-literals"
+      ],
+      "level": 2,
+      "asked": "CSS-unit and version-string types use `${number}`, and knowing what it accepts avoids false confidence.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-060",
+      "q": "What is `R`?",
+      "code": "type Params<S> = S extends `${string}:${infer P}/${infer Rest}`\n  ? P | Params<Rest>\n  : S extends `${string}:${infer P}` ? P : never;\ntype R = Params<'/users/:id/posts/:postId'>;",
+      "choices": [
+        "`string`, since `infer` inside a template always widens",
+        "`'id' | 'postId'`, one member for each `:param` segment",
+        "`'id'`, since the recursion stops after the first match",
+        "`'id/posts/:postId'`, since `infer` matches greedily"
+      ],
+      "answer": 1,
+      "why": "Each `infer` followed by a literal delimiter captures the shortest text up to that delimiter, so the first match takes `id` and recurses on the rest, where the second branch captures `postId`. Typed routers turn a path string into a params type this way.",
+      "tags": [
+        "template-literals",
+        "conditional"
+      ],
+      "level": 2,
+      "asked": "Typed route params are the most common real use of recursive template literal types.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-061",
+      "q": "Why does this need `& string`?",
+      "code": "type Changed<T> = `${keyof T & string}Changed`;",
+      "choices": [
+        "Without it, the keys are widened to plain `string` first",
+        "`keyof` returns an array of keys that must be flattened",
+        "`keyof T` may include symbol keys, which a template rejects",
+        "It forces the property names to lowercase for event names"
+      ],
+      "answer": 2,
+      "why": "`keyof T` is `string | number | symbol` for an arbitrary T, and a symbol cannot be interpolated into a template literal type, so tsc rejects `${keyof T}`. Intersecting with `string` keeps only the string keys; the literal key names are not widened either way.",
+      "tags": [
+        "template-literals",
+        "type-ops"
+      ],
+      "level": 2,
+      "asked": "Anyone generating event or getter names from a model type writes this intersection.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-062",
+      "q": "What is `V`?",
+      "code": "type User = { id: number; name: string; active: boolean };\ntype V = User['id' | 'name'];",
+      "choices": [
+        "`{ id: number; name: string }`, like a `Pick` of both keys",
+        "`[number, string]`, a tuple in the order of the keys",
+        "An error, since an index type must be a single key",
+        "`number | string`, a union of the two property types"
+      ],
+      "answer": 3,
+      "why": "Indexed access with a union of keys returns the union of the property types; it does not build an object. `Pick<User, 'id' | 'name'>` is the one that keeps the object shape.",
+      "tags": [
+        "type-ops"
+      ],
+      "level": 1,
+      "asked": "Indexed access types are how you reuse a field type without copying it.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-063",
+      "q": "What is `Opts`?",
+      "code": "function connect(url: string, opts: { retries: number }) {}\ntype Opts = Parameters<typeof connect>[1];",
+      "choices": [
+        "`{ retries: number }`, the second parameter's type",
+        "`string`, since tuple indexes in types start at 1",
+        "`[opts: { retries: number }]`, a one-element tuple",
+        "An error, since `typeof` cannot be used on functions"
+      ],
+      "answer": 0,
+      "why": "`typeof connect` lifts the function's type into type space, `Parameters` turns its parameter list into a tuple, and `[1]` indexes the second element. It is the standard way to reuse an options type that a library never exported.",
+      "tags": [
+        "type-ops"
+      ],
+      "level": 1,
+      "asked": "Pulling unexported types out of third-party functions is a daily need.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-064",
+      "q": "Under `strict`, what is `Addr`?",
+      "code": "type User = { name: string; address?: { city: string } };\ntype Addr = User['address'];",
+      "choices": [
+        "`{ city: string }`, since indexing strips the optional marker",
+        "`{ city: string } | undefined`, as the property is optional",
+        "`{ city?: string }`, since optionality moves to the members",
+        "An error, since optional properties cannot be indexed"
+      ],
+      "answer": 1,
+      "why": "Indexed access returns the property's read type, which for an optional property includes `undefined`. Wrap it as `NonNullable<User['address']>` when you want the object type alone, for example to type a sub-component's props.",
+      "tags": [
+        "type-ops",
+        "modifiers"
+      ],
+      "level": 1,
+      "asked": "Deriving child prop types from a parent model trips on this `undefined` constantly.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-065",
+      "q": "What is `Name`?",
+      "code": "enum Color { Red = 'red', Green = 'green' }\ntype Name = keyof typeof Color;",
+      "choices": [
+        "`'red' | 'green'`, the enum's string values",
+        "`Color`, the union of the enum's members",
+        "`'Red' | 'Green'`, the enum's member names",
+        "`string`, since enum keys are not literal types"
+      ],
+      "answer": 2,
+      "why": "`typeof Color` is the type of the runtime enum object, whose keys are the member names, so `keyof` gives `'Red' | 'Green'`. The values `'red' | 'green'` would come from `${Color}` in a template literal type, and `Color` itself is the union of the members.",
+      "tags": [
+        "type-ops"
+      ],
+      "level": 2,
+      "asked": "Mapping between enum names and values is common when parsing query strings or config.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-066",
+      "q": "In a type position, how do `User` and `typeof User` differ?",
+      "code": "class User {\n  constructor(public name: string) {}\n  static create() { return new User(''); }\n}",
+      "choices": [
+        "They do not; for classes `typeof` aliases the instance type",
+        "`User` is the constructor type; `typeof User` is an instance",
+        "`typeof User` is `'function'`, the string `typeof` returns",
+        "`User` is the instance type; `typeof User` is the class itself"
+      ],
+      "answer": 3,
+      "why": "A class declares two things: an instance type named `User`, and a constructor value whose type, `typeof User`, includes `new (name: string) => User` and statics such as `create`. Type-position `typeof` never produces the runtime string `'function'`.",
+      "tags": [
+        "classes",
+        "type-ops"
+      ],
+      "level": 1,
+      "asked": "Passing classes to factories and DI containers needs the constructor type, not the instance type.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-067",
+      "q": "Why is the last call rejected?",
+      "code": "function greet(name: string): string;\nfunction greet(name: string, greeting: string): string;\nfunction greet(name: string, greeting = 'Hi', loud?: boolean) {\n  const s = `${greeting}, ${name}`;\n  return loud ? s.toUpperCase() : s;\n}\ngreet('Ann', 'Hey', true);",
+      "choices": [
+        "Callers see only the overloads, and none takes three arguments",
+        "Optional parameters are not allowed in an overload implementation",
+        "Overloads need the implementation to declare its return type",
+        "Arguments are checked against the first overload signature only"
+      ],
+      "answer": 0,
+      "why": "The implementation signature is invisible to callers; only the overload signatures are, and neither accepts three arguments. The implementation may use defaults, optional parameters and an inferred return type as long as it is compatible with every overload; add a third overload to expose `loud`.",
+      "tags": [
+        "functions"
+      ],
+      "level": 2,
+      "asked": "It checks that you know overloads replace, rather than add to, the implementation signature.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-068",
+      "q": "What is the type of `r`?",
+      "code": "function f(x: unknown): string;\nfunction f(x: string): number;\nfunction f(x: unknown): unknown {\n  return x;\n}\nconst r = f('a');",
+      "choices": [
+        "`number`, since tsc picks the most specific overload",
+        "`string`, since the first matching overload wins",
+        "`string | number`, since both overloads match `'a'`",
+        "An error, since the overloads overlap ambiguously"
+      ],
+      "answer": 1,
+      "why": "Overload resolution tries signatures in declaration order and stops at the first that accepts the arguments, so the broad `unknown` overload hides the specific one. Order overloads from most specific to most general; tsc does not rank them by specificity.",
+      "tags": [
+        "functions"
+      ],
+      "level": 2,
+      "asked": "Misordered overloads are a quiet bug in hand-written `.d.ts` files.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-069",
+      "q": "Does the last line compile?",
+      "code": "class Query {\n  where(c: string): this { return this; }\n}\nclass UserQuery extends Query {\n  active() { return this.where('active'); }\n}\nnew UserQuery().where('x').active();",
+      "choices": [
+        "No: `where` returns `Query`, which has no `active` method",
+        "No: a method cannot return the polymorphic `this` type",
+        "Yes: a `this` return type means the receiver's own class",
+        "Yes, because subclass methods are merged into the base"
+      ],
+      "answer": 2,
+      "why": "The polymorphic `this` type resolves to the type of the object the method is called on, so `where` on a `UserQuery` returns `UserQuery`. Annotating `where(): Query` would lose the subclass methods, which is the bug fluent builders usually hit.",
+      "tags": [
+        "classes",
+        "functions"
+      ],
+      "level": 2,
+      "asked": "Query builders and fluent APIs rely on `this` types to chain subclass methods.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-070",
+      "q": "Which declaration fails to compile?",
+      "code": "type Ab = { a: number } | { b: number };\nconst x: Ab = { a: 1, b: 2 };\ntype Tagged = { kind: 'a'; a: number } | { kind: 'b'; b: number };\nconst y: Tagged = { kind: 'a', a: 1, b: 2 };",
+      "choices": [
+        "`x`, since `b` is excess for the `{ a: number }` member",
+        "Neither, since every property exists in some union member",
+        "`x` and `y`, since excess checks run on each member alone",
+        "`y`, since the discriminant picks one member to check against"
+      ],
+      "answer": 3,
+      "why": "For an untagged union, a fresh literal only needs each property to exist in some member, so `x` passes. When the union has a discriminant, tsc first narrows to the member matching `kind: 'a'` and then reports `b` as excess.",
+      "tags": [
+        "soundness",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "Excess property checks on unions are subtle, and knowing when they are lax explains bugs in option objects.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-071",
+      "q": "What is `Name`?",
+      "code": "type Route = { path: string };\nconst routes = {\n  home: { path: '/' },\n  about: { path: '/about' },\n} satisfies Record<string, Route>;\ntype Name = keyof typeof routes;",
+      "choices": [
+        "`string`, taken from the `Record<string, Route>` it satisfies",
+        "`'home' | 'about'`, since `satisfies` keeps the inferred type",
+        "`never`, since `satisfies` erases the object's own key names",
+        "`string | number`, the key type of any record with string keys"
+      ],
+      "answer": 1,
+      "why": "`satisfies` checks the value against the type but leaves the variable with its own inferred type, so the literal keys survive. Annotating `const routes: Record<string, Route>` would make `Name` plain `string` and let typos such as `routes.abuot` compile.",
+      "tags": [
+        "type-ops",
+        "inference"
+      ],
+      "level": 1,
+      "asked": "Config maps that are both checked and precisely keyed are the main reason `satisfies` exists.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-072",
+      "q": "In TypeScript 5.5+, why is `names` still `(string | undefined)[]`?",
+      "code": "const raw = ['ann', undefined, 'bo'];\nconst names = raw.filter((x) => !!x);",
+      "choices": [
+        "Predicates are only inferred from `!==` checks, never from `!!`",
+        "A false result may be the empty string, so it is not `x is string`",
+        "Predicates are only inferred for arrows with a block body",
+        "`filter` uses inferred predicates only on `as const` arrays"
+      ],
+      "answer": 1,
+      "why": "An inferred predicate `x is string` must also mean a false result proves `x` is not a string, and `''` is a string that returns false. tsc therefore infers nothing; write `x !== undefined` or an explicit predicate. Truthiness of an `object | undefined` would infer fine.",
+      "tags": [
+        "functions",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "It shows you understand what a type predicate claims in both branches.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-073",
+      "q": "What is the type of `port` on the last line?",
+      "code": "function assert(cond: unknown, msg: string): asserts cond {\n  if (!cond) throw new Error(msg);\n}\ndeclare const port: number | undefined;\nassert(port !== undefined, 'PORT missing');\nport;",
+      "choices": [
+        "`number | undefined`, since assertions narrow only a named argument",
+        "`boolean`, since the asserted value was the comparison result",
+        "`number`, since `asserts cond` narrows as if the condition held",
+        "`unknown`, since the parameter `cond` is typed as `unknown`"
+      ],
+      "answer": 2,
+      "why": "`asserts cond` tells tsc that if the call returns, the argument expression was truthy, so whatever it implies, here `port !== undefined`, holds for the rest of the scope. This is how Node's `assert` is typed, and it works on any condition, not only a bare variable.",
+      "tags": [
+        "functions"
+      ],
+      "level": 1,
+      "asked": "Invariant helpers built on `asserts cond` replace many non-null assertions in real code.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-074",
+      "q": "What is the type of `user[key]` inside the `if`?",
+      "code": "function hasKey<T extends object>(o: T, k: PropertyKey): k is keyof T {\n  return k in o;\n}\nconst user = { id: 1, name: 'Ann' };\ndeclare const key: string;\nif (hasKey(user, key)) user[key];",
+      "choices": [
+        "An error, since `key` is still `string` and cannot index `user`",
+        "`unknown`, because the predicate only narrows to `PropertyKey`",
+        "`number`, the type of the first property the key could name",
+        "`string | number`, since `key` narrowed to `'id' | 'name'`"
+      ],
+      "answer": 3,
+      "why": "A type predicate can narrow any parameter, and `k is keyof T` narrows `key` to `'id' | 'name'`, so the access is the union of both property types. tsc never checks that `k in o` proves the claim, and it is in fact unsound for inherited keys such as `'toString'`.",
+      "tags": [
+        "functions",
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "Safe dynamic key access is a frequent code-review topic, and so is the trust a predicate asks for.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-075",
+      "q": "What does the `out` annotation on T do?",
+      "code": "interface Producer<out T> {\n  get(): T;\n}",
+      "choices": [
+        "Declares T covariant, which tsc checks against how T is used",
+        "Makes T readonly, so implementations cannot mutate the value",
+        "Allows T to be inferred from return types at call sites only",
+        "Turns off variance checks for T, as method bivariance does"
+      ],
+      "answer": 0,
+      "why": "The `in` and `out` modifiers (TS 4.7+) state a type parameter's variance so tsc can compare `Producer<Dog>` with `Producer<Animal>` without measuring it structurally, and tsc errors if the annotation contradicts the members. They help checker performance and documentation; they never switch checking off or change inference.",
+      "tags": [
+        "variance",
+        "generics"
+      ],
+      "level": 2,
+      "asked": "Variance annotations appear in library typings and are a quick test of whether you understand co- and contravariance.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-076",
+      "q": "What does tsc report for this declaration?",
+      "code": "interface Sink<out T> {\n  write(value: T): void;\n}",
+      "choices": [
+        "Nothing, since method parameters are bivariant and so fit `out`",
+        "An error: T is used in an input position but is marked `out`",
+        "Nothing, since variance annotations are documentation only",
+        "An error: `out` is allowed on type aliases, not on interfaces"
+      ],
+      "answer": 0,
+      "why": "tsc verifies the annotation by checking that `Sink<Sub>` is assignable to `Sink<Super>`, and method-shorthand parameters are compared bivariantly, so the check passes. Declared as a property, `write: (value: T) => void`, the parameter is contravariant and the same `out` is error 2636: the annotations are checked, not decorative.",
+      "tags": [
+        "variance",
+        "soundness"
+      ],
+      "level": 3,
+      "asked": "It shows you can tell producers from consumers, which is what variance comes down to.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-077",
+      "q": "Which lines does tsc reject?",
+      "code": "abstract class Repo {\n  abstract find(id: string): Promise<unknown>;\n  log() { console.log('find'); }\n}\nclass UserRepo extends Repo {}\nconst r = new Repo();",
+      "choices": [
+        "Only `new Repo()`, since an abstract class cannot be constructed",
+        "Only `UserRepo`, since it leaves the abstract `find` unimplemented",
+        "The `UserRepo` declaration and the `new Repo()` call",
+        "Neither, since abstract members default to throwing at runtime"
+      ],
+      "answer": 2,
+      "why": "A concrete subclass must implement every abstract member, so `UserRepo` is error 2515, and an abstract class can never be constructed directly (error 2511). Abstract members have no runtime body at all; they exist only as a type-level contract.",
+      "tags": [
+        "classes"
+      ],
+      "level": 1,
+      "asked": "Abstract base classes for repositories and services are common in NestJS-style back ends.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-078",
+      "q": "What does tsc report for this code?",
+      "code": "const pair: [number, number] = [1, 2];\npair.push(3);\nconsole.log(pair.length);",
+      "choices": [
+        "An error on `push`, since tuples have a fixed length",
+        "An error on `.length`, which is typed as the literal `2`",
+        "Nothing, since `[number, number]` is an alias of `number[]`",
+        "Nothing; `push` is inherited from `Array` and unrestricted"
+      ],
+      "answer": 3,
+      "why": "Tuple types extend `Array`, so mutating methods such as `push` stay available, while `pair.length` is still typed `2` although it is 3 at runtime. Declare it `readonly [number, number]` to remove the mutating methods.",
+      "tags": [
+        "soundness"
+      ],
+      "level": 1,
+      "asked": "It is a small, concrete example of where the type system is deliberately unsound.",
+      "lang": "ts"
+    },
+    {
+      "id": "tsa-079",
+      "q": "What are `I` and `A`?",
+      "code": "class Mailer {\n  constructor(host: string, port: number) {}\n}\ntype I = InstanceType<typeof Mailer>;\ntype A = ConstructorParameters<typeof Mailer>;",
+      "lang": "ts",
+      "choices": [
+        "`typeof Mailer` and `[string, number]`",
+        "`Mailer` and `[host: string, port: number]`",
+        "`Mailer` and `{ host: string; port: number }`",
+        "`object` and `(string | number)[]`"
+      ],
+      "answer": 1,
+      "why": "Both utilities work on the constructor type `typeof Mailer`: `InstanceType` gives what `new` returns (the instance type `Mailer`), and `ConstructorParameters` gives the argument list as a labelled tuple. They are the class equivalents of `ReturnType` and `Parameters`.",
+      "tags": [
+        "type-ops",
+        "classes"
+      ],
+      "level": 1,
+      "asked": "DI containers and factories pass classes around as values, and these utilities type them."
+    },
+    {
+      "id": "tsa-080",
+      "q": "What is `Verb`?",
+      "code": "type Verb = Uppercase<'get' | 'post'>;",
+      "lang": "ts",
+      "choices": [
+        "An error, since it needs a single literal",
+        "`string`, since intrinsic types widen",
+        "`'Get' | 'Post'`, in title case",
+        "`'GET' | 'POST'`"
+      ],
+      "answer": 3,
+      "why": "`Uppercase`, `Lowercase`, `Capitalize` and `Uncapitalize` are compiler intrinsics that map over each member of a union of string literals. `Capitalize` is the one that only changes the first letter.",
+      "tags": [
+        "template-literals",
+        "type-ops"
+      ],
+      "level": 1,
+      "asked": "These show up in typed HTTP clients and event-name helpers, so reading them is expected."
+    },
+    {
+      "id": "tsa-081",
+      "q": "What is `R`?",
+      "code": "type R = Readonly<string[]>;",
+      "lang": "ts",
+      "choices": [
+        "`readonly [string]`, a single-element tuple",
+        "`string[]`, since `Readonly` only affects objects",
+        "`{ readonly [n: number]: string }` without methods",
+        "`readonly string[]`"
+      ],
+      "answer": 3,
+      "why": "Homomorphic mapped types like `Readonly` treat arrays specially and produce `readonly string[]` (a `ReadonlyArray<string>`), which drops `push`, `splice` and other mutators while keeping `map` and `filter`.",
+      "tags": [
+        "mapped",
+        "modifiers"
+      ],
+      "level": 1,
+      "asked": "Readonly arrays in function signatures are a common review suggestion, so knowing the equivalent spellings helps."
+    },
+    {
+      "id": "tsa-082",
+      "q": "What is `Flags`?",
+      "code": "type Flags = { [K in 'dark' | 'beta']: boolean };",
+      "lang": "ts",
+      "choices": [
+        "`{ dark: boolean; beta: boolean }`",
+        "`{ [key: string]: boolean }`",
+        "`{ dark?: boolean; beta?: boolean }`",
+        "`Record<string, 'dark' | 'beta'>`"
+      ],
+      "answer": 0,
+      "why": "A mapped type iterates over any union of keys, not only `keyof` something; each member becomes a required property. This is exactly how `Record<K, V>` is defined.",
+      "tags": [
+        "mapped"
+      ],
+      "level": 1,
+      "asked": "Understanding that `Record` is just a mapped type is the first step to reading utility types."
+    },
+    {
+      "id": "tsa-083",
+      "q": "What is `keyof any`?",
+      "choices": [
+        "`string | number`, the key types JSON allows",
+        "`string`, since keys are always strings",
+        "`string | number | symbol`",
+        "`never`, since `any` has no known keys"
+      ],
+      "answer": 2,
+      "why": "Property keys in JavaScript can be strings, numbers (converted to strings) or symbols, so the most general key type is that union, also available as `PropertyKey`. Utilities like `Omit` constrain their keys with `K extends keyof any`.",
+      "tags": [
+        "type-ops",
+        "keyof"
+      ],
+      "level": 1,
+      "asked": "It explains constraints you see in library typings and why `Omit` accepts any key."
+    },
+    {
+      "id": "tsa-084",
+      "q": "What are `E` and `L`?",
+      "code": "type Pair = [id: number, label: string];\ntype E = Pair[number];\ntype L = Pair['length'];",
+      "lang": "ts",
+      "choices": [
+        "`number | string` and `number`",
+        "`number | string` and `2`",
+        "`number` and `2`",
+        "`[number, string]` and `number`"
+      ],
+      "answer": 1,
+      "why": "Indexing a tuple with `number` gives the union of its element types, and its `length` is the literal `2` because the length is fixed. For a plain array, `length` would be `number`.",
+      "tags": [
+        "type-ops",
+        "tuples"
+      ],
+      "level": 1,
+      "asked": "Indexed access on tuples and arrays is how element types are pulled out of `as const` lists."
+    },
+    {
+      "id": "tsa-085",
+      "q": "What is `Add`?",
+      "code": "type Action =\n  | { type: 'add'; item: string }\n  | { type: 'remove'; id: number };\ntype Add = Extract<Action, { type: 'add' }>;",
+      "lang": "ts",
+      "choices": [
+        "`{ type: 'add' }`, the shape passed as the filter",
+        "`Action`, as `Extract` matches on shared keys",
+        "`never`, as neither member equals the filter",
+        "`{ type: 'add'; item: string }`"
+      ],
+      "answer": 3,
+      "why": "`Extract<T, U>` keeps the members of `T` that are assignable to `U`, and a member only needs the `type` property to match, so it works as a lookup by discriminant. It does not require the member to be identical to `U`.",
+      "tags": [
+        "type-ops",
+        "unions"
+      ],
+      "level": 1,
+      "asked": "Pulling one variant out of an action or event union is common in reducers and handlers."
+    },
+    {
+      "id": "tsa-086",
+      "q": "What does `declare module '*.svg' { const src: string; export default src; }` do?",
+      "choices": [
+        "Types every `.svg` import as a default `string`",
+        "Loads SVG files as strings at runtime",
+        "Makes tsc copy SVG files into `outDir`",
+        "Validates that each SVG file is well-formed"
+      ],
+      "answer": 0,
+      "why": "A wildcard module declaration tells the compiler what importing a matching path returns. It is purely a type claim; the bundler is what actually turns the import into a URL, so the declaration must match the bundler's behaviour.",
+      "tags": [
+        "modules",
+        "declarations"
+      ],
+      "level": 1,
+      "asked": "Asset imports in Vite or webpack projects need this, and the `/// <reference>` alternative is a common follow-up."
+    },
+    {
+      "id": "tsa-087",
+      "q": "What does `/// <reference types=\"vite/client\" />` in `src/vite-env.d.ts` give a Vite project?",
+      "choices": [
+        "Types for `import.meta.env` and asset imports like `.svg`",
+        "A runtime polyfill for `import.meta` in older browsers",
+        "Type-checking during `vite dev`, which is otherwise off",
+        "Access to Vite plugin APIs from application code"
+      ],
+      "answer": 0,
+      "why": "The directive pulls Vite's ambient declarations into the program: `ImportMetaEnv`, `import.meta.hot` and wildcard modules for assets. It has no runtime effect and does not make Vite type-check.",
+      "tags": [
+        "declarations",
+        "config"
+      ],
+      "level": 1,
+      "asked": "Everyone has seen this file; knowing what it does shows you read your config rather than copy it."
+    },
+    {
+      "id": "tsa-088",
+      "q": "Which line fails to compile?",
+      "code": "class Repo<T extends { id: string }> {\n  private rows = new Map<string, T>();\n  save(row: T) { this.rows.set(row.id, row); }\n}\nconst users = new Repo<{ id: string; name: string }>(); // A\nconst tags = new Repo<{ name: string }>();              // B\nusers.save({ id: '1', name: 'Ann' });                   // C",
+      "lang": "ts",
+      "choices": [
+        "Line A, because the type argument has extra properties",
+        "Line B, because the type argument has no `id`",
+        "Line C, because `save` expects exactly `{ id: string }`",
+        "None, because constraints are checked at runtime"
+      ],
+      "answer": 1,
+      "why": "The constraint lets the class body rely on `row.id`, and every type argument must satisfy it. Extra properties are fine, so line A is valid and `save` then expects the full `{ id; name }` type.",
+      "tags": [
+        "generics",
+        "classes"
+      ],
+      "level": 1,
+      "asked": "Generic repositories and caches are classic \"write a generic\" interview tasks."
+    },
+    {
+      "id": "tsa-089",
+      "q": "What does the `private constructor` achieve?",
+      "code": "class Money {\n  private constructor(readonly cents: number) {}\n  static fromPounds(p: number) { return new Money(Math.round(p * 100)); }\n}",
+      "lang": "ts",
+      "choices": [
+        "Code outside the class must use `Money.fromPounds`",
+        "It makes `Money` instances immutable after creation",
+        "It prevents `Money` from being used as a type",
+        "It hides `cents` from code outside the class"
+      ],
+      "answer": 0,
+      "why": "`new Money(...)` is only allowed inside the class, so every instance goes through the factory, which can validate or normalise input. `readonly` is what stops reassignment of `cents`, and it stays publicly readable.",
+      "tags": [
+        "classes",
+        "modifiers"
+      ],
+      "level": 1,
+      "asked": "Value objects with validated factories are a common modelling pattern in both TS and C#."
+    },
+    {
+      "id": "tsa-090",
+      "q": "What is the type of `ids`?",
+      "code": "function isDefined<T>(x: T | undefined): x is T {\n  return x !== undefined;\n}\ndeclare const raw: (string | undefined)[];\nconst ids = raw.filter(isDefined);",
+      "lang": "ts",
+      "choices": [
+        "`(string | undefined)[]`, since `filter` keeps its input type",
+        "`T[]`, since `T` cannot be inferred here",
+        "`unknown[]`, since the guard is generic",
+        "`string[]`, since the guard narrows each element"
+      ],
+      "answer": 3,
+      "why": "`filter` has an overload that accepts a type predicate and returns `S[]`; `T` is inferred as `string` from the array. This generic guard predates 5.5 inferred predicates and is still common in utility modules.",
+      "tags": [
+        "generics",
+        "functions"
+      ],
+      "level": 1,
+      "asked": "A reusable `isDefined` is one of the most common small generics in real codebases."
+    },
+    {
+      "id": "tsa-091",
+      "q": "What is `E`?",
+      "code": "type User = { email?: string | null };\ntype E = NonNullable<User['email']>;",
+      "lang": "ts",
+      "choices": [
+        "`string`",
+        "`string | null`",
+        "`string | undefined`",
+        "`never`"
+      ],
+      "answer": 0,
+      "why": "Indexing an optional property includes `undefined`, and `NonNullable` removes both `null` and `undefined`, leaving `string`. It is defined as `T & {}`.",
+      "tags": [
+        "type-ops",
+        "modifiers"
+      ],
+      "level": 1,
+      "asked": "Deriving the \"present\" type of an optional field is common when writing guards and form handlers."
+    },
+    {
+      "id": "tsa-092",
+      "q": "Which value is assignable to `Counts`?",
+      "code": "type Status = 'open' | 'closed' | 'merged';\ntype Counts = Partial<Record<Status, number>>;",
+      "lang": "ts",
+      "choices": [
+        "`{ open: 1, pending: 2 }`",
+        "`{ open: '1' }`",
+        "`{ open: 1 }`",
+        "`[1, 2, 3]`"
+      ],
+      "answer": 2,
+      "why": "`Record<Status, number>` requires every status; wrapping it in `Partial` makes each key optional but still rejects unknown keys and wrong value types. It is the right type for counts where zero entries are omitted.",
+      "tags": [
+        "utility-types",
+        "mapped"
+      ],
+      "level": 1,
+      "asked": "Aggregations keyed by a status union are common in dashboards and reports."
+    },
+    {
+      "id": "tsa-093",
+      "q": "What does tsc report for `Draft`?",
+      "code": "type User = { id: string; email: string; createdAt: Date };\ntype Draft = Omit<User, 'id' | 'createAt'>;",
+      "lang": "ts",
+      "choices": [
+        "An error: `'createAt'` is not a key of `User`",
+        "An error only when a `Draft` value is created",
+        "`Draft` is `{ email: string }`, as the typo is corrected",
+        "`Draft` is `{ email: string; createdAt: Date }`, no error"
+      ],
+      "answer": 3,
+      "why": "`Omit` constrains its keys only to `keyof any`, so a misspelt key is silently ignored and `createdAt` stays in the type. `Pick` does check its keys; some teams add a strict `StrictOmit<T, K extends keyof T>` for this reason.",
+      "tags": [
+        "utility-types",
+        "keyof"
+      ],
+      "level": 1,
+      "asked": "It is a real source of wrong DTO types, and knowing the asymmetry with `Pick` shows careful reading of library types."
+    },
+    {
+      "id": "tsa-094",
+      "q": "What is `N`?",
+      "code": "type Nullable<T> = { [K in keyof T]: T[K] | null };\ntype N = Nullable<{ id: number; tags?: string[] }>;",
+      "lang": "ts",
+      "choices": [
+        "`{ id: number | null; tags: string[] | null }`",
+        "`{ id: number | null; tags?: string[] | null | undefined }`",
+        "`{ id: number; tags?: string[] } | null`",
+        "`{ id?: number | null; tags?: string[] | null }`"
+      ],
+      "answer": 1,
+      "why": "Mapping over `keyof T` is homomorphic, so optional and readonly modifiers carry over; `tags` stays optional and gains `| null`. The whole object does not become nullable, only each property.",
+      "tags": [
+        "mapped",
+        "modifiers"
+      ],
+      "level": 1,
+      "asked": "Writing a small mapped type like this is a common interview exercise."
+    },
+    {
+      "id": "tsa-095",
+      "q": "Is a `Date` assignable to `Json`?",
+      "code": "type Json =\n  | string | number | boolean | null\n  | Json[]\n  | { [key: string]: Json };",
+      "lang": "ts",
+      "choices": [
+        "No, because its methods are not `Json` values",
+        "Yes, because a `Date` is an object with string keys",
+        "Yes, because `JSON.stringify` can serialise dates",
+        "No, because recursive types reject all class instances"
+      ],
+      "answer": 0,
+      "why": "To match the index signature, every property of `Date` must be `Json`, and its methods are functions, so it is rejected. That is the point: a `Json` type forces you to convert dates to strings before serialising.",
+      "tags": [
+        "type-ops",
+        "boundary"
+      ],
+      "level": 2,
+      "asked": "A `Json` type for cache or queue payloads is common, and it shows you understand recursive types and index signatures."
+    },
+    {
+      "id": "tsa-096",
+      "q": "What is `P`?",
+      "code": "type Event =\n  | { name: 'signup'; payload: { email: string } }\n  | { name: 'logout'; payload: null };\ntype P = Extract<Event, { name: 'signup' }>['payload'];",
+      "lang": "ts",
+      "choices": [
+        "`{ email: string } | null`",
+        "`unknown`",
+        "`{ name: 'signup' }`",
+        "`{ email: string }`"
+      ],
+      "answer": 3,
+      "why": "`Extract` selects the `signup` member, and indexed access reads its `payload`. Indexing the whole union (`Event['payload']`) would give the union of all payloads instead.",
+      "tags": [
+        "type-ops",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "Typed event buses and analytics trackers are built on exactly this lookup."
+    },
+    {
+      "id": "tsa-097",
+      "q": "What properties can you read on a `NoId` value without narrowing?",
+      "code": "type Shape =\n  | { kind: 'circle'; id: string; radius: number }\n  | { kind: 'square'; id: string; side: number };\ntype NoId = Omit<Shape, 'id'>;",
+      "lang": "ts",
+      "choices": [
+        "Only `kind`, typed `'circle' | 'square'`",
+        "`kind`, `radius` and `side`, as before",
+        "None, as `Omit` on a union yields `{}`",
+        "`kind` plus whichever member matches first"
+      ],
+      "answer": 0,
+      "why": "`Omit` is not distributive: `keyof Shape` is only the shared keys, so the result is a single object `{ kind: 'circle' | 'square' }` and the variants are lost. A distributive version, `T extends unknown ? Omit<T, K> : never`, keeps them.",
+      "tags": [
+        "utility-types",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "Deriving \"create\" types from union entities hits this, and it is a favourite senior-review catch."
+    },
+    {
+      "id": "tsa-098",
+      "q": "Which fix makes `Omit` keep each member of a union?",
+      "code": "type Shape =\n  | { kind: 'circle'; id: string; radius: number }\n  | { kind: 'square'; id: string; side: number };",
+      "lang": "ts",
+      "choices": [
+        "`type D<T, K extends keyof T> = Omit<T, K>` with a stricter key",
+        "`type D<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never`",
+        "`type D<T, K extends PropertyKey> = Omit<T & {}, K>`",
+        "`type D<T, K extends PropertyKey> = { [P in Exclude<keyof T, K>]: T[P] }`"
+      ],
+      "answer": 1,
+      "why": "A conditional type on a naked type parameter distributes over unions, so `Omit` runs once per member and the results are re-joined. The other forms still compute `keyof` of the whole union, which is only the shared keys.",
+      "tags": [
+        "conditional",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "Writing `DistributiveOmit` is a classic intermediate type-level exercise with a real use in form and DTO types."
+    },
+    {
+      "id": "tsa-099",
+      "q": "Which declaration adds a typed `user` to Express 5 request objects?",
+      "choices": [
+        "`interface Request { user?: User }` in any `.ts` file",
+        "`declare global { var user: User }` in the auth middleware",
+        "`type Request = express.Request & { user?: User }` exported globally",
+        "`declare module 'express-serve-static-core' { interface Request { user?: User } }`"
+      ],
+      "answer": 3,
+      "why": "Express's `Request` interface lives in `express-serve-static-core`, and module augmentation merges your property into it, so every handler sees `req.user`. A local interface or alias is a different type; a global variable is not on the request at all.",
+      "tags": [
+        "modules",
+        "declarations"
+      ],
+      "level": 2,
+      "asked": "Auth middleware that attaches a user is universal, and typing it properly is a common Node interview question."
+    },
+    {
+      "id": "tsa-100",
+      "q": "Which line fails to compile?",
+      "code": "type UserId = string & { readonly __brand: 'UserId' };\nconst asUserId = (s: string) => s as UserId;\nfunction load(id: UserId) {}\nload(asUserId('u_1'));     // A\nload('u_1');               // B\nconst len = asUserId('u_1').length; // C",
+      "lang": "ts",
+      "choices": [
+        "Line A, because a brand cannot be created by assertion",
+        "Line B, because a plain `string` lacks the brand",
+        "Line C, because branded strings lose string methods",
+        "None, because brands are erased before type-checking"
+      ],
+      "answer": 1,
+      "why": "The brand is a phantom property that no plain string has, so only values passed through `asUserId` (ideally a validating constructor) are accepted. The type is still a `string`, so string methods work, and nothing exists at runtime.",
+      "tags": [
+        "type-ops",
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "Branded IDs prevent mixing `UserId` and `OrderId`, and interviewers want to see you can write and use one."
+    },
+    {
+      "id": "tsa-101",
+      "q": "In Vitest, what is `expectTypeOf(parse).returns.toEqualTypeOf<User>()` for?",
+      "choices": [
+        "Asserting at compile time that `parse` returns exactly `User`",
+        "Checking at runtime that `parse` returns a valid `User`",
+        "Generating a JSON schema for `User` from the function",
+        "Mocking `parse` so that it returns a `User` fixture"
+      ],
+      "answer": 0,
+      "why": "Type assertions like `expectTypeOf` do nothing at runtime; they fail type-checking (`vitest --typecheck` or tsc) if the inferred type drifts. They are how libraries and shared utilities test their types, alongside `@ts-expect-error` for negative cases.",
+      "tags": [
+        "generics",
+        "tooling"
+      ],
+      "level": 2,
+      "asked": "Testing types is part of maintaining shared utility types, and knowing the tools marks a senior-leaning candidate."
+    },
+    {
+      "id": "tsa-102",
+      "q": "What is the type of `byId`?",
+      "code": "const users = [{ id: 'a', name: 'Ann' }];\nconst byId = Object.fromEntries(users.map((u) => [u.id, u]));",
+      "lang": "ts",
+      "choices": [
+        "`Record<'a', { id: string; name: string }>`",
+        "`{ [k: string]: { id: string; name: string } }`",
+        "`Map<string, { id: string; name: string }>`",
+        "`any`, since the tuples are not inferred"
+      ],
+      "answer": 1,
+      "why": "`fromEntries` accepts an iterable of key-value pairs and returns a string-indexed object of the value type. The keys are not tracked as literals, and it builds a plain object, not a `Map`.",
+      "tags": [
+        "inference",
+        "type-ops"
+      ],
+      "level": 2,
+      "asked": "Indexing lists by ID is everyday CRUD code, and it helps to know what type you get back."
+    },
+    {
+      "id": "tsa-103",
+      "q": "With `lib` including `es2024`, what is the type of `groups`?",
+      "code": "type Task = { status: 'todo' | 'done'; title: string };\ndeclare const tasks: Task[];\nconst groups = Object.groupBy(tasks, (t) => t.status);",
+      "lang": "ts",
+      "choices": [
+        "`Record<'todo' | 'done', Task[]>`",
+        "`{ [k: string]: Task[] }`",
+        "`Map<'todo' | 'done', Task[]>`",
+        "`Partial<Record<'todo' | 'done', Task[]>>`"
+      ],
+      "answer": 3,
+      "why": "A group only exists if at least one item produced its key, so the lib types make every key optional and `groups.todo` is `Task[] | undefined`. A hand-rolled `groupBy` returning `Record<K, T[]>` claims every key exists, which is unsound.",
+      "tags": [
+        "type-ops",
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "ES2024 `groupBy` replaces many Lodash calls, and its honest return type is a good discussion point."
+    },
+    {
+      "id": "tsa-104",
+      "q": "What is the type of `doubled`?",
+      "code": "const pair: [number, number] = [1, 2];\nconst doubled = pair.map((n) => n * 2);",
+      "lang": "ts",
+      "choices": [
+        "`number[]`, since `map` returns a plain array",
+        "`[number, number]`, since `map` keeps the length",
+        "`readonly number[]`, since tuples are readonly",
+        "`[number, ...number[]]`, since it is non-empty"
+      ],
+      "answer": 0,
+      "why": "`map` is declared on `Array<T>` as returning `U[]`, so tuple-ness is lost even though the length is preserved at runtime. Annotate the result or use a mapped type over the tuple when the fixed length matters.",
+      "tags": [
+        "type-ops",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "It explains why coordinate and range tuples suddenly become arrays after a transformation."
+    },
+    {
+      "id": "tsa-105",
+      "q": "What is `P`?",
+      "code": "function search(query: string, limit?: number) {}\ntype P = Parameters<typeof search>;",
+      "lang": "ts",
+      "choices": [
+        "`[query: string, limit?: number]`",
+        "`[string, number]`",
+        "`{ query: string; limit?: number }`",
+        "`(string | number | undefined)[]`"
+      ],
+      "answer": 0,
+      "why": "`Parameters` returns a tuple that keeps the parameter names as labels and the optional marker, so the tuple accepts one or two elements. Labels are documentation only; they do not change assignability.",
+      "tags": [
+        "type-ops",
+        "tuples"
+      ],
+      "level": 1,
+      "asked": "Wrapping functions (logging, retries, debounce) needs their parameter tuple, so reading this output matters."
+    },
+    {
+      "id": "tsa-106",
+      "q": "Which value is not assignable to `Line`?",
+      "code": "type Line = [sku: string, qty?: number];",
+      "lang": "ts",
+      "choices": [
+        "`['pen']`",
+        "`['pen', 3]`",
+        "`['pen', undefined]`",
+        "`['pen', 3, 4]`"
+      ],
+      "answer": 3,
+      "why": "An optional tuple element may be omitted (or `undefined` without `exactOptionalPropertyTypes`), so the length is `1 | 2`. A third element exceeds the tuple, which would need a rest element such as `...number[]`.",
+      "tags": [
+        "tuples"
+      ],
+      "level": 1,
+      "asked": "Optional tuple elements appear in hook return types and function parameter lists."
+    },
+    {
+      "id": "tsa-107",
+      "q": "Which value can be assigned to `Record<string, never>`?",
+      "choices": [
+        "`{ id: 1 }`, since `never` accepts anything",
+        "`{}`, an object with no properties",
+        "`{ id: undefined }`, since it is missing",
+        "`null`, the only value of type `never`"
+      ],
+      "answer": 1,
+      "why": "Every property would have to be `never`, which no value is, so only an object with no properties fits. It is a common way to type \"an empty object\", since `{}` itself accepts almost anything non-nullish.",
+      "tags": [
+        "type-ops",
+        "soundness"
+      ],
+      "level": 1,
+      "asked": "Typing empty props or empty config objects is common, and `{}` is the tempting wrong answer."
+    },
+    {
+      "id": "tsa-108",
+      "q": "What is the type of `email` in `Verified`?",
+      "code": "type User = { id: string; email?: string };\ntype Verified = User & Required<Pick<User, 'email'>>;",
+      "lang": "ts",
+      "choices": [
+        "`string | undefined`, as the left side wins",
+        "`string | undefined`, as `Required` is shallow",
+        "`never`, as the two declarations conflict",
+        "`string`, as the intersection makes it required"
+      ],
+      "answer": 3,
+      "why": "Intersecting an optional property with a required one of the same type yields a required property. This \"make some keys required\" idiom is common for states such as a user after email verification.",
+      "tags": [
+        "utility-types",
+        "modifiers"
+      ],
+      "level": 1,
+      "asked": "Adjusting one field's optionality without redefining a type comes up in almost every codebase."
+    },
+    {
+      "id": "tsa-109",
+      "q": "What is `K`?",
+      "code": "interface Cart {\n  items: string[];\n  add(item: string): void;\n}\ntype K = keyof Cart;",
+      "lang": "ts",
+      "choices": [
+        "`'items' | 'add'`",
+        "`'items'`, since methods are not keys",
+        "`'items' | 'add' | 'length'`",
+        "`string`, since interfaces are open"
+      ],
+      "answer": 0,
+      "why": "Methods are properties whose values are functions, so their names are part of `keyof`. To keep only data fields, filter with a mapped type that drops function-valued keys.",
+      "tags": [
+        "keyof",
+        "type-ops"
+      ],
+      "level": 1,
+      "asked": "It sets up the follow-up question of how to get only the data keys of a model."
+    },
+    {
+      "id": "tsa-110",
+      "q": "Which value is not assignable to `Row`?",
+      "code": "type Row = [id: string, ...scores: number[]];",
+      "lang": "ts",
+      "choices": [
+        "`['a']`",
+        "`['a', 1, 2, 3]`",
+        "`[1, 'a']`",
+        "`['a', 90]`"
+      ],
+      "answer": 2,
+      "why": "A rest element allows any number of trailing elements of its type, including none, but the leading element must be a string. So `[1, 'a']` fails on both positions.",
+      "tags": [
+        "tuples"
+      ],
+      "level": 1,
+      "asked": "Rest tuples type variadic arguments, which is how `Parameters` and `...args` wrappers are modelled."
+    },
+    {
+      "id": "tsa-111",
+      "q": "What is `K`?",
+      "code": "class Account {\n  id = '';\n  private balance = 0;\n  #pin = '0000';\n  deposit(n: number) {}\n}\ntype K = keyof Account;",
+      "lang": "ts",
+      "choices": [
+        "`'id' | 'balance' | 'deposit'`",
+        "`'id'`",
+        "`'id' | 'balance' | '#pin' | 'deposit'`",
+        "`'id' | 'deposit'`"
+      ],
+      "answer": 3,
+      "why": "`keyof` on a class instance type only includes public members; `private`, `protected` and `#private` members are excluded, even though a TS-private field exists as a normal property at runtime.",
+      "tags": [
+        "keyof",
+        "classes"
+      ],
+      "level": 2,
+      "asked": "It clarifies what generic helpers like `pick(obj, key)` can reach on class instances."
+    },
+    {
+      "id": "tsa-112",
+      "q": "What does `typeof import('./config')` give you?",
+      "choices": [
+        "The type of the module's exports, with no runtime import",
+        "The runtime module object, loaded synchronously at that point",
+        "The type of the default export only",
+        "A string literal of the resolved file path"
+      ],
+      "answer": 0,
+      "why": "An import type refers to a module's shape in a type position without adding an import statement, so there is no runtime cost or circular-load risk. It is often used in JSDoc and in `.d.ts` files.",
+      "tags": [
+        "modules",
+        "type-ops"
+      ],
+      "level": 2,
+      "asked": "It helps when typing lazy imports and when reading generated declaration files."
+    },
+    {
+      "id": "tsa-113",
+      "q": "A recursive type like `Path<T>` over a large API type reports \"Type instantiation is excessively deep and possibly infinite\". What is the usual fix?",
+      "choices": [
+        "Turn off `strict` for the file that uses the type",
+        "Increase the compiler's stack size with a flag",
+        "Replace every `extends` with an `as` assertion",
+        "Bound the recursion, e.g. with a depth counter tuple"
+      ],
+      "answer": 3,
+      "why": "The checker caps instantiation depth to stay fast; deep or unbounded recursion hits it. Limiting depth (a counter tuple that grows each step), simplifying the type, or giving up on full precision are the practical fixes; there is no flag to raise the limit.",
+      "tags": [
+        "conditional",
+        "mapped"
+      ],
+      "level": 2,
+      "asked": "Type-level code that slows the editor or hits limits is a real cost, and knowing when to stop is a senior trait."
+    },
+    {
+      "id": "tsa-114",
+      "q": "What does `satisfies` check in this code?",
+      "code": "type Action = { type: 'add' } | { type: 'remove' } | { type: 'clear' };\nconst handlers = {\n  add: () => {},\n  remove: () => {},\n} satisfies Record<Action['type'], () => void>;",
+      "lang": "ts",
+      "choices": [
+        "That every action type has a handler, so `clear` is reported",
+        "Nothing, since `satisfies` is erased before checking",
+        "Only that each handler that exists is a function type",
+        "That `handlers` is readonly, like `as const` would"
+      ],
+      "answer": 0,
+      "why": "`Record<Action['type'], ...>` requires all three keys, so the missing `clear` is an error, and adding an action later breaks this line. Unlike an annotation, `satisfies` keeps the object's own inferred type.",
+      "tags": [
+        "type-ops",
+        "unions"
+      ],
+      "level": 2,
+      "asked": "Exhaustive handler maps are a lightweight alternative to switch statements, and this is how they stay exhaustive."
+    },
+    {
+      "id": "tsa-115",
+      "q": "What is `E`?",
+      "code": "type ElementOf<T> = T extends (infer U)[] ? U : never;\ntype E = ElementOf<readonly string[]>;",
+      "lang": "ts",
+      "choices": [
+        "`string`",
+        "`readonly string`",
+        "`never`",
+        "`unknown`"
+      ],
+      "answer": 2,
+      "why": "A readonly array is not assignable to a mutable array pattern, so the conditional takes the false branch. Match `readonly (infer U)[]` instead, which accepts both mutable and readonly arrays.",
+      "tags": [
+        "conditional",
+        "modifiers"
+      ],
+      "level": 2,
+      "asked": "Helpers that break on `as const` arrays are a common bug in hand-written utility types."
+    },
+    {
+      "id": "tsa-116",
+      "q": "A `.d.ts` file declares `function slugify(s: string): string;` and `namespace slugify { const separator: string; }`. What does this model?",
+      "choices": [
+        "A conflict that tsc reports as a duplicate identifier",
+        "A function that also has a `separator` property",
+        "Two exports, `slugify` and `slugify.separator` as a file",
+        "An overload that takes a `separator` argument"
+      ],
+      "answer": 1,
+      "why": "Functions and namespaces with the same name merge, which is how declaration files describe JS functions that carry properties. In your own code you would usually write a function with an assigned property instead.",
+      "tags": [
+        "declarations",
+        "modules"
+      ],
+      "level": 2,
+      "asked": "Reading third-party `.d.ts` files is a senior expectation, and merging is one of their idioms."
+    },
+    {
+      "id": "tsa-117",
+      "q": "Which declaration types `process.env.DATABASE_URL` as `string` across a Node project?",
+      "choices": [
+        "`declare const process: { env: { DATABASE_URL: string } };`",
+        "`interface Env extends NodeJS.ProcessEnv { DATABASE_URL: string }` in a module",
+        "`type ProcessEnv = { DATABASE_URL: string };` in a `.d.ts` file",
+        "`declare global { namespace NodeJS { interface ProcessEnv { DATABASE_URL: string } } }`"
+      ],
+      "answer": 3,
+      "why": "`@types/node` declares `process.env` as `NodeJS.ProcessEnv`, so merging a property into that interface changes every read. It is only a claim, though: validate env at startup so the type is true.",
+      "tags": [
+        "declarations",
+        "node"
+      ],
+      "level": 2,
+      "asked": "Env typing is a common setup task, and a good answer adds that validation must back the type."
+    },
+    {
+      "id": "tsa-118",
+      "q": "What is the type of `x`?",
+      "code": "function first<T>(items: T[]): T | undefined {\n  return items[0];\n}\nconst x = first([]);",
+      "lang": "ts",
+      "choices": [
+        "`undefined`",
+        "`unknown`",
+        "`never[] | undefined`",
+        "`any`"
+      ],
+      "answer": 0,
+      "why": "With an empty array literal, `T` is inferred as `never`, and `never | undefined` simplifies to `undefined`. Passing a typed array, or `first<User>([])`, gives the intended result.",
+      "tags": [
+        "generics",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "It shows how inference behaves with empty inputs, a common source of surprising `never` types."
+    },
+    {
+      "id": "tsa-119",
+      "q": "Why do linters flag a parameter typed `Function`?",
+      "code": "function retry(fn: Function, times: number) {\n  return fn(1, 2, 3);\n}",
+      "lang": "ts",
+      "choices": [
+        "`Function` only accepts class constructors",
+        "`Function` excludes arrow functions",
+        "`Function` values cannot be called without `.apply`",
+        "Calls on `Function` are unchecked and return `any`"
+      ],
+      "answer": 3,
+      "why": "Any function is assignable to `Function`, and calling it accepts any arguments and returns `any`, so types are lost on both sides. Use a specific signature, e.g. `<T>(fn: () => Promise<T>) => Promise<T>`.",
+      "tags": [
+        "functions",
+        "soundness"
+      ],
+      "level": 2,
+      "asked": "It is a common review comment, and the generic replacement is a good small exercise."
+    },
+    {
+      "id": "tsa-120",
+      "q": "What is `repo`?",
+      "code": "class UserRepo { find(id: string) { return id; } }\nfunction create<T>(C: new () => T): T {\n  return new C();\n}\nconst repo = create(UserRepo);",
+      "lang": "ts",
+      "choices": [
+        "`UserRepo`",
+        "`typeof UserRepo`",
+        "`object`",
+        "An error: classes cannot be passed"
+      ],
+      "answer": 0,
+      "why": "A construct signature `new () => T` describes a class value; passing `UserRepo` infers `T` as its instance type. This is how DI containers and test factories are typed.",
+      "tags": [
+        "generics",
+        "classes"
+      ],
+      "level": 2,
+      "asked": "Factories that take a class are common in DI and testing, and construct signatures are how you type them."
+    },
+    {
+      "id": "tsa-121",
+      "q": "Why does tsc reject these overloads?",
+      "code": "function parse(x: string): number;\nfunction parse(x: number): string;\nfunction parse(x: string) {\n  return Number(x);\n}",
+      "lang": "ts",
+      "choices": [
+        "Every overload must return the same type as the rest",
+        "Overloads need the `overload` keyword",
+        "Implementations must declare a return type",
+        "The implementation cannot accept a `number`"
+      ],
+      "answer": 3,
+      "why": "Each overload must be compatible with the implementation signature, which is hidden from callers. Here the second overload promises to accept a number, but the implementation only takes strings; widen it to `x: string | number` and handle both.",
+      "tags": [
+        "functions"
+      ],
+      "level": 2,
+      "asked": "Writing overloads correctly comes up when typing utility functions and reading library code."
+    },
+    {
+      "id": "tsa-122",
+      "q": "Which assignment does tsc reject?",
+      "code": "type Slug = Lowercase<string>;\nconst a: Slug = 'hello-world';\nconst b: Slug = 'Hello-World';\nconst c: Slug = '42-items';",
+      "lang": "ts",
+      "choices": [
+        "`a`, since intrinsic types need literal inputs",
+        "`b`, since it contains uppercase letters",
+        "`c`, since digits are not lowercase characters",
+        "None, since `Lowercase<string>` is just `string`"
+      ],
+      "answer": 1,
+      "why": "Applied to `string`, the intrinsic string types produce pattern types, so `Lowercase<string>` accepts only strings unchanged by lowercasing. Digits and hyphens are unaffected, so `c` passes.",
+      "tags": [
+        "template-literals"
+      ],
+      "level": 2,
+      "asked": "It shows familiarity with pattern template types, used for typed slugs, IDs and header names."
+    },
+    {
+      "id": "tsa-123",
+      "q": "What is `R`?",
+      "code": "type Getter<T> = T extends { get(): infer R } ? R : never;\ntype R = Getter<{ get(): Promise<number>; set(v: number): void }>;",
+      "lang": "ts",
+      "choices": [
+        "`Promise<number>`",
+        "`number`, unwrapped from the promise",
+        "`() => Promise<number>`, the method",
+        "`never`, as `set` breaks the match"
+      ],
+      "answer": 0,
+      "why": "`infer` can capture any position in a structural pattern, here the return type of a method. The extra `set` member does not stop the match, since the pattern only needs `get`. Unwrapping the promise would need `Awaited`.",
+      "tags": [
+        "conditional",
+        "inference"
+      ],
+      "level": 2,
+      "asked": "Pattern-matching with `infer` is how many library helper types work, so reading one quickly is expected."
+    },
+    {
+      "id": "tsa-124",
+      "q": "What do these call signatures give an event emitter?",
+      "code": "interface Socket {\n  on(event: 'data', cb: (chunk: string) => void): void;\n  on(event: 'close', cb: (code: number) => void): void;\n}",
+      "lang": "ts",
+      "choices": [
+        "Two properties named `on` that override each other",
+        "An error, since interfaces cannot declare overloads",
+        "A single `on` whose callback takes `string | number`",
+        "Overloads: the callback type follows the event name"
+      ],
+      "answer": 3,
+      "why": "Repeated method signatures in an interface are overloads, so `on('close', (code) => ...)` types `code` as `number`. A mapped event-to-payload type scales better when there are many events.",
+      "tags": [
+        "functions",
+        "interfaces"
+      ],
+      "level": 2,
+      "asked": "Node's own typings use this pattern, and typed event emitters are a common exercise."
+    },
+    {
+      "id": "tsa-125",
+      "q": "What does each property of `Handlers` accept?",
+      "code": "type Action =\n  | { type: 'add'; item: string }\n  | { type: 'remove'; id: number };\ntype Handlers = {\n  [A in Action as A['type']]: (action: A) => void;\n};",
+      "lang": "ts",
+      "choices": [
+        "Each handler takes only its own member of `Action`",
+        "Every handler takes the full `Action` union",
+        "Any string key, each taking an `Action`",
+        "Nothing: mapped types can only iterate over keys"
+      ],
+      "answer": 0,
+      "why": "Since TS 4.1 a mapped type can iterate over any union and pick each key with `as`; each member keeps its own type, so each handler receives its narrowed action. Iterating `Action['type']` instead would lose that link.",
+      "tags": [
+        "mapped",
+        "unions"
+      ],
+      "level": 3,
+      "asked": "Typed handler maps for reducers, events or WebSocket messages are built this way."
+    },
+    {
+      "id": "tsa-126",
+      "q": "`types/express.d.ts` contains only `declare module 'express' { interface Request { user?: User } }`, with no imports or exports. What goes wrong?",
+      "choices": [
+        "Nothing; the declaration merges into Express as intended",
+        "Only `.ts` files may augment modules, not `.d.ts` files",
+        "tsc ignores the file entirely because it has no top-level export",
+        "It declares a new ambient `'express'` module that shadows the real types"
+      ],
+      "answer": 3,
+      "why": "Augmentation only happens inside a module (a file with an import or export). In a script file, `declare module 'express'` is an ambient declaration of the whole module, replacing it. Add `export {}` or an import to make it an augmentation.",
+      "tags": [
+        "modules",
+        "declarations"
+      ],
+      "level": 3,
+      "asked": "This silently breaks Express types in real projects, and diagnosing it shows deep module knowledge."
+    },
+    {
+      "id": "tsa-127",
+      "q": "A library's package.json has `\"exports\": { \".\": { \"import\": \"./dist/index.js\", \"types\": \"./dist/index.d.ts\" } }`. Why can consumers get no types?",
+      "choices": [
+        "Conditions match in order, and `import` matches first, so `types` is never reached",
+        "`types` must be a top-level field, never inside `exports`",
+        "The `.d.ts` file must be named `index.d.mts` when the package is ESM",
+        "Consumers must add the package name to their tsconfig `types` array"
+      ],
+      "answer": 0,
+      "why": "Resolution takes the first matching condition, and TS also matches `import`, so it resolves to the `.js` file and finds no sibling declaration. Put `types` first in each conditions object.",
+      "tags": [
+        "modules",
+        "config"
+      ],
+      "level": 3,
+      "asked": "Publishing internal packages in a monorepo hits this, and tools like `arethetypeswrong` exist because of it."
+    },
+    {
+      "id": "tsa-128",
+      "q": "Why is `b` assignable here, and why does it matter for brands?",
+      "code": "interface Id<T> { value: string }\ndeclare const a: Id<'User'>;\nconst b: Id<'Order'> = a;",
+      "lang": "ts",
+      "choices": [
+        "Generic types are always assignable when their interface names match",
+        "Assignments to a `const` declaration skip type-argument checks",
+        "String literal type arguments widen to `string` in interfaces",
+        "The unused `T` does not appear in the structure, so it is not compared"
+      ],
+      "answer": 3,
+      "why": "Compatibility is structural, and `T` contributes nothing to the structure, so `Id<'User'>` and `Id<'Order'>` are identical. A brand must appear in the shape, e.g. `{ value: string; readonly __brand: T }`.",
+      "tags": [
+        "generics",
+        "soundness"
+      ],
+      "level": 3,
+      "asked": "It explains why naive \"phantom type\" brands do not work, a common mistake when adding nominal IDs."
+    },
+    {
+      "id": "tsa-129",
+      "q": "Does the call inside `run` compile?",
+      "code": "type Payloads = { email: { to: string }; sms: { phone: string } };\ndeclare const senders: { [K in keyof Payloads]: (p: Payloads[K]) => void };\nfunction run<K extends keyof Payloads>(kind: K, p: Payloads[K]) {\n  senders[kind](p);\n}",
+      "lang": "ts",
+      "choices": [
+        "No: `kind` must be narrowed with a `switch` before the call",
+        "Yes: indexing the mapped type keeps `K` and `p` correlated",
+        "No: the lookup is a union of functions, so `p` must be an intersection",
+        "Yes, but only because `p` is widened to `any` inside the function"
+      ],
+      "answer": 1,
+      "why": "Because `senders` is typed as a mapped type over `keyof Payloads`, `senders[kind]` is `(p: Payloads[K]) => void`, which matches `p`. Declared as a plain object type, the lookup becomes a union of functions whose parameters intersect and the call fails; this mapped-type pattern (TS 4.6+) is the standard fix.",
+      "tags": [
+        "generics",
+        "mapped"
+      ],
+      "level": 3,
+      "asked": "The \"correlated union\" problem appears in every typed dispatcher, and knowing the mapped-type fix is a senior signal."
+    },
+    {
+      "id": "tsa-130",
+      "q": "In TypeScript 5+, why do NestJS and Angular projects still set `experimentalDecorators: true`?",
+      "choices": [
+        "They rely on legacy semantics, such as parameter decorators",
+        "Standard decorators do not run at all without the flag",
+        "The flag is required for any class to carry type metadata",
+        "It makes decorators run at compile time for speed"
+      ],
+      "answer": 0,
+      "why": "TS 5.0 implements the standard (TC39) decorators by default, but they have different semantics and no parameter decorators, which constructor injection in Nest and Angular relies on, together with `emitDecoratorMetadata`. The two systems are not interchangeable.",
+      "tags": [
+        "classes",
+        "config"
+      ],
+      "level": 3,
+      "asked": "It shows you understand why framework configs differ from plain TS defaults."
     }
   ]
 }
