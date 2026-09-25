@@ -2078,8 +2078,8 @@
       "choices": [
         "`const total = (items) => items.reduce((s, i) => s + i.price, 0);`",
         "`const stamp = (order) => { order.at = Date.now(); return order; };`",
-        "`const next = () => ++counter;`",
-        "`const load = (id) => db.users.find(id);`"
+        "`const next = (step) => { counter += step; return counter; };`",
+        "`const load = async (id) => await db.users.findOne({ id });`"
       ],
       "answer": 0,
       "why": "A pure function's result depends only on its arguments and it changes nothing outside itself. `stamp` mutates its input and reads the clock, `next` changes outer state, and `load` depends on a database; only `total` is pure.",

@@ -106,7 +106,6 @@ test('the Guides index marks a guide read once its path step is ticked', async (
   assert.match(card()?.textContent ?? '', /✓ Read/);
   assert.equal(app.$$('.pill.good').filter((p) => p.textContent === '✓ Read').length, 1, 'only that guide');
 });
-
 test('a build step is marked done from its project page', async () => {
   const build = stepOf('build');
   await app.goto(`#/project/${build.project}`);
