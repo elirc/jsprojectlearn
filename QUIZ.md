@@ -494,7 +494,7 @@ test("3", () => assert.equal(deepEqual({ a: NaN }, { a: null }), false));
 
 **28.** `4 1 2`. Splitting `"a,b,,c"` keeps the empty field. Splitting an empty string gives `[""]`, not `[]` — the single most common off-by-one in file parsing. And `","` splits into two empty strings. → **project 34**
 
-**29.** Throws `TypeError: Cannot read properties of undefined (reading 'balance')`. `this` is decided by *how* a function is called; pulled off the object it's a plain call, and in a module (strict mode) `this` is `undefined`. Fix with `acc.report.bind(acc)`, `() => acc.report()`, or by using a closure-based factory with no `this` at all. → **project 29**
+**29.** Throws `TypeError: Cannot read properties of undefined (reading 'balance')`. `this` is decided by *how* a function is called; pulled off the object it's a plain call, and class bodies always run in strict mode, so `this` is `undefined` (even in a non-module script). Fix with `acc.report.bind(acc)`, `() => acc.report()`, or by using a closure-based factory with no `this` at all. → **project 29**
 
 **30.** **A, debounce.** Debounce waits for a pause — one request after the user stops typing, which is what a search box wants. Throttle fires on a schedule *while* the user types, so you'd still send a request every 300ms and pay for answers nobody reads. Throttle is for continuous streams you must sample: scroll, mousemove, resize. → **project 28**
 

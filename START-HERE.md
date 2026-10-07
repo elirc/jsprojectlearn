@@ -51,18 +51,20 @@ And beyond the project folders:
   and `npm test` all work with no internet.
 - **Plain HTML projects** (todo app, snake, connect four, sierpinski, etc.) —
   double-click the file; browsers render local files without internet.
-- **The TypeScript track** — `npm run typecheck` from `typescript/` works
-  offline **if `node_modules` is already installed**. If you haven't run
-  `npm install` yet, do it before you board.
+- **The TypeScript track** — `npm run typecheck` from the repo root (it runs
+  `tsc -p typescript`, then typechecks the app) works offline **if
+  `node_modules` is already installed**. If you haven't run `npm install`
+  yet, do it before you board.
 - **The entire C# / .NET track (csharp/01–36)** — needs only the .NET SDK
-  (already installed). It uses zero NuGet packages, so building, running,
-  and testing all work with no internet:
+  (install it before you go offline). No project has a `PackageReference`,
+  so building, running, and testing all work with no internet:
   `dotnet run csharp/01-hello-fizzbuzz/original.cs`,
   `dotnet run --project csharp/01-hello-fizzbuzz/refactored`, and
   `dotnet run --project csharp/01-hello-fizzbuzz/refactored -- test`.
-  The web projects (15–28) serve at `http://localhost:50NN` — a server on
-  your own machine needs no wifi, and the capstone frontends (25–28) are
-  plain local HTML/JS with no CDN, so they run fully offline in the browser.
+  The web projects (15–28 and 32–36) serve at `http://localhost:50NN`, where
+  NN is the project number — a server on your own machine needs no wifi, and
+  the fullstack frontends (25–28, 36) are plain local HTML/JS in `wwwroot/`
+  with no CDN, so they run fully offline in the browser.
 - ⚠️ **React track pages** load React from a CDN, so *running* them needs
   internet on first load (if you opened one before, your browser may have it
   cached). Reading the code and the LEARN.md files works offline regardless —
@@ -71,7 +73,7 @@ And beyond the project folders:
 ### Before you board — 2-minute checklist
 
 ```
-cd JSProjectLearn
+cd jsprojectlearn  # wherever you cloned the repo
 npm install        # so tests and typecheck work offline
 npm test           # confirm the test runner works
 npm run typecheck  # confirm the TS track compiles

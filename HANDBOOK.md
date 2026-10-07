@@ -56,7 +56,7 @@ console.log(Number(null), Number(undefined), Number(""), Number([1, 2])); // 0 N
 console.log(Boolean("false"), Boolean("0"), Boolean([]));                 // true true true
 ```
 
-**Falsy** — the six values that behave as `false` in an `if` — are `false`, `0`, `""`, `null`, `undefined`, `NaN`. Everything else is **truthy**, including `"0"`, `"false"`, `[]` and `{}`. This matters constantly: `if (count)` skips a legitimate `0`, `if (name)` skips `""`, and `if (cache[k] != undefined)` never caches a real `false`. Ask a precise question instead — `map.has(key)`. **→ 27**
+**Falsy** — the six values that behave as `false` in an `if` — are `false`, `0`, `""`, `null`, `undefined`, `NaN`. Everything else is **truthy**, including `"0"`, `"false"`, `[]` and `{}`. This matters constantly: `if (count)` skips a legitimate `0`, `if (name)` skips `""`, and `if (cache[k] != undefined)` treats a cached `null` or `undefined` result as a miss, so it recomputes forever. Ask a precise question instead — `map.has(key)`. **→ 27**
 
 ### `===` vs `==`, and the absence values
 
@@ -673,7 +673,7 @@ export async function getWeather(city, { fetchFn = fetch } = {}) {
 1. **`0.1 + 0.2 !== 0.3`.** Never floats for money — integer cents. → 32
 2. **`sort()` sorts as strings and mutates.** `[10, 9].sort()` doesn't reorder, and your "copy" is the original. Pass a comparator; use `toSorted`. → 26
 3. **`==` converts.** `null >= 0` is `true` but `null == 0` is `false`. Use `===`. → 25
-4. **Falsy checks eat valid data.** `if (count)` skips `0`, `if (name)` skips `""`, `if (cache[k] != undefined)` never caches `false`. Use `map.has`. → 27
+4. **Falsy checks eat valid data.** `if (count)` skips `0`, `if (name)` skips `""`, `if (cache[k] != undefined)` misses every cached `null`/`undefined`. Use `map.has`. → 27
 5. **Spread copies one level.** `{...obj}` shares nested objects; `Object.freeze` is shallow too. `structuredClone` for a real copy. → 25
 6. **`JSON.stringify` comparison lies both ways.** Key order differs, and `undefined`, functions, `NaN` and dates don't survive. Write a real deep-equal. → 25
 7. **`Array(n).fill([])` puts the *same* array in every slot.** Use `Array.from({length: n}, () => [])`. → 16

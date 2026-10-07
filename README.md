@@ -287,11 +287,12 @@ wrong with it, then read the refactor and the README.
 
 - Every project folder also has **`PRACTICE.md`** — graded exercises with
   worked solutions (try before peeking).
-- **[content/modules/](content/modules/)** — 22 written guides on the topics no
+- **[content/modules/](content/modules/)** — 189 written guides on the topics no
   project covers: HTTP, SQL, REST design, auth, EF Core, Docker, CI/CD,
   caching, observability, debugging, and the interview playbook.
-- **[content/questions/](content/questions/)** — 450 interview questions in 17
-  decks, each with an explanation and a note on why it gets asked.
+- **[content/questions/](content/questions/)** — 5,215 interview questions in 34
+  decks, each with an explanation; the quality gate requires a "why it gets
+  asked" note on at least 60% of each deck.
 - **[HANDBOOK.md](HANDBOOK.md)** and **[QUIZ.md](QUIZ.md)** — the offline
   JavaScript reference and a 50-question quiz bank (each track has its own
   pair inside its folder).
